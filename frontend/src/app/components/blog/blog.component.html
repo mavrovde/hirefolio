@@ -1,0 +1,44 @@
+<section id="blog" class="py-20 px-6 max-w-4xl mx-auto font-mono text-sm md:text-base">
+    <h2 class="text-xl md:text-2xl font-bold mb-12 text-primary border-b border-dashed border-terminal pb-2">
+        {{ 'SECTION.BLOG' | translate }}
+    </h2>
+
+    <div class="space-y-6">
+        <div *ngFor="let post of posts$ | async" class="group">
+            <!-- Terminal File Line -->
+            <div (click)="togglePost(post.id)"
+                class="cursor-pointer flex flex-col md:flex-row md:items-center gap-2 md:gap-4 hover:bg-terminal-dim p-2 rounded transition-colors duration-200">
+
+                <span class="text-secondary shrink-0">
+                    -rw-r--r-- 1 sergii users
+                </span>
+
+                <span class="text-terminal-highlight shrink-0">
+                    {{ post.date }}
+                </span>
+
+                <span
+                    class="text-primary font-bold group-hover:underline decoration-dashed underline-offset-4 break-all">
+                    {{ post.title }}
+                </span>
+            </div>
+
+            <!-- Content Area (cat display) -->
+            <div *ngIf="expandedPostId === post.id"
+                class="mt-4 pl-4 md:pl-8 border-l-2 border-dashed border-terminal-dim animate-fadeIn">
+
+                <div class="text-secondary mb-4 opacity-75">
+                    $ cat {{ post.id }}.md
+                </div>
+
+                <div class="prose prose-invert prose-p:text-primary prose-a:text-terminal-highlight prose-headings:text-primary max-w-none"
+                    [innerHTML]="post.content">
+                </div>
+
+                <div class="mt-4 text-secondary opacity-75">
+                    <span class="animate-pulse">_</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,37 @@
+[
+    {
+        "id": "decoupling-monoliths",
+        "title": "Decoupling Monoliths: Strategies for Java Developers",
+        "date": "2026-01-24",
+        "summary": "A deep dive into migrating legacy Java monoliths to microservices architectures using Spring Boot.",
+        "content": "<p>Migrating from a monolithic architecture to microservices is a journey, not a sprint. For Java developers, this often means breaking down large EAR/WAR deployments into smaller, independent Spring Boot applications.</p><h3>Key Strategies:</h3><ul><li><strong>Identify Domains:</strong> Use Domain-Driven Design (DDD) to find natural boundaries.</li><li><strong>Strangler Fig Pattern:</strong> Slowly replace specific functionality with new services.</li><li><strong>Database Refactoring:</strong> This is the hardest part. decoupling the data layer is crucial.</li></ul>"
+    },
+    {
+        "id": "angular-performance",
+        "title": "Angular Performance at Scale",
+        "date": "2026-01-15",
+        "summary": "Tips for optimizing large frontend applications: Lazy loading, Change Detection strategies, and more.",
+        "content": "<p>When building large-scale Angular applications, performance can degrade quickly if not managed proactively.</p><h3>Top Tips:</h3><ul><li><strong>OnPush Change Detection:</strong> Switch to `ChangeDetectionStrategy.OnPush` by default.</li><li><strong>Lazy Loading:</strong> Split your app into feature modules and load them on demand.</li><li><strong>RxJS Best Practices:</strong> Avoid memory leaks by properly unsubscribing from observables.</li></ul>"
+    },
+    {
+        "id": "clean-code",
+        "title": "The Art of Clean Code",
+        "date": "2025-12-20",
+        "summary": "Reflections on maintainability, SOLID principles, and why writing code for humans is more important than for machines.",
+        "content": "<p>\"Any fool can write code that a computer can understand. Good programmers write code that humans can understand.\" - Martin Fowler.</p><p>Clean code is about readability and maintainability. It's about respecting the next developer who will touch your code (which might be you in 6 months).</p>"
+    },
+    {
+        "id": "terminal-design",
+        "title": "Why Terminals Never Die",
+        "date": "2025-11-05",
+        "summary": "A meta-post about why I chose this retro aesthetic for my portfolio.",
+        "content": "<p>There is a timeless elegance to the command line. It represents direct control, lack of distraction, and pure utility. This portfolio is an homage to the tools we use every day.</p><p>Green text on a black background isn't just a style; it's a lifestyle.</p>"
+    },
+    {
+        "id": "distributed-teams",
+        "title": "Managing Distributed Teams",
+        "date": "2025-10-10",
+        "summary": "Insights on leadership, asynchronous communication, and building culture remotely.",
+        "content": "<p>Remote work is here to stay. Managing distributed teams requires a shift from presence-based management to outcome-based management.</p><h3>Core Principles:</h3><ul><li><strong>Over-communicate:</strong> Content is easily lost in text.</li><li><strong>Trust your team:</strong> Focus on results, not hours.</li></ul>"
+    }
+]

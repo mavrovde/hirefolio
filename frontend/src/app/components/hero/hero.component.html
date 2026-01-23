@@ -1,0 +1,48 @@
+<section class="min-h-screen flex items-center justify-center relative overflow-hidden pt-20 border-b border-terminal">
+    <!-- Matrix/Grid Background Effect -->
+    <div
+        class="absolute inset-0 bg-[linear-gradient(rgba(0,255,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,0,0.03)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none">
+    </div>
+
+    <div class="container mx-auto px-6 text-center z-10">
+        <div *ngIf="profile; else loading">
+            <div class="relative w-32 h-32 md:w-40 md:h-40 mx-auto mb-8">
+                <img src="assets/images/profile.png" alt="Profile Photo"
+                    class="relative w-full h-full object-cover rounded-none border-2 border-primary grayscale hover:grayscale-0 transition-all duration-500">
+            </div>
+
+            <div class="mb-4">
+                <span class="text-sm font-mono text-secondary">
+                    user@portfolio:~$ ./welcome.sh --location="{{ profile.location }}"
+                </span>
+            </div>
+
+            <h1 class="text-3xl md:text-5xl font-bold mb-6 font-mono text-primary">
+                {{ 'SECTION.HI' | translate }} {{ profile.name }}<span class="terminal-cursor"></span>
+            </h1>
+
+            <p class="text-lg md:text-xl text-secondary max-w-3xl mx-auto mb-10 leading-relaxed font-mono">
+                // {{ profile.headline }}
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="#about" (click)="scrollTo('#about', $event)"
+                    class="px-6 py-2 border-2 border-primary text-primary hover:bg-primary hover:text-black transition-all font-bold font-mono">
+                    {{ 'SECTION.READ_MORE' | translate }}
+                </a>
+                <a href="#contact"
+                    class="px-6 py-2 border-2 border-secondary text-secondary hover:bg-secondary hover:text-black transition-all font-bold font-mono">
+                    {{ 'SECTION.GET_IN_TOUCH' | translate }}
+                </a>
+            </div>
+        </div>
+
+        <ng-template #loading>
+            <div class="animate-pulse space-y-4">
+                <div class="h-4 bg-primary/20 w-1/4 mx-auto"></div>
+                <div class="h-12 bg-primary/20 w-1/2 mx-auto"></div>
+                <div class="h-6 bg-primary/20 w-2/3 mx-auto"></div>
+            </div>
+        </ng-template>
+    </div>
+</section>

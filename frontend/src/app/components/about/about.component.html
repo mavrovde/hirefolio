@@ -1,0 +1,13 @@
+<section id="about" class="py-20 relative border-b border-terminal">
+    <div class="container mx-auto px-6">
+        <h2 class="text-2xl font-bold mb-12 text-secondary font-mono">
+            {{ 'SECTION.ABOUT' | translate }}
+        </h2>
+
+        <div class="max-w-4xl mx-auto p-8 border border-terminal bg-black">
+            <div *ngIf="profile" class="space-y-6 text-primary text-lg leading-relaxed whitespace-pre-line font-mono">
+                {{ profile.about }}
+            </div>
+        </div>
+    </div>
+</section>

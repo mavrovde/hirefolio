@@ -1,0 +1,30 @@
+<header class="block w-full z-50 bg-black border-b border-terminal sticky top-0">
+    <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+        <a href="#" class="text-xl font-bold text-primary hover:text-white transition-colors font-mono">
+            >_ SM
+        </a>
+
+        <!-- Desktop Menu -->
+        <nav class="hidden md:flex items-center gap-8">
+            <a *ngFor="let item of navItems" [href]="item.href" (click)="scrollTo(item.href, $event)"
+                class="text-sm font-bold text-secondary hover:text-white transition-colors font-mono">
+                {{ item.labelKey | translate }}
+            </a>
+
+            <!-- Language Switcher -->
+            <div class="text-sm font-mono text-secondary flex items-center border-none outline-none ring-0 p-0 m-0"
+                style="border: none !important; box-shadow: none !important; outline: none !important;">
+                <button (click)="switchLanguage('en')" [class.text-primary]="currentLang === 'en'"
+                    class="bg-transparent border-none p-0 m-0 cursor-pointer hover:text-white transition-colors font-mono outline-none focus:outline-none ring-0 focus:ring-0">EN</button>
+                <span class="text-secondary mx-2">|</span>
+                <button (click)="switchLanguage('de')" [class.text-primary]="currentLang === 'de'"
+                    class="bg-transparent border-none p-0 m-0 cursor-pointer hover:text-white transition-colors font-mono outline-none focus:outline-none ring-0 focus:ring-0">DE</button>
+            </div>
+        </nav>
+
+        <!-- Mobile Menu Button -->
+        <button class="md:hidden text-primary hover:text-white border border-primary px-2">
+            <span class="text-xl font-mono">MENU</span>
+        </button>
+    </div>
+</header>

@@ -1,0 +1,35 @@
+{
+    "NAV": {
+        "ABOUT": "About",
+        "EXPERIENCE": "Experience",
+        "SKILLS": "Skills",
+        "EDUCATION": "Education",
+        "RECOMMENDATIONS": "Recommendations",
+        "CONTACT": "Contact"
+    },
+    "SECTION": {
+        "HI": "> Hi, I'm",
+        "READ_MORE": "[ Read More ]",
+        "GET_IN_TOUCH": "[ Get in Touch ]",
+        "ABOUT": "> About_Me",
+        "EXPERIENCE": "> Professional_Experience",
+        "SKILLS": "> Technical_Skills",
+        "EDUCATION": "> Education_&_Certifications",
+        "EDUCATION_SUB": "> Education",
+        "CERTIFICATIONS_SUB": "> Certifications",
+        "RECOMMENDATIONS": "> Recommendations",
+        "CONTACT": "> Contact_Info"
+    },
+    "COMMON": {
+        "VIEW_CREDENTIAL": "[ View Credential ]",
+        "VIEW_LINKEDIN": "[ View on LinkedIn ]"
+    },
+    "STATS": {
+        "SYSTEM_STATUS": "SYSTEM_STATUS",
+        "UPTIME": "UPTIME",
+        "MEMORY": "MEMORY",
+        "CLIENT": "CLIENT",
+        "MODULES": "MODULES",
+        "LOADED": "LOADED"
+    }
+}

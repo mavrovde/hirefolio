@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #0ea5e9;
+}
+
+body {
+  @apply bg-black text-primary font-mono antialiased overflow-x-hidden;
+}
+
+::selection {
+  @apply bg-primary text-black;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-black border-l border-primary/20;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary/50 hover:bg-primary;
+}
+
+@layer components {
+
+  /* Terminal Cursor */
+  .terminal-cursor::after {
+    content: '█';
+    animation: cursor-blink 1s step-end infinite;
+    @apply text-primary ml-1;
+  }
+
+  /* Terminal Border Utility */
+  .border-terminal {
+    @apply border border-primary/30;
+  }
+}
+
+@keyframes cursor-blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
