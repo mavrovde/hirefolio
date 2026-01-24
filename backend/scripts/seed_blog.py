@@ -69,7 +69,7 @@ def seed_posts():
             req.add_header("Authorization", f"Bearer {token}")
 
             try:
-                with urllib.request.urlopen(req) as response:
+                with urllib.request.urlopen(req):
                     print(f"Successfully seeded: {post_data['id']} ({lang})")
             except urllib.error.HTTPError as e:
                 if e.code in [400, 409]:
