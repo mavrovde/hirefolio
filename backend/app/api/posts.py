@@ -232,10 +232,6 @@ async def create_post(
     )
 
 
-
-
-
-
 @router.get("/{slug}/similar", response_model=list[SimilarPostResponse])
 async def get_similar_posts(
     slug: str,
@@ -332,8 +328,6 @@ async def suggest_tags_endpoint(
 
     tags = await suggest_tags(request.title, request.content)
     return {"tags": tags}
-
-
 
 
 @router.put("/{id:int}", response_model=PostResponse)

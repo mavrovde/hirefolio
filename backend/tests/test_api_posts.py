@@ -236,6 +236,7 @@ async def test_semantic_search_no_embedding(client: AsyncClient):
     assert response.status_code == 400
     assert "unavailable" in response.json()["detail"].lower()
 
+
 @pytest.mark.asyncio
 async def test_get_post_by_id(client: AsyncClient, mock_embedding):
     """Test retrieving a post by ID."""
@@ -282,10 +283,7 @@ async def test_update_post_by_id(client: AsyncClient, mock_embedding):
         create_resp = await client.post("/api/posts", json=post_data)
         post_id = create_resp.json()["id"]
 
-    update_data = {
-        "title": "Updated via ID",
-        "content": "New Content"
-    }
+    update_data = {"title": "Updated via ID", "content": "New Content"}
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         response = await client.put(f"/api/posts/{post_id}", json=update_data)

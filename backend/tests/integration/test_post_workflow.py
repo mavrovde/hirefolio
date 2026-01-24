@@ -44,9 +44,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
             "summary": "Updated summary",
         }
 
-        update_response = await client.put(
-            f"/api/posts/{post_id}", json=update_data
-        )
+        update_response = await client.put(f"/api/posts/{post_id}", json=update_data)
 
         assert update_response.status_code == 200
         updated_post = update_response.json()

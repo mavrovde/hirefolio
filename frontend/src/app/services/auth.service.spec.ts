@@ -12,10 +12,24 @@ describe('AuthService', () => {
     beforeEach(() => {
         TestBed.resetTestingModule();
 
-        // Clear localStorage and use consistent spies
-        vi.spyOn(window.localStorage, 'getItem').mockReturnValue(null);
-        vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => { });
-        vi.spyOn(window.localStorage, 'removeItem').mockImplementation(() => { });
+        // Use fake timers to handle setTimeout in constructor
+        vi.useFakeTimers();
+
+        // Mock localStorage
+        const mockLocalStorage = {
+            getItem: vi.fn().mockReturnValue(null),
+            setItem: vi.fn(),
+            removeItem: vi.fn(),
+            clear: vi.fn(),
+            language: '',
+            length: 0,
+            key: vi.fn()
+        };
+
+        Object.defineProperty(window, 'localStorage', {
+            value: mockLocalStorage,
+            writable: true
+        });
 
         TestBed.configureTestingModule({
             providers: [
@@ -31,6 +45,7 @@ describe('AuthService', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.useRealTimers();
         if (httpMock) {
             httpMock.verify();
         }
@@ -78,9 +93,11 @@ describe('AuthService', () => {
 
     describe('initialization', () => {
         it('should load user if token exists', () => {
-            vi.spyOn(window.localStorage, 'getItem').mockReturnValue('existing-token');
+            (window.localStorage.getItem as any).mockReturnValue('existing-token');
 
             const newService = TestBed.inject(AuthService);
+            vi.runAllTimers(); // Trigger setTimeout
+
             const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
             req.flush({ id: 1, username: 'loaded', email: 'l@test.com', is_admin: false });
 
@@ -88,10 +105,11 @@ describe('AuthService', () => {
         });
 
         it('should logout if loading user fails', () => {
-            vi.spyOn(window.localStorage, 'getItem').mockReturnValue('bad-token');
+            (window.localStorage.getItem as any).mockReturnValue('bad-token');
 
             const spyLogout = vi.spyOn(AuthService.prototype, 'logout');
             const newService = TestBed.inject(AuthService);
+            vi.runAllTimers(); // Trigger setTimeout
 
             const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
             req.flush('Error', { status: 401, statusText: 'Unauthorized' });
@@ -102,8 +120,9 @@ describe('AuthService', () => {
 
     describe('helpers', () => {
         it('isAuthenticated should return true if token exists', () => {
-            vi.spyOn(window.localStorage, 'getItem').mockReturnValue('token');
+            (window.localStorage.getItem as any).mockReturnValue('token');
             service = TestBed.inject(AuthService);
+            vi.runAllTimers();
 
             // Handle constructor request
             const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
@@ -113,7 +132,7 @@ describe('AuthService', () => {
         });
 
         it('isAuthenticated should return false if token missing', () => {
-            vi.spyOn(window.localStorage, 'getItem').mockReturnValue(null);
+            (window.localStorage.getItem as any).mockReturnValue(null);
             service = TestBed.inject(AuthService);
             expect(service.isAuthenticated()).toBe(false);
         });

@@ -9,19 +9,19 @@ API_URL_BASE = os.getenv("API_URL", "http://backend:8000/api")
 ADMIN_USER = os.getenv("ADMIN_USER", "admin")
 ADMIN_PASS = os.getenv("ADMIN_PASS", "admin")
 
+
 def get_auth_token():
     print(f"Authenticating as {ADMIN_USER}...")
     login_url = f"{API_URL_BASE}/auth/login"
-    
+
     # OAuth2PasswordRequestForm expects form-data
-    data = urllib.parse.urlencode({
-        "username": ADMIN_USER,
-        "password": ADMIN_PASS
-    }).encode("utf-8")
-    
+    data = urllib.parse.urlencode(
+        {"username": ADMIN_USER, "password": ADMIN_PASS}
+    ).encode("utf-8")
+
     req = urllib.request.Request(login_url, data=data, method="POST")
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
-    
+
     try:
         with urllib.request.urlopen(req) as response:
             res_data = json.loads(response.read().decode())
@@ -33,15 +33,16 @@ def get_auth_token():
             print(f"Error detail: {e.read().decode()}")
         sys.exit(1)
 
+
 def seed_posts():
     token = get_auth_token()
-    
+
     # Path to static blog data (now local)
     base_dir = "."
     files = {"en": "blog_data_en.json", "de": "blog_data_de.json"}
-    
+
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    
+
     for lang, filename in files.items():
         path = os.path.join(script_dir, base_dir, filename)
         if not os.path.exists(path):
@@ -75,10 +76,14 @@ def seed_posts():
                 if e.code in [400, 409]:
                     print(f"Post {post_data['id']} ({lang}) already exists (skipped).")
                 else:
-                    print(f"HTTP Error seeding {post_data['id']} ({lang}): {e.code} - {e.read().decode()}")
+                    print(
+                        f"HTTP Error seeding {post_data['id']} ({lang}): {e.code} - {e.read().decode()}"
+                    )
             except Exception as e:
                 print(f"Error seeding {post_data['id']} ({lang}): {str(e)}")
 
+
 if __name__ == "__main__":
     import urllib.parse
+
     seed_posts()
