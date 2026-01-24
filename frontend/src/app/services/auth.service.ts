@@ -32,7 +32,10 @@ export class AuthService {
     constructor(private http: HttpClient) {
         // Load user on service initialization if token exists
         if (this.getToken()) {
-            this.loadCurrentUser();
+            // Defer loading to avoid circular dependency with AuthInterceptor
+            setTimeout(() => {
+                this.loadCurrentUser();
+            }, 0);
         } else {
             this.isInitializingSubject.next(false);
         }

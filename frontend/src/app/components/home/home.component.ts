@@ -17,22 +17,22 @@ import { ProfileService, Profile } from '../../services/profile.service';
 import { GoogleAnalyticsService } from '../../services/analytics.service';
 
 @Component({
-    selector: 'app-home',
-    standalone: true,
-    imports: [
-        CommonModule,
-        HeaderComponent,
-        HeroComponent,
-        AboutComponent,
-        ExperienceComponent,
-        SkillsComponent,
-        EducationComponent,
-        RecommendationsComponent,
-        BlogComponent,
-        ContactComponent,
-        SystemStatsComponent
-    ],
-    template: `
+  selector: 'app-home',
+  standalone: true,
+  imports: [
+    CommonModule,
+    HeaderComponent,
+    HeroComponent,
+    AboutComponent,
+    ExperienceComponent,
+    SkillsComponent,
+    EducationComponent,
+    RecommendationsComponent,
+    BlogComponent,
+    ContactComponent,
+    SystemStatsComponent
+  ],
+  template: `
     <div class="bg-black min-h-screen text-primary selection:bg-primary selection:text-black font-mono">
       <app-header></app-header>
       
@@ -42,7 +42,7 @@ import { GoogleAnalyticsService } from '../../services/analytics.service';
         <app-experience [profile]="profile"></app-experience>
         <app-skills [profile]="profile"></app-skills>
         <app-education [profile]="profile"></app-education>
-        <app-recommendations [profile]="profile"></app-recommendations>
+        <!-- <app-recommendations [profile]="profile"></app-recommendations> -->
         <app-blog></app-blog>
         <app-contact [profile]="profile"></app-contact>
       </main>
@@ -56,17 +56,17 @@ import { GoogleAnalyticsService } from '../../services/analytics.service';
   `
 })
 export class HomeComponent implements OnInit {
-    profile$: Observable<Profile> | null = null;
-    currentYear = new Date().getFullYear();
+  profile$: Observable<Profile> | null = null;
+  currentYear = new Date().getFullYear();
 
-    constructor(
-        private profileService: ProfileService,
-        private analyticsService: GoogleAnalyticsService
-    ) { }
+  constructor(
+    private profileService: ProfileService,
+    private analyticsService: GoogleAnalyticsService
+  ) { }
 
-    ngOnInit() {
-        this.profile$ = this.profileService.getProfile();
-        this.analyticsService.initializeGoogleAnalytics();
-        this.analyticsService.trackPageViews();
-    }
+  ngOnInit() {
+    this.profile$ = this.profileService.getProfile();
+    this.analyticsService.initializeGoogleAnalytics();
+    this.analyticsService.trackPageViews();
+  }
 }

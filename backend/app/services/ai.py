@@ -19,7 +19,8 @@ async def suggest_tags(title: str, content: str) -> list[str]:
     """
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        # Increase timeout for slower CPU inference or larger contexts
+        async with httpx.AsyncClient(timeout=300.0) as client:
             response = await client.post(
                 f"{settings.ollama_url}/api/generate",
                 json={
