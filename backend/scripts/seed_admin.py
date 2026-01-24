@@ -18,7 +18,10 @@ async def seed_admin():
         user = result.scalar_one_or_none()
 
         if user:
-            print("Admin user already exists.")
+            print("Admin user already exists. Resetting password...")
+            user.hashed_password = get_password_hash("admin")
+            await session.commit()
+            print("Admin password reset successfully.")
             return
 
         print("Creating admin user...")

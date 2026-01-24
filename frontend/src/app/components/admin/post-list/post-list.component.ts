@@ -14,6 +14,7 @@ export class PostListComponent implements OnInit {
   posts: BlogPost[] = [];
   loading = true;
   error: string | null = null;
+  deletingIds = new Set<number>();
 
   constructor(
     private blogService: BlogService,
@@ -57,14 +58,21 @@ export class PostListComponent implements OnInit {
       return;
     }
 
-    this.blogService.deletePost(post.slug)
+    this.deletingIds.add(post.id);
+    this.cdr.detectChanges();
+
+    this.blogService.deletePostById(post.id)
       .subscribe({
         next: () => {
           this.posts = this.posts.filter(p => p.id !== post.id);
+          this.deletingIds.delete(post.id);
+          this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('Failed to delete post:', error);
           alert('Failed to delete post. Please try again.');
+          this.deletingIds.delete(post.id);
+          this.cdr.detectChanges();
         }
       });
   }

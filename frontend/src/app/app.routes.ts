@@ -16,21 +16,6 @@ export const routes: Routes = [
         component: LoginComponent
     },
     {
-        path: 'admin/posts/new',
-        loadComponent: () => import('./components/admin/post-editor/post-editor.component').then(m => m.PostEditorComponent),
-        canActivate: [authGuard]
-    },
-    {
-        path: 'admin/posts/edit/:slug',
-        loadComponent: () => import('./components/admin/post-editor/post-editor.component').then(m => m.PostEditorComponent),
-        canActivate: [authGuard]
-    },
-    {
-        path: 'admin/tags',
-        loadComponent: () => import('./components/admin/tag-manager/tag-manager.component').then(m => m.TagManagerComponent),
-        canActivate: [authGuard]
-    },
-    {
         path: 'admin',
         component: AdminLayoutComponent,
         canActivate: [authGuard],
@@ -54,7 +39,7 @@ export const routes: Routes = [
                 loadComponent: () => import('./components/admin/post-editor/post-editor.component').then(m => m.PostEditorComponent)
             },
             {
-                path: 'posts/edit/:slug',
+                path: 'posts/edit/:id',
                 loadComponent: () => import('./components/admin/post-editor/post-editor.component').then(m => m.PostEditorComponent)
             }
         ]

@@ -16,16 +16,23 @@ async def test_update_post_flow(client: AsyncClient):
     }
     resp = await client.post("/api/posts", json=create_data)
     assert resp.status_code == 200
+    post_id = resp.json()["id"]
 
     # 2. Update
     update_data = {"title": "Updated Title", "content": "Updated Content"}
-    resp_update = await client.put(f"/api/posts/{slug}", json=update_data)
+    resp_update = await client.put(f"/api/posts/{post_id}", json=update_data)
     assert resp_update.status_code == 200
     updated_post = resp_update.json()
     assert updated_post["title"] == "Updated Title"
     assert updated_post["content"] == "Updated Content"
 
     # 3. Verify Persistence
-    resp_get = await client.get(f"/api/posts/{slug}")
-    assert resp_get.status_code == 200
-    assert resp_get.json()["title"] == "Updated Title"
+    # Verify by ID
+    resp_get_id = await client.get(f"/api/posts/{post_id}")
+    assert resp_get_id.status_code == 200
+    assert resp_get_id.json()["title"] == "Updated Title"
+
+    # Verify by Slug
+    resp_get_slug = await client.get(f"/api/posts/{slug}")
+    assert resp_get_slug.status_code == 200
+    assert resp_get_slug.json()["title"] == "Updated Title"

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BlogComponent } from './blog.component';
 import { BlogService } from '../../services/blog.service';
+import { LanguageService } from '../../services/language.service';
 import { of } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
@@ -11,6 +12,7 @@ describe('BlogComponent', () => {
     let component: BlogComponent;
     let fixture: ComponentFixture<BlogComponent>;
     let blogServiceSpy: any;
+    let languageServiceMock: any;
 
     const mockPosts = [
         { id: '1', title: 'Test Post', date: '2026-01-24', summary: 'Summary', content: '<p>Content</p>', language: 'en' }
@@ -29,10 +31,18 @@ describe('BlogComponent', () => {
             searchPosts: vi.fn().mockReturnValue(of(mockSearchResults))
         };
 
+        languageServiceMock = {
+            currentLang$: of('en'),
+            translations$: of({}),
+            translate: (key: string) => of(key),
+            getCurrentLanguage: () => 'en'
+        };
+
         await TestBed.configureTestingModule({
             imports: [BlogComponent, MockTranslatePipe, NoopAnimationsModule],
             providers: [
-                { provide: BlogService, useValue: blogServiceSpy }
+                { provide: BlogService, useValue: blogServiceSpy },
+                { provide: LanguageService, useValue: languageServiceMock }
             ]
         }).compileComponents();
 

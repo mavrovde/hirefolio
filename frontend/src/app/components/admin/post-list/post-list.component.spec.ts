@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 describe('PostListComponent', () => {
     let component: PostListComponent;
     let fixture: ComponentFixture<PostListComponent>;
-    let blogServiceSpy: { getPosts: Mock; deletePost: Mock };
+    let blogServiceSpy: { getPosts: Mock; deletePostById: Mock };
 
     const mockPosts: BlogPost[] = [
         {
@@ -40,7 +40,7 @@ describe('PostListComponent', () => {
     beforeEach(async () => {
         blogServiceSpy = {
             getPosts: vi.fn(),
-            deletePost: vi.fn()
+            deletePostById: vi.fn()
         };
 
         await TestBed.configureTestingModule({
@@ -82,13 +82,13 @@ describe('PostListComponent', () => {
     it('should delete post after confirmation', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         blogServiceSpy.getPosts.mockReturnValue(of(mockPosts));
-        blogServiceSpy.deletePost.mockReturnValue(of(void 0));
+        blogServiceSpy.deletePostById.mockReturnValue(of(void 0));
 
         fixture.detectChanges();
 
         component.deletePost(mockPosts[0]);
 
-        expect(blogServiceSpy.deletePost).toHaveBeenCalledWith(mockPosts[0].slug);
+        expect(blogServiceSpy.deletePostById).toHaveBeenCalledWith(mockPosts[0].id);
         expect(component.posts.length).toBe(1);
         expect(component.posts.find(p => p.id === mockPosts[0].id)).toBeUndefined();
     });
@@ -101,7 +101,7 @@ describe('PostListComponent', () => {
 
         component.deletePost(mockPosts[0]);
 
-        expect(blogServiceSpy.deletePost).not.toHaveBeenCalled();
+        expect(blogServiceSpy.deletePostById).not.toHaveBeenCalled();
         expect(component.posts.length).toBe(2);
     });
 
@@ -111,7 +111,7 @@ describe('PostListComponent', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
 
         blogServiceSpy.getPosts.mockReturnValue(of(mockPosts));
-        blogServiceSpy.deletePost.mockReturnValue(throwError(() => new Error('Delete failed')));
+        blogServiceSpy.deletePostById.mockReturnValue(throwError(() => new Error('Delete failed')));
 
         fixture.detectChanges();
 

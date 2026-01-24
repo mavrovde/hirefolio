@@ -94,6 +94,11 @@ tr:hover {
   background: rgba(14, 165, 233, 0.05);
 }
 
+.id-cell {
+  color: #888;
+  font-family: var(--font-mono, 'Courier Prime', monospace);
+}
+
 .title-cell {
   font-weight: bold;
   color: #0f0;

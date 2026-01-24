@@ -45,7 +45,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
         }
 
         update_response = await client.put(
-            f"/api/posts/{post_data['slug']}", json=update_data
+            f"/api/posts/{post_id}", json=update_data
         )
 
         assert update_response.status_code == 200
@@ -63,7 +63,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
         assert isinstance(search_results, list)
 
         # 5. Delete the post
-        delete_response = await client.delete(f"/api/posts/{post_data['slug']}")
+        delete_response = await client.delete(f"/api/posts/{post_id}")
         assert delete_response.status_code == 200
 
         # 6. Verify deletion

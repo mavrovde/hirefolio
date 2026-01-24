@@ -80,7 +80,8 @@ async def test_update_post(client: AsyncClient, mock_embedding):
     }
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        await client.post("/api/posts", json=post_data)
+        resp = await client.post("/api/posts", json=post_data)
+        post_id = resp.json()["id"]
 
     # Update the post
     update_data = {
@@ -89,7 +90,7 @@ async def test_update_post(client: AsyncClient, mock_embedding):
     }
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.put("/api/posts/test-update", json=update_data)
+        response = await client.put(f"/api/posts/{post_id}", json=update_data)
 
     assert response.status_code == 200
     data = response.json()
@@ -109,15 +110,16 @@ async def test_delete_post(client: AsyncClient, mock_embedding):
     }
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        await client.post("/api/posts", json=post_data)
+        resp = await client.post("/api/posts", json=post_data)
+        post_id = resp.json()["id"]
 
     # Delete the post
-    response = await client.delete("/api/posts/delete-me")
+    response = await client.delete(f"/api/posts/{post_id}")
     assert response.status_code == 200
     assert "deleted" in response.json()["message"].lower()
 
     # Verify it's gone
-    get_response = await client.get("/api/posts/delete-me")
+    get_response = await client.get(f"/api/posts/{post_id}")
     assert get_response.status_code == 404
 
 
@@ -233,3 +235,87 @@ async def test_semantic_search_no_embedding(client: AsyncClient):
 
     assert response.status_code == 400
     assert "unavailable" in response.json()["detail"].lower()
+
+@pytest.mark.asyncio
+async def test_get_post_by_id(client: AsyncClient, mock_embedding):
+    """Test retrieving a post by ID."""
+    post_data = {
+        "title": "Post for ID Fetch",
+        "slug": "id-fetch-test",
+        "content": "Content",
+        "language": "en",
+        "published": True,
+    }
+
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
+        create_resp = await client.post("/api/posts", json=post_data)
+        created_post = create_resp.json()
+        post_id = created_post["id"]
+
+    # Fetch by ID
+    response = await client.get(f"/api/posts/{post_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == post_id
+    assert data["title"] == post_data["title"]
+
+
+@pytest.mark.asyncio
+async def test_get_post_by_id_not_found(client: AsyncClient):
+    """Test retrieving a non-existent post by ID."""
+    response = await client.get("/api/posts/999999")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_post_by_id(client: AsyncClient, mock_embedding):
+    """Test updating a post by ID."""
+    post_data = {
+        "title": "Original ID Update",
+        "slug": "id-update-test",
+        "content": "Original Content",
+        "language": "en",
+        "published": True,
+    }
+
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
+        create_resp = await client.post("/api/posts", json=post_data)
+        post_id = create_resp.json()["id"]
+
+    update_data = {
+        "title": "Updated via ID",
+        "content": "New Content"
+    }
+
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
+        response = await client.put(f"/api/posts/{post_id}", json=update_data)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == post_id
+    assert data["title"] == "Updated via ID"
+    assert data["content"] == "New Content"
+
+
+@pytest.mark.asyncio
+async def test_delete_post_by_id(client: AsyncClient, mock_embedding):
+    """Test deleting a post by ID."""
+    post_data = {
+        "title": "ID Delete Test",
+        "slug": "id-delete-test",
+        "content": "Content",
+        "language": "en",
+        "published": True,
+    }
+
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
+        create_resp = await client.post("/api/posts", json=post_data)
+        post_id = create_resp.json()["id"]
+
+    # Delete by ID
+    response = await client.delete(f"/api/posts/{post_id}")
+    assert response.status_code == 200
+
+    # Verify gone
+    get_response = await client.get(f"/api/posts/{post_id}")
+    assert get_response.status_code == 404
