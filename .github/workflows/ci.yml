@@ -45,7 +45,7 @@ jobs:
       - name: Run tests
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_mavrov
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
           SECRET_KEY: test-secret-key-for-ci
           OLLAMA_BASE_URL: http://localhost:11434
         run: |
