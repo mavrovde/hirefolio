@@ -11,9 +11,9 @@ from app.main import app
 
 import os
 
-# Test database URL
+# Test database URL - use DATABASE_URL from CI or fallback for local dev
 TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
+    "DATABASE_URL",
     "postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_test",
 )
 
