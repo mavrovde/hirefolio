@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { StatsService, SystemStats } from '../../../services/stats.service';
@@ -15,7 +15,10 @@ export class DashboardComponent implements OnInit {
   loading = true;
   error: string | null = null;
 
-  constructor(private statsService: StatsService) { }
+  constructor(
+    private statsService: StatsService,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit(): void {
     this.loadStats();
@@ -31,11 +34,13 @@ export class DashboardComponent implements OnInit {
           console.log('Dashboard: Stats received', data);
           this.stats = data;
           this.loading = false;
+          this.cdr.detectChanges(); // Force UI update
         },
         error: (error) => {
           console.error('Dashboard: Failed to load stats:', error);
           this.error = 'Failed to load dashboard statistics';
           this.loading = false;
+          this.cdr.detectChanges(); // Force UI update
         },
         complete: () => {
           console.log('Dashboard: Stats request completed');
