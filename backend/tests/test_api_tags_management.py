@@ -27,20 +27,23 @@ async def test_list_tags(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_rename_tag(client: AsyncClient):
+async def test_rename_tag(client: AsyncClient, db_session):
     """Test renaming a tag across posts."""
     # Setup
     await client.post(
         "/api/posts",
-        json={"title": "P1", "slug": "p1", "content": "c", "tags": ["old-tag"]},
+        json={"title": "P1", "slug": "p1-rename", "content": "c", "tags": ["old-tag"]},
     )
 
     # Rename
     response = await client.put("/api/tags/old-tag", json={"new_name": "new-tag"})
     assert response.status_code == 200
 
+    # Expire session to reflect DB changes in shared session
+    db_session.expire_all()
+
     # Verify in post
-    resp = await client.get("/api/posts/p1")
+    resp = await client.get("/api/posts/p1-rename")
     assert "new-tag" in resp.json()["tags"]
     assert "old-tag" not in resp.json()["tags"]
 
@@ -52,14 +55,14 @@ async def test_rename_tag(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_delete_tag(client: AsyncClient):
+async def test_delete_tag(client: AsyncClient, db_session):
     """Test deleting a tag from all posts."""
     # Setup
     await client.post(
         "/api/posts",
         json={
             "title": "P1",
-            "slug": "p1",
+            "slug": "p1-delete",
             "content": "c",
             "tags": ["to-delete", "keep"],
         },
@@ -69,8 +72,11 @@ async def test_delete_tag(client: AsyncClient):
     response = await client.delete("/api/tags/to-delete")
     assert response.status_code == 200
 
+    # Expire session to reflect DB changes in shared session
+    db_session.expire_all()
+
     # Verify in post
-    resp = await client.get("/api/posts/p1")
+    resp = await client.get("/api/posts/p1-delete")
     tags = resp.json()["tags"]
     assert "to-delete" not in tags
     assert "keep" in tags

@@ -1,8 +1,9 @@
 from app.config import Settings
 
 
-def test_default_settings():
+def test_default_settings(monkeypatch):
     """Test that default settings are loaded correctly."""
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     settings = Settings()
     assert (
         settings.database_url
