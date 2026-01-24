@@ -8,7 +8,7 @@ import { AboutComponent } from '../about/about.component';
 import { ExperienceComponent } from '../experience/experience.component';
 import { SkillsComponent } from '../skills/skills.component';
 import { EducationComponent } from '../education/education.component';
-import { RecommendationsComponent } from '../recommendations/recommendations.component';
+// import { RecommendationsComponent } from '../recommendations/recommendations.component';
 import { BlogComponent } from '../blog/blog.component';
 import { ContactComponent } from '../contact/contact.component';
 import { SystemStatsComponent } from '../stats/stats.component';
@@ -27,7 +27,7 @@ import { GoogleAnalyticsService } from '../../services/analytics.service';
     ExperienceComponent,
     SkillsComponent,
     EducationComponent,
-    RecommendationsComponent,
+    // RecommendationsComponent,
     BlogComponent,
     ContactComponent,
     SystemStatsComponent
