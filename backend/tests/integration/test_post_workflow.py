@@ -23,13 +23,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with (
-        patch("app.api.posts.get_embedding", return_value=mock_embedding),
-        # patch("app.api.posts.get_embedding", return_value=mock_embedding), # Redundant if same target.
-        # Check if get_embedding is used in other places? 
-        # The test originally patched "app.services.embeddings.get_embedding" AND "app.api.posts.get_embedding".
-        # If it's the same name, we only need one patch.
-    ):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         create_response = await client.post("/api/posts", json=post_data)
 
         assert create_response.status_code == 200
