@@ -23,7 +23,7 @@ async def test_create_post(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         response = await client.post("/api/posts", json=post_data)
 
     assert response.status_code == 200
@@ -48,7 +48,7 @@ async def test_get_post(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post("/api/posts", json=post_data)
 
     # Retrieve the post
@@ -79,7 +79,7 @@ async def test_update_post(client: AsyncClient, mock_embedding):
         "published": False,
     }
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post("/api/posts", json=post_data)
 
     # Update the post
@@ -88,7 +88,7 @@ async def test_update_post(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         response = await client.put("/api/posts/test-update", json=update_data)
 
     assert response.status_code == 200
@@ -108,7 +108,7 @@ async def test_delete_post(client: AsyncClient, mock_embedding):
         "language": "en",
     }
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post("/api/posts", json=post_data)
 
     # Delete the post
@@ -148,7 +148,7 @@ async def test_list_posts_with_filters(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
             await client.post("/api/posts", json=post)
 
@@ -188,7 +188,7 @@ async def test_similar_posts(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
             await client.post("/api/posts", json=post)
 
@@ -211,7 +211,7 @@ async def test_semantic_search(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post("/api/posts", json=post_data)
 
     # Search

@@ -24,8 +24,11 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
     }
 
     with (
-        patch("app.services.embeddings.get_embedding", return_value=mock_embedding),
         patch("app.api.posts.get_embedding", return_value=mock_embedding),
+        # patch("app.api.posts.get_embedding", return_value=mock_embedding), # Redundant if same target.
+        # Check if get_embedding is used in other places? 
+        # The test originally patched "app.services.embeddings.get_embedding" AND "app.api.posts.get_embedding".
+        # If it's the same name, we only need one patch.
     ):
         create_response = await client.post("/api/posts", json=post_data)
 
@@ -95,7 +98,7 @@ async def test_multilingual_posts(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
             response = await client.post("/api/posts", json=post)
             assert response.status_code == 200
@@ -144,7 +147,7 @@ async def test_similar_posts_workflow(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
             await client.post("/api/posts", json=post)
 

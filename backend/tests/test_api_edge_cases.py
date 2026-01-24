@@ -126,7 +126,8 @@ async def test_similar_posts_no_embedding(client: AsyncClient, mock_embedding):
 @pytest.mark.asyncio
 async def test_semantic_search_with_results(client: AsyncClient, mock_embedding):
     # Create post
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    # Patch where it is imported in app.api.posts
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post(
             "/api/posts",
             json={
