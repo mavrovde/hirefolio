@@ -45,10 +45,7 @@ app.include_router(tags_router)
 
 @app.get("/")
 async def root():
-    return {
-        "message": "Welcome to Mavrov.de API",
-        "version": app.version
-    }
+    return {"message": "Welcome to Mavrov.de API", "version": app.version}
 
 
 @app.get("/api/health")

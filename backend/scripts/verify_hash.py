@@ -10,11 +10,12 @@ from app.database import async_session
 from app.models.user import User
 from app.services.auth import verify_password
 
+
 async def verify_admin_password():
     async with async_session() as session:
         result = await session.execute(select(User).where(User.username == "admin"))
         user = result.scalar_one_or_none()
-        
+
         if not user:
             print("Admin user not found.")
             return
@@ -23,6 +24,7 @@ async def verify_admin_password():
         is_valid = verify_password(password, user.hashed_password)
         print(f"Password '{password}' valid: {is_valid}")
         print(f"Stored Hash: {user.hashed_password}")
+
 
 if __name__ == "__main__":
     asyncio.run(verify_admin_password())

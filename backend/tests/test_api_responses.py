@@ -24,11 +24,11 @@ async def test_list_posts_with_data(client: AsyncClient, mock_embedding):
             "published": False,
         },
     ]
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         for post in posts:
             await client.post("/api/posts", json=post)
-    
+
     # Test default (published only)
     response = await client.get("/api/posts")
     assert response.status_code == 200
@@ -37,7 +37,7 @@ async def test_list_posts_with_data(client: AsyncClient, mock_embedding):
     assert data[0]["title"] == "Test Post 1"
     assert "id" in data[0]
     assert "created_at" in data[0]
-    
+
     # Test with language filter
     response = await client.get("/api/posts?lang=de&published_only=false")
     assert response.status_code == 200
@@ -57,10 +57,10 @@ async def test_get_post_full_response(client: AsyncClient, mock_embedding):
         "language": "en",
         "published": True,
     }
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         create_response = await client.post("/api/posts", json=post_data)
-    
+
     # Verify create response has all fields
     created = create_response.json()
     assert "id" in created
@@ -69,7 +69,7 @@ async def test_get_post_full_response(client: AsyncClient, mock_embedding):
     assert created["title"] == post_data["title"]
     assert created["content"] == post_data["content"]
     assert created["summary"] == post_data["summary"]
-    
+
     # Get the post
     response = await client.get("/api/posts/full-response")
     assert response.status_code == 200
@@ -96,10 +96,10 @@ async def test_update_post_full_response(client: AsyncClient, mock_embedding):
         "language": "en",
         "published": False,
     }
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         await client.post("/api/posts", json=post_data)
-    
+
     # Update with all fields
     update_data = {
         "title": "Updated Title",
@@ -108,10 +108,10 @@ async def test_update_post_full_response(client: AsyncClient, mock_embedding):
         "language": "de",
         "published": True,
     }
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         response = await client.put("/api/posts/update-test", json=update_data)
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "Updated Title"
@@ -128,15 +128,36 @@ async def test_update_post_full_response(client: AsyncClient, mock_embedding):
 async def test_similar_posts_with_results(client: AsyncClient, mock_embedding):
     """Test similar posts returns proper response format."""
     posts = [
-        {"title": "Post 1", "slug": "post-1", "content": "Content", "summary": "Sum 1", "language": "en", "published": True},
-        {"title": "Post 2", "slug": "post-2", "content": "Content", "summary": "Sum 2", "language": "en", "published": True},
-        {"title": "Post 3", "slug": "post-3", "content": "Content", "summary": "Sum 3", "language": "en", "published": True},
+        {
+            "title": "Post 1",
+            "slug": "post-1",
+            "content": "Content",
+            "summary": "Sum 1",
+            "language": "en",
+            "published": True,
+        },
+        {
+            "title": "Post 2",
+            "slug": "post-2",
+            "content": "Content",
+            "summary": "Sum 2",
+            "language": "en",
+            "published": True,
+        },
+        {
+            "title": "Post 3",
+            "slug": "post-3",
+            "content": "Content",
+            "summary": "Sum 3",
+            "language": "en",
+            "published": True,
+        },
     ]
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         for post in posts:
             await client.post("/api/posts", json=post)
-    
+
     response = await client.get("/api/posts/post-1/similar?limit=2")
     assert response.status_code == 200
     data = response.json()

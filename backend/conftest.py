@@ -7,7 +7,6 @@ from sqlalchemy.pool import NullPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.config import settings
 
 
 import os
@@ -15,7 +14,7 @@ import os
 # Test database URL
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_test"
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_test",
 )
 
 # Create test engine
@@ -55,20 +54,19 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create a test client with overridden database and auth dependencies."""
-    
-    from app.services.auth import get_current_admin_user, get_current_user_optional, get_current_user
+
+    from app.services.auth import (
+        get_current_admin_user,
+        get_current_user_optional,
+        get_current_user,
+    )
     from app.models.user import User
 
-    
     async def override_get_db():
         yield db_session
 
     mock_admin = User(
-        id=1,
-        username="admin",
-        email="admin@example.com",
-        is_admin=True,
-        is_active=True
+        id=1, username="admin", email="admin@example.com", is_admin=True, is_active=True
     )
 
     async def override_auth():

@@ -17,11 +17,11 @@ async def test_create_post(db_session):
         published=True,
         embedding=[0.1] * 768,
     )
-    
+
     db_session.add(post)
     await db_session.commit()
     await db_session.refresh(post)
-    
+
     assert post.id is not None
     assert post.title == "Test Post"
     assert post.slug == "test-post"
@@ -39,11 +39,11 @@ async def test_post_timestamps(db_session):
         content="Test content",
         language="en",
     )
-    
+
     db_session.add(post)
     await db_session.commit()
     await db_session.refresh(post)
-    
+
     assert isinstance(post.created_at, datetime)
     assert isinstance(post.updated_at, datetime)
 
@@ -57,19 +57,19 @@ async def test_unique_slug_language_constraint(db_session):
         content="Content 1",
         language="en",
     )
-    
+
     post2 = Post(
         title="Test Post 2",
         slug="test-post",
         content="Content 2",
         language="en",
     )
-    
+
     db_session.add(post1)
     await db_session.commit()
-    
+
     db_session.add(post2)
-    
+
     with pytest.raises(Exception):  # IntegrityError
         await db_session.commit()
 
@@ -83,19 +83,19 @@ async def test_same_slug_different_language(db_session):
         content="Content EN",
         language="en",
     )
-    
+
     post_de = Post(
         title="Test Post DE",
         slug="test-post",
         content="Content DE",
         language="de",
     )
-    
+
     db_session.add(post_en)
     db_session.add(post_de)
     await db_session.commit()
-    
+
     result = await db_session.execute(select(Post))
     posts = result.scalars().all()
-    
+
     assert len(posts) == 2

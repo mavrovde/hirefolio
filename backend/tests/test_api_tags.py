@@ -1,9 +1,6 @@
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.post import Post
-from app.models.user import User
 
 @pytest.mark.asyncio
 async def test_create_post_with_tags(client: AsyncClient):
@@ -14,23 +11,21 @@ async def test_create_post_with_tags(client: AsyncClient):
         "content": "Content with tags",
         "language": "en",
         "published": True,
-        "tags": ["tag1", "tag2"]
+        "tags": ["tag1", "tag2"],
     }
-    
+
     # client fixture is already authenticated as admin if get_current_user is overridden
     # But we should verify if we need to pass a token or if the override handles it.
     # conftest usually mocks the dependency.
     # Let's assume override works and we don't need header if we use the mocked client.
-    
-    response = await client.post(
-        "/api/posts",
-        json=post_data
-    )
-    
+
+    response = await client.post("/api/posts", json=post_data)
+
     assert response.status_code == 200
     data = response.json()
     assert data["tags"] == ["tag1", "tag2"]
     assert "tag1" in data["tags"]
+
 
 @pytest.mark.asyncio
 async def test_update_post_tags(client: AsyncClient):
@@ -40,25 +35,18 @@ async def test_update_post_tags(client: AsyncClient):
         "title": "Update Tags Post",
         "slug": "update-tags-post",
         "content": "Content",
-        "tags": ["old"]
+        "tags": ["old"],
     }
-    await client.post(
-        "/api/posts",
-        json=post_data
-    )
-    
+    await client.post("/api/posts", json=post_data)
+
     # Update
-    update_data = {
-        "tags": ["new", "tags"]
-    }
-    response = await client.put(
-        "/api/posts/update-tags-post",
-        json=update_data
-    )
-    
+    update_data = {"tags": ["new", "tags"]}
+    response = await client.put("/api/posts/update-tags-post", json=update_data)
+
     assert response.status_code == 200
     data = response.json()
     assert data["tags"] == ["new", "tags"]
+
 
 @pytest.mark.asyncio
 async def test_filter_posts_by_tag(client: AsyncClient):
@@ -70,7 +58,7 @@ async def test_filter_posts_by_tag(client: AsyncClient):
         "content": "Content",
         "language": "en",
         "published": True,
-        "tags": ["python", "coding"]
+        "tags": ["python", "coding"],
     }
     p2 = {
         "title": "Rust Post",
@@ -78,12 +66,12 @@ async def test_filter_posts_by_tag(client: AsyncClient):
         "content": "Content",
         "language": "en",
         "published": True,
-        "tags": ["rust", "coding"]
+        "tags": ["rust", "coding"],
     }
-    
+
     await client.post("/api/posts", json=p1)
     await client.post("/api/posts", json=p2)
-    
+
     # Filter by 'python'
     response = await client.get("/api/posts?tag=python")
     assert response.status_code == 200
@@ -91,7 +79,7 @@ async def test_filter_posts_by_tag(client: AsyncClient):
     assert len(data) >= 1
     assert any(p["slug"] == "python-post" for p in data)
     assert not any(p["slug"] == "rust-post" for p in data)
-    
+
     # Filter by 'coding' (both)
     response = await client.get("/api/posts?tag=coding")
     assert response.status_code == 200
@@ -100,6 +88,7 @@ async def test_filter_posts_by_tag(client: AsyncClient):
     assert "python-post" in slugs
     assert "rust-post" in slugs
 
+
 @pytest.mark.asyncio
 async def test_max_tags_validation(client: AsyncClient):
     """Test that max 5 tags are allowed."""
@@ -107,12 +96,9 @@ async def test_max_tags_validation(client: AsyncClient):
         "title": "Too Many Tags",
         "slug": "too-many-tags",
         "content": "Content",
-        "tags": ["1", "2", "3", "4", "5", "6"]
+        "tags": ["1", "2", "3", "4", "5", "6"],
     }
-    
-    response = await client.post(
-        "/api/posts",
-        json=post_data
-    )
-    
-    assert response.status_code == 422 # Validation Error
+
+    response = await client.post("/api/posts", json=post_data)
+
+    assert response.status_code == 422  # Validation Error

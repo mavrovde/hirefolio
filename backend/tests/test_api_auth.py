@@ -11,6 +11,7 @@ from app.services.auth import get_password_hash
 # If global mock is active, /me returns admin.
 # But we want to test that /login returns a token.
 
+
 @pytest.mark.asyncio
 async def test_login_success(client: AsyncClient, db_session):
     # Create a user in DB (requires hashing password)
@@ -18,7 +19,7 @@ async def test_login_success(client: AsyncClient, db_session):
     # The fixture mock_admin is useful but we need a real user for login check?
     # Wait, client overrides get_db to return db_session.
     # So we can insert into db_session.
-    
+
     password = "testpassword"
     hashed = get_password_hash(password)
     user = User(
@@ -26,31 +27,33 @@ async def test_login_success(client: AsyncClient, db_session):
         email="login@example.com",
         hashed_password=hashed,
         is_active=True,
-        is_admin=False
+        is_admin=False,
     )
     db_session.add(user)
     await db_session.commit()
-    
+
     # Login
     response = await client.post(
-        "/api/auth/login", 
+        "/api/auth/login",
         data={"username": "loginuser", "password": password},
-        headers={"Content-Type": "application/x-www-form-urlencoded"}
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
     assert data["token_type"] == "bearer"
 
+
 @pytest.mark.asyncio
 async def test_login_failure(client: AsyncClient):
     response = await client.post(
-        "/api/auth/login", 
+        "/api/auth/login",
         data={"username": "nonexistent", "password": "wrongpassword"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"}
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     assert response.status_code == 401
+
 
 @pytest.mark.asyncio
 async def test_get_me(client: AsyncClient):

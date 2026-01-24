@@ -282,8 +282,7 @@ async def create_posts():
         for post in SAMPLE_POSTS:
             try:
                 response = await client.post(
-                    "http://localhost:8000/api/posts",
-                    json=post
+                    "http://localhost:8000/api/posts", json=post
                 )
                 if response.status_code == 200:
                     print(f"✓ Created: {post['title']}")

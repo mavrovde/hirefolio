@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 from httpx import AsyncClient
 
 
@@ -22,10 +22,10 @@ async def test_create_post(client: AsyncClient, mock_embedding):
         "language": "en",
         "published": True,
     }
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         response = await client.post("/api/posts", json=post_data)
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == post_data["title"]
@@ -47,10 +47,10 @@ async def test_get_post(client: AsyncClient, mock_embedding):
         "language": "en",
         "published": True,
     }
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         await client.post("/api/posts", json=post_data)
-    
+
     # Retrieve the post
     response = await client.get("/api/posts/ollama-embeddings")
     assert response.status_code == 200
@@ -78,19 +78,19 @@ async def test_update_post(client: AsyncClient, mock_embedding):
         "language": "en",
         "published": False,
     }
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         await client.post("/api/posts", json=post_data)
-    
+
     # Update the post
     update_data = {
         "title": "Updated Title",
         "published": True,
     }
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         response = await client.put("/api/posts/test-update", json=update_data)
-    
+
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "Updated Title"
@@ -107,15 +107,15 @@ async def test_delete_post(client: AsyncClient, mock_embedding):
         "content": "This will be deleted",
         "language": "en",
     }
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         await client.post("/api/posts", json=post_data)
-    
+
     # Delete the post
     response = await client.delete("/api/posts/delete-me")
     assert response.status_code == 200
     assert "deleted" in response.json()["message"].lower()
-    
+
     # Verify it's gone
     get_response = await client.get("/api/posts/delete-me")
     assert get_response.status_code == 404
@@ -125,22 +125,40 @@ async def test_delete_post(client: AsyncClient, mock_embedding):
 async def test_list_posts_with_filters(client: AsyncClient, mock_embedding):
     """Test listing posts with language and published filters."""
     posts = [
-        {"title": "EN Published", "slug": "en-pub", "content": "Content", "language": "en", "published": True},
-        {"title": "EN Draft", "slug": "en-draft", "content": "Content", "language": "en", "published": False},
-        {"title": "DE Published", "slug": "de-pub", "content": "Inhalt", "language": "de", "published": True},
+        {
+            "title": "EN Published",
+            "slug": "en-pub",
+            "content": "Content",
+            "language": "en",
+            "published": True,
+        },
+        {
+            "title": "EN Draft",
+            "slug": "en-draft",
+            "content": "Content",
+            "language": "en",
+            "published": False,
+        },
+        {
+            "title": "DE Published",
+            "slug": "de-pub",
+            "content": "Inhalt",
+            "language": "de",
+            "published": True,
+        },
     ]
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         for post in posts:
             await client.post("/api/posts", json=post)
-    
+
     # Test published filter
     response = await client.get("/api/posts?published_only=true")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
     assert all(p["published"] for p in data)
-    
+
     # Test language filter
     response = await client.get("/api/posts?lang=de&published_only=true")
     assert response.status_code == 200
@@ -154,14 +172,26 @@ async def test_similar_posts(client: AsyncClient, mock_embedding):
     """Test finding similar posts."""
     # Create multiple posts
     posts = [
-        {"title": "Ollama Guide", "slug": "ollama-guide", "content": "Ollama tutorial", "language": "en", "published": True},
-        {"title": "Docker Tips", "slug": "docker-tips", "content": "Docker best practices", "language": "en", "published": True},
+        {
+            "title": "Ollama Guide",
+            "slug": "ollama-guide",
+            "content": "Ollama tutorial",
+            "language": "en",
+            "published": True,
+        },
+        {
+            "title": "Docker Tips",
+            "slug": "docker-tips",
+            "content": "Docker best practices",
+            "language": "en",
+            "published": True,
+        },
     ]
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         for post in posts:
             await client.post("/api/posts", json=post)
-    
+
     # Get similar posts
     response = await client.get("/api/posts/ollama-guide/similar")
     assert response.status_code == 200
@@ -180,14 +210,16 @@ async def test_semantic_search(client: AsyncClient, mock_embedding):
         "language": "en",
         "published": True,
     }
-    
+
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         await client.post("/api/posts", json=post_data)
-    
+
     # Search
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.get("/api/posts/search/semantic?q=semantic+search&lang=en")
-    
+        response = await client.get(
+            "/api/posts/search/semantic?q=semantic+search&lang=en"
+        )
+
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -198,6 +230,6 @@ async def test_semantic_search_no_embedding(client: AsyncClient):
     """Test semantic search when embedding service is unavailable."""
     with patch("app.api.posts.get_embedding", return_value=None):
         response = await client.get("/api/posts/search/semantic?q=test")
-    
+
     assert response.status_code == 400
     assert "unavailable" in response.json()["detail"].lower()

@@ -3,6 +3,7 @@ import json
 import re
 from app.config import settings
 
+
 async def suggest_tags(title: str, content: str) -> list[str]:
     """
     Generate tag suggestions using Ollama.
@@ -16,7 +17,7 @@ async def suggest_tags(title: str, content: str) -> list[str]:
     Title: {title}
     Content: {content[:500]}...
     """
-    
+
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
@@ -25,13 +26,13 @@ async def suggest_tags(title: str, content: str) -> list[str]:
                     "model": settings.generation_model,
                     "prompt": prompt,
                     "stream": False,
-                    "format": "json" # Force JSON mode if model supports it (Ollama does)
+                    "format": "json",  # Force JSON mode if model supports it (Ollama does)
                 },
             )
             response.raise_for_status()
             data = response.json()
             response_text = data.get("response", "")
-            
+
             # Parse JSON
             try:
                 tags = json.loads(response_text)
@@ -45,7 +46,7 @@ async def suggest_tags(title: str, content: str) -> list[str]:
             except json.JSONDecodeError:
                 # Fallback: simple text parsing if JSON mode fails or model hallucinates
                 # Look for comma separated or newline separated words
-                words = re.findall(r'\b\w+\b', response_text)
+                words = re.findall(r"\b\w+\b", response_text)
                 # Filter out common stop words if necessary, but for now just take top unique long words
                 unique_tags = []
                 for w in words:
@@ -55,9 +56,9 @@ async def suggest_tags(title: str, content: str) -> list[str]:
                         if len(unique_tags) >= 5:
                             break
                 return unique_tags
-                
+
             return []
-            
+
     except (httpx.HTTPError, httpx.ConnectError) as e:
         print(f"Error generating tags: {e}")
         return []

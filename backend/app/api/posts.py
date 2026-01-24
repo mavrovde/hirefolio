@@ -21,11 +21,11 @@ class PostCreate(BaseModel):
     published: bool = False
     tags: list[str] = []
 
-    @field_validator('tags')
+    @field_validator("tags")
     @classmethod
     def validate_tags(cls, v):
         if len(v) > 5:
-            raise ValueError('Max 5 tags allowed')
+            raise ValueError("Max 5 tags allowed")
         return v
 
 
@@ -37,11 +37,11 @@ class PostUpdate(BaseModel):
     published: bool | None = None
     tags: list[str] | None = None
 
-    @field_validator('tags')
+    @field_validator("tags")
     @classmethod
     def validate_tags(cls, v):
         if v is not None and len(v) > 5:
-            raise ValueError('Max 5 tags allowed')
+            raise ValueError("Max 5 tags allowed")
         return v
 
 
@@ -105,7 +105,7 @@ async def list_posts(
 
     query = select(Post).order_by(Post.created_at.desc())
     if published_only:
-        query = query.where(Post.published == True)
+        query = query.where(Post.published.is_(True))
     if lang:
         query = query.where(Post.language == lang)
     if tag:
@@ -164,7 +164,7 @@ async def get_post(
 async def create_post(
     post_data: PostCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_admin_user),
 ):
     """Create a new post with embedding."""
     # Generate embedding from title + content
@@ -205,7 +205,7 @@ async def update_post(
     slug: str,
     post_data: PostUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_admin_user),
 ):
     """Update a post."""
     result = await db.execute(select(Post).where(Post.slug == slug))
@@ -256,7 +256,7 @@ async def update_post(
 async def delete_post(
     slug: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_admin_user),
 ):
     """Delete a post."""
     result = await db.execute(select(Post).where(Post.slug == slug))
@@ -294,7 +294,7 @@ async def get_similar_posts(
             Post.embedding.cosine_distance(post.embedding).label("distance"),
         )
         .where(Post.id != post.id)
-        .where(Post.published == True)
+        .where(Post.published.is_(True))
         .where(Post.language == post.language)
         .where(Post.embedding.isnot(None))
         .order_by("distance")
@@ -334,13 +334,13 @@ async def semantic_search(
             Post,
             Post.embedding.cosine_distance(query_embedding).label("distance"),
         )
-        .where(Post.published == True)
+        .where(Post.published.is_(True))
         .where(Post.embedding.isnot(None))
     )
-    
+
     if lang:
         search_query = search_query.where(Post.language == lang)
-        
+
     search_query = search_query.order_by("distance").limit(limit)
 
     result = await db.execute(search_query)
@@ -360,10 +360,10 @@ async def semantic_search(
 
 @router.post("/suggest-tags")
 async def suggest_tags_endpoint(
-    request: TagSuggestionRequest,
-    current_user: User = Depends(get_current_admin_user)
+    request: TagSuggestionRequest, current_user: User = Depends(get_current_admin_user)
 ):
     """Suggest tags for a post using AI."""
     from app.services.ai import suggest_tags
+
     tags = await suggest_tags(request.title, request.content)
     return {"tags": tags}
