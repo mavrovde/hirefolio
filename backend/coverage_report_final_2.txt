@@ -1,0 +1,748 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.11, pytest-9.0.2, pluggy-1.6.0 -- /Users/sergii.mavrov/Play/mavrov.de/backend/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/sergii.mavrov/Play/mavrov.de/backend
+configfile: pyproject.toml
+plugins: anyio-4.12.1, cov-4.1.0, asyncio-1.3.0, mock-3.12.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 40 items
+
+tests/integration/test_post_workflow.py::test_complete_post_workflow ERROR [  2%]
+tests/integration/test_post_workflow.py::test_multilingual_posts ERROR   [  5%]
+tests/integration/test_post_workflow.py::test_similar_posts_workflow ERROR [  7%]
+tests/test_api_edge_cases.py::test_list_posts_include_drafts ERROR       [ 10%]
+tests/test_api_edge_cases.py::test_update_post_not_found ERROR           [ 12%]
+tests/test_api_edge_cases.py::test_update_post_partial ERROR             [ 15%]
+tests/test_api_edge_cases.py::test_delete_post_not_found ERROR           [ 17%]
+tests/test_api_edge_cases.py::test_similar_posts_not_found ERROR         [ 20%]
+tests/test_api_edge_cases.py::test_similar_posts_no_embedding ERROR      [ 22%]
+tests/test_api_edge_cases.py::test_semantic_search_with_results ERROR    [ 25%]
+tests/test_api_edge_cases.py::test_semantic_search_no_language_filter ERROR [ 27%]
+tests/test_api_posts.py::test_list_posts_empty ERROR                     [ 30%]
+tests/test_api_posts.py::test_create_post ERROR                          [ 32%]
+tests/test_api_posts.py::test_get_post ERROR                             [ 35%]
+tests/test_api_posts.py::test_get_post_not_found ERROR                   [ 37%]
+tests/test_api_posts.py::test_update_post ERROR                          [ 40%]
+tests/test_api_posts.py::test_delete_post ERROR                          [ 42%]
+tests/test_api_posts.py::test_list_posts_with_filters ERROR              [ 45%]
+tests/test_api_posts.py::test_similar_posts ERROR                        [ 47%]
+tests/test_api_posts.py::test_semantic_search ERROR                      [ 50%]
+tests/test_api_posts.py::test_semantic_search_no_embedding ERROR         [ 52%]
+tests/test_api_responses.py::test_list_posts_with_data ERROR             [ 55%]
+tests/test_api_responses.py::test_get_post_full_response ERROR           [ 57%]
+tests/test_api_responses.py::test_update_post_full_response ERROR        [ 60%]
+tests/test_api_responses.py::test_similar_posts_with_results ERROR       [ 62%]
+tests/test_config.py::test_default_settings PASSED                       [ 65%]
+tests/test_config.py::test_settings_from_env PASSED                      [ 67%]
+tests/test_database.py::test_get_db_yields_session PASSED                [ 70%]
+tests/test_database.py::test_db_session_fixture PASSED                   [ 72%]
+tests/test_embeddings.py::test_get_embedding_success PASSED              [ 75%]
+tests/test_embeddings.py::test_get_embedding_http_error PASSED           [ 77%]
+tests/test_embeddings.py::test_get_embedding_connection_error PASSED     [ 80%]
+tests/test_embeddings.py::test_get_embedding_timeout PASSED              [ 82%]
+tests/test_embeddings.py::test_get_embedding_invalid_response PASSED     [ 85%]
+tests/test_main.py::test_root_endpoint ERROR                             [ 87%]
+tests/test_main.py::test_health_check ERROR                              [ 90%]
+tests/test_models.py::test_create_post PASSED                            [ 92%]
+tests/test_models.py::test_post_timestamps PASSED                        [ 95%]
+tests/test_models.py::test_unique_slug_language_constraint PASSED        [ 97%]
+tests/test_models.py::test_same_slug_different_language PASSED           [100%]
+
+==================================== ERRORS ====================================
+________________ ERROR at setup of test_complete_post_workflow _________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+__________________ ERROR at setup of test_multilingual_posts ___________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+________________ ERROR at setup of test_similar_posts_workflow _________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_______________ ERROR at setup of test_list_posts_include_drafts _______________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_________________ ERROR at setup of test_update_post_not_found _________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+__________________ ERROR at setup of test_update_post_partial __________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_________________ ERROR at setup of test_delete_post_not_found _________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+________________ ERROR at setup of test_similar_posts_not_found ________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+______________ ERROR at setup of test_similar_posts_no_embedding _______________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_____________ ERROR at setup of test_semantic_search_with_results ______________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+__________ ERROR at setup of test_semantic_search_no_language_filter ___________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+___________________ ERROR at setup of test_list_posts_empty ____________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+______________________ ERROR at setup of test_create_post ______________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_______________________ ERROR at setup of test_get_post ________________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+__________________ ERROR at setup of test_get_post_not_found ___________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+______________________ ERROR at setup of test_update_post ______________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+______________________ ERROR at setup of test_delete_post ______________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+________________ ERROR at setup of test_list_posts_with_filters ________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_____________________ ERROR at setup of test_similar_posts _____________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+____________________ ERROR at setup of test_semantic_search ____________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_____________ ERROR at setup of test_semantic_search_no_embedding ______________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_________________ ERROR at setup of test_list_posts_with_data __________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+________________ ERROR at setup of test_get_post_full_response _________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_______________ ERROR at setup of test_update_post_full_response _______________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+______________ ERROR at setup of test_similar_posts_with_results _______________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_____________________ ERROR at setup of test_root_endpoint _____________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+_____________________ ERROR at setup of test_health_check ______________________
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/Cellar/python@3.13/3.13.11_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+conftest.py:59: in client
+    mock_admin = User(
+                 ^^^^
+E   NameError: name 'User' is not defined
+=============================== warnings summary ===============================
+venv/lib/python3.13/site-packages/pydantic/_internal/_config.py:291
+venv/lib/python3.13/site-packages/pydantic/_internal/_config.py:291
+venv/lib/python3.13/site-packages/pydantic/_internal/_config.py:291
+venv/lib/python3.13/site-packages/pydantic/_internal/_config.py:291
+  /Users/sergii.mavrov/Play/mavrov.de/backend/venv/lib/python3.13/site-packages/pydantic/_internal/_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_api_edge_cases.py::test_update_post_partial
+  /Users/sergii.mavrov/Play/mavrov.de/backend/venv/lib/python3.13/site-packages/_pytest/unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: functools.partial(<bound method ReversibleProxy._target_gced of <class 'sqlalchemy.ext.asyncio.base.ReversibleProxy'>>, <weakref at 0x10deafd80; dead>)
+  
+  Traceback (most recent call last):
+    File "/Users/sergii.mavrov/Play/mavrov.de/backend/venv/lib/python3.13/site-packages/sqlalchemy/ext/asyncio/base.py", line 65, in _target_gced
+      @classmethod
+      
+  KeyboardInterrupt
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+
+tests/test_models.py: 12 warnings
+  /Users/sergii.mavrov/Play/mavrov.de/backend/venv/lib/python3.13/site-packages/sqlalchemy/sql/schema.py:3596: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+--------- coverage: platform darwin, python 3.13.11-final-0 ----------
+Name                         Stmts   Miss  Cover   Missing
+----------------------------------------------------------
+app/__init__.py                  0      0   100%
+app/api/__init__.py              0      0   100%
+app/api/auth.py                 36     10    72%   47-72, 82
+app/api/posts.py               141     76    46%   77-90, 111-122, 143-160, 181-209, 229-238, 248-274, 294-316
+app/config.py                   12      0   100%
+app/database.py                 10      0   100%
+app/main.py                     23      6    74%   15-18, 44, 49
+app/models/__init__.py           2      0   100%
+app/models/post.py              19      0   100%
+app/models/user.py              13      0   100%
+app/services/__init__.py         0      0   100%
+app/services/auth.py            66     46    30%   22, 27-29, 34-42, 47-51, 59-82, 90-107, 112-117
+app/services/embeddings.py      12      0   100%
+----------------------------------------------------------
+TOTAL                          334    138    59%
+Coverage HTML written to dir htmlcov
+
+=========================== short test summary info ============================
+ERROR tests/integration/test_post_workflow.py::test_complete_post_workflow - ...
+ERROR tests/integration/test_post_workflow.py::test_multilingual_posts - Name...
+ERROR tests/integration/test_post_workflow.py::test_similar_posts_workflow - ...
+ERROR tests/test_api_edge_cases.py::test_list_posts_include_drafts - NameErro...
+ERROR tests/test_api_edge_cases.py::test_update_post_not_found - NameError: n...
+ERROR tests/test_api_edge_cases.py::test_update_post_partial - NameError: nam...
+ERROR tests/test_api_edge_cases.py::test_delete_post_not_found - NameError: n...
+ERROR tests/test_api_edge_cases.py::test_similar_posts_not_found - NameError:...
+ERROR tests/test_api_edge_cases.py::test_similar_posts_no_embedding - NameErr...
+ERROR tests/test_api_edge_cases.py::test_semantic_search_with_results - NameE...
+ERROR tests/test_api_edge_cases.py::test_semantic_search_no_language_filter
+ERROR tests/test_api_posts.py::test_list_posts_empty - NameError: name 'User'...
+ERROR tests/test_api_posts.py::test_create_post - NameError: name 'User' is n...
+ERROR tests/test_api_posts.py::test_get_post - NameError: name 'User' is not ...
+ERROR tests/test_api_posts.py::test_get_post_not_found - NameError: name 'Use...
+ERROR tests/test_api_posts.py::test_update_post - NameError: name 'User' is n...
+ERROR tests/test_api_posts.py::test_delete_post - NameError: name 'User' is n...
+ERROR tests/test_api_posts.py::test_list_posts_with_filters - NameError: name...
+ERROR tests/test_api_posts.py::test_similar_posts - NameError: name 'User' is...
+ERROR tests/test_api_posts.py::test_semantic_search - NameError: name 'User' ...
+ERROR tests/test_api_posts.py::test_semantic_search_no_embedding - NameError:...
+ERROR tests/test_api_responses.py::test_list_posts_with_data - NameError: nam...
+ERROR tests/test_api_responses.py::test_get_post_full_response - NameError: n...
+ERROR tests/test_api_responses.py::test_update_post_full_response - NameError...
+ERROR tests/test_api_responses.py::test_similar_posts_with_results - NameErro...
+ERROR tests/test_main.py::test_root_endpoint - NameError: name 'User' is not ...
+ERROR tests/test_main.py::test_health_check - NameError: name 'User' is not d...
+================== 13 passed, 17 warnings, 27 errors in 3.75s ==================
