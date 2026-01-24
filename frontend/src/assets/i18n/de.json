@@ -5,6 +5,7 @@
         "SKILLS": "Fähigkeiten",
         "EDUCATION": "Ausbildung",
         "RECOMMENDATIONS": "Empfehlungen",
+        "BLOG": "Blog",
         "CONTACT": "Kontakt"
     },
     "SECTION": {
@@ -18,6 +19,7 @@
         "EDUCATION_SUB": "> Ausbildung",
         "CERTIFICATIONS_SUB": "> Zertifikate",
         "RECOMMENDATIONS": "> Empfehlungen",
+        "BLOG": "> Blog_Beiträge",
         "CONTACT": "> Kontakt_Info"
     },
     "COMMON": {

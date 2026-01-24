@@ -1,0 +1,42 @@
+<div class="login-container">
+    <div class="terminal-window">
+        <div class="terminal-header">
+            <span class="terminal-title">admin@mavrov.de:~$ ./login.sh</span>
+        </div>
+        <div class="terminal-body">
+            <h2 class="login-title">&gt; Admin Login</h2>
+
+            <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+                <div class="form-group">
+                    <label for="username">&gt; Username:</label>
+                    <input type="text" id="username" name="username" [(ngModel)]="username" required
+                        autocomplete="username" [disabled]="loading" />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">&gt; Password:</label>
+                    <input type="password" id="password" name="password" [(ngModel)]="password" required
+                        autocomplete="current-password" [disabled]="loading" />
+                </div>
+
+                @if (errorMessage) {
+                <div class="error-message">
+                    <span class="error-icon">✗</span> {{ errorMessage }}
+                </div>
+                }
+
+                <div class="button-group">
+                    <button type="submit" [disabled]="!loginForm.valid || loading" class="btn-primary">
+                        {{ loading ? '[ Authenticating... ]' : '[ Login ]' }}
+                    </button>
+                </div>
+            </form>
+
+            <div class="login-info">
+                <p>&gt; Default credentials for development:</p>
+                <p>&gt; Username: <span class="highlight">admin</span></p>
+                <p>&gt; Password: <span class="highlight">MavrovSecure2026!</span></p>
+            </div>
+        </div>
+    </div>
+</div>

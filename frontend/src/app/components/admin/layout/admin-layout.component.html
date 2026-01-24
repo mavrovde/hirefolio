@@ -1,0 +1,49 @@
+<div class="admin-layout">
+    <nav class="admin-sidebar">
+        <div class="sidebar-header">
+            <h2>&gt; Admin Panel</h2>
+            @if (currentUser) {
+            <p class="user-info">{{ currentUser.username }}</p>
+            }
+        </div>
+
+        <ul class="nav-menu">
+            <li>
+                <a routerLink="/admin/dashboard" routerLinkActive="active">
+                    <span class="icon">📊</span> Dashboard
+                </a>
+            </li>
+            <li>
+                <a routerLink="/admin/posts" routerLinkActive="active" class="nav-item">
+                    <span class="icon">📝</span>
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a routerLink="/admin/tags" routerLinkActive="active" class="nav-item">
+                    <span class="icon">🏷️</span>
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a routerLink="/admin/posts/new" routerLinkActive="active">
+                    <span class="icon">➕</span> New Post
+                </a>
+            </li>
+            <li>
+                <a routerLink="/" class="home-link">
+                    <span class="icon">🏠</span> View Site
+                </a>
+            </li>
+            <li>
+                <button (click)="logout()" class="logout-btn">
+                    <span class="icon">🚪</span> Logout
+                </button>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="admin-content">
+        <router-outlet></router-outlet>
+    </main>
+</div>

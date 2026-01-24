@@ -18,7 +18,8 @@ export class HeaderComponent {
     { labelKey: 'NAV.EXPERIENCE', href: '#experience' },
     { labelKey: 'NAV.SKILLS', href: '#skills' },
     { labelKey: 'NAV.EDUCATION', href: '#education' },
-    { labelKey: 'NAV.RECOMMENDATIONS', href: '#recommendations' }
+    { labelKey: 'NAV.RECOMMENDATIONS', href: '#recommendations' },
+    { labelKey: 'NAV.BLOG', href: '#blog' }
   ];
 
   constructor(private languageService: LanguageService) {

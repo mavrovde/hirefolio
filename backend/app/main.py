@@ -6,6 +6,9 @@ from sqlalchemy import text
 
 from app.database import engine, Base
 from app.api.posts import router as posts_router
+from app.api.auth import router as auth_router
+from app.api.stats import router as stats_router
+from app.api.tags import router as tags_router
 
 
 @asynccontextmanager
@@ -20,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.0.0",
+    version="1.0.16",
     lifespan=lifespan,
 )
 
@@ -34,12 +37,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(posts_router)
+app.include_router(stats_router)
+app.include_router(tags_router)
 
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Mavrov.de API"}
+    return {
+        "message": "Welcome to Mavrov.de API",
+        "version": app.version
+    }
 
 
 @app.get("/api/health")

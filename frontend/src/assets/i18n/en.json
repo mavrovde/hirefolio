@@ -5,6 +5,7 @@
         "SKILLS": "Skills",
         "EDUCATION": "Education",
         "RECOMMENDATIONS": "Recommendations",
+        "BLOG": "Blog",
         "CONTACT": "Contact"
     },
     "SECTION": {
@@ -18,6 +19,7 @@
         "EDUCATION_SUB": "> Education",
         "CERTIFICATIONS_SUB": "> Certifications",
         "RECOMMENDATIONS": "> Recommendations",
+        "BLOG": "> Blog_Posts",
         "CONTACT": "> Contact_Info"
     },
     "COMMON": {

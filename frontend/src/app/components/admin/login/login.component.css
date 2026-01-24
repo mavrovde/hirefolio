@@ -1,0 +1,123 @@
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: #000;
+}
+
+.terminal-window {
+    width: 100%;
+    max-width: 500px;
+    border: 2px solid var(--primary-color, #0ea5e9);
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+    overflow: hidden;
+}
+
+.terminal-header {
+    background: var(--primary-color, #0ea5e9);
+    padding: 10px 15px;
+    color: #000;
+    font-weight: bold;
+}
+
+.terminal-body {
+    background: #000;
+    padding: 30px;
+    color: #0f0;
+}
+
+.login-title {
+    font-size: 24px;
+    margin-bottom: 30px;
+    color: var(--primary-color, #0ea5e9);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #0f0;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    background: #000;
+    border: 1px solid var(--primary-color, #0ea5e9);
+    color: #0f0;
+    font-family: 'Courier Prime', monospace;
+    font-size: 16px;
+}
+
+.form-group input:focus {
+    outline: none;
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+}
+
+.form-group input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.error-message {
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid #f00;
+    color: #f00;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.error-icon {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.button-group {
+    margin-top: 30px;
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 2px solid var(--primary-color, #0ea5e9);
+    color: var(--primary-color, #0ea5e9);
+    font-family: 'Courier Prime', monospace;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--primary-color, #0ea5e9);
+    color: #000;
+    box-shadow: 0 0 15px rgba(14, 165, 233, 0.5);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.login-info {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #333;
+    font-size: 14px;
+    color: #666;
+}
+
+.login-info p {
+    margin: 5px 0;
+}
+
+.highlight {
+    color: var(--primary-color, #0ea5e9);
+}

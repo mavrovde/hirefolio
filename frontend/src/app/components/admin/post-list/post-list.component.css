@@ -1,0 +1,174 @@
+.post-list {
+  color: #0f0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.page-title {
+  font-size: 32px;
+  color: var(--primary-color, #0ea5e9);
+  margin: 0;
+}
+
+.btn-new {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: transparent;
+  border: 2px solid var(--primary-color, #0ea5e9);
+  color: var(--primary-color, #0ea5e9);
+  text-decoration: none;
+  transition: all 0.3s;
+}
+
+.btn-new:hover {
+  background: var(--primary-color, #0ea5e9);
+  color: #000;
+}
+
+.btn-new .icon {
+  margin-right: 8px;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--primary-color, #0ea5e9);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  border: 2px dashed #333;
+}
+
+.empty-state p {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.error-state {
+  text-align: center;
+  padding: 40px;
+  border: 1px solid #f00;
+  background: rgba(255, 0, 0, 0.1);
+}
+
+.error-text {
+  color: #f00;
+  margin-bottom: 20px;
+}
+
+.posts-table {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid var(--primary-color, #0ea5e9);
+}
+
+thead {
+  background: rgba(14, 165, 233, 0.1);
+}
+
+th {
+  padding: 15px;
+  text-align: left;
+  color: var(--primary-color, #0ea5e9);
+  border-bottom: 2px solid var(--primary-color, #0ea5e9);
+}
+
+td {
+  padding: 15px;
+  border-bottom: 1px solid #333;
+}
+
+tr:hover {
+  background: rgba(14, 165, 233, 0.05);
+}
+
+.title-cell {
+  font-weight: bold;
+  color: #0f0;
+}
+
+.slug-cell {
+  color: #666;
+  font-size: 14px;
+}
+
+.lang-cell {
+  text-transform: uppercase;
+}
+
+.status-published {
+  color: #0f0;
+}
+
+.status-draft {
+  color: #f90;
+}
+
+.date-cell {
+  color: #666;
+  font-size: 14px;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-edit,
+.btn-delete {
+  padding: 5px 15px;
+  border: 1px solid;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Courier Prime', monospace;
+  transition: all 0.3s;
+}
+
+.btn-edit {
+  color: var(--primary-color, #0ea5e9);
+  border-color: var(--primary-color, #0ea5e9);
+  text-decoration: none;
+}
+
+.btn-edit:hover {
+  background: var(--primary-color, #0ea5e9);
+  color: #000;
+}
+
+.btn-delete {
+  color: #f00;
+  border-color: #f00;
+}
+
+.btn-delete:hover {
+  background: #f00;
+  color: #000;
+}
+
+.btn-primary {
+  display: inline-block;
+  padding: 12px 24px;
+  background: transparent;
+  border: 2px solid var(--primary-color, #0ea5e9);
+  color: var(--primary-color, #0ea5e9);
+  text-decoration: none;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: var(--primary-color, #0ea5e9);
+  color: #000;
+}

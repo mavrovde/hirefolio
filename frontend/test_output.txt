@@ -1,0 +1,324 @@
+
+> frontend@1.0.16 test
+> ng test --watch=false
+
+❯ Building...
+✔ Building...
+Initial chunk files                                              | Names                                                         |  Raw size
+spec-app-components-admin-post-editor-post-editor.component.js   | spec-app-components-admin-post-editor-post-editor.component   |  33.50 kB | 
+styles.css                                                       | styles                                                        |  21.94 kB | 
+chunk-L7WTBISC.js                                                | -                                                             |  21.68 kB | 
+spec-app-components-admin-post-list-post-list.component.js       | spec-app-components-admin-post-list-post-list.component       |  21.01 kB | 
+spec-app-components-admin-dashboard-dashboard.component.js       | spec-app-components-admin-dashboard-dashboard.component       |  19.98 kB | 
+spec-app-components-admin-login-login.component.js               | spec-app-components-admin-login-login.component               |  18.78 kB | 
+chunk-APYATGK2.js                                                | -                                                             |  14.45 kB | 
+spec-app-components-admin-layout-admin-layout.component.js       | spec-app-components-admin-layout-admin-layout.component       |  12.93 kB | 
+chunk-KVCEPR37.js                                                | -                                                             |  11.69 kB | 
+chunk-P7KIUCIF.js                                                | -                                                             |   9.37 kB | 
+chunk-AO66SPN7.js                                                | -                                                             |   8.69 kB | 
+chunk-HWROWRTP.js                                                | -                                                             |   8.04 kB | 
+spec-app-components-home-home.component.js                       | spec-app-components-home-home.component                       |   7.70 kB | 
+chunk-ZKE3NI6M.js                                                | -                                                             |   5.87 kB | 
+spec-app-services-auth.service.js                                | spec-app-services-auth.service                                |   5.68 kB | 
+chunk-ZNRIFFIO.js                                                | -                                                             |   5.41 kB | 
+chunk-5JNFKI3X.js                                                | -                                                             |   4.25 kB | 
+chunk-CGZBV6BD.js                                                | -                                                             |   4.07 kB | 
+chunk-JTD4VAYV.js                                                | -                                                             |   3.40 kB | 
+spec-app-components-blog-blog.component.js                       | spec-app-components-blog-blog.component                       |   3.37 kB | 
+spec-app-services-language.service.js                            | spec-app-services-language.service                            |   3.06 kB | 
+spec-app-services-blog.service.js                                | spec-app-services-blog.service                                |   2.94 kB | 
+spec-app-services-profile.service.js                             | spec-app-services-profile.service                             |   2.81 kB | 
+chunk-32LHBWKK.js                                                | -                                                             |   2.70 kB | 
+spec-app-app.component.js                                        | spec-app-app.component                                        |   2.33 kB | 
+spec-app-components-header-header.component.js                   | spec-app-components-header-header.component                   |   2.28 kB | 
+chunk-XRVV2X3K.js                                                | -                                                             |   2.26 kB | 
+spec-app-guards-auth.guard.js                                    | spec-app-guards-auth.guard                                    |   2.20 kB | 
+spec-app-components-education-education.component.js             | spec-app-components-education-education.component             |   2.13 kB | 
+spec-app-components-experience-experience.component.js           | spec-app-components-experience-experience.component           |   2.11 kB | 
+chunk-77SJUP4F.js                                                | -                                                             |   2.04 kB | 
+chunk-LMTBLQ7W.js                                                | -                                                             |   1.91 kB | 
+spec-app-components-recommendations-recommendations.component.js | spec-app-components-recommendations-recommendations.component |   1.89 kB | 
+spec-app-components-hero-hero.component.js                       | spec-app-components-hero-hero.component                       |   1.75 kB | 
+spec-app-components-about-about.component.js                     | spec-app-components-about-about.component                     |   1.67 kB | 
+chunk-YVFPALAW.js                                                | -                                                             |   1.64 kB | 
+spec-app-components-skills-skills.component.js                   | spec-app-components-skills-skills.component                   |   1.62 kB | 
+chunk-7FEMEYLN.js                                                | -                                                             |   1.45 kB | 
+spec-app-pipes-translate.pipe.js                                 | spec-app-pipes-translate.pipe                                 |   1.38 kB | 
+spec-app-services-analytics.service.js                           | spec-app-services-analytics.service                           |   1.33 kB | 
+spec-app-components-contact-contact.component.js                 | spec-app-components-contact-contact.component                 |   1.33 kB | 
+init-testbed.js                                                  | init-testbed                                                  |   1.21 kB | 
+spec-app-components-stats-stats.component.js                     | spec-app-components-stats-stats.component                     |   1.16 kB | 
+chunk-MJPPYCGU.js                                                | -                                                             |   1.01 kB | 
+chunk-XYGFW6CI.js                                                | -                                                             | 777 bytes | 
+chunk-MSMD6A73.js                                                | -                                                             | 237 bytes | 
+
+                                                                 | Initial total                                                 | 289.01 kB
+
+Application bundle generation complete. [4.615 seconds] - 2026-01-24T09:02:40.691Z
+
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/app[39m
+
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/services/blog.service.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/services/language.service.spec.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [31m❯[39m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts [2m([22m[2m9 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[32m 43[2mms[22m[39m
+     [32m✓[39m should be created[32m 17[2mms[22m[39m
+       [32m✓[39m should call api/auth/login and store token on success[32m 8[2mms[22m[39m
+       [32m✓[39m should remove token and clear current user[32m 2[2mms[22m[39m
+       [32m✓[39m should load user if token exists[32m 6[2mms[22m[39m
+[31m       [31m×[31m should logout if loading user fails[39m[32m 7[2mms[22m[39m
+[31m       [31m×[31m isAuthenticated should return true if token exists[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m isAuthenticated should return false if token missing[39m[32m 0[2mms[22m[39m
+[31m       [31m×[31m isAdmin should return true if user is admin[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m isAdmin should return false if user is not admin or null[39m[32m 1[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/guards/auth.guard.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/services/analytics.service.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/app.component.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/pipes/translate.pipe.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/services/profile.service.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [31m❯[39m [30m[43m frontend [49m[39m src/app/components/about/about.component.spec.ts [2m([22m[2m3 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 71[2mms[22m[39m
+[31m     [31m×[31m should create[39m[32m 1[2mms[22m[39m
+     [32m✓[39m should display about text[32m 53[2mms[22m[39m
+     [32m✓[39m should display section title[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/contact/contact.component.spec.ts [2m([22m[2m1 test[22m[2m)[22m[32m 54[2mms[22m[39m
+[90mstderr[2m | src/app/components/blog/blog.component.spec.ts[2m > [22m[2mBlogComponent[2m > [22m[2mshould load posts on init
+[22m[39mError loading translations for en HttpErrorResponse {
+  headers: HttpHeaders {
+    headers: Map(0) {},
+    normalizedNames: Map(0) {},
+    lazyInit: [90mundefined[39m,
+    lazyUpdate: [1mnull[22m
+  },
+  status: [33m0[39m,
+  statusText: [32m'Unknown Error'[39m,
+  url: [32m'assets/i18n/en.json'[39m,
+  ok: [33mfalse[39m,
+  type: [90mundefined[39m,
+  redirected: [90mundefined[39m,
+  responseType: [90mundefined[39m,
+  name: [32m'HttpErrorResponse'[39m,
+  message: [32m'Http failure response for assets/i18n/en.json: 0 Unknown Error'[39m,
+  error: ProgressEvent { isTrusted: [36m[Getter][39m }
+}
+
+[90mstderr[2m | src/app/components/blog/blog.component.spec.ts[2m > [22m[2mBlogComponent[2m > [22m[2mshould load posts on init
+[22m[39mError loading translations for en HttpErrorResponse {
+  headers: HttpHeaders {
+    headers: Map(0) {},
+    normalizedNames: Map(0) {},
+    lazyInit: [90mundefined[39m,
+    lazyUpdate: [1mnull[22m
+  },
+  status: [33m0[39m,
+  statusText: [32m'Unknown Error'[39m,
+  url: [32m'assets/i18n/en.json'[39m,
+  ok: [33mfalse[39m,
+  type: [90mundefined[39m,
+  redirected: [90mundefined[39m,
+  responseType: [90mundefined[39m,
+  name: [32m'HttpErrorResponse'[39m,
+  message: [32m'Http failure response for assets/i18n/en.json: 0 Unknown Error'[39m,
+  error: ProgressEvent { isTrusted: [36m[Getter][39m }
+}
+
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/recommendations/recommendations.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 86[2mms[22m[39m
+[90mstderr[2m | src/app/components/blog/blog.component.spec.ts[2m > [22m[2mBlogComponent[2m > [22m[2mshould perform semantic search on enter
+[22m[39mError loading translations for en HttpErrorResponse {
+  headers: HttpHeaders {
+    headers: Map(0) {},
+    normalizedNames: Map(0) {},
+    lazyInit: [90mundefined[39m,
+    lazyUpdate: [1mnull[22m
+  },
+  status: [33m0[39m,
+  statusText: [32m'Unknown Error'[39m,
+  url: [32m'assets/i18n/en.json'[39m,
+  ok: [33mfalse[39m,
+  type: [90mundefined[39m,
+  redirected: [90mundefined[39m,
+  responseType: [90mundefined[39m,
+  name: [32m'HttpErrorResponse'[39m,
+  message: [32m'Http failure response for assets/i18n/en.json: 0 Unknown Error'[39m,
+  error: ProgressEvent { isTrusted: [36m[Getter][39m }
+}
+
+[90mstderr[2m | src/app/components/blog/blog.component.spec.ts[2m > [22m[2mBlogComponent[2m > [22m[2mshould perform semantic search on enter
+[22m[39mError loading translations for en HttpErrorResponse {
+  headers: HttpHeaders {
+    headers: Map(0) {},
+    normalizedNames: Map(0) {},
+    lazyInit: [90mundefined[39m,
+    lazyUpdate: [1mnull[22m
+  },
+  status: [33m0[39m,
+  statusText: [32m'Unknown Error'[39m,
+  url: [32m'assets/i18n/en.json'[39m,
+  ok: [33mfalse[39m,
+  type: [90mundefined[39m,
+  redirected: [90mundefined[39m,
+  responseType: [90mundefined[39m,
+  name: [32m'HttpErrorResponse'[39m,
+  message: [32m'Http failure response for assets/i18n/en.json: 0 Unknown Error'[39m,
+  error: ProgressEvent { isTrusted: [36m[Getter][39m }
+}
+
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/education/education.component.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 180[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/hero/hero.component.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 182[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/header/header.component.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 163[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/skills/skills.component.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/experience/experience.component.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 249[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/stats/stats.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 59[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/home/home.component.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 108[2mms[22m[39m
+[90mstderr[2m | src/app/components/blog/blog.component.spec.ts[2m > [22m[2mBlogComponent[2m > [22m[2mshould clear search
+[22m[39mError loading translations for en HttpErrorResponse {
+  headers: HttpHeaders {
+    headers: Map(0) {},
+    normalizedNames: Map(0) {},
+    lazyInit: [90mundefined[39m,
+    lazyUpdate: [1mnull[22m
+  },
+  status: [33m0[39m,
+  statusText: [32m'Unknown Error'[39m,
+  url: [32m'assets/i18n/en.json'[39m,
+  ok: [33mfalse[39m,
+  type: [90mundefined[39m,
+  redirected: [90mundefined[39m,
+  responseType: [90mundefined[39m,
+  name: [32m'HttpErrorResponse'[39m,
+  message: [32m'Http failure response for assets/i18n/en.json: 0 Unknown Error'[39m,
+  error: ProgressEvent { isTrusted: [36m[Getter][39m }
+}
+
+[90mstdout[2m | src/app/components/admin/dashboard/dashboard.component.spec.ts[2m > [22m[2mDashboardComponent[2m > [22m[2mshould create
+[22m[39mDashboard: loadStats called
+Dashboard: Stats received {
+  posts: { total: [33m10[39m, published: [33m8[39m, drafts: [33m2[39m, by_language: { en: [33m5[39m, de: [33m5[39m } },
+  users: [33m1[39m,
+  subscribers: [33m0[39m,
+  visitors: [32m'0'[39m,
+  top_tags: { angular: [33m5[39m },
+  recent_posts: [],
+  system_health: { database: [33mtrue[39m, ai_service: [33mtrue[39m }
+}
+Dashboard: Stats request completed
+
+[90mstdout[2m | src/app/components/admin/dashboard/dashboard.component.spec.ts[2m > [22m[2mDashboardComponent[2m > [22m[2mshould load stats correctly
+[22m[39mDashboard: loadStats called
+Dashboard: Stats received {
+  posts: { total: [33m10[39m, published: [33m8[39m, drafts: [33m2[39m, by_language: { en: [33m5[39m, de: [33m5[39m } },
+  users: [33m1[39m,
+  subscribers: [33m0[39m,
+  visitors: [32m'0'[39m,
+  top_tags: { angular: [33m5[39m },
+  recent_posts: [],
+  system_health: { database: [33mtrue[39m, ai_service: [33mtrue[39m }
+}
+Dashboard: Stats request completed
+
+[90mstdout[2m | src/app/components/admin/dashboard/dashboard.component.spec.ts[2m > [22m[2mDashboardComponent[2m > [22m[2mshould handle error when loading stats
+[22m[39mDashboard: loadStats called
+
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/admin/dashboard/dashboard.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 102[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/admin/layout/admin-layout.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 109[2mms[22m[39m
+[90mstderr[2m | src/app/components/admin/post-list/post-list.component.spec.ts[2m > [22m[2mPostListComponent[2m > [22m[2mshould handle error when loading posts
+[22m[39mFailed to load posts: Error: Network error
+    at [90m/app/[39msrc/app/components/admin/post-list/post-list.component.spec.ts:74:66
+    at Observable.init [as _subscribe] [90m(/app/[39mnode_modules/[4mrxjs[24m/dist/cjs/internal/observable/throwError.js:8:64[90m)[39m
+    at Observable._trySubscribe [90m(/app/[39mnode_modules/[4mrxjs[24m/dist/cjs/internal/Observable.js:41:25[90m)[39m
+    at [90m/app/[39mnode_modules/[4mrxjs[24m/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext [90m(/app/[39mnode_modules/[4mrxjs[24m/dist/cjs/internal/util/errorContext.js:22:9[90m)[39m
+    at Observable.subscribe [90m(/app/[39mnode_modules/[4mrxjs[24m/dist/cjs/internal/Observable.js:26:24[90m)[39m
+    at _PostListComponent.loadPosts [90m(/app/[39msrc/app/components/admin/post-list/post-list.component.ts:31:8[90m)[39m
+    at _PostListComponent.ngOnInit [90m(/app/[39msrc/app/components/admin/post-list/post-list.component.ts:24:10[90m)[39m
+    at callHookInternal [90m(file:///app/[39mnode_modules/[4m@angular/core[24m/fesm2022/_debug_node-chunk.mjs:555:10[90m)[39m
+    at callHook [90m(file:///app/[39mnode_modules/[4m@angular/core[24m/fesm2022/_debug_node-chunk.mjs:570:7[90m)[39m
+
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/admin/post-list/post-list.component.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 161[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/admin/login/login.component.spec.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 183[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/admin/post-editor/post-editor.component.spec.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 197[2mms[22m[39m
+[90mstderr[2m | src/app/components/blog/blog.component.spec.ts[2m > [22m[2mBlogComponent[2m > [22m[2mshould not search if query is too short
+[22m[39mError loading translations for en HttpErrorResponse {
+  headers: HttpHeaders {
+    headers: Map(0) {},
+    normalizedNames: Map(0) {},
+    lazyInit: [90mundefined[39m,
+    lazyUpdate: [1mnull[22m
+  },
+  status: [33m0[39m,
+  statusText: [32m'Unknown Error'[39m,
+  url: [32m'assets/i18n/en.json'[39m,
+  ok: [33mfalse[39m,
+  type: [90mundefined[39m,
+  redirected: [90mundefined[39m,
+  responseType: [90mundefined[39m,
+  name: [32m'HttpErrorResponse'[39m,
+  message: [32m'Http failure response for assets/i18n/en.json: 0 Unknown Error'[39m,
+  error: ProgressEvent { isTrusted: [36m[Getter][39m }
+}
+
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/blog/blog.component.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 943[2mms[22m[39m
+     [33m[2m✓[22m[39m should clear search [33m 418[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 6 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts[2m > [22mAuthService[2m > [22minitialization[2m > [22mshould logout if loading user fails
+[41m[1m FAIL [22m[49m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts[2m > [22mAuthService[2m > [22mhelpers[2m > [22misAuthenticated should return true if token exists
+[41m[1m FAIL [22m[49m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts[2m > [22mAuthService[2m > [22mhelpers[2m > [22misAuthenticated should return false if token missing
+[41m[1m FAIL [22m[49m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts[2m > [22mAuthService[2m > [22mhelpers[2m > [22misAdmin should return true if user is admin
+[41m[1m FAIL [22m[49m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts[2m > [22mAuthService[2m > [22mhelpers[2m > [22misAdmin should return false if user is not admin or null
+[31m[1mError[22m: Expected no open requests, found 1: GET http://localhost:8000/api/auth/me[39m
+[90m [2m❯[22m HttpClientTestingBackend.verify node_modules/@angular/common/fesm2022/http-testing.mjs:[2m214:13[22m[39m
+[36m [2m❯[22m src/app/services/auth.service.spec.ts:[2m44:22[22m[39m
+    [90m 42| [39m    [34mafterEach[39m(() [33m=>[39m {
+    [90m 43| [39m        [35mif[39m (httpMock) {
+    [90m 44| [39m            httpMock[33m.[39m[34mverify[39m()[33m;[39m
+    [90m   | [39m                     [31m^[39m
+    [90m 45| [39m        }
+    [90m 46| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts[2m > [22mAuthService[2m > [22mhelpers[2m > [22misAuthenticated should return true if token exists
+[41m[1m FAIL [22m[49m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts[2m > [22mAuthService[2m > [22mhelpers[2m > [22misAuthenticated should return false if token missing
+[41m[1m FAIL [22m[49m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts[2m > [22mAuthService[2m > [22mhelpers[2m > [22misAdmin should return true if user is admin
+[41m[1m FAIL [22m[49m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts[2m > [22mAuthService[2m > [22mhelpers[2m > [22misAdmin should return false if user is not admin or null
+[31m[1mError[22m: Cannot configure the test module when the test module has already been instantiated. Make sure you are not using `inject` before `TestBed.configureTestingModule`.[39m
+[90m [2m❯[22m TestBedImpl.assertNotInstantiated node_modules/@angular/core/fesm2022/testing.mjs:[2m1498:13[22m[39m
+[90m [2m❯[22m TestBedImpl.configureTestingModule node_modules/@angular/core/fesm2022/testing.mjs:[2m1390:10[22m[39m
+[90m [2m❯[22m Function.configureTestingModule node_modules/@angular/core/fesm2022/testing.mjs:[2m1273:33[22m[39m
+[36m [2m❯[22m src/app/services/auth.service.spec.ts:[2m31:17[22m[39m
+    [90m 29| [39m        vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(m…
+    [90m 30| [39m
+    [90m 31| [39m        [33mTestBed[39m[33m.[39m[34mconfigureTestingModule[39m({
+    [90m   | [39m                [31m^[39m
+    [90m 32| [39m            providers[33m:[39m [
+    [90m 33| [39m                [33mAuthService[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m frontend [49m[39m src/app/components/about/about.component.spec.ts[2m > [22mAboutComponent[2m > [22mshould create
+[31m[1mError[22m: Cannot configure the test module when the test module has already been instantiated. Make sure you are not using `inject` before `TestBed.configureTestingModule`.[39m
+[90m [2m❯[22m TestBedImpl.assertNotInstantiated node_modules/@angular/core/fesm2022/testing.mjs:[2m1498:13[22m[39m
+[90m [2m❯[22m TestBedImpl.configureTestingModule node_modules/@angular/core/fesm2022/testing.mjs:[2m1390:10[22m[39m
+[90m [2m❯[22m Function.configureTestingModule node_modules/@angular/core/fesm2022/testing.mjs:[2m1273:33[22m[39m
+[36m [2m❯[22m src/app/components/about/about.component.spec.ts:[2m28:23[22m[39m
+    [90m 26| [39m
+    [90m 27| [39m    [34mbeforeEach[39m([35masync[39m () [33m=>[39m {
+    [90m 28| [39m        [35mawait[39m [33mTestBed[39m[33m.[39m[34mconfigureTestingModule[39m({
+    [90m   | [39m                      [31m^[39m
+    [90m 29| [39m            imports[33m:[39m [[33mAboutComponent[39m]
+    [90m 30| [39m        })
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m22 passed[39m[22m[90m (24)[39m
+[2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m93 passed[39m[22m[90m (99)[39m
+[2m   Start at [22m 09:02:41
+[2m   Duration [22m 5.01s[2m (transform 870ms, setup 4.70s, import 2.09s, tests 3.13s, environment 64.31s)[22m
+
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.8.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.8.0
+npm notice To update run: npm install -g npm@11.8.0
+npm notice
