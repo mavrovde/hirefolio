@@ -10,6 +10,8 @@ describe('AuthService', () => {
     let httpMock: HttpTestingController;
 
     beforeEach(() => {
+        TestBed.resetTestingModule(); // Ensure clean slate
+
         // Clear localStorage before each test
         const store: { [key: string]: string } = {};
         const mockLocalStorage = {
@@ -40,6 +42,7 @@ describe('AuthService', () => {
     });
 
     afterEach(() => {
+        vi.restoreAllMocks();
         if (httpMock) {
             httpMock.verify();
         }
@@ -88,17 +91,11 @@ describe('AuthService', () => {
 
     describe('initialization', () => {
         it('should load user if token exists', () => {
-            // Mock token existing
-            Object.defineProperty(window, 'localStorage', {
-                value: {
-                    getItem: vi.fn((key) => key === 'auth_token' ? 'existing-token' : null),
-                    setItem: vi.fn(),
-                    removeItem: vi.fn(),
-                },
-                writable: true
-            });
+            // Mock token existing - verify spy is working
+            const store: { [key: string]: string } = { 'auth_token': 'existing-token' };
+            vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key: string) => store[key] || null);
 
-            // We need to re-inject to trigger constructor logic
+            // Re-inject to trigger constructor
             TestBed.resetTestingModule();
             TestBed.configureTestingModule({
                 providers: [
@@ -114,18 +111,13 @@ describe('AuthService', () => {
             req.flush({ id: 1, username: 'loaded', email: 'l@test.com', is_admin: false });
 
             expect(newService.getCurrentUser()?.username).toBe('loaded');
+            newHttpMock.verify();
         });
 
         it('should logout if loading user fails', () => {
             // Mock token existing
-            Object.defineProperty(window, 'localStorage', {
-                value: {
-                    getItem: vi.fn((key) => key === 'auth_token' ? 'bad-token' : null),
-                    setItem: vi.fn(),
-                    removeItem: vi.fn(),
-                },
-                writable: true
-            });
+            const store: { [key: string]: string } = { 'auth_token': 'bad-token' };
+            vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key: string) => store[key] || null);
 
             TestBed.resetTestingModule();
             TestBed.configureTestingModule({
@@ -144,21 +136,18 @@ describe('AuthService', () => {
             req.flush('Error', { status: 401, statusText: 'Unauthorized' });
 
             expect(spyLogout).toHaveBeenCalled();
+            newHttpMock.verify();
         });
     });
 
     describe('helpers', () => {
         it('isAuthenticated should return true if token exists', () => {
-            Object.defineProperty(window, 'localStorage', {
-                value: { getItem: vi.fn(() => 'token') }
-            });
+            vi.spyOn(Storage.prototype, 'getItem').mockReturnValue('token');
             expect(service.isAuthenticated()).toBe(true);
         });
 
         it('isAuthenticated should return false if token missing', () => {
-            Object.defineProperty(window, 'localStorage', {
-                value: { getItem: vi.fn(() => null) }
-            });
+            vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
             expect(service.isAuthenticated()).toBe(false);
         });
 
