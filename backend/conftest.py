@@ -14,7 +14,10 @@ import os
 # Test database URL - prioritize TEST_DATABASE_URL (local), then DATABASE_URL (CI), then fallback
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_test"),
+    os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_test",
+    ),
 )
 
 # Create test engine
