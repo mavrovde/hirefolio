@@ -176,13 +176,18 @@ jobs:
                   # Wait for it to be ready
                   until docker exec db pg_isready; do sleep 1; done
 
-            - name: Start Mock AI Service
-              working-directory: ./backend
+            - name: Start AI Service (Ollama)
               run: |
-                  python -m pip install fastapi uvicorn
-                  python scripts/mock_ai_service.py &
-                  # Wait for it to be ready (simple sleep as it starts fast)
-                  sleep 2
+                  # Start Ollama container
+                  docker run -d --name ollama -p 11434:11434 ollama/ollama:latest
+
+                  # Wait for Ollama to be responsive
+                  timeout 30s bash -c 'until curl -s http://localhost:11434 > /dev/null; do sleep 1; done'
+
+                  # Pull models (Backgrounding not possible if we want to use them immediately, but we can do it purely sequentially)
+                  echo "Pulling AI models..."
+                  docker exec ollama ollama pull nomic-embed-text
+                  docker exec ollama ollama pull tinyllama
 
             - name: Start Backend
               working-directory: ./backend
