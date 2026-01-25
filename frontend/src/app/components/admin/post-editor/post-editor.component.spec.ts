@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 describe('PostEditorComponent', () => {
     let component: PostEditorComponent;
     let fixture: ComponentFixture<PostEditorComponent>;
-    let blogServiceSpy: { getPostById: Mock; createPost: Mock; updatePostById: Mock; suggestTags: Mock };
+    let blogServiceSpy: { getPostById: Mock; createPost: Mock; updatePostById: Mock; deletePostById: Mock; suggestTags: Mock };
     let routerSpy: { navigate: Mock };
 
     beforeEach(async () => {
@@ -18,6 +18,7 @@ describe('PostEditorComponent', () => {
             getPostById: vi.fn(),
             createPost: vi.fn(),
             updatePostById: vi.fn(),
+            deletePostById: vi.fn(),
             suggestTags: vi.fn()
         };
         routerSpy = { navigate: vi.fn() };
@@ -142,6 +143,114 @@ describe('PostEditorComponent', () => {
             // Check that loading was set to true during ngOnInit (via loadPost)
             // and should be false after of() emits.
             expect(component.loading).toBe(false);
+        });
+    });
+
+    describe('Error Handling and Edge Cases', () => {
+        beforeEach(() => {
+            // Mock window interactions
+            vi.spyOn(window, 'alert').mockImplementation(() => { });
+            vi.spyOn(window, 'confirm').mockReturnValue(true);
+        });
+
+        it('should handle loadPost error', () => {
+            const errorResponse = { status: 404, statusText: 'Not Found' };
+            blogServiceSpy.getPostById.mockReturnValue({
+                subscribe: (observer: any) => observer.error(errorResponse)
+            });
+
+            // Trigger load via direct call since ngOnInit mock setup is already done in outer beforeEach
+            component['loadPost'](999);
+
+            expect(component.errorMessage).toBe('Failed to load post');
+            expect(component.loading).toBe(false);
+        });
+
+        it('should handle suggestTags error', () => {
+            component.post.title = 'Title';
+            component.post.content = 'Content';
+            blogServiceSpy.suggestTags.mockReturnValue({
+                subscribe: (observer: any) => observer.error('AI Error')
+            });
+
+            component.suggestTags();
+
+            expect(component.generatingTags).toBe(false);
+            expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Failed to suggest tags'));
+        });
+
+        it('should handle empty suggestTags response', () => {
+            component.post.title = 'Title';
+            component.post.content = 'Content';
+            blogServiceSpy.suggestTags.mockReturnValue(of({ tags: [] }));
+
+            component.suggestTags();
+
+            expect(window.alert).toHaveBeenCalledWith('No tags suggested.');
+        });
+
+        it('should validate inputs before suggestTags', () => {
+            component.post.title = '';
+            component.suggestTags();
+            expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Please fill in'));
+            expect(blogServiceSpy.suggestTags).not.toHaveBeenCalled();
+        });
+
+        it('should limit tags during suggestion', () => {
+            component.post.title = 'Title';
+            component.post.content = 'Content';
+            component.post.tags = ['1', '2', '3', '4', '5']; // Full
+
+            blogServiceSpy.suggestTags.mockReturnValue(of({ tags: ['new'] }));
+
+            component.suggestTags();
+
+            expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Tag limit'));
+            expect(component.post.tags.length).toBe(5);
+        });
+
+        it('should handle save error', () => {
+            component.isEditMode = true;
+            component.currentId = 1;
+            blogServiceSpy.updatePostById.mockReturnValue({
+                subscribe: (observer: any) => observer.error({ error: { detail: 'Save Failed' } })
+            });
+
+            component.onSubmit();
+
+            expect(component.saving).toBe(false);
+            expect(component.errorMessage).toBe('Save Failed');
+        });
+
+        it('should handle delete cancellation', () => {
+            vi.spyOn(window, 'confirm').mockReturnValue(false);
+            component.currentId = 1;
+
+            component.deletePost();
+
+            expect(blogServiceSpy.deletePostById).not.toHaveBeenCalled();
+        });
+
+        it('should handle delete error', () => {
+            component.currentId = 1;
+            blogServiceSpy.deletePostById.mockReturnValue({
+                subscribe: (observer: any) => observer.error('Delete Error')
+            });
+
+            component.deletePost();
+
+            expect(component.errorMessage).toBe('Failed to delete post');
+            expect(component.deleting).toBe(false);
+        });
+
+        it('should alert when adding 6th tag manually', () => {
+            component.post.tags = ['1', '2', '3', '4', '5'];
+            component.newTag = '6';
+
+            component.addTag();
+
+            expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Max 5 tags'));
+            expect(component.post.tags.length).toBe(5);
         });
     });
 });

@@ -47,10 +47,10 @@ async def get_stats(
     """
 
     # Posts Stats
-    total_posts = await db.scalar(select(func.count(Post.id)))
+    total_posts = await db.scalar(select(func.count(Post.id))) or 0
     published_posts = await db.scalar(
         select(func.count(Post.id)).where(Post.published.is_(True))
-    )
+    ) or 0
     draft_posts = total_posts - published_posts
 
     # By Language
@@ -60,7 +60,7 @@ async def get_stats(
     by_lang = {lang: count for lang, count in langs_result.all()}
 
     # Users Stats
-    total_users = await db.scalar(select(func.count(User.id)))
+    total_users = await db.scalar(select(func.count(User.id))) or 0
 
     # Top Tags (Top 5)
     tags_query = (
@@ -70,7 +70,7 @@ async def get_stats(
         .limit(5)
     )
     tags_res = await db.execute(tags_query)
-    top_tags = {row.tag: row.count for row in tags_res.all()}
+    top_tags = {row.tag: int(row.usage_count) for row in tags_res.all()}
 
     # Recent Posts (Top 5)
     recent_query = select(Post).order_by(Post.created_at.desc()).limit(5)

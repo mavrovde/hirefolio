@@ -30,15 +30,15 @@ async def list_tags(
     # Since tags are in an ARRAY column, we need to unnest them to count.
     # PostgreSQL specific query using unnest
     query = (
-        select(func.unnest(Post.tags).label("tag"), func.count(Post.id).label("count"))
+        select(func.unnest(Post.tags).label("tag"), func.count(Post.id).label("usage_count"))
         .group_by("tag")
-        .order_by(text("count DESC"))
+        .order_by(text("usage_count DESC"))
     )
 
     result = await db.execute(query)
     tags = result.all()
 
-    return [TagStat(name=row.tag, count=row.count) for row in tags]
+    return [TagStat(name=row.tag, count=row.usage_count) for row in tags]
 
 
 @router.put("/{old_name}")

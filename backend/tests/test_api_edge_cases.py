@@ -152,3 +152,57 @@ async def test_semantic_search_no_language_filter(client: AsyncClient, mock_embe
         response = await client.get("/api/posts/search/semantic?q=query&lang=")
 
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_create_post_too_many_tags(client: AsyncClient, mock_embedding):
+    """Test creating a post with more than 5 tags."""
+    tags = [f"tag{i}" for i in range(6)]
+    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+        response = await client.post(
+            "/api/posts",
+            json={
+                "title": "Too Many Tags",
+                "slug": "too-many-tags",
+                "content": "Content",
+                "tags": tags,
+                "published": True,
+            },
+        )
+    assert response.status_code == 422
+    # Detailed check might depend on Pydantic version/format
+    assert "Max 5 tags allowed" in response.text
+
+
+@pytest.mark.asyncio
+async def test_update_post_too_many_tags(client: AsyncClient, mock_embedding):
+    """Test updating a post with more than 5 tags."""
+    # Create valid post
+    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+        create_res = await client.post(
+            "/api/posts",
+            json={
+                "title": "Valid Tags",
+                "slug": "valid-tags",
+                "content": "Content",
+                "tags": ["tag1"],
+                "published": True,
+            },
+        )
+    post_id = create_res.json()["id"]
+
+    # Update with too many tags
+    tags = [f"tag{i}" for i in range(6)]
+    response = await client.put(f"/api/posts/{post_id}", json={"tags": tags})
+    assert response.status_code == 422
+    assert "Max 5 tags allowed" in response.text
+
+
+@pytest.mark.asyncio
+async def test_semantic_search_embedding_unavailable(client: AsyncClient):
+    """Test semantic search when embedding service fails (returns None)."""
+    with patch("app.api.posts.get_embedding", return_value=None):
+        response = await client.get("/api/posts/search/semantic?q=query")
+    
+    assert response.status_code == 400
+    assert "Embedding service unavailable" in response.json()["detail"]

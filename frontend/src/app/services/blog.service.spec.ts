@@ -97,4 +97,104 @@ describe('BlogService', () => {
             req.flush(mockResponse);
         });
     });
+
+
+    describe('CRUD Operations', () => {
+        it('should get post by id', () => {
+            const mockPost = { id: 1, title: 'Test' };
+            service.getPostById(1).subscribe(post => {
+                expect(post).toEqual(mockPost as any);
+            });
+
+            const req = httpMock.expectOne(req => req.url.endsWith('/api/posts/1'));
+            expect(req.request.method).toBe('GET');
+            req.flush(mockPost);
+        });
+
+        it('should get post by slug', () => {
+            const mockPost = { slug: 'test' };
+            service.getPost('test').subscribe(post => {
+                expect(post).toEqual(mockPost as any);
+            });
+
+            const req = httpMock.expectOne(req => req.url.endsWith('/api/posts/test'));
+            expect(req.request.method).toBe('GET');
+            req.flush(mockPost);
+        });
+
+        it('should create post', () => {
+            const mockPost = { title: 'New' };
+            service.createPost(mockPost).subscribe(post => {
+                expect(post).toEqual(mockPost as any);
+            });
+
+            const req = httpMock.expectOne(req => req.url.endsWith('/api/posts'));
+            expect(req.request.method).toBe('POST');
+            req.flush(mockPost);
+        });
+
+        it('should update post by id', () => {
+            const mockPost = { id: 1, title: 'Updated' };
+            service.updatePostById(1, mockPost).subscribe(post => {
+                expect(post).toEqual(mockPost as any);
+            });
+
+            const req = httpMock.expectOne(req => req.url.endsWith('/api/posts/1'));
+            expect(req.request.method).toBe('PUT');
+            req.flush(mockPost);
+        });
+
+        it('should delete post by id', () => {
+            service.deletePostById(1).subscribe(res => {
+                expect(res).toBeNull(); // Void return is often null in tests or undefined
+            });
+
+            const req = httpMock.expectOne(req => req.url.endsWith('/api/posts/1'));
+            expect(req.request.method).toBe('DELETE');
+            req.flush(null);
+        });
+    });
+
+    describe('Search', () => {
+        it('should search posts with current language', () => {
+            const query = 'AI';
+            const mockResults = [{ id: 1, relevance: 0.9 }];
+
+            service.searchPosts(query).subscribe(results => {
+                expect(results).toEqual(mockResults as any);
+            });
+
+            const req = httpMock.expectOne(req =>
+                req.url.endsWith('/api/posts/search/semantic') &&
+                req.params.get('q') === query &&
+                req.params.get('lang') === 'en'
+            );
+            expect(req.request.method).toBe('GET');
+            req.flush(mockResults);
+        });
+    });
+
+    describe('Error Handling', () => {
+        it('should propagate 404 errors', () => {
+            service.getPostById(999).subscribe({
+                error: (error) => {
+                    expect(error.status).toBe(404);
+                }
+            });
+
+            const req = httpMock.expectOne(req => req.url.endsWith('/api/posts/999'));
+            req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+        });
+
+        it('should propagate 500 errors', () => {
+            service.createPost({}).subscribe({
+                error: (error) => {
+                    expect(error.status).toBe(500);
+                }
+            });
+
+            const req = httpMock.expectOne(req => req.url.endsWith('/api/posts'));
+            req.flush('Server Error', { status: 500, statusText: 'Server Error' });
+        });
+    });
 });

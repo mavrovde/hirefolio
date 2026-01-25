@@ -1,0 +1,192 @@
+
+> frontend@1.0.20 test
+> ng test --watch=false --coverage
+
+❯ Building...
+✔ Building...
+Initial chunk files                                              | Names                                                         |  Raw size
+spec-app-components-admin-post-editor-post-editor.component.js   | spec-app-components-admin-post-editor-post-editor.component   |  41.89 kB | 
+styles.css                                                       | styles                                                        |  22.28 kB | 
+spec-app-components-admin-post-list-post-list.component.js       | spec-app-components-admin-post-list-post-list.component       |  22.08 kB | 
+chunk-OKU6YDAI.js                                                | -                                                             |  21.68 kB | 
+spec-app-components-admin-dashboard-dashboard.component.js       | spec-app-components-admin-dashboard-dashboard.component       |  20.17 kB | 
+spec-app-components-admin-login-login.component.js               | spec-app-components-admin-login-login.component               |  18.78 kB | 
+chunk-APYATGK2.js                                                | -                                                             |  14.45 kB | 
+spec-app-components-admin-layout-admin-layout.component.js       | spec-app-components-admin-layout-admin-layout.component       |  12.93 kB | 
+chunk-KVCEPR37.js                                                | -                                                             |  11.69 kB | 
+spec-app-components-recommendations-recommendations.component.js | spec-app-components-recommendations-recommendations.component |   9.80 kB | 
+chunk-RFKNBY2X.js                                                | -                                                             |   9.38 kB | 
+chunk-AO66SPN7.js                                                | -                                                             |   8.69 kB | 
+spec-app-components-home-home.component.js                       | spec-app-components-home-home.component                       |   7.54 kB | 
+chunk-ZKE3NI6M.js                                                | -                                                             |   5.87 kB | 
+chunk-ZNRIFFIO.js                                                | -                                                             |   5.41 kB | 
+spec-app-services-auth.service.js                                | spec-app-services-auth.service                                |   4.76 kB | 
+chunk-5JNFKI3X.js                                                | -                                                             |   4.25 kB | 
+chunk-CGZBV6BD.js                                                | -                                                             |   4.07 kB | 
+spec-app-components-blog-blog.component.js                       | spec-app-components-blog-blog.component                       |   3.65 kB | 
+chunk-JTD4VAYV.js                                                | -                                                             |   3.40 kB | 
+spec-app-services-language.service.js                            | spec-app-services-language.service                            |   3.06 kB | 
+spec-app-services-blog.service.js                                | spec-app-services-blog.service                                |   2.94 kB | 
+chunk-PVNAFVFX.js                                                | -                                                             |   2.86 kB | 
+spec-app-services-profile.service.js                             | spec-app-services-profile.service                             |   2.81 kB | 
+chunk-MLXR373E.js                                                | -                                                             |   2.77 kB | 
+spec-app-app.component.js                                        | spec-app-app.component                                        |   2.33 kB | 
+spec-app-components-header-header.component.js                   | spec-app-components-header-header.component                   |   2.28 kB | 
+spec-app-guards-auth.guard.js                                    | spec-app-guards-auth.guard                                    |   2.20 kB | 
+spec-app-components-education-education.component.js             | spec-app-components-education-education.component             |   2.13 kB | 
+spec-app-components-experience-experience.component.js           | spec-app-components-experience-experience.component           |   2.11 kB | 
+chunk-77SJUP4F.js                                                | -                                                             |   2.04 kB | 
+chunk-R2N74T6V.js                                                | -                                                             |   1.91 kB | 
+spec-app-components-hero-hero.component.js                       | spec-app-components-hero-hero.component                       |   1.75 kB | 
+spec-app-components-about-about.component.js                     | spec-app-components-about-about.component                     |   1.67 kB | 
+chunk-YVFPALAW.js                                                | -                                                             |   1.64 kB | 
+spec-app-components-skills-skills.component.js                   | spec-app-components-skills-skills.component                   |   1.62 kB | 
+chunk-7FEMEYLN.js                                                | -                                                             |   1.45 kB | 
+spec-app-pipes-translate.pipe.js                                 | spec-app-pipes-translate.pipe                                 |   1.38 kB | 
+spec-app-services-analytics.service.js                           | spec-app-services-analytics.service                           |   1.33 kB | 
+spec-app-components-contact-contact.component.js                 | spec-app-components-contact-contact.component                 |   1.33 kB | 
+init-testbed.js                                                  | init-testbed                                                  |   1.21 kB | 
+spec-app-components-stats-stats.component.js                     | spec-app-components-stats-stats.component                     |   1.16 kB | 
+chunk-MJPPYCGU.js                                                | -                                                             |   1.01 kB | 
+chunk-XYGFW6CI.js                                                | -                                                             | 777 bytes | 
+chunk-RNBN7AFM.js                                                | -                                                             | 216 bytes | 
+
+                                                                 | Initial total                                                 | 298.74 kB
+
+Application bundle generation complete. [1.220 seconds] - 2026-01-25T12:25:43.041Z
+
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/sergii.mavrov/Play/mavrov.de/frontend[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+[90mstdout[2m | src/app/components/admin/dashboard/dashboard.component.spec.ts[2m > [22m[2mDashboardComponent[2m > [22m[2mshould create
+[22m[39mDashboard: loadStats called
+Dashboard: Stats received {
+  posts: { total: [33m10[39m, published: [33m8[39m, drafts: [33m2[39m, by_language: { en: [33m5[39m, de: [33m5[39m } },
+  users: [33m1[39m,
+  subscribers: [33m0[39m,
+  visitors: [32m'0'[39m,
+  top_tags: { angular: [33m5[39m },
+  recent_posts: [],
+  system_health: { database: [33mtrue[39m, ai_service: [33mtrue[39m }
+}
+Dashboard: Stats request completed
+
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/hero/hero.component.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 84[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/recommendations/recommendations.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 83[2mms[22m[39m
+[90mstdout[2m | src/app/components/admin/dashboard/dashboard.component.spec.ts[2m > [22m[2mDashboardComponent[2m > [22m[2mshould load stats correctly
+[22m[39mDashboard: loadStats called
+Dashboard: Stats received {
+  posts: { total: [33m10[39m, published: [33m8[39m, drafts: [33m2[39m, by_language: { en: [33m5[39m, de: [33m5[39m } },
+  users: [33m1[39m,
+  subscribers: [33m0[39m,
+  visitors: [32m'0'[39m,
+  top_tags: { angular: [33m5[39m },
+  recent_posts: [],
+  system_health: { database: [33mtrue[39m, ai_service: [33mtrue[39m }
+}
+Dashboard: Stats request completed
+
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/about/about.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 71[2mms[22m[39m
+[90mstdout[2m | src/app/components/admin/dashboard/dashboard.component.spec.ts[2m > [22m[2mDashboardComponent[2m > [22m[2mshould handle error when loading stats
+[22m[39mDashboard: loadStats called
+
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/education/education.component.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 117[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/admin/dashboard/dashboard.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 94[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/experience/experience.component.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 139[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/admin/post-list/post-list.component.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 147[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/admin/layout/admin-layout.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 140[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/admin/login/login.component.spec.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 138[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/services/blog.service.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/skills/skills.component.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/stats/stats.component.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/header/header.component.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 145[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/services/auth.service.spec.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/services/language.service.spec.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/services/profile.service.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/services/analytics.service.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/app.component.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/pipes/translate.pipe.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/home/home.component.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 101[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/contact/contact.component.spec.ts [2m([22m[2m1 test[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/admin/post-editor/post-editor.component.spec.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 232[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/guards/auth.guard.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[43m frontend [49m[39m src/app/components/blog/blog.component.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 884[2mms[22m[39m
+     [33m[2m✓[22m[39m should clear search [33m 409[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m24 passed[39m[22m[90m (24)[39m
+[2m      Tests [22m [1m[32m103 passed[39m[22m[90m (103)[39m
+[2m   Start at [22m 13:25:43
+[2m   Duration [22m 2.92s[2m (transform 1.41s, setup 5.82s, import 3.18s, tests 2.50s, environment 25.88s)[22m
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   74.92 |    81.62 |   62.56 |   76.61 |                   
+ app               |     100 |      100 |     100 |     100 |                   
+  app.component.ts |     100 |      100 |     100 |     100 |                   
+ ...mponents/about |     100 |      100 |     100 |     100 |                   
+  ...omponent.html |     100 |      100 |     100 |     100 |                   
+  ....component.ts |     100 |      100 |     100 |     100 |                   
+ ...dmin/dashboard |   92.85 |    92.85 |   88.88 |   98.41 |                   
+  ...omponent.html |    90.8 |      100 |       0 |   97.61 | 5                 
+  ....component.ts |     100 |    91.66 |     100 |     100 | 52                
+ ...s/admin/layout |   98.27 |      100 |      80 |     100 |                   
+  ...omponent.html |   97.82 |      100 |       0 |     100 |                   
+  ....component.ts |     100 |      100 |     100 |     100 |                   
+ ...ts/admin/login |   97.33 |    84.37 |   66.66 |     100 |                   
+  ...omponent.html |   95.65 |       50 |       0 |     100 | 12-18,30          
+  ....component.ts |     100 |      100 |     100 |     100 |                   
+ ...in/post-editor |   73.22 |    66.99 |   38.46 |   76.54 |                   
+  ...omponent.html |   77.08 |    66.66 |       0 |      88 | ...55-58,83-85,99 
+  ....component.ts |   67.36 |    67.24 |   65.21 |   66.66 | ...48-157,180-210 
+ ...dmin/post-list |   94.06 |      100 |   84.61 |   98.64 |                   
+  ...omponent.html |   91.35 |      100 |       0 |   97.61 | 10                
+  ....component.ts |     100 |      100 |     100 |     100 |                   
+ ...omponents/blog |    52.7 |      100 |      50 |    60.2 |                   
+  ...omponent.html |   42.05 |      100 |       0 |   49.18 | ...55,75-76,85-93 
+  ....component.ts |   80.48 |      100 |   76.92 |   78.37 | 34-42,59-60       
+ ...onents/contact |     100 |      100 |     100 |     100 |                   
+  ...omponent.html |     100 |      100 |     100 |     100 |                   
+  ....component.ts |     100 |      100 |     100 |     100 |                   
+ ...ents/education |   46.96 |      100 |     100 |   51.35 |                   
+  ...omponent.html |   41.66 |      100 |     100 |   48.57 | 16-22,35-47       
+  ....component.ts |     100 |      100 |     100 |     100 |                   
+ ...nts/experience |      25 |    71.42 |     100 |   23.91 |                   
+  ...omponent.html |   17.74 |        0 |     100 |   20.45 | 18-66             
+  ....component.ts |     100 |      100 |     100 |     100 |                   
+ ...ponents/header |   89.36 |    91.66 |      50 |   96.42 |                   
+  ...omponent.html |    86.2 |      100 |       0 |     100 |                   
+  ....component.ts |   94.44 |    91.66 |      80 |    92.3 | 45                
+ ...omponents/hero |   72.09 |    83.33 |   33.33 |   68.57 |                   
+  ...omponent.html |   83.33 |      100 |       0 |   84.61 | 29,41-45          
+  ....component.ts |   46.15 |    83.33 |      50 |   22.22 | 18-25             
+ ...omponents/home |     100 |      100 |     100 |     100 |                   
+  ....component.ts |     100 |      100 |     100 |     100 |                   
+ ...ecommendations |   14.28 |       60 |     100 |    9.52 |                   
+  ...omponent.html |       0 |      100 |     100 |       0 | 1-34              
+  ....component.ts |   83.33 |       60 |     100 |     100 | 14                
+ ...ponents/skills |   84.21 |      100 |     100 |    90.9 |                   
+  ...omponent.html |   76.92 |      100 |     100 |   88.88 | 11                
+  ....component.ts |     100 |      100 |     100 |     100 |                   
+ ...mponents/stats |   80.43 |    72.22 |      60 |   68.96 |                   
+  ...omponent.html |     100 |      100 |     100 |     100 |                   
+  ....component.ts |   66.66 |    72.22 |      60 |   59.09 | 34-49,56          
+ app/guards        |   53.33 |       50 |   33.33 |   53.33 |                   
+  auth.guard.ts    |   53.33 |       50 |   33.33 |   53.33 | 17-27             
+ app/pipes         |   94.44 |     92.3 |     100 |   93.33 |                   
+  ...slate.pipe.ts |   94.44 |     92.3 |     100 |   93.33 | 21                
+ app/services      |   78.86 |    73.84 |   69.04 |   75.96 |                   
+  ...cs.service.ts |   92.85 |    61.53 |   66.66 |   91.66 | 36                
+  auth.service.ts  |     100 |    84.61 |     100 |     100 | 103               
+  blog.service.ts  |   54.54 |       75 |   27.27 |   48.27 | 56-97             
+  ...ge.service.ts |      75 |    66.66 |      75 |   71.42 | 46-53             
+  ...le.service.ts |     100 |      100 |     100 |     100 |                   
+  stats.service.ts |   42.85 |       60 |       0 |      25 | 34-39             
+ app/testing       |   91.66 |      100 |      75 |    87.5 |                   
+  ...ge.service.ts |    87.5 |      100 |   66.66 |   83.33 | 14                
+  ...slate.pipe.ts |     100 |      100 |     100 |     100 |                   
+ environments      |     100 |      100 |     100 |     100 |                   
+  environment.ts   |     100 |      100 |     100 |     100 |                   
+-------------------|---------|----------|---------|---------|-------------------

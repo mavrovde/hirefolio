@@ -74,3 +74,32 @@ async def test_stats_endpoint_unauthorized(client: AsyncClient):
     # Ideally use a context manager or let other tests re-setup?
     # conftest fixture likely sets it.
     # Let's hope client fixture setup handles re-applying it for next test.
+
+
+@pytest.mark.asyncio
+async def test_stats_ai_service_health_check(client: AsyncClient):
+    """Test AI service health check logic."""
+    from unittest.mock import patch, AsyncMock, MagicMock
+
+    # Mock success
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    
+    # We need to mock httpx.AsyncClient context manager
+    mock_client_instance = AsyncMock()
+    mock_client_instance.get.return_value = mock_response
+    mock_client_instance.__aenter__.return_value = mock_client_instance
+    mock_client_instance.__aexit__.return_value = None
+
+    with patch("httpx.AsyncClient", return_value=mock_client_instance):
+        response = await client.get("/api/stats")
+        assert response.status_code == 200
+        assert response.json()["system_health"]["ai_service"] is True
+
+    # Mock failure (exception)
+    mock_client_instance.get.side_effect = Exception("Connection error")
+    with patch("httpx.AsyncClient", return_value=mock_client_instance):
+        response = await client.get("/api/stats")
+        assert response.status_code == 200
+        assert response.json()["system_health"]["ai_service"] is False
+
