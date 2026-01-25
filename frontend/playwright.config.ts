@@ -9,7 +9,7 @@ export default defineConfig({
     workers: process.env.CI ? 1 : undefined,
     reporter: 'html',
     use: {
-        baseURL: 'http://frontend:80', // Access frontend container via docker network
+        baseURL: process.env.BASE_URL || 'http://frontend:80', // Access frontend container via docker network
         trace: 'on-first-retry',
         screenshot: 'on',
         video: 'on-first-retry',
