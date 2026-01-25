@@ -15,24 +15,27 @@ echo "$new_version" > VERSION
 
 # Update backend/app/main.py
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' "s/version=\"$current_version\"/version=\"$new_version\"/" backend/app/main.py
+  sed -i '' "s/version=\"[0-9.]*\"/version=\"$new_version\"/" backend/app/main.py
 else
-  sed -i "s/version=\"$current_version\"/version=\"$new_version\"/" backend/app/main.py
+  sed -i "s/version=\"[0-9.]*\"/version=\"$new_version\"/" backend/app/main.py
 fi
 
 # Update package.json
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" frontend/package.json
+  sed -i '' "s/\"version\": \"[0-9.]*\"/\"version\": \"$new_version\"/" frontend/package.json
 else
-  sed -i "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" frontend/package.json
+  sed -i "s/\"version\": \"[0-9.]*\"/\"version\": \"$new_version\"/" frontend/package.json
 fi
 
-# Update .env IMAGE_TAG using REGEX to handle desync
-# Matches IMAGE_TAG=... and replaces with IMAGE_TAG=new_version
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
+# Update .env IMAGE_TAG if it exists
+if [ -f .env ]; then
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
+  else
+    sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
+  fi
 else
-  sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
+  echo ".env file not found, skipping IMAGE_TAG update"
 fi
 
 echo "Version updated to $new_version"
