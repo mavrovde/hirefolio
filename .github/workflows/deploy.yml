@@ -159,7 +159,20 @@ jobs:
               working-directory: ./frontend
               run: npm ci
 
+            - name: Get installed Playwright version
+              id: playwright-version
+              working-directory: ./frontend
+              run: echo "PLAYWRIGHT_VERSION=$(npm ls @playwright/test | grep @playwright/test | sed 's/.*@//')" >> $GITHUB_ENV
+
+            - name: Cache Playwright Browsers
+              id: cache-playwright
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/ms-playwright
+                  key: playwright-browsers-${{ env.PLAYWRIGHT_VERSION }}
+
             - name: Install Playwright Browsers
+              if: steps.cache-playwright.outputs.cache-hit != 'true'
               working-directory: ./frontend
               run: npx playwright install --with-deps
 
@@ -324,6 +337,9 @@ jobs:
                       type=sha,prefix=
                       type=raw,value=latest,enable={{is_default_branch}}
                       type=raw,value=${{ steps.get_version.outputs.version }}
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
             - name: Build and push Backend
               uses: docker/build-push-action@v5
               with:
@@ -331,6 +347,8 @@ jobs:
                   push: true
                   tags: ${{ steps.meta-backend.outputs.tags }}
                   labels: ${{ steps.meta-backend.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
 
     build-push-frontend:
         name: Build & Push Frontend
@@ -359,6 +377,9 @@ jobs:
                       type=sha,prefix=
                       type=raw,value=latest,enable={{is_default_branch}}
                       type=raw,value=${{ steps.get_version.outputs.version }}
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
             - name: Build and push Frontend
               uses: docker/build-push-action@v5
               with:
@@ -366,3 +387,5 @@ jobs:
                   push: true
                   tags: ${{ steps.meta-frontend.outputs.tags }}
                   labels: ${{ steps.meta-frontend.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
