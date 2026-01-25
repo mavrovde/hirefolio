@@ -25,7 +25,7 @@ async def test_suggest_tags_unauthorized(client: AsyncClient):
     # Create a new client without auth headers (default client in conftest usually has them)
     # We'll just manually clear headers if the fixture sets them, or use a fresh client.
     # Assuming 'client' fixture is authorized admin user based on other tests.
-    
+
     # We can use a fresh client:
     async with AsyncClient(base_url="http://test") as ac:
         response = await ac.post(
@@ -56,4 +56,3 @@ async def test_suggest_tags_validation(client: AsyncClient):
         json={"title": "Only Title"},  # Missing content
     )
     assert response.status_code == 422
-
