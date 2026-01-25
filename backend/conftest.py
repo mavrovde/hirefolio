@@ -15,7 +15,9 @@ import os
 from app.config import settings
 
 # Test database URL - prioritize TEST_DATABASE_URL (local), then DATABASE_URL (CI), then fallback
-DATABASE_URL = os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL") or settings.database_url
+DATABASE_URL = (
+    os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL") or settings.database_url
+)
 
 # Create test engine
 test_engine = create_async_engine(
