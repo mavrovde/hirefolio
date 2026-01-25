@@ -91,6 +91,23 @@ services:
     networks:
       - app-network
 
+  roundcube:
+    image: roundcube/roundcubemail:latest
+    container_name: roundcube
+    restart: always
+    ports:
+      - "8081:80"
+    environment:
+      - ROUNDCUBEMAIL_DEFAULT_HOST=mail
+      - ROUNDCUBEMAIL_SMTP_SERVER=mail
+      - ROUNDCUBEMAIL_SMTP_PORT=587
+    volumes:
+      - roundcube_data:/var/www/html/db
+    depends_on:
+      - mailserver
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
@@ -101,3 +118,4 @@ volumes:
   mail_data:
   mail_state:
   mail_config:
+  roundcube_data:
