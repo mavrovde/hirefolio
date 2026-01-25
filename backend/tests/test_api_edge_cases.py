@@ -203,6 +203,6 @@ async def test_semantic_search_embedding_unavailable(client: AsyncClient):
     """Test semantic search when embedding service fails (returns None)."""
     with patch("app.api.posts.get_embedding", return_value=None):
         response = await client.get("/api/posts/search/semantic?q=query")
-    
+
     assert response.status_code == 400
     assert "Embedding service unavailable" in response.json()["detail"]

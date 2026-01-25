@@ -10,14 +10,15 @@ from app.database import async_session
 from app.models.user import User
 from app.services.auth import get_password_hash
 
+
 async def seed_e2e_user():
     async with async_session() as session:
         print("Seeding E2E admin user...")
         result = await session.execute(select(User).where(User.username == "admin"))
         user = result.scalar_one_or_none()
-        
+
         hashed = get_password_hash("admin")
-        
+
         if user:
             print("Updating existing admin user...")
             user.hashed_password = hashed
@@ -30,12 +31,13 @@ async def seed_e2e_user():
                 email="admin@mavrov.de",
                 hashed_password=hashed,
                 is_admin=True,
-                is_active=True
+                is_active=True,
             )
             session.add(user)
-            
+
         await session.commit()
         print("E2E user 'admin' ready.")
+
 
 if __name__ == "__main__":
     asyncio.run(seed_e2e_user())

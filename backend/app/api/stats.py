@@ -48,9 +48,10 @@ async def get_stats(
 
     # Posts Stats
     total_posts = await db.scalar(select(func.count(Post.id))) or 0
-    published_posts = await db.scalar(
-        select(func.count(Post.id)).where(Post.published.is_(True))
-    ) or 0
+    published_posts = (
+        await db.scalar(select(func.count(Post.id)).where(Post.published.is_(True)))
+        or 0
+    )
     draft_posts = total_posts - published_posts
 
     # By Language

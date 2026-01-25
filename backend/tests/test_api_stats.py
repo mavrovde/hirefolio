@@ -84,7 +84,7 @@ async def test_stats_ai_service_health_check(client: AsyncClient):
     # Mock success
     mock_response = MagicMock()
     mock_response.status_code = 200
-    
+
     # We need to mock httpx.AsyncClient context manager
     mock_client_instance = AsyncMock()
     mock_client_instance.get.return_value = mock_response
@@ -102,4 +102,3 @@ async def test_stats_ai_service_health_check(client: AsyncClient):
         response = await client.get("/api/stats")
         assert response.status_code == 200
         assert response.json()["system_health"]["ai_service"] is False
-
