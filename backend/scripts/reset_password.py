@@ -13,7 +13,7 @@ from app.services.auth import get_password_hash
 
 async def reset_password():
     async with async_session() as session:
-        print("Resetting admin password to 'MavrovSecure2026!'...")
+        print("Resetting admin password...")
         hashed_password = get_password_hash("MavrovSecure2026!")
 
         # Update proper

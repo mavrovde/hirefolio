@@ -20,9 +20,12 @@ async def verify_admin_password():
             print("Admin user not found.")
             return
 
-        password = "MavrovSecure2026!"
+        password = os.getenv("ADMIN_PASSWORD", "MavrovSecure2026!")
         is_valid = verify_password(password, user.hashed_password)
-        print(f"Password verification result: {is_valid}")
+        if is_valid:
+            print("Password verification: SUCCESS")
+        else:
+            print("Password verification: FAILED")
 
 
 if __name__ == "__main__":
