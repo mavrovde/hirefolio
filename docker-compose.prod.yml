@@ -116,6 +116,20 @@ services:
     depends_on:
       - frontend
       - roundcube
+      - open-webui
+    networks:
+      - app-network
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: always
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - open-webui_data:/app/backend/data
+    depends_on:
+      - ollama
     networks:
       - app-network
 
@@ -130,3 +144,4 @@ volumes:
   mail_state:
   mail_config:
   roundcube_data:
+  open-webui_data:

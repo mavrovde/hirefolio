@@ -69,6 +69,20 @@ services:
     networks:
       - app-network
 
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - open-webui_data:/app/backend/data
+    depends_on:
+      - ollama
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
@@ -76,3 +90,4 @@ networks:
 volumes:
   postgres_data:
   ollama_data:
+  open-webui_data:
