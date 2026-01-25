@@ -175,6 +175,33 @@ jobs:
               working-directory: ./frontend
               run: npx playwright install --with-deps
 
+            - name: Create Ollama model cache directory
+              run: mkdir -p ollama-models
+
+            - name: Cache Ollama models
+              id: cache-ollama
+              uses: actions/cache@v4
+              with:
+                  path: ollama-models
+                  key: ollama-models-v1
+
+            - name: Cache Docker Images
+              id: cache-docker-ollama
+              uses: actions/cache@v4
+              with:
+                  path: ollama-image.tar
+                  key: docker-ollama-latest
+
+            - name: Load Cached Ollama Image
+              if: steps.cache-docker-ollama.outputs.cache-hit == 'true'
+              run: docker load -i ollama-image.tar
+
+            - name: Pull and Save Ollama Image
+              if: steps.cache-docker-ollama.outputs.cache-hit != 'true'
+              run: |
+                  docker pull ollama/ollama:latest
+                  docker save ollama/ollama:latest -o ollama-image.tar
+
             - name: Start Services (DB)
               run: |
                   docker run -d \
@@ -190,8 +217,13 @@ jobs:
 
             - name: Start AI Service (Ollama)
               run: |
-                  # Start Ollama container
-                  docker run -d --name ollama -p 11434:11434 ollama/ollama:latest
+                  # Start Ollama container with volume mount for caching
+                  # We cache the models directory to avoid re-pulling models
+                  # We explicitely set OLLAMA_MODELS to match the volume mount
+                  docker run -d --name ollama -p 11434:11434 \
+                    -e OLLAMA_MODELS=/root/.ollama/models \
+                    -v ${{ github.workspace }}/ollama-models:/root/.ollama \
+                    ollama/ollama:latest
 
                   # Wait for Ollama to be responsive
                   timeout 30s bash -c 'until curl -s http://localhost:11434 > /dev/null; do sleep 1; done'
@@ -201,7 +233,6 @@ jobs:
                   docker exec ollama ollama pull nomic-embed-text
                   docker exec ollama ollama pull tinyllama
 
-                  # Pre-warm the model to load it into memory (avoids timeout during first test)
                   echo "Pre-warming TinyLlama..."
                   docker exec ollama curl -X POST http://localhost:11434/api/generate -d '{"model": "tinyllama", "prompt": "hi", "stream": false}'
 

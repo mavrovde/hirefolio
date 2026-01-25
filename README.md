@@ -1,44 +1,52 @@
 # mavrov.de
 
-Personal portfolio website with blog functionality powered by semantic search using local AI embeddings.
+Personal portfolio website with blog functionality powered by semantic search and local AI tag generation.
 
 ## 🚀 Features
 
 - **Modern Portfolio**: Showcase experience, skills, education, and recommendations
-- **Multilingual**: Full support for English and German
-- **Blog with Semantic Search**: AI-powered content discovery using Ollama embeddings
-- **Local AI**: Zero-cost embeddings with `nomic-embed-text` model
+- **Multilingual**: Full support for English and German with real-time switching
+- **Blog with Semantic Search**: AI-powered content discovery using `nomic-embed-text` embeddings
+- **AI Tag Generation**: Auto-suggest tags for posts using `tinyllama` model
 - **Responsive Design**: Works seamlessly on desktop and mobile
+- **Admin Dashboard**: Secure interface for managing posts (rich editor, drafting, publishing)
 - **Type-Safe**: Full TypeScript/Python type coverage
 
 ## 🏗️ Architecture
 
 ### Frontend
-- **Framework**: Angular 18+ (Standalone Components)
-- **Styling**: Vanilla CSS with modern design patterns
+- **Framework**: Angular 18+ (Standalone Components, Signals)
+- **Styling**: Vanilla CSS (Tailwind concepts), Dark/Light mode
 - **State Management**: RxJS Observables
-- **Testing**: Vitest with comprehensive coverage
-- **i18n**: Custom translation service with language switching
+- **Testing**: Vitest (Unit), Playwright (E2E)
+- **i18n**: Custom translation service
 
 ### Backend
-- **Framework**: FastAPI (Python 3.11+)
-- **Database**: PostgreSQL with pgvector extension
-- **Embeddings**: Ollama with nomic-embed-text (768 dimensions)
+- **Framework**: FastAPI (Python 3.13+)
+- **Database**: PostgreSQL 16 with `pgvector` extension
+- **AI**: Ollama (Local LLM & Embeddings)
+    - Embeddings: `nomic-embed-text`
+    - Logic/Text: `tinyllama`
 - **ORM**: SQLAlchemy 2.0 (async)
-- **Testing**: pytest with >80% coverage
+- **Testing**: pytest (High coverage >89%)
 
-### Infrastructure
-- **Containerization**: Docker/Podman with docker-compose
-- **Services**: PostgreSQL, Ollama, Backend API
-- **Development**: Hot reload for both frontend and backend
+### CI/CD Pipeline
+- **Platform**: GitHub Actions
+- **Quality Gates**:
+    - Linting (Ruff, ESLint)
+    - Type Checking (MyPy)
+    - Security Scanning (Bandit)
+    - Unit Tests (Frontend & Backend)
+    - E2E Tests (Playwright with real Ollama integration)
+- **Optimization**: Aggressive caching for Docker images, AI models, and browsers
 
 ## 📋 Prerequisites
 
-- **Node.js** 18+ and npm
-- **Python** 3.11+
+- **Node.js** 20+
+- **Python** 3.13+
 - **PostgreSQL** 16+
-- **Docker/Podman** for containerized services
-- **Git** for version control
+- **Docker/Podman** (Recommended for local dev)
+- **Ollama** (If running locally without Docker)
 
 ## 🚀 Quick Start
 
@@ -49,54 +57,46 @@ git clone <repository-url>
 cd mavrov.de
 ```
 
-### 2. Start Services
+### 2. Start Everything (Docker)
+
+The easiest way to run the full stack (Frontend, Backend, DB, Ollama):
 
 ```bash
-# Start PostgreSQL, Ollama, and Backend
-# Start services using the helper script (auto-detects Docker/Podman)
+# Start all services
 ./manage.sh start
-
-# Or restart services cleanly
-./manage.sh restart
-
-# Build and start
-./manage.sh rebuild
 
 # View logs
 ./manage.sh logs
+
+# Stop services
+./manage.sh stop
 ```
 
-### 3. Backend Setup
+### 3. Manual Setup (Local Dev)
+
+#### Backend
 
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate
 pip install -r requirements.txt
 
-# Create database (if not using Docker)
-createdb mavrov
+# Start DB (using Docker is easiest for PGVector)
+docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres pgvector/pgvector:pg16
 
-# Run migrations (if needed)
+# Run Migrations
 alembic upgrade head
 
-# Create sample blog posts
-python scripts/create_sample_posts.py
+# Start Server
+uvicorn app.main:app --reload
 ```
 
-### 4. Frontend Setup
+#### Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm start
 ```
 
@@ -109,20 +109,30 @@ npm start
 
 ## 🧪 Testing
 
-See [README_TESTING.md](README_TESTING.md) for comprehensive testing guide.
+We verify the application at multiple levels:
 
-### Quick Test Commands
+### 1. Unit & Integration
+```bash
+# Backend
+cd backend && pytest
+
+# Frontend
+cd frontend && npm test
+```
+
+### 2. End-to-End (E2E)
+Our E2E suite runs in a fully isolated testing environment (with dedicated DB and AI models).
 
 ```bash
-# Backend tests
-cd backend
-pytest -v
-pytest --cov=app --cov-report=html
-
-# Frontend tests
 cd frontend
-npm test
-npm test -- --coverage
+npx playwright test
+```
+
+### 3. Verification Script
+Run the entire test suite (Lint, Type Check, Unit, E2E) in one go:
+
+```bash
+./verify_all.sh
 ```
 
 ## 📁 Project Structure
@@ -331,10 +341,10 @@ This project is private and proprietary.
 
 ## 🗺️ Roadmap
 
-- [ ] Blog management admin interface
-- [ ] User authentication and authorization
-- [ ] Rich text editor for blog posts
-- [ ] Image upload and management
+- [x] Blog management admin interface
+- [x] User authentication and authorization (Admin only)
+- [x] AI Tag Suggestions
+- [ ] Image upload and management (Next priority)
 - [ ] RSS feed generation
 - [ ] SEO optimization
 - [ ] Analytics dashboard
