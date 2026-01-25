@@ -238,6 +238,10 @@ jobs:
                   docker exec ollama ollama pull nomic-embed-text
                   docker exec ollama ollama pull tinyllama
 
+                  # Fix permissions for the mounted volume so runner can cache it
+                  # The files were created by root inside the container
+                  sudo chown -R $USER:$USER ${{ github.workspace }}/ollama-models
+
                   echo "Pre-warming TinyLlama..."
                   docker exec ollama ollama run tinyllama "hi"
 
