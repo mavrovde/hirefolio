@@ -1,20 +1,16 @@
-import asyncio
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
+import os
 
 from app.database import Base, get_db
 from app.main import app
-
-
-import os
-
 from app.config import settings
 
-# Test database URL - prioritize TEST_DATABASE_URL (local), then DATABASE_URL (CI), then fallback
+# Test database URL
 DATABASE_URL = (
     os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL") or settings.database_url
 )
@@ -33,31 +29,24 @@ test_async_session = async_sessionmaker(
 )
 
 
-@pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create a fresh database session for each test."""
+    """Create a fresh database session for each test using a clean slate strategy."""
+    # 1. Reset Database State (Brute force stability to avoid DBAPIError)
     async with test_engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
+    # 2. Provide a new session
     async with test_async_session() as session:
         yield session
-        await session.rollback()
+        await session.close()
 
 
 @pytest.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create a test client with overridden database and auth dependencies."""
-
     from app.services.auth import (
         get_current_admin_user,
         get_current_user_optional,
@@ -81,6 +70,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides[get_current_user] = override_auth
 
     from httpx import ASGITransport
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
@@ -90,7 +80,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture
 def mock_embedding():
-    """Return a mock embedding vector (768 dimensions for nomic-embed-text)."""
+    """Return a mock embedding vector (768 dimensions)."""
     return [0.1] * 768
 
 

@@ -30,7 +30,10 @@ async def test_suggest_tags_unauthorized():
 
     # We can use a fresh client:
     from httpx import ASGITransport
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         response = await ac.post(
             "/api/posts/suggest-tags",
             json={"title": "Test", "content": "Test"},

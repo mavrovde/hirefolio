@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import String, Text, DateTime, Boolean, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
@@ -6,6 +6,10 @@ from pgvector.sqlalchemy import Vector
 
 from app.database import Base
 from app.config import settings
+
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 
 class Post(Base):
@@ -20,9 +24,11 @@ class Post(Base):
     language: Mapped[str] = mapped_column(String(2), default="en", index=True)
     published: Mapped[bool] = mapped_column(Boolean, default=False)
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
 
     # Vector embedding for semantic search

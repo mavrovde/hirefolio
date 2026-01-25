@@ -14,6 +14,7 @@ docker-compose up -d db
 docker-compose run --rm --build backend bash -c "
     echo 'Installing Dev Dependencies...' && pip install -r requirements-dev.txt && \
     echo 'Running Lint...' && ruff check . && \
+    echo 'Running Format Check...' && ruff format . --check && \
     echo 'Running Type Check...' && mypy app --ignore-missing-imports --no-error-summary && \
     echo 'Running Security Check...' && bandit -r app -ll --skip B101 && \
     echo 'Running Tests...' && pytest --cov=app --cov-report=term-missing
@@ -37,11 +38,23 @@ echo "e2e: 🎭 Running E2E Tests..."
 # Ensure full stack is running
 echo "Starting full stack..."
 docker-compose up -d --build backend frontend
-# Wait for health (simple wait for now, ideal would be healthcheck)
-echo "Waiting for services to be ready..."
-sleep 15
+# Wait for health with timeouts instead of fixed sleeps
+echo "Waiting for Backend to be ready..."
+timeout 30s bash -c "until curl -s http://localhost:8000/api/health > /dev/null; do sleep 1; done"
+if [ $? -ne 0 ]; then
+    echo "Backend failed to start"
+    exit 1
+fi
+
+echo "🔄 Restarting Frontend to ensure fresh DNS resolution..."
 docker-compose restart frontend
-sleep 10
+
+echo "Waiting for Frontend to be ready..."
+timeout 60s bash -c "until curl -s http://localhost:4200 > /dev/null; do sleep 1; done"
+if [ $? -ne 0 ]; then
+    echo "Frontend failed to start"
+    exit 1
+fi
 
 echo "🌱 Seeding E2E data..."
 docker-compose exec -T backend python scripts/seed_e2e_user.py

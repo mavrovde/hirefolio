@@ -3,13 +3,13 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
     testDir: './e2e',
-    fullyParallel: true,
+    fullyParallel: false, // Avoid race conditions on shared DB
     forbidOnly: !!process.env.CI,
-    retries: process.env.CI ? 2 : 0,
-    workers: process.env.CI ? 1 : undefined,
+    retries: 2, // Always retry to handle flakiness
+    workers: 1, // Run sequentially for stability
     reporter: 'html',
     use: {
-        baseURL: process.env.BASE_URL || 'http://frontend:80', // Access frontend container via docker network
+        baseURL: process.env.BASE_URL || 'http://localhost:4200', // Default to local dev, override for Docker
         trace: 'on-first-retry',
         screenshot: 'on',
         video: 'on-first-retry',
