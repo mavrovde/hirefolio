@@ -28,12 +28,12 @@ async def test_suggest_tags_unauthorized(client: AsyncClient):
     
     # We can use a fresh client:
     async with AsyncClient(base_url="http://test") as ac:
-         response = await ac.post(
+        response = await ac.post(
             "/api/posts/suggest-tags",
             json={"title": "Test", "content": "Test"},
         )
-         # Should be 401 Unauthorized
-         assert response.status_code == 401
+        # Should be 401 Unauthorized
+        assert response.status_code == 401
 
 
 @pytest.mark.asyncio
