@@ -29,7 +29,8 @@ async def test_suggest_tags_unauthorized():
     # Assuming 'client' fixture is authorized admin user based on other tests.
 
     # We can use a fresh client:
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    from httpx import ASGITransport
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.post(
             "/api/posts/suggest-tags",
             json={"title": "Test", "content": "Test"},

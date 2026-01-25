@@ -116,9 +116,9 @@ jobs:
         run: |
           pytest -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
-          file: ./backend/coverage.xml
+          files: ./backend/coverage.xml
           flags: backend
   backend-build-check:
     name: Backend Build Check
@@ -129,7 +129,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build Backend (Dry Run)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: false
@@ -157,7 +157,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
@@ -333,7 +333,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
@@ -352,7 +352,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
@@ -362,9 +362,9 @@ jobs:
         working-directory: ./frontend
         run: npm test -- --watch=false --coverage
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
-          file: ./frontend/coverage/lcov.info
+          files: ./frontend/coverage/lcov.info
           flags: frontend
           fail_ci_if_error: false
 
@@ -377,7 +377,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build Frontend (Dry Run)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
           push: false
@@ -420,7 +420,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Backend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: true
@@ -462,7 +462,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Frontend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
           push: true
