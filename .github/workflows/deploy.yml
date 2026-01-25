@@ -1,451 +1,451 @@
 name: Prod Deployment
 
 on:
-    push:
-        branches: [main]
-        paths-ignore:
-            - "**.md"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
 
 env:
-    REGISTRY: ghcr.io
-    IMAGE_NAME: ${{ github.repository }}
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
-    # ============================================
-    # BACKEND QA
-    # ============================================
-    backend-lint:
-        name: Backend Lint & Format
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Set up Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.13"
-                  cache: "pip"
-            - name: Install dependencies
-              working-directory: ./backend
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements-dev.txt
-            - name: Run Ruff (lint)
-              working-directory: ./backend
-              run: ruff check . --output-format=github
-            - name: Run Ruff (format check)
-              working-directory: ./backend
-              run: ruff format . --check
+  # ============================================
+  # BACKEND QA
+  # ============================================
+  backend-lint:
+    name: Backend Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Run Ruff (lint)
+        working-directory: ./backend
+        run: ruff check . --output-format=github
+      - name: Run Ruff (format check)
+        working-directory: ./backend
+        run: ruff format . --check
 
-    backend-type-check:
-        name: Backend Type Check
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Set up Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.13"
-                  cache: "pip"
-            - name: Install dependencies
-              working-directory: ./backend
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements-dev.txt
-            - name: Run MyPy
-              working-directory: ./backend
-              run: mypy app --ignore-missing-imports --no-error-summary || true
+  backend-type-check:
+    name: Backend Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Run MyPy
+        working-directory: ./backend
+        run: mypy app --ignore-missing-imports --no-error-summary || true
 
-    backend-security:
-        name: Backend Security Scan
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Set up Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.13"
-                  cache: "pip"
-            - name: Install dependencies
-              working-directory: ./backend
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements-dev.txt
-            - name: Run Bandit (security)
-              working-directory: ./backend
-              run: bandit -r app -ll --skip B101
+  backend-security:
+    name: Backend Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Run Bandit (security)
+        working-directory: ./backend
+        run: bandit -r app -ll --skip B101
 
-    backend-tests:
-        name: Backend Tests
-        runs-on: ubuntu-latest
-        needs: [backend-lint, backend-type-check, backend-security]
-        services:
-            postgres:
-                image: pgvector/pgvector:pg16
-                env:
-                    POSTGRES_USER: postgres
-                    POSTGRES_PASSWORD: postgres
-                    POSTGRES_DB: test_mavrov
-                ports:
-                    - 5432:5432
-                options: >-
-                    --health-cmd pg_isready
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
-        steps:
-            - uses: actions/checkout@v4
-            - name: Set up Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.13"
-                  cache: "pip"
-            - name: Install dependencies
-              working-directory: ./backend
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements-dev.txt
-            - name: Run tests with coverage
-              working-directory: ./backend
-              env:
-                  DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
-                  SECRET_KEY: test-secret-key-for-ci
-                  OLLAMA_BASE_URL: http://localhost:11434
-              run: |
-                  pytest -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
-            - name: Upload coverage to Codecov
-              uses: codecov/codecov-action@v4
-              with:
-                  file: ./backend/coverage.xml
-                  flags: backend
-    backend-build-check:
-        name: Backend Build Check
-        runs-on: ubuntu-latest
-        needs: [backend-tests, frontend-tests]
-        steps:
-            - uses: actions/checkout@v4
-            - name: Build Backend Image (Dry Run)
-              run: docker build -t backend-dry-run ./backend
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    needs: [backend-lint, backend-type-check, backend-security]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_mavrov
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Run tests with coverage
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
+          SECRET_KEY: test-secret-key-for-ci
+          OLLAMA_BASE_URL: http://localhost:11434
+        run: |
+          pytest -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./backend/coverage.xml
+          flags: backend
+  backend-build-check:
+    name: Backend Build Check
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Backend Image (Dry Run)
+        run: docker build -t backend-dry-run ./backend
 
-    # ============================================
-    # E2E TESTS
-    # ============================================
-    e2e-tests:
-        name: E2E Tests
-        runs-on: ubuntu-latest
-        needs: [backend-build-check, frontend-tests, frontend-build-check]
-        steps:
-            - uses: actions/checkout@v4
+  # ============================================
+  # E2E TESTS
+  # ============================================
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [backend-build-check, frontend-tests, frontend-build-check]
+    steps:
+      - uses: actions/checkout@v4
 
-            - name: Set up Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.13"
-                  cache: "pip"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
 
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20"
-                  cache: "npm"
-                  cache-dependency-path: frontend/package-lock.json
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
-            - name: Install Backend dependencies
-              working-directory: ./backend
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements-dev.txt
+      - name: Install Backend dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
 
-            - name: Install Frontend dependencies
-              working-directory: ./frontend
-              run: npm ci
+      - name: Install Frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
 
-            - name: Get installed Playwright version
-              id: playwright-version
-              working-directory: ./frontend
-              run: echo "PLAYWRIGHT_VERSION=$(npm ls @playwright/test | grep @playwright/test | sed 's/.*@//')" >> $GITHUB_ENV
+      - name: Get installed Playwright version
+        id: playwright-version
+        working-directory: ./frontend
+        run: echo "PLAYWRIGHT_VERSION=$(jq -r '.packages[\"node_modules/@playwright/test\"].version' package-lock.json)" >> $GITHUB_ENV
 
-            - name: Cache Playwright Browsers
-              id: cache-playwright
-              uses: actions/cache@v4
-              with:
-                  path: ~/.cache/ms-playwright
-                  key: playwright-browsers-${{ env.PLAYWRIGHT_VERSION }}
+      - name: Cache Playwright Browsers
+        id: cache-playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ env.PLAYWRIGHT_VERSION }}
 
-            - name: Install Playwright Browsers
-              working-directory: ./frontend
-              run: npx playwright install --with-deps
+      - name: Install Playwright Browsers
+        working-directory: ./frontend
+        run: npx playwright install --with-deps
 
-            - name: Create Ollama model cache directory
-              run: mkdir -p ollama-models
+      - name: Create Ollama model cache directory
+        run: mkdir -p ollama-models
 
-            - name: Cache Ollama models
-              id: cache-ollama
-              uses: actions/cache@v4
-              with:
-                  path: ollama-models
-                  key: ollama-models-v1
+      - name: Cache Ollama models
+        id: cache-ollama
+        uses: actions/cache@v4
+        with:
+          path: ollama-models
+          key: ollama-models-v1
 
-            - name: Cache Docker Images
-              id: cache-docker
-              uses: actions/cache@v4
-              with:
-                  path: docker-images
-                  key: docker-images-${{ runner.os }}-${{ hashFiles('backend/Dockerfile', 'frontend/Dockerfile') }}
+      - name: Cache Docker Images
+        id: cache-docker
+        uses: actions/cache@v4
+        with:
+          path: docker-images
+          key: docker-images-${{ runner.os }}-${{ hashFiles('backend/Dockerfile', 'frontend/Dockerfile') }}
 
-            - name: Load Cached Docker Images
-              if: steps.cache-docker.outputs.cache-hit == 'true'
-              run: |
-                  ls docker-images/*.tar | xargs -I {} docker load -i {}
+      - name: Load Cached Docker Images
+        if: steps.cache-docker.outputs.cache-hit == 'true'
+        run: |
+          ls docker-images/*.tar | xargs -I {} docker load -i {}
 
-            - name: Pull and Save Docker Images
-              if: steps.cache-docker.outputs.cache-hit != 'true'
-              run: |
-                  mkdir -p docker-images
-                  docker pull pgvector/pgvector:pg16
-                  docker save pgvector/pgvector:pg16 -o docker-images/pgvector.tar
-                  docker pull ollama/ollama:latest
-                  docker save ollama/ollama:latest -o docker-images/ollama.tar
+      - name: Pull and Save Docker Images
+        if: steps.cache-docker.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p docker-images
+          docker pull pgvector/pgvector:pg16
+          docker save pgvector/pgvector:pg16 -o docker-images/pgvector.tar
+          docker pull ollama/ollama:latest
+          docker save ollama/ollama:latest -o docker-images/ollama.tar
 
-            - name: Start Services (DB)
-              run: |
-                  docker run -d \
-                    --name db \
-                    -e POSTGRES_USER=postgres \
-                    -e POSTGRES_PASSWORD=postgres \
-                    -e POSTGRES_DB=test_mavrov \
-                    -p 5432:5432 \
-                    pgvector/pgvector:pg16
+      - name: Start Services (DB)
+        run: |
+          docker run -d \
+            --name db \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=test_mavrov \
+            -p 5432:5432 \
+            pgvector/pgvector:pg16
 
-                  # Wait for it to be ready
-                  until docker exec db pg_isready; do sleep 1; done
+          # Wait for it to be ready
+          until docker exec db pg_isready; do sleep 1; done
 
-            - name: Start AI Service (Ollama)
-              run: |
-                  # Start Ollama container with volume mount for caching
-                  # We mount to /root/.ollama which is the default for models
-                  docker run -d --name ollama -p 11434:11434 \
-                    -v ${{ github.workspace }}/ollama-models:/root/.ollama \
-                    ollama/ollama:latest
+      - name: Start AI Service (Ollama)
+        run: |
+          # Start Ollama container with volume mount for caching
+          # We mount to /root/.ollama which is the default for models
+          docker run -d --name ollama -p 11434:11434 \
+            -v ${{ github.workspace }}/ollama-models:/root/.ollama \
+            ollama/ollama:latest
 
-                  # Ensure permissions are correct for the mounted volume
-                  docker exec ollama chown -R root:root /root/.ollama
+          # Ensure permissions are correct for the mounted volume
+          docker exec ollama chown -R root:root /root/.ollama
 
-                  # Wait for Ollama to be responsive
-                  timeout 30s bash -c 'until curl -s http://localhost:11434 > /dev/null; do sleep 1; done'
+          # Wait for Ollama to be responsive
+          timeout 30s bash -c 'until curl -s http://localhost:11434 > /dev/null; do sleep 1; done'
 
-                  # Pull models (will be fast if cached)
-                  echo "Pulling AI models..."
-                  docker exec ollama ollama pull nomic-embed-text
-                  docker exec ollama ollama pull tinyllama
+          # Pull models (will be fast if cached)
+          echo "Pulling AI models..."
+          docker exec ollama ollama pull nomic-embed-text
+          docker exec ollama ollama pull tinyllama
 
-                  # Fix permissions for the mounted volume so runner can cache it
-                  # The files were created by root inside the container
-                  sudo chown -R $USER:$USER ${{ github.workspace }}/ollama-models
+          # Fix permissions for the mounted volume so runner can cache it
+          # The files were created by root inside the container
+          sudo chown -R $USER:$USER ${{ github.workspace }}/ollama-models
 
-                  echo "Pre-warming TinyLlama..."
-                  docker exec ollama ollama run tinyllama "hi"
+          echo "Pre-warming TinyLlama..."
+          docker exec ollama ollama run tinyllama "hi"
 
-            - name: Start Backend
-              working-directory: ./backend
-              env:
-                  DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
-                  SECRET_KEY: test-secret-key-for-ci
-                  OLLAMA_BASE_URL: http://localhost:11434
-              run: |
-                  # Start backend in background
-                  uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-                  # Wait for it to be ready
-                  timeout 30s bash -c 'until curl -s http://localhost:8000/api/health > /dev/null; do sleep 1; done'
+      - name: Start Backend
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
+          SECRET_KEY: test-secret-key-for-ci
+          OLLAMA_BASE_URL: http://localhost:11434
+        run: |
+          # Start backend in background
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          # Wait for it to be ready
+          timeout 30s bash -c 'until curl -s http://localhost:8000/api/health > /dev/null; do sleep 1; done'
 
-            - name: Seed Backend Data
-              working-directory: ./backend
-              env:
-                  DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
-              run: python scripts/seed_e2e_user.py
+      - name: Seed Backend Data
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
+        run: python scripts/seed_e2e_user.py
 
-            - name: Start Frontend
-              working-directory: ./frontend
-              run: |
-                  # Start frontend in background
-                  npm start -- --port 4200 &
-                  # Wait for it to be ready
-                  timeout 60s bash -c 'until curl -s http://localhost:4200 > /dev/null; do sleep 1; done'
+      - name: Start Frontend
+        working-directory: ./frontend
+        run: |
+          # Start frontend in background
+          npm start -- --port 4200 &
+          # Wait for it to be ready
+          timeout 60s bash -c 'until curl -s http://localhost:4200 > /dev/null; do sleep 1; done'
 
-            - name: Run Playwright Tests
-              working-directory: ./frontend
-              env:
-                  BASE_URL: http://localhost:4200
-              run: npm run e2e
+      - name: Run Playwright Tests
+        working-directory: ./frontend
+        env:
+          BASE_URL: http://localhost:4200
+        run: npm run e2e
 
-            - name: Upload Playwright Report
-              uses: actions/upload-artifact@v4
-              if: always()
-              with:
-                  name: playwright-report
-                  path: frontend/playwright-report/
-                  retention-days: 30
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 30
 
-            - name: Finalize Cache Permissions
-              if: always()
-              run: |
-                  # Ensure the runner user owns all cached directories and their recursive contents
-                  # This is the last chance to fix permissions before the automated Post-job Cache step
-                  if [ -d "ollama-models" ]; then
-                    sudo chown -R $USER:$USER ollama-models
-                    chmod -R u+rw ollama-models
-                  fi
-                  if [ -d "docker-images" ]; then
-                    sudo chown -R $USER:$USER docker-images
-                    chmod -R u+rw docker-images
-                  fi
+      - name: Finalize Cache Permissions
+        if: always()
+        run: |
+          # Ensure the runner user owns all cached directories and their recursive contents
+          # This is the last chance to fix permissions before the automated Post-job Cache step
+          if [ -d "ollama-models" ]; then
+            sudo chown -R $USER:$USER ollama-models
+            chmod -R u+rw ollama-models
+          fi
+          if [ -d "docker-images" ]; then
+            sudo chown -R $USER:$USER docker-images
+            chmod -R u+rw docker-images
+          fi
 
-    # ============================================
-    # FRONTEND QA
-    # ============================================
-    frontend-lint:
-        name: Frontend Lint
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20"
-                  cache: "npm"
-                  cache-dependency-path: frontend/package-lock.json
-            - name: Install dependencies
-              working-directory: ./frontend
-              run: npm ci
-            - name: Run ESLint
-              working-directory: ./frontend
-              run: npm run lint --if-present || true
+  # ============================================
+  # FRONTEND QA
+  # ============================================
+  frontend-lint:
+    name: Frontend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      - name: Run ESLint
+        working-directory: ./frontend
+        run: npm run lint --if-present || true
 
-    frontend-tests:
-        name: Frontend Tests
-        runs-on: ubuntu-latest
-        needs: [frontend-lint]
-        steps:
-            - uses: actions/checkout@v4
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20"
-                  cache: "npm"
-                  cache-dependency-path: frontend/package-lock.json
-            - name: Install dependencies
-              working-directory: ./frontend
-              run: npm ci
-            - name: Run tests with coverage
-              working-directory: ./frontend
-              run: npm test -- --watch=false --coverage
-            - name: Upload coverage to Codecov
-              uses: codecov/codecov-action@v4
-              with:
-                  file: ./frontend/coverage/lcov.info
-                  flags: frontend
-                  fail_ci_if_error: false
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: [frontend-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      - name: Run tests with coverage
+        working-directory: ./frontend
+        run: npm test -- --watch=false --coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./frontend/coverage/lcov.info
+          flags: frontend
+          fail_ci_if_error: false
 
-    frontend-build-check:
-        name: Frontend Build Check
-        runs-on: ubuntu-latest
-        needs: [frontend-tests, backend-tests]
-        steps:
-            - uses: actions/checkout@v4
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20"
-                  cache: "npm"
-                  cache-dependency-path: frontend/package-lock.json
-            - name: Install dependencies
-              working-directory: ./frontend
-              run: npm ci
-            - name: Build production
-              working-directory: ./frontend
-              run: npm run build
+  frontend-build-check:
+    name: Frontend Build Check
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, backend-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      - name: Build production
+        working-directory: ./frontend
+        run: npm run build
 
-    # ============================================
-    # BUILD & DEPLOY ARTIFACTS
-    # ============================================
-    build-push-backend:
-        name: Build & Push Backend
-        runs-on: ubuntu-latest
-        needs: [e2e-tests]
-        permissions:
-            contents: read
-            packages: write
-        steps:
-            - uses: actions/checkout@v4
-            - name: Log in to Container Registry
-              uses: docker/login-action@v3
-              with:
-                  registry: ${{ env.REGISTRY }}
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-            - name: Extract project version
-              id: get_version
-              run: echo "version=$(jq -r .version frontend/package.json)" >> $GITHUB_OUTPUT
-            - name: Extract metadata (tags, labels) for Backend
-              id: meta-backend
-              uses: docker/metadata-action@v5
-              with:
-                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
-                  tags: |
-                      type=sha,prefix=
-                      type=raw,value=latest,enable={{is_default_branch}}
-                      type=raw,value=${{ steps.get_version.outputs.version }}
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+  # ============================================
+  # BUILD & DEPLOY ARTIFACTS
+  # ============================================
+  build-push-backend:
+    name: Build & Push Backend
+    runs-on: ubuntu-latest
+    needs: [e2e-tests]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract project version
+        id: get_version
+        run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_OUTPUT
+      - name: Extract metadata (tags, labels) for Backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.get_version.outputs.version }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            - name: Build and push Backend
-              uses: docker/build-push-action@v5
-              with:
-                  context: ./backend
-                  push: true
-                  tags: ${{ steps.meta-backend.outputs.tags }}
-                  labels: ${{ steps.meta-backend.outputs.labels }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-    build-push-frontend:
-        name: Build & Push Frontend
-        runs-on: ubuntu-latest
-        needs: [e2e-tests]
-        permissions:
-            contents: read
-            packages: write
-        steps:
-            - uses: actions/checkout@v4
-            - name: Log in to Container Registry
-              uses: docker/login-action@v3
-              with:
-                  registry: ${{ env.REGISTRY }}
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-            - name: Extract project version
-              id: get_version
-              run: echo "version=$(jq -r .version frontend/package.json)" >> $GITHUB_OUTPUT
-            - name: Extract metadata (tags, labels) for Frontend
-              id: meta-frontend
-              uses: docker/metadata-action@v5
-              with:
-                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
-                  tags: |
-                      type=sha,prefix=
-                      type=raw,value=latest,enable={{is_default_branch}}
-                      type=raw,value=${{ steps.get_version.outputs.version }}
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+  build-push-frontend:
+    name: Build & Push Frontend
+    runs-on: ubuntu-latest
+    needs: [e2e-tests]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract project version
+        id: get_version
+        run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_OUTPUT
+      - name: Extract metadata (tags, labels) for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.get_version.outputs.version }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            - name: Build and push Frontend
-              uses: docker/build-push-action@v5
-              with:
-                  context: ./frontend
-                  push: true
-                  tags: ${{ steps.meta-frontend.outputs.tags }}
-                  labels: ${{ steps.meta-frontend.outputs.labels }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

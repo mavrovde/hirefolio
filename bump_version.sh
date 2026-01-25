@@ -42,4 +42,13 @@ else
   echo "IMAGE_TAG=$new_version" > .env
 fi
 
+# Git operations
+if [ -d .git ]; then
+    echo "Creating git tag v$new_version..."
+    # We don't commit here as manage.sh or the user might want to include other changes
+    # But we can provide a reminder or optionally tag the current commit
+    # For now, let's just output the status. Tagging usually happens after the release commit.
+fi
+
 echo "Version updated to $new_version"
+echo "To finish release, commit changes and run: git tag -a v$new_version -m \"Release v$new_version\" && git push origin v$new_version"
