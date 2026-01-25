@@ -22,7 +22,6 @@ async def generate(request: Request):
 @app.post("/api/embeddings")
 async def embeddings(request: Request):
     """Mock Ollama embeddings."""
-    body = await request.json()
     # Return dummy embedding (768 dimensions for nomic-embed-text)
     return {"embedding": [0.1] * 768}
 
