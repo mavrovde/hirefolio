@@ -285,6 +285,20 @@ jobs:
                   path: frontend/playwright-report/
                   retention-days: 30
 
+            - name: Finalize Cache Permissions
+              if: always()
+              run: |
+                  # Ensure the runner user owns all cached directories and their recursive contents
+                  # This is the last chance to fix permissions before the automated Post-job Cache step
+                  if [ -d "ollama-models" ]; then
+                    sudo chown -R $USER:$USER ollama-models
+                    chmod -R u+rw ollama-models
+                  fi
+                  if [ -d "docker-images" ]; then
+                    sudo chown -R $USER:$USER docker-images
+                    chmod -R u+rw docker-images
+                  fi
+
     # ============================================
     # FRONTEND QA
     # ============================================
