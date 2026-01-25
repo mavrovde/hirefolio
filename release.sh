@@ -27,7 +27,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-git add VERSION backend/app/main.py frontend/package.json .env
+git add VERSION backend/app/main.py frontend/package.json
 git commit -m "Release v$VERSION"
 
 # 4. Git Tagging

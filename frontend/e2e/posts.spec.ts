@@ -36,6 +36,7 @@ test.describe('Post Management', () => {
         await page.click('button[type="submit"]');
 
         // Verify redirect to list
+        await page.waitForURL('/admin/posts');
         await expect(page).toHaveURL('/admin/posts');
 
         // Verify post is in the list
@@ -85,7 +86,7 @@ test.describe('Post Management', () => {
         const newTitle = `Edited Title ${Date.now()}`;
         await page.fill('input[id="title"]', newTitle);
         await page.click('button[type="submit"]');
-
+        await page.waitForURL('/admin/posts');
         await expect(page).toHaveURL('/admin/posts');
         await expect(page.locator('table')).toContainText(newTitle);
     });

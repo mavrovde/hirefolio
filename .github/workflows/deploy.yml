@@ -126,8 +126,15 @@ jobs:
     needs: [backend-tests, frontend-tests]
     steps:
       - uses: actions/checkout@v4
-      - name: Build Backend Image (Dry Run)
-        run: docker build -t backend-dry-run ./backend
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Backend (Dry Run)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # ============================================
   # E2E TESTS
@@ -367,18 +374,15 @@ jobs:
     needs: [frontend-tests, backend-tests]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Frontend (Dry Run)
+        uses: docker/build-push-action@v5
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install dependencies
-        working-directory: ./frontend
-        run: npm ci
-      - name: Build production
-        working-directory: ./frontend
-        run: npm run build
+          context: ./frontend
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # ============================================
   # BUILD & DEPLOY ARTIFACTS

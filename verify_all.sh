@@ -39,9 +39,9 @@ echo "Starting full stack..."
 docker-compose up -d --build backend frontend
 # Wait for health (simple wait for now, ideal would be healthcheck)
 echo "Waiting for services to be ready..."
-sleep 5
+sleep 15
 docker-compose restart frontend
-sleep 5
+sleep 10
 
 echo "🌱 Seeding E2E data..."
 docker-compose exec -T backend python scripts/seed_e2e_user.py
