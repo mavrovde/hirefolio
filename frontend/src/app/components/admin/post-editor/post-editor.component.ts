@@ -150,11 +150,13 @@ export class PostEditorComponent implements OnInit {
         } else {
           alert('No tags suggested.');
         }
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.generatingTags = false;
         console.error('Error suggesting tags:', err);
         alert('Failed to suggest tags. Ensure AI service is available.');
+        this.cdr.detectChanges();
       }
     });
   }
