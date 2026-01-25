@@ -99,7 +99,7 @@ services:
       - ROUNDCUBEMAIL_SMTP_PORT=587
     volumes:
       - roundcube_data:/var/www/html/db
-    entrypoint: [ "/bin/sh", "-c", "ln -s . /var/www/html/webmail || true; apache2-foreground" ]
+    command: /bin/sh -c "ln -s . /var/www/html/webmail || true; apache2-foreground"
     depends_on:
       - mailserver
     networks:
