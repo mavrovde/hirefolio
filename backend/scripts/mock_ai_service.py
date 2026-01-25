@@ -14,7 +14,7 @@ async def generate(request: Request):
     return {
         "model": "tinyllama",
         "created_at": "2023-01-01T00:00:00.000000Z",
-        "response": "mocked-tag-1, mocked-tag-2, ai-generated",
+        "response": "[\"mock-tag-one\", \"mock-tag-two\", \"mock-tag-three\"]",
         "done": True,
     }
 
