@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(npx @angular/cli@latest new:*)",
-      "Bash(node scrape-linkedin.js:*)"
-    ]
-  }
-}
