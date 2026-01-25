@@ -2,6 +2,8 @@ import pytest
 from httpx import AsyncClient
 from unittest.mock import patch
 
+from app.main import app
+
 
 @pytest.mark.asyncio
 async def test_suggest_tags_endpoint(client: AsyncClient):
@@ -20,14 +22,14 @@ async def test_suggest_tags_endpoint(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_suggest_tags_unauthorized(client: AsyncClient):
+async def test_suggest_tags_unauthorized():
     """Test suggest tags endpoint without authentication."""
     # Create a new client without auth headers (default client in conftest usually has them)
     # We'll just manually clear headers if the fixture sets them, or use a fresh client.
     # Assuming 'client' fixture is authorized admin user based on other tests.
 
     # We can use a fresh client:
-    async with AsyncClient(base_url="http://test") as ac:
+    async with AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.post(
             "/api/posts/suggest-tags",
             json={"title": "Test", "content": "Test"},
