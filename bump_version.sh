@@ -27,15 +27,19 @@ else
   sed -i "s/\"version\": \"[0-9.]*\"/\"version\": \"$new_version\"/" frontend/package.json
 fi
 
-# Update .env IMAGE_TAG if it exists
+# Update .env IMAGE_TAG
 if [ -f .env ]; then
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
+  if grep -q "^IMAGE_TAG=" .env; then
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      sed -i '' "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
+    else
+      sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
+    fi
   else
-    sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
+    echo "IMAGE_TAG=$new_version" >> .env
   fi
 else
-  echo ".env file not found, skipping IMAGE_TAG update"
+  echo "IMAGE_TAG=$new_version" > .env
 fi
 
 echo "Version updated to $new_version"

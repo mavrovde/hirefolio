@@ -38,7 +38,7 @@ services:
       - app-network
 
   backend:
-    image: ghcr.io/mavrovde/mavrov.de-backend:latest
+    image: ghcr.io/mavrovde/mavrov.de-backend:${IMAGE_TAG:-latest}
     restart: always
     ports:
       - "8000:8000"
@@ -54,7 +54,7 @@ services:
       - app-network
 
   frontend:
-    image: ghcr.io/mavrovde/mavrov.de-frontend:latest
+    image: ghcr.io/mavrovde/mavrov.de-frontend:${IMAGE_TAG:-latest}
     restart: always
     environment:
       - NODE_ENV=production
