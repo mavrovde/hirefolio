@@ -186,21 +186,25 @@ jobs:
                   key: ollama-models-v1
 
             - name: Cache Docker Images
-              id: cache-docker-ollama
+              id: cache-docker
               uses: actions/cache@v4
               with:
-                  path: ollama-image.tar
-                  key: docker-ollama-latest
+                  path: docker-images
+                  key: docker-images-${{ runner.os }}-${{ hashFiles('backend/Dockerfile', 'frontend/Dockerfile') }}
 
-            - name: Load Cached Ollama Image
-              if: steps.cache-docker-ollama.outputs.cache-hit == 'true'
-              run: docker load -i ollama-image.tar
-
-            - name: Pull and Save Ollama Image
-              if: steps.cache-docker-ollama.outputs.cache-hit != 'true'
+            - name: Load Cached Docker Images
+              if: steps.cache-docker.outputs.cache-hit == 'true'
               run: |
+                  ls docker-images/*.tar | xargs -I {} docker load -i {}
+
+            - name: Pull and Save Docker Images
+              if: steps.cache-docker.outputs.cache-hit != 'true'
+              run: |
+                  mkdir -p docker-images
+                  docker pull pgvector/pgvector:pg16
+                  docker save pgvector/pgvector:pg16 -o docker-images/pgvector.tar
                   docker pull ollama/ollama:latest
-                  docker save ollama/ollama:latest -o ollama-image.tar
+                  docker save ollama/ollama:latest -o docker-images/ollama.tar
 
             - name: Start Services (DB)
               run: |
@@ -218,12 +222,13 @@ jobs:
             - name: Start AI Service (Ollama)
               run: |
                   # Start Ollama container with volume mount for caching
-                  # We cache the models directory to avoid re-pulling models
-                  # We explicitely set OLLAMA_MODELS to match the volume mount
+                  # We mount to /root/.ollama which is the default for models
                   docker run -d --name ollama -p 11434:11434 \
-                    -e OLLAMA_MODELS=/root/.ollama/models \
                     -v ${{ github.workspace }}/ollama-models:/root/.ollama \
                     ollama/ollama:latest
+
+                  # Ensure permissions are correct for the mounted volume
+                  docker exec ollama chown -R root:root /root/.ollama
 
                   # Wait for Ollama to be responsive
                   timeout 30s bash -c 'until curl -s http://localhost:11434 > /dev/null; do sleep 1; done'
