@@ -197,10 +197,14 @@ jobs:
                   # Wait for Ollama to be responsive
                   timeout 30s bash -c 'until curl -s http://localhost:11434 > /dev/null; do sleep 1; done'
 
-                  # Pull models (Backgrounding not possible if we want to use them immediately, but we can do it purely sequentially)
+                  # Pull models (will be fast if cached)
                   echo "Pulling AI models..."
                   docker exec ollama ollama pull nomic-embed-text
                   docker exec ollama ollama pull tinyllama
+
+                  # Pre-warm the model to load it into memory (avoids timeout during first test)
+                  echo "Pre-warming TinyLlama..."
+                  docker exec ollama curl -X POST http://localhost:11434/api/generate -d '{"model": "tinyllama", "prompt": "hi", "stream": false}'
 
             - name: Start Backend
               working-directory: ./backend

@@ -72,7 +72,7 @@ test.describe('Post Management', () => {
         expect(data.tags.length).toBeGreaterThan(0);
 
         // Wait for at least one tag chip in UI
-        await expect(page.locator('.tag-chip').first()).toBeVisible({ timeout: 60000 }); // increased timeout for AI
+        await expect(page.locator('.tag-chip').first()).toBeVisible({ timeout: 180000 }); // increased timeout for AI on CPU runner
         expect(await page.locator('.tag-chip').count()).toBeGreaterThan(0);
     });
 
