@@ -78,12 +78,17 @@ export class BlogService {
         return this.http.post<BlogPost>(this.apiUrl, post);
     }
 
-    updatePost(slug: string, post: any): Observable<BlogPost> {
-        return this.http.put<BlogPost>(`${this.apiUrl}/${slug}`, post);
+
+    getPostById(id: number): Observable<BlogPost> {
+        return this.http.get<BlogPost>(`${this.apiUrl}/${id}`);
     }
 
-    deletePost(slug: string): Observable<void> {
-        return this.http.delete<void>(`${this.apiUrl}/${slug}`);
+    updatePostById(id: number, post: any): Observable<BlogPost> {
+        return this.http.put<BlogPost>(`${this.apiUrl}/${id}`, post);
+    }
+
+    deletePostById(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.apiUrl}/${id}`);
     }
 
     searchPosts(query: string): Observable<BlogSearchResult[]> {

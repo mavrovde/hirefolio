@@ -10,14 +10,14 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 describe('PostEditorComponent', () => {
     let component: PostEditorComponent;
     let fixture: ComponentFixture<PostEditorComponent>;
-    let blogServiceSpy: { getPost: Mock; createPost: Mock; updatePost: Mock; suggestTags: Mock };
+    let blogServiceSpy: { getPostById: Mock; createPost: Mock; updatePostById: Mock; suggestTags: Mock };
     let routerSpy: { navigate: Mock };
 
     beforeEach(async () => {
         blogServiceSpy = {
-            getPost: vi.fn(),
+            getPostById: vi.fn(),
             createPost: vi.fn(),
-            updatePost: vi.fn(),
+            updatePostById: vi.fn(),
             suggestTags: vi.fn()
         };
         routerSpy = { navigate: vi.fn() };
@@ -96,6 +96,52 @@ describe('PostEditorComponent', () => {
             component.togglePublish();
 
             expect(component.post.published).toBe(false);
+        });
+    });
+
+    describe('Edit Mode and Change Tracking', () => {
+        beforeEach(() => {
+            // Mock ActivatedRoute for edit mode
+            const id = 123;
+            component['route'].snapshot.paramMap.get = vi.fn().mockReturnValue(id.toString());
+            blogServiceSpy.getPostById.mockReturnValue(of({
+                id,
+                title: 'Original Title',
+                slug: 'original-slug',
+                content: 'Original Content',
+                language: 'en',
+                published: true,
+                tags: ['original']
+            }));
+
+            component.ngOnInit();
+            fixture.detectChanges();
+        });
+
+        it('should load post data and show no changes initially', () => {
+            expect(component.isEditMode).toBe(true);
+            expect(component.post.title).toBe('Original Title');
+            expect(component.isChanged('title')).toBe(false);
+        });
+
+        it('should detect when a field has changed', () => {
+            component.post.title = 'Updated Title';
+            expect(component.isChanged('title')).toBe(true);
+            expect(component.isChanged('content')).toBe(false);
+        });
+
+        it('should detect when tags have changed', () => {
+            component.post.tags = ['original', 'new'];
+            expect(component.isChanged('tags')).toBe(true);
+
+            component.post.tags = ['original'];
+            expect(component.isChanged('tags')).toBe(false);
+        });
+
+        it('should handle loading state', () => {
+            // Check that loading was set to true during ngOnInit (via loadPost)
+            // and should be false after of() emits.
+            expect(component.loading).toBe(false);
         });
     });
 });

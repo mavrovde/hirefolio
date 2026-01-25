@@ -61,7 +61,7 @@ async def test_get_draft_post_as_anon(client: AsyncClient, mock_embedding):
 
 @pytest.mark.asyncio
 async def test_update_post_not_found(client: AsyncClient):
-    response = await client.put("/api/posts/ghost", json={"title": "New"})
+    response = await client.put("/api/posts/999999", json={"title": "New"})
     assert response.status_code == 404
 
 
@@ -69,7 +69,7 @@ async def test_update_post_not_found(client: AsyncClient):
 async def test_update_post_partial(client: AsyncClient, mock_embedding):
     # Create post
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        await client.post(
+        create_resp = await client.post(
             "/api/posts",
             json={
                 "title": "Old",
@@ -78,10 +78,11 @@ async def test_update_post_partial(client: AsyncClient, mock_embedding):
                 "published": True,
             },
         )
+        post_id = create_resp.json()["id"]
 
     # Update only title
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        response = await client.put("/api/posts/partial", json={"title": "New"})
+        response = await client.put(f"/api/posts/{post_id}", json={"title": "New"})
 
     assert response.status_code == 200
     data = response.json()
@@ -91,7 +92,7 @@ async def test_update_post_partial(client: AsyncClient, mock_embedding):
 
 @pytest.mark.asyncio
 async def test_delete_post_not_found(client: AsyncClient):
-    response = await client.delete("/api/posts/ghost")
+    response = await client.delete("/api/posts/999999")
     assert response.status_code == 404
 
 
@@ -126,7 +127,8 @@ async def test_similar_posts_no_embedding(client: AsyncClient, mock_embedding):
 @pytest.mark.asyncio
 async def test_semantic_search_with_results(client: AsyncClient, mock_embedding):
     # Create post
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    # Patch where it is imported in app.api.posts
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post(
             "/api/posts",
             json={

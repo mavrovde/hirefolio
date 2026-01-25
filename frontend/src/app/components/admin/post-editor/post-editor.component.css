@@ -24,6 +24,19 @@
     display: block;
     margin-bottom: 8px;
     color: #0f0;
+    transition: color 0.3s;
+}
+
+.form-group label.field-changed {
+    color: #f90;
+    /* Orange highlight for changes */
+}
+
+.form-group label.field-changed::after {
+    content: " (changed)";
+    font-size: 10px;
+    font-style: italic;
+    opacity: 0.8;
 }
 
 .form-group input,
@@ -136,4 +149,13 @@
     .form-row {
         grid-template-columns: 1fr;
     }
+}
+
+.loading-overlay {
+    background: rgba(0, 0, 0, 0.7);
+    color: var(--primary-color, #0ea5e9);
+    padding: 20px;
+    text-align: center;
+    border: 1px dashed var(--primary-color, #0ea5e9);
+    margin-bottom: 20px;
 }

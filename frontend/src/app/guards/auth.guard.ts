@@ -14,15 +14,16 @@ export const authGuard: CanActivateFn = (route, state) => {
 
     // specific check for admin route
     if (route.data?.['requireAdmin']) {
-        return authService.currentUser$.pipe(
-            filter(user => user !== null || !authService.isAuthenticated()), // Wait for user to load if auth'd
+        return authService.isInitializing$.pipe(
+            filter(initializing => !initializing),
             take(1),
-            map(user => {
+            map(() => {
+                const user = authService.getCurrentUser();
                 if (user?.is_admin) {
                     return true;
                 }
-                // User loaded but not admin -> redirect
-                router.navigate(['/']); // or login
+                // If we finished initializing and have no admin user, redirect
+                router.navigate(['/admin/login'], { queryParams: { returnUrl: state.url } });
                 return false;
             })
         );

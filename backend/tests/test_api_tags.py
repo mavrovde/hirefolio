@@ -37,11 +37,12 @@ async def test_update_post_tags(client: AsyncClient):
         "content": "Content",
         "tags": ["old"],
     }
-    await client.post("/api/posts", json=post_data)
+    create_resp = await client.post("/api/posts", json=post_data)
+    post_id = create_resp.json()["id"]
 
     # Update
     update_data = {"tags": ["new", "tags"]}
-    response = await client.put("/api/posts/update-tags-post", json=update_data)
+    response = await client.put(f"/api/posts/{post_id}", json=update_data)
 
     assert response.status_code == 200
     data = response.json()

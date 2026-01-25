@@ -98,7 +98,8 @@ async def test_update_post_full_response(client: AsyncClient, mock_embedding):
     }
 
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        await client.post("/api/posts", json=post_data)
+        create_resp = await client.post("/api/posts", json=post_data)
+        post_id = create_resp.json()["id"]
 
     # Update with all fields
     update_data = {
@@ -110,7 +111,7 @@ async def test_update_post_full_response(client: AsyncClient, mock_embedding):
     }
 
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        response = await client.put("/api/posts/update-test", json=update_data)
+        response = await client.put(f"/api/posts/{post_id}", json=update_data)
 
     assert response.status_code == 200
     data = response.json()

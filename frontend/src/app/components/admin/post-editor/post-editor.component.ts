@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -31,10 +31,13 @@ export class PostEditorComponent implements OnInit {
     published: false,
     tags: []
   };
+  private originalPost: PostData | null = null;
 
   isEditMode = false;
-  currentSlug: string | null = null;
+  currentId: number | null = null;
   saving = false;
+  loading = false;
+  deleting = false;
   generatingTags = false;
   errorMessage = '';
   newTag = '';
@@ -42,20 +45,25 @@ export class PostEditorComponent implements OnInit {
   constructor(
     private blogService: BlogService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
-    const slug = this.route.snapshot.paramMap.get('id'); // Route is defined as :id but we use slug
-    if (slug && slug !== 'new') { // Ensure it's not the 'new' route erroneously matched
-      this.isEditMode = true;
-      this.currentSlug = slug;
-      this.loadPost(slug);
+    const idParam = this.route.snapshot.paramMap.get('id');
+    if (idParam && idParam !== 'new') {
+      const id = +idParam;
+      if (!isNaN(id)) {
+        this.isEditMode = true;
+        this.currentId = id;
+        this.loading = true;
+        this.loadPost(id);
+      }
     }
   }
 
-  private loadPost(slug: string): void {
-    this.blogService.getPost(slug).subscribe({
+  private loadPost(id: number): void {
+    this.blogService.getPostById(id).subscribe({
       next: (post) => {
         if (post) {
           this.post = {
@@ -65,15 +73,27 @@ export class PostEditorComponent implements OnInit {
             summary: post.summary || '',
             language: post.language,
             published: post.published,
-            tags: post.tags || []
+            tags: [...(post.tags || [])]
           };
+          this.originalPost = JSON.parse(JSON.stringify(this.post));
         }
+        this.loading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('Failed to load post:', error);
         this.errorMessage = 'Failed to load post';
+        this.loading = false;
+        this.cdr.detectChanges();
       }
     });
+  }
+
+  isChanged(field: keyof PostData): boolean {
+    if (!this.isEditMode || !this.originalPost) return false;
+    if (field === 'tags') {
+      return JSON.stringify(this.post.tags) !== JSON.stringify(this.originalPost.tags);
+    }
+    return this.post[field] !== this.originalPost[field];
   }
 
   onTitleChange(): void {
@@ -148,8 +168,8 @@ export class PostEditorComponent implements OnInit {
     this.saving = true;
     this.errorMessage = '';
 
-    const request = this.isEditMode && this.currentSlug
-      ? this.blogService.updatePost(this.currentSlug, this.post)
+    const request = this.isEditMode && this.currentId
+      ? this.blogService.updatePostById(this.currentId, this.post)
       : this.blogService.createPost(this.post);
 
     request.subscribe({
@@ -168,5 +188,27 @@ export class PostEditorComponent implements OnInit {
 
   cancel(): void {
     this.router.navigate(['/admin/posts']);
+  }
+
+  deletePost(): void {
+    if (!this.currentId || !confirm('Are you sure you want to delete this post?')) {
+      return;
+    }
+
+    this.deleting = true;
+    this.errorMessage = '';
+    this.cdr.detectChanges();
+
+    this.blogService.deletePostById(this.currentId).subscribe({
+      next: () => {
+        this.router.navigate(['/admin/posts']);
+      },
+      error: (error) => {
+        this.deleting = false;
+        this.errorMessage = 'Failed to delete post';
+        console.error('Delete error:', error);
+        this.cdr.detectChanges();
+      }
+    });
   }
 }

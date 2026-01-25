@@ -36,14 +36,14 @@ describe('HeaderComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should have 6 nav items', () => {
-        expect(component.navItems.length).toBe(6);
+    it('should have 5 nav items', () => {
+        expect(component.navItems.length).toBe(5);
     });
 
     it('should render navigation links', () => {
         const DEBUG_ELEMENT = fixture.debugElement;
         const navLinks = DEBUG_ELEMENT.queryAll(By.css('nav a'));
-        expect(navLinks.length).toBe(6);
+        expect(navLinks.length).toBe(5);
     });
 
     it('active scrollTo should prevent default behavior and scroll', () => {

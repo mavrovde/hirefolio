@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "1.0.16",
+  "version": "1.0.20",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -40,6 +40,8 @@
     "@angular/cli": "^21.1.1",
     "@angular/compiler-cli": "^21.1.0",
     "@angular/platform-browser-dynamic": "^21.1.1",
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^25.0.10",
     "@vitest/browser-playwright": "^4.0.18",
     "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.4.23",

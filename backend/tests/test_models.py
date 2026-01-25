@@ -10,7 +10,7 @@ async def test_create_post(db_session):
     """Test creating a post."""
     post = Post(
         title="Test Post",
-        slug="test-post",
+        slug="test-post-create",
         content="Test content",
         summary="Test summary",
         language="en",
@@ -24,7 +24,7 @@ async def test_create_post(db_session):
 
     assert post.id is not None
     assert post.title == "Test Post"
-    assert post.slug == "test-post"
+    assert post.slug == "test-post-create"
     assert post.language == "en"
     assert post.published is True
     assert len(post.embedding) == 768
@@ -35,7 +35,7 @@ async def test_post_timestamps(db_session):
     """Test that timestamps are set automatically."""
     post = Post(
         title="Test Post",
-        slug="test-post",
+        slug="test-post-timestamps",
         content="Test content",
         language="en",
     )
@@ -53,14 +53,14 @@ async def test_unique_slug_language_constraint(db_session):
     """Test that slug + language combination must be unique."""
     post1 = Post(
         title="Test Post 1",
-        slug="test-post",
+        slug="test-post-unique",
         content="Content 1",
         language="en",
     )
 
     post2 = Post(
         title="Test Post 2",
-        slug="test-post",
+        slug="test-post-unique",
         content="Content 2",
         language="en",
     )
@@ -79,14 +79,14 @@ async def test_same_slug_different_language(db_session):
     """Test that same slug can exist for different languages."""
     post_en = Post(
         title="Test Post EN",
-        slug="test-post",
+        slug="test-post-multi",
         content="Content EN",
         language="en",
     )
 
     post_de = Post(
         title="Test Post DE",
-        slug="test-post",
+        slug="test-post-multi",
         content="Content DE",
         language="de",
     )

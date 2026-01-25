@@ -23,10 +23,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with (
-        patch("app.services.embeddings.get_embedding", return_value=mock_embedding),
-        patch("app.api.posts.get_embedding", return_value=mock_embedding),
-    ):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         create_response = await client.post("/api/posts", json=post_data)
 
         assert create_response.status_code == 200
@@ -47,9 +44,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
             "summary": "Updated summary",
         }
 
-        update_response = await client.put(
-            f"/api/posts/{post_data['slug']}", json=update_data
-        )
+        update_response = await client.put(f"/api/posts/{post_id}", json=update_data)
 
         assert update_response.status_code == 200
         updated_post = update_response.json()
@@ -66,7 +61,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
         assert isinstance(search_results, list)
 
         # 5. Delete the post
-        delete_response = await client.delete(f"/api/posts/{post_data['slug']}")
+        delete_response = await client.delete(f"/api/posts/{post_id}")
         assert delete_response.status_code == 200
 
         # 6. Verify deletion
@@ -95,7 +90,7 @@ async def test_multilingual_posts(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
             response = await client.post("/api/posts", json=post)
             assert response.status_code == 200
@@ -144,7 +139,7 @@ async def test_similar_posts_workflow(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
             await client.post("/api/posts", json=post)
 

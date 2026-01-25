@@ -128,6 +128,38 @@ async def list_posts(
     ]
 
 
+@router.get("/{id:int}", response_model=PostResponse)
+async def get_post_by_id(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    """Get a single post by ID."""
+    result = await db.execute(select(Post).where(Post.id == id))
+    post = result.scalar_one_or_none()
+
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    # Check permissions for drafts
+    if not post.published:
+        if not current_user or not current_user.is_admin:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+    return PostResponse(
+        id=post.id,
+        title=post.title,
+        slug=post.slug,
+        content=post.content,
+        summary=post.summary,
+        language=post.language,
+        published=post.published,
+        tags=post.tags,
+        created_at=post.created_at.isoformat(),
+        updated_at=post.updated_at.isoformat(),
+    )
+
+
 @router.get("/{slug}", response_model=PostResponse)
 async def get_post(
     slug: str,
@@ -198,77 +230,6 @@ async def create_post(
         created_at=post.created_at.isoformat(),
         updated_at=post.updated_at.isoformat(),
     )
-
-
-@router.put("/{slug}", response_model=PostResponse)
-async def update_post(
-    slug: str,
-    post_data: PostUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user),
-):
-    """Update a post."""
-    result = await db.execute(select(Post).where(Post.slug == slug))
-    post = result.scalar_one_or_none()
-
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-
-    update_embedding = False
-    if post_data.title is not None:
-        post.title = post_data.title
-        update_embedding = True
-    if post_data.content is not None:
-        post.content = post_data.content
-        update_embedding = True
-    if post_data.summary is not None:
-        post.summary = post_data.summary
-    if post_data.language is not None:
-        post.language = post_data.language
-    if post_data.published is not None:
-        post.published = post_data.published
-    if post_data.tags is not None:
-        post.tags = post_data.tags
-
-    # Regenerate embedding if content changed
-    if update_embedding:
-        text_for_embedding = f"{post.title}\n\n{post.content}"
-        post.embedding = await get_embedding(text_for_embedding)
-
-    await db.commit()
-    await db.refresh(post)
-
-    return PostResponse(
-        id=post.id,
-        title=post.title,
-        slug=post.slug,
-        content=post.content,
-        summary=post.summary,
-        language=post.language,
-        published=post.published,
-        tags=post.tags,
-        created_at=post.created_at.isoformat(),
-        updated_at=post.updated_at.isoformat(),
-    )
-
-
-@router.delete("/{slug}")
-async def delete_post(
-    slug: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user),
-):
-    """Delete a post."""
-    result = await db.execute(select(Post).where(Post.slug == slug))
-    post = result.scalar_one_or_none()
-
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-
-    await db.delete(post)
-    await db.commit()
-
-    return {"message": "Post deleted"}
 
 
 @router.get("/{slug}/similar", response_model=list[SimilarPostResponse])
@@ -367,3 +328,74 @@ async def suggest_tags_endpoint(
 
     tags = await suggest_tags(request.title, request.content)
     return {"tags": tags}
+
+
+@router.put("/{id:int}", response_model=PostResponse)
+async def update_post_by_id(
+    id: int,
+    post_data: PostUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Update a post by ID."""
+    result = await db.execute(select(Post).where(Post.id == id))
+    post = result.scalar_one_or_none()
+
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    update_embedding = False
+    if post_data.title is not None:
+        post.title = post_data.title
+        update_embedding = True
+    if post_data.content is not None:
+        post.content = post_data.content
+        update_embedding = True
+    if post_data.summary is not None:
+        post.summary = post_data.summary
+    if post_data.language is not None:
+        post.language = post_data.language
+    if post_data.published is not None:
+        post.published = post_data.published
+    if post_data.tags is not None:
+        post.tags = post_data.tags
+
+    # Regenerate embedding if content changed
+    if update_embedding:
+        text_for_embedding = f"{post.title}\n\n{post.content}"
+        post.embedding = await get_embedding(text_for_embedding)
+
+    await db.commit()
+    await db.refresh(post)
+
+    return PostResponse(
+        id=post.id,
+        title=post.title,
+        slug=post.slug,
+        content=post.content,
+        summary=post.summary,
+        language=post.language,
+        published=post.published,
+        tags=post.tags,
+        created_at=post.created_at.isoformat(),
+        updated_at=post.updated_at.isoformat(),
+    )
+
+
+@router.delete("/{id:int}")
+async def delete_post_by_id(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Delete a post by ID."""
+    result = await db.execute(select(Post).where(Post.id == id))
+    post = result.scalar_one_or_none()
+
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    await db.delete(post)
+    await db.commit()
+
+    return {"message": "Post deleted"}

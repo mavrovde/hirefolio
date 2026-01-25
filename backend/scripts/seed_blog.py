@@ -2,21 +2,54 @@ import json
 import urllib.request
 import urllib.error
 import os
+import sys
 
-API_URL = "http://localhost:8000/api/posts"
+# Constants - use container-internal URL by default
+API_URL_BASE = os.getenv("API_URL", "http://backend:8000/api")
+ADMIN_USER = os.getenv("ADMIN_USER", "admin")
+ADMIN_PASS = os.getenv("ADMIN_PASS", "admin")
+
+
+def get_auth_token():
+    print(f"Authenticating as {ADMIN_USER}...")
+    login_url = f"{API_URL_BASE}/auth/login"
+
+    # OAuth2PasswordRequestForm expects form-data
+    data = urllib.parse.urlencode(
+        {"username": ADMIN_USER, "password": ADMIN_PASS}
+    ).encode("utf-8")
+
+    req = urllib.request.Request(login_url, data=data, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            res_data = json.loads(response.read().decode())
+            print("Successfully authenticated.")
+            return res_data["access_token"]
+    except Exception as e:
+        print(f"Authentication failed: {e}")
+        if isinstance(e, urllib.error.HTTPError):
+            print(f"Error detail: {e.read().decode()}")
+        sys.exit(1)
 
 
 def seed_posts():
-    base_dir = "../../frontend/src/assets"
+    token = get_auth_token()
+
+    # Path to static blog data (now local)
+    base_dir = "."
     files = {"en": "blog_data_en.json", "de": "blog_data_de.json"}
 
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
     for lang, filename in files.items():
-        script_dir = os.path.dirname(os.path.abspath(__file__))
         path = os.path.join(script_dir, base_dir, filename)
         if not os.path.exists(path):
             print(f"File not found: {path}")
             continue
 
+        print(f"Seeding {lang} posts from {filename}...")
         with open(path, "r", encoding="utf-8") as f:
             posts = json.load(f)
 
@@ -31,23 +64,17 @@ def seed_posts():
             }
 
             data = json.dumps(payload).encode("utf-8")
-            req = urllib.request.Request(API_URL, data=data, method="POST")
+            create_url = f"{API_URL_BASE}/posts"
+            req = urllib.request.Request(create_url, data=data, method="POST")
             req.add_header("Content-Type", "application/json")
+            req.add_header("Authorization", f"Bearer {token}")
 
             try:
-                with urllib.request.urlopen(req) as response:
-                    if response.status in [200, 201]:
-                        print(f"Successfully seeded: {post_data['id']} ({lang})")
-                    else:
-                        print(
-                            f"Failed to seed {post_data['id']} ({lang}): {response.status}"
-                        )
+                with urllib.request.urlopen(req):
+                    print(f"Successfully seeded: {post_data['id']} ({lang})")
             except urllib.error.HTTPError as e:
-                # If 400/409, might already exist
                 if e.code in [400, 409]:
-                    print(
-                        f"Post {post_data['id']} ({lang}) might already exist: {e.code}"
-                    )
+                    print(f"Post {post_data['id']} ({lang}) already exists (skipped).")
                 else:
                     print(
                         f"HTTP Error seeding {post_data['id']} ({lang}): {e.code} - {e.read().decode()}"
@@ -57,4 +84,6 @@ def seed_posts():
 
 
 if __name__ == "__main__":
+    import urllib.parse
+
     seed_posts()
