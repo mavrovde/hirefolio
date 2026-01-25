@@ -125,7 +125,7 @@ jobs:
     e2e-tests:
         name: E2E Tests
         runs-on: ubuntu-latest
-        needs: [backend-tests, frontend-build-check]
+        needs: [backend-tests, frontend-tests, frontend-build-check]
         steps:
             - uses: actions/checkout@v4
 
