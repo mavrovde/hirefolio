@@ -22,8 +22,7 @@ async def verify_admin_password():
 
         password = "MavrovSecure2026!"
         is_valid = verify_password(password, user.hashed_password)
-        print(f"Password '{password}' valid: {is_valid}")
-        print(f"Stored Hash: {user.hashed_password}")
+        print(f"Password verification result: {is_valid}")
 
 
 if __name__ == "__main__":
