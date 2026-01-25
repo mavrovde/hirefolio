@@ -172,7 +172,6 @@ jobs:
                   key: playwright-browsers-${{ env.PLAYWRIGHT_VERSION }}
 
             - name: Install Playwright Browsers
-              if: steps.cache-playwright.outputs.cache-hit != 'true'
               working-directory: ./frontend
               run: npx playwright install --with-deps
 
