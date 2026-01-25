@@ -117,7 +117,14 @@ jobs:
               with:
                   file: ./backend/coverage.xml
                   flags: backend
-                  fail_ci_if_error: false
+    backend-build-check:
+        name: Backend Build Check
+        runs-on: ubuntu-latest
+        needs: [backend-tests, frontend-tests]
+        steps:
+            - uses: actions/checkout@v4
+            - name: Build Backend Image (Dry Run)
+              run: docker build -t backend-dry-run ./backend
 
     # ============================================
     # E2E TESTS
@@ -125,7 +132,7 @@ jobs:
     e2e-tests:
         name: E2E Tests
         runs-on: ubuntu-latest
-        needs: [backend-tests, frontend-tests, frontend-build-check]
+        needs: [backend-build-check, frontend-tests, frontend-build-check]
         steps:
             - uses: actions/checkout@v4
 
@@ -252,7 +259,7 @@ jobs:
     frontend-build-check:
         name: Frontend Build Check
         runs-on: ubuntu-latest
-        needs: [frontend-tests]
+        needs: [frontend-tests, backend-tests]
         steps:
             - uses: actions/checkout@v4
             - name: Set up Node.js
