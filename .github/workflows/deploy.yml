@@ -234,7 +234,7 @@ jobs:
                   docker exec ollama ollama pull tinyllama
 
                   echo "Pre-warming TinyLlama..."
-                  docker exec ollama curl -X POST http://localhost:11434/api/generate -d '{"model": "tinyllama", "prompt": "hi", "stream": false}'
+                  docker exec ollama ollama run tinyllama "hi"
 
             - name: Start Backend
               working-directory: ./backend
