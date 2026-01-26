@@ -12,6 +12,12 @@ addopts = [
     "--cov=app",
     "--cov-report=term-missing",
     "--cov-report=html",
+    "-p", "no:warnings",
+    "-W", "ignore",
+]
+filterwarnings = [
+    "ignore",
+    "ignore:'asyncio.get_event_loop_policy' is deprecated:DeprecationWarning",
 ]
 
 [tool.coverage.run]
