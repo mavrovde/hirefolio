@@ -29,6 +29,7 @@
 
 .form-group label.field-changed {
     color: #f90;
+
     /* Orange highlight for changes */
 }
 
@@ -59,7 +60,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+    box-shadow: 0 0 10px rgb(14 165 233 / 50%);
 }
 
 .form-group input:disabled,
@@ -89,7 +90,7 @@
 }
 
 .error-message {
-    background: rgba(255, 0, 0, 0.1);
+    background: rgb(255 0 0 / 10%);
     border: 1px solid #f00;
     color: #f00;
     padding: 10px;
@@ -124,6 +125,11 @@
     color: var(--primary-color, #0ea5e9);
 }
 
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .btn-primary:hover:not(:disabled) {
     background: var(--primary-color, #0ea5e9);
     color: #000;
@@ -134,25 +140,26 @@
     color: #666;
 }
 
-.btn-secondary:hover:not(:disabled) {
-    border-color: #0f0;
-    color: #0f0;
-}
-
-.btn-primary:disabled,
 .btn-secondary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-@media (max-width: 768px) {
+.btn-secondary:hover:not(:disabled) {
+    border-color: #0f0;
+    color: #0f0;
+}
+
+
+
+@media (width <=768px) {
     .form-row {
         grid-template-columns: 1fr;
     }
 }
 
 .loading-overlay {
-    background: rgba(0, 0, 0, 0.7);
+    background: rgb(0 0 0 / 70%);
     color: var(--primary-color, #0ea5e9);
     padding: 20px;
     text-align: center;

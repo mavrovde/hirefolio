@@ -12,7 +12,7 @@
     max-width: 500px;
     border: 2px solid var(--primary-color, #0ea5e9);
     border-radius: 8px;
-    box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+    box-shadow: 0 0 20px rgb(14 165 233 / 30%);
     overflow: hidden;
 }
 
@@ -57,7 +57,7 @@
 
 .form-group input:focus {
     outline: none;
-    box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+    box-shadow: 0 0 10px rgb(14 165 233 / 50%);
 }
 
 .form-group input:disabled {
@@ -66,7 +66,7 @@
 }
 
 .error-message {
-    background: rgba(255, 0, 0, 0.1);
+    background: rgb(255 0 0 / 10%);
     border: 1px solid #f00;
     color: #f00;
     padding: 10px;
@@ -95,10 +95,20 @@
     transition: all 0.3s;
 }
 
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .btn-primary:hover:not(:disabled) {
     background: var(--primary-color, #0ea5e9);
     color: #000;
-    box-shadow: 0 0 15px rgba(14, 165, 233, 0.5);
+    box-shadow: 0 0 15px rgb(14 165 233 / 50%);
 }
 
 .btn-primary:disabled {

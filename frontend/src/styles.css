@@ -1,21 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #00ff00;
-  --color-secondary: #00cc00;
-  --color-background: #000000;
-  --color-surface: #111111;
-  --color-muted: #666666;
-
+  --color-primary: #0f0;
+  --color-secondary: #0c0;
+  --color-background: #000;
+  --color-surface: #111;
+  --color-muted: #666;
   --font-mono: "Courier Prime", "Courier", "monospace";
   --font-sans: "Courier Prime", "Courier", "monospace";
 }
+
 
 body {
   @apply bg-black text-primary font-mono antialiased overflow-x-hidden;
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -25,23 +24,21 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-primary hover:opacity-80;
+  @apply bg-primary;
 }
 
-@layer components {
+::-webkit-scrollbar-thumb:hover {
+  opacity: 0.8;
+}
 
-  /* Terminal Cursor */
-  .terminal-cursor::after {
-    content: '█';
-    animation: cursor-blink 1s step-end infinite;
-    @apply text-primary ml-1;
-  }
+.terminal-cursor::after {
+  content: '█';
+  animation: cursor-blink 1s step-end infinite;
+  @apply text-primary ml-1;
+}
 
-  /* Terminal Border Utility */
-  .border-terminal {
-    border: 1px solid rgba(0, 255, 0, 0.3);
-  }
-
+.border-terminal {
+  border: 1px solid rgb(0 255 0 / 30%);
 }
 
 @keyframes cursor-blink {

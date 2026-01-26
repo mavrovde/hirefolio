@@ -18,7 +18,7 @@
     text-align: center;
     padding: 40px;
     border: 1px solid #f00;
-    background: rgba(255, 0, 0, 0.1);
+    background: rgb(255 0 0 / 10%);
 }
 
 .error-text {
@@ -42,7 +42,7 @@
 }
 
 .stat-card:hover {
-    box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+    box-shadow: 0 0 20px rgb(14 165 233 / 30%);
     transform: translateY(-5px);
 }
 
@@ -82,8 +82,8 @@
 }
 
 .action-btn:hover {
-    background: rgba(14, 165, 233, 0.1);
-    box-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
+    background: rgb(14 165 233 / 10%);
+    box-shadow: 0 0 15px rgb(14 165 233 / 30%);
 }
 
 .action-btn .icon {

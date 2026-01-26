@@ -56,7 +56,7 @@
   text-align: center;
   padding: 40px;
   border: 1px solid #f00;
-  background: rgba(255, 0, 0, 0.1);
+  background: rgb(255 0 0 / 10%);
 }
 
 .error-text {
@@ -75,7 +75,7 @@ table {
 }
 
 thead {
-  background: rgba(14, 165, 233, 0.1);
+  background: rgb(14 165 233 / 10%);
 }
 
 th {
@@ -91,7 +91,7 @@ td {
 }
 
 tr:hover {
-  background: rgba(14, 165, 233, 0.05);
+  background: rgb(14 165 233 / 5%);
 }
 
 .id-cell {
