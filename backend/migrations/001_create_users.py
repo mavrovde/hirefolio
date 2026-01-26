@@ -41,8 +41,8 @@ def upgrade() -> None:
     op.create_index("ix_users_email", "users", ["email"])
 
     # Insert default admin user
-    # Password: admin123
-    hashed_password = get_password_hash("admin123")
+    # Password: admin
+    hashed_password = get_password_hash("admin")
     op.execute(
         f"""
         INSERT INTO users (username, email, hashed_password, is_admin, is_active)
