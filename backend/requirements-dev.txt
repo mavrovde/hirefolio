@@ -2,20 +2,20 @@
 -r requirements.txt
 
 # Testing
-pytest==8.3.4
-pytest-asyncio==0.25.3
+pytest==8.4.0
+pytest-asyncio==0.26.0
 pytest-cov==6.0.0
 respx==0.22.0
 pytest-mock==3.14.0
 
 
 # Linting & Formatting
-ruff==0.9.3
+ruff==0.10.0
 
 # Type Checking
-mypy==1.14.1
+mypy==1.15.0
 types-passlib==1.7.7.20241221
 
 # Security
-bandit==1.8.2
+bandit==1.8.3
 rich==14.3.1
