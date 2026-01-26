@@ -8,16 +8,16 @@ import { AuthService, User } from '../../../services/auth.service';
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './admin-layout.component.html',
-  styleUrls: ['./admin-layout.component.css']
+  styleUrls: ['./admin-layout.component.css'],
 })
 export class AdminLayoutComponent {
   currentUser: User | null = null;
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
   ) {
-    this.authService.currentUser$.subscribe(user => {
+    this.authService.currentUser$.subscribe((user) => {
       this.currentUser = user;
     });
   }

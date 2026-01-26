@@ -8,8 +8,7 @@ import { Profile } from '../../services/profile.service';
   standalone: true,
   imports: [CommonModule, TranslatePipe],
   templateUrl: './hero.component.html',
-  styleUrls: ['./hero.component.css']
-
+  styleUrls: ['./hero.component.css'],
 })
 export class HeroComponent {
   @Input() profile: Profile | null = null;
@@ -24,7 +23,7 @@ export class HeroComponent {
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: "smooth"
+        behavior: 'smooth',
       });
     }
   }

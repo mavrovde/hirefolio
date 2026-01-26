@@ -30,12 +30,14 @@ import { GoogleAnalyticsService } from '../../services/analytics.service';
     // RecommendationsComponent,
     BlogComponent,
     ContactComponent,
-    SystemStatsComponent
+    SystemStatsComponent,
   ],
   template: `
-    <div class="bg-black min-h-screen text-primary selection:bg-primary selection:text-black font-mono">
+    <div
+      class="bg-black min-h-screen text-primary selection:bg-primary selection:text-black font-mono"
+    >
       <app-header></app-header>
-      
+
       <main *ngIf="profile$ | async as profile" class="pb-16">
         <app-hero [profile]="profile"></app-hero>
         <app-about [profile]="profile"></app-about>
@@ -53,7 +55,7 @@ import { GoogleAnalyticsService } from '../../services/analytics.service';
         <p>&copy; {{ currentYear }} Sergii Mavrov. All rights reserved.</p>
       </footer>
     </div>
-  `
+  `,
 })
 export class HomeComponent implements OnInit {
   profile$: Observable<Profile> | null = null;
@@ -61,8 +63,8 @@ export class HomeComponent implements OnInit {
 
   constructor(
     private profileService: ProfileService,
-    private analyticsService: GoogleAnalyticsService
-  ) { }
+    private analyticsService: GoogleAnalyticsService,
+  ) {}
 
   ngOnInit() {
     this.profile$ = this.profileService.getProfile();

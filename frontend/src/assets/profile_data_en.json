@@ -16,13 +16,7 @@
       "endDate": "Present",
       "duration": "11 mos",
       "workType": "Hybrid",
-      "skills": [
-        "Kubernetes",
-        "Microservices",
-        "Java",
-        "Docker",
-        "Agile Methodologies"
-      ],
+      "skills": ["Kubernetes", "Microservices", "Java", "Docker", "Agile Methodologies"],
       "companyLinkedInUrl": "https://www.linkedin.com/company/41629/"
     },
     {
@@ -35,12 +29,7 @@
       "location": "Hamburg, Germany",
       "workType": "Remote",
       "description": "Freight Information System (FIS3) under Adesso as the contractor.\n\nProject: The Freight Information System (FIS) is Hapag-Lloyd’s central IT platform. It supports all key business processes in container shipping. FIS manages bookings, transport planning, documentation, and billing. The system ensures end-to-end transparency and operational efficiency. It replaces fragmented legacy systems with a unified digital solution. FIS is cloud-ready and designed for scalability and resilience. It integrates internal systems and external partners. DevOps and Continuous Delivery accelerate further development. AI and automation improve decision-making and customer service. FIS is the digital backbone of Hapag-Lloyd’s global logistics.\n\nResponsibilities: \n\nDrive and support the transition toward a microservice‑based architecture, including decomposition of legacy components, definition of service boundaries, and alignment with cloud‑native principles.\n\nLead the implementation of core system capabilities, ensuring scalability, resilience, and adherence to architectural standards.\n\nContribute to the design and evolution of the overall system architecture, participating in solution design, technology selection, and definition of best practices.\n\nAnalyze, troubleshoot, and resolve complex software defects, ensuring system stability and continuous improvement of code quality.\n\nPerform DevOps‑related activities, including CI/CD pipeline optimization, infrastructure automation, and operational reliability improvements.\n\nConduct code reviews and promote Clean Code principles\n\nPostgres,CDI,Liberty Server,SQL,AWS CLI,Podman,JPA,Java 11-17,Maven,Kubernetes,Jenkins,Mockito,Serverless,JSON,Grafana,AWS,Docker Compose,Microservices,Kibana,Python,BDD,Wiremock,Docker",
-      "skills": [
-        "DevOps",
-        "Microservices",
-        "Java",
-        "Amazon Web Services (AWS)"
-      ],
+      "skills": ["DevOps", "Microservices", "Java", "Amazon Web Services (AWS)"],
       "companyLinkedInUrl": "https://www.linkedin.com/company/133790/"
     },
     {
@@ -121,9 +110,7 @@
       "duration": "1 yr 1 mo",
       "location": "Kyiv, Ukraine",
       "description": "Project: Vast\n\nVast is the premier provider of big data solutions for life’s biggest purchases. Vast’s industry-leading big data platform and applications are currently in use at many of the largest automotive, real estate and travel businesses in the world. Vast clients include AOL, Southwest Airlines and USAA.\n\nThe main project is Agent Portal. The web application is being used for organisation links between possible clients, brokers and real estate agents.\n\nResponsibilities: \n- Work on requirements, understand and resolve dependencies\n- Worked as part of the team reviewing detailed design and key technical areas\n\nTechnologies: J2EE, Scala, Guice, Spray, REST web-services, Maven, Git",
-      "skills": [
-        "Problem Solving"
-      ],
+      "skills": ["Problem Solving"],
       "companyLinkedInUrl": "https://www.linkedin.com/company/164008/"
     },
     {
@@ -134,9 +121,7 @@
       "duration": "5 mos",
       "location": "Odessa, Ukraine",
       "description": "Project: Teamonline – Bosted/Incorp\n\nThe Bosted System is an IT solution for providers helping people with developmental disabilities. Bosted is the Danish word for 'residential homes'. Providing temporary use of on-line non-downloadable software for collecting, monitoring and analyzing data indicative of the health or condition of an individual for treatment and diagnostic purposes\n\nResponsibilities: \n- Work on requirements, understand and resolve dependencies\n- Code review\n- Worked as part of the team reviewing detailed design and key technical areas\n\nTechnologies: J2EE, Tomcat, Spring MVC, JSP, JavaScript, SQL, Ant, Maven, JUnit, Eclipse, SVN, Agile",
-      "skills": [
-        "Problem Solving"
-      ],
+      "skills": ["Problem Solving"],
       "companyLinkedInUrl": "https://www.linkedin.com/company/9183/"
     },
     {
@@ -147,11 +132,7 @@
       "endDate": "Sep 2012",
       "duration": "3 yrs 1 mo",
       "location": "Odessa, Ukraine",
-      "skills": [
-        "Leadership",
-        "Software Development Methodologies",
-        "Problem Solving"
-      ],
+      "skills": ["Leadership", "Software Development Methodologies", "Problem Solving"],
       "companyLinkedInUrl": "https://www.linkedin.com/company/12127/"
     },
     {
@@ -195,10 +176,7 @@
       "duration": "1 yr",
       "location": "Odessa, Ukraine",
       "description": "Projects:\nComodo's Two Factor Authentication Solution.\nThe project is authorized service for signing of private clients to secure Internet resources. The most popular solution is protection for online management system of bank accounts. The application checks the online user authentication and registers all users activity on the site in real time mode and blocks all unsecure actions. The solution is transparent for users, it looks like a part of the main system. \n\nCertificate Manager for Secure SSL Certificate Administration.\nThe project is the service to enroll and control of states of certificates for large customers. The application is an intermediary between Comodo company and customer's management to provide the necessary ordering information. The service interacts with the Comodo auth center server for ordering and maintenance of certificates on the basis of the customer's arrangements.\n\nResponsibilities: \n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas\n- Code review\n- Help in recruitment and training new members of the team\n\nTechnologies: J2SE, J2EE, GWT, JSP, HTML, CSS, JavaScript, SQL(MySQL), Ant, JUnit, Idea, SVN, Agile.",
-      "skills": [
-        "Software Development Methodologies",
-        "Problem Solving"
-      ],
+      "skills": ["Software Development Methodologies", "Problem Solving"],
       "companyLinkedInUrl": "https://www.linkedin.com/company/163167/"
     },
     {
@@ -209,11 +187,7 @@
       "duration": "3 yrs",
       "location": "Tiraspol, Transnistria autonomous territorial unit, Moldova",
       "description": "Projects:\nFew large and medium projects related to customs clearance (the main application related with the area was in my full responsibility), staff service, accounting, etc. They were created as \"thick\" Delphi clients + (DB stored procedures + triggers).\n\nTechnologies: Delphi, SQL(MS SQL), Foxpro, DBF, SVN. \n\nNew system based on J2EE should be replaced all previous projects. Many parts of the system have been created and integrated with old systems. The system was designed as few WEB applications with one authentication center for officers and clients. \n\nTechnologies: J2EE, Applets, JavaScript, JSF, EJB, Hibernate, SQL(MS SQL), JBoss, GlassFish, Netbeans, SVN, Agile.\n \nResponsibilities:\n- Main designing\n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas\n- Code review\n- Help in recruitment and training new members of the team",
-      "skills": [
-        "Leadership",
-        "Software Development Methodologies",
-        "Problem Solving"
-      ]
+      "skills": ["Leadership", "Software Development Methodologies", "Problem Solving"]
     },
     {
       "title": "Tirotex",
@@ -221,10 +195,7 @@
       "startDate": "Tiraspol, Transnistria autonomous territorial unit, Moldova",
       "location": "Jun 2004 - Aug 2005 · 1 yr 3 mos",
       "description": "I coordinated several teams responsible to support the IT environment of the factory. The main tasks were:\n- The introduction of a new ERP system \"Tirotex Max\";\n- The integration of data from the old existing systems to new \"Tirotex Max\" based on SOA architecture using any possible protocols;\n- The development systems based on the two or three-tier applications (Delphi, FoxPro, Informix DB) in places where it was impossible to implement \"Tirotex Max\" way.\n\nMAX+ is an integrated business management system intended for manufacturing, commercial and service companies. The main purpose of this system is to provide the whole range of IT services required for production, sales, procurement and finance management in compliance with strategy, policy and relationship between different business units of the enterprise.\n\nWhile integrating enhanced capabilities in a basic product, MAX+ combines wide functionality with low cost of ownership and enables to easily upgrade the system that makes MAX+ an ideal ERP solution for both small and larger companies. \n\nMAX+ System is designed for fast implementation, and supports different types of production including ‘make to contract’, ‘make to order’, ‘make to store’ and ‘assemble to order’. The modular structure of the system, advanced and high-performance development tools, and the interfaces compliant with industry standards make it possible to flexibly adapt the system to fit the business processes of a company as well as to expand and upgrade the system as the company business grows.\n\nResponsibilities:\n- Coordination teams of developers for fast integration the new system\n- Work on requirements, understand and resolve dependencies\n- Searching ways to combinated old information system with new one\n- Searching ways to optimize the people managment\n- Help in recruitment and training new members of the team\n- Worked as part of the team reviewing detailed design and key technical areas",
-      "skills": [
-        "Leadership",
-        "Software Development Methodologies"
-      ],
+      "skills": ["Leadership", "Software Development Methodologies"],
       "companyLinkedInUrl": "https://www.linkedin.com/company/6869043/"
     },
     {
@@ -235,11 +206,7 @@
       "endDate": "Aug 2005",
       "duration": "1 yr 3 mos",
       "description": "I coordinated several teams responsible to support the IT environment of the factory. The main tasks were:\n- The introduction of a new ERP system \"Tirotex Max\";\n- The integration of data from the old existing systems to new \"Tirotex Max\" based on SOA architecture using any possible protocols;\n- The development systems based on the two or three-tier applications (Delphi, FoxPro, Informix DB) in places where it was impossible to implement \"Tirotex Max\" way.\n\nMAX+ is an integrated business management system intended for manufacturing, commercial and service companies. The main purpose of this system is to provide the whole range of IT services required for production, sales, procurement and finance management in compliance with strategy, policy and relationship between different business units of the enterprise.\n\nWhile integrating enhanced capabilities in a basic product, MAX+ combines wide functionality with low cost of ownership and enables to easily upgrade the system that makes MAX+ an ideal ERP solution for both small and larger companies. \n\nMAX+ System is designed for fast implementation, and supports different types of production including ‘make to contract’, ‘make to order’, ‘make to store’ and ‘assemble to order’. The modular structure of the system, advanced and high-performance development tools, and the interfaces compliant with industry standards make it possible to flexibly adapt the system to fit the business processes of a company as well as to expand and upgrade the system as the company business grows.\n\nResponsibilities:\n- Coordination teams of developers for fast integration the new system\n- Work on requirements, understand and resolve dependencies\n- Searching ways to combinated old information system with new one\n- Searching ways to optimize the people managment\n- Help in recruitment and training new members of the team\n- Worked as part of the team reviewing detailed design and key technical areas",
-      "skills": [
-        "Leadership",
-        "Software Development Methodologies",
-        "Problem Solving"
-      ]
+      "skills": ["Leadership", "Software Development Methodologies", "Problem Solving"]
     },
     {
       "title": "Software Developer, Activity leader",
@@ -249,10 +216,7 @@
       "endDate": "May 2004",
       "duration": "1 yr 10 mos",
       "description": "Tirotex is the largest textile company in the southeast of CIS. It is a unique production complex with a strong infrastructure, advanced technical, organizational and scientific basis. It is an export sales oriented company. The volume of export deliveries is about 70% of the whole sales volume. The products of Tirotex are exported to 30 countries all over the world.\n\nI have been involved as software developer in many places critical important to main processes. We were forced to change old data system based on MS DOS and Foxpro to new created oriented to more comfortable Windows design and modern data base servers. I was able to make the main process of the production and the control much more faster, simplest and cheapest in places which have been in my responsibility.\n\nThe main goal was step-by-step migration to new data system. It is an infomedia called “Tirotex MAX” combining all into one line: fiscal accounting, economic process of sale, production, materials management, support of all kinds of production.\n\nTechnologies: Foxpro, DBF, Delphi, Informix, MS SQL.\n\nResponsibilities:\n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas",
-      "skills": [
-        "Leadership",
-        "Software Development Methodologies"
-      ]
+      "skills": ["Leadership", "Software Development Methodologies"]
     }
   ],
   "education": [

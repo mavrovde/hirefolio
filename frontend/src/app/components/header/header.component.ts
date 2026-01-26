@@ -8,7 +8,7 @@ import { TranslatePipe } from '../../pipes/translate.pipe';
   standalone: true,
   imports: [CommonModule, TranslatePipe],
   templateUrl: './header.component.html',
-  styleUrls: ['./header.component.css']
+  styleUrls: ['./header.component.css'],
 })
 export class HeaderComponent {
   currentLang: Language = 'en';
@@ -19,11 +19,11 @@ export class HeaderComponent {
     { labelKey: 'NAV.SKILLS', href: '#skills' },
     { labelKey: 'NAV.EDUCATION', href: '#education' },
     // { labelKey: 'NAV.RECOMMENDATIONS', href: '#recommendations' },
-    { labelKey: 'NAV.BLOG', href: '#blog' }
+    { labelKey: 'NAV.BLOG', href: '#blog' },
   ];
 
   constructor(private languageService: LanguageService) {
-    this.languageService.currentLang$.subscribe(lang => this.currentLang = lang);
+    this.languageService.currentLang$.subscribe((lang) => (this.currentLang = lang));
   }
 
   scrollTo(id: string, event: Event) {
@@ -36,7 +36,7 @@ export class HeaderComponent {
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: "smooth"
+        behavior: 'smooth',
       });
     }
   }

@@ -1,62 +1,62 @@
 <div class="post-list">
   <div class="header">
     <h1 class="page-title">&gt; Manage Posts</h1>
-    <a routerLink="/admin/posts/new" class="btn-new">
-      <span class="icon">➕</span> New Post
-    </a>
+    <a routerLink="/admin/posts/new" class="btn-new"> <span class="icon">➕</span> New Post </a>
   </div>
 
   @if (loading) {
-  <div class="loading">Loading posts...</div>
+    <div class="loading">Loading posts...</div>
   } @else if (error) {
-  <div class="error-state">
-    <p class="error-text">&gt; Error: {{ error }}</p>
-    <button (click)="loadPosts()" class="btn-primary">Retry</button>
-  </div>
+    <div class="error-state">
+      <p class="error-text">&gt; Error: {{ error }}</p>
+      <button (click)="loadPosts()" class="btn-primary">Retry</button>
+    </div>
   } @else if (posts.length === 0) {
-  <div class="empty-state">
-    <p>&gt; No posts found</p>
-    <a routerLink="/admin/posts/new" class="btn-primary">Create your first post</a>
-  </div>
+    <div class="empty-state">
+      <p>&gt; No posts found</p>
+      <a routerLink="/admin/posts/new" class="btn-primary">Create your first post</a>
+    </div>
   } @else {
-  <div class="posts-table">
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Title</th>
-          <th>Slug</th>
-          <th>Language</th>
-          <th>Status</th>
-          <th>Created</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (post of posts; track post.id) {
-        <tr>
-          <td class="id-cell">{{ post.id }}</td>
-          <td class="title-cell">{{ post.title }}</td>
-          <td class="slug-cell">{{ post.slug }}</td>
-          <td class="lang-cell">{{ post.language }}</td>
-          <td class="status-cell">
-            <span [class]="post.published ? 'status-published' : 'status-draft'">
-              {{ post.published ? '✓ Published' : '○ Draft' }}
-            </span>
-          </td>
-          <td class="date-cell">{{ formatDate(post.created_at!) }}</td>
-          <td class="actions-cell">
-            <a [routerLink]="['/admin/posts/edit', post.id]" class="btn-edit">
-              Edit
-            </a>
-            <button (click)="deletePost(post)" class="btn-delete" [disabled]="deletingIds.has(post.id)">
-              {{ deletingIds.has(post.id) ? 'Deleting...' : 'Delete' }}
-            </button>
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
+    <div class="posts-table">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Slug</th>
+            <th>Language</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (post of posts; track post.id) {
+            <tr>
+              <td class="id-cell">{{ post.id }}</td>
+              <td class="title-cell">{{ post.title }}</td>
+              <td class="slug-cell">{{ post.slug }}</td>
+              <td class="lang-cell">{{ post.language }}</td>
+              <td class="status-cell">
+                <span [class]="post.published ? 'status-published' : 'status-draft'">
+                  {{ post.published ? '✓ Published' : '○ Draft' }}
+                </span>
+              </td>
+              <td class="date-cell">{{ formatDate(post.created_at!) }}</td>
+              <td class="actions-cell">
+                <a [routerLink]="['/admin/posts/edit', post.id]" class="btn-edit"> Edit </a>
+                <button
+                  (click)="deletePost(post)"
+                  class="btn-delete"
+                  [disabled]="deletingIds.has(post.id)"
+                >
+                  {{ deletingIds.has(post.id) ? 'Deleting...' : 'Delete' }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
 </div>

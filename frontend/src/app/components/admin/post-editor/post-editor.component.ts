@@ -19,7 +19,7 @@ interface PostData {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './post-editor.component.html',
-  styleUrls: ['./post-editor.component.css']
+  styleUrls: ['./post-editor.component.css'],
 })
 export class PostEditorComponent implements OnInit {
   post: PostData = {
@@ -29,7 +29,7 @@ export class PostEditorComponent implements OnInit {
     summary: '',
     language: 'en',
     published: false,
-    tags: []
+    tags: [],
   };
   private originalPost: PostData | null = null;
 
@@ -51,8 +51,8 @@ export class PostEditorComponent implements OnInit {
     private blogService: BlogService,
     private router: Router,
     private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
-  ) { }
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -78,7 +78,7 @@ export class PostEditorComponent implements OnInit {
             summary: post.summary || '',
             language: post.language,
             published: post.published,
-            tags: [...(post.tags || [])]
+            tags: [...(post.tags || [])],
           };
           this.originalPost = JSON.parse(JSON.stringify(this.post));
         }
@@ -89,7 +89,7 @@ export class PostEditorComponent implements OnInit {
         this.errorMessage = 'Failed to load post';
         this.loading = false;
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -128,7 +128,7 @@ export class PostEditorComponent implements OnInit {
   }
 
   removeTag(tag: string): void {
-    this.post.tags = this.post.tags.filter(t => t !== tag);
+    this.post.tags = this.post.tags.filter((t) => t !== tag);
   }
 
   suggestTags(): void {
@@ -145,7 +145,7 @@ export class PostEditorComponent implements OnInit {
           const remainingSlots = 5 - this.post.tags.length;
           if (remainingSlots > 0) {
             const newTags = response.tags
-              .filter(t => !this.post.tags.includes(t))
+              .filter((t) => !this.post.tags.includes(t))
               .slice(0, remainingSlots);
             this.post.tags = [...this.post.tags, ...newTags];
           } else {
@@ -161,7 +161,7 @@ export class PostEditorComponent implements OnInit {
         console.error('Error suggesting tags:', err);
         alert('Failed to suggest tags. Ensure AI service is available.');
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -180,7 +180,7 @@ export class PostEditorComponent implements OnInit {
       error: () => {
         this.suggestingTitle = false;
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -199,7 +199,7 @@ export class PostEditorComponent implements OnInit {
       error: () => {
         this.suggestingSlug = false;
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -218,7 +218,7 @@ export class PostEditorComponent implements OnInit {
       error: () => {
         this.suggestingSummary = false;
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -248,7 +248,7 @@ export class PostEditorComponent implements OnInit {
       error: () => {
         this.suggestingAll = false;
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -261,9 +261,10 @@ export class PostEditorComponent implements OnInit {
     this.saving = true;
     this.errorMessage = '';
 
-    const request = this.isEditMode && this.currentId
-      ? this.blogService.updatePostById(this.currentId, this.post)
-      : this.blogService.createPost(this.post);
+    const request =
+      this.isEditMode && this.currentId
+        ? this.blogService.updatePostById(this.currentId, this.post)
+        : this.blogService.createPost(this.post);
 
     request.subscribe({
       next: () => {
@@ -275,7 +276,7 @@ export class PostEditorComponent implements OnInit {
         // (Simplification: in real app manage cleaner state or separate save vs publish)
         this.errorMessage = error.error?.detail || 'Failed to save post';
         console.error('Save error:', error);
-      }
+      },
     });
   }
 
@@ -301,7 +302,7 @@ export class PostEditorComponent implements OnInit {
         this.errorMessage = 'Failed to delete post';
         console.error('Delete error:', error);
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 }

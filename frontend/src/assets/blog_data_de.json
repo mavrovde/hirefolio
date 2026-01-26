@@ -1,37 +1,37 @@
 [
-    {
-        "id": "decoupling-monoliths",
-        "title": "Monolithen entkoppeln: Strategien für Java-Entwickler",
-        "date": "2026-01-24",
-        "summary": "Ein tiefer Einblick in die Migration von Legacy-Java-Monolithen zu Microservices-Architekturen mit Spring Boot.",
-        "content": "<p>Die Migration von einer monolithischen Architektur zu Microservices ist eine Reise, kein Sprint. Für Java-Entwickler bedeutet das oft, große EAR/WAR-Deployments in kleinere, unabhängige Spring Boot-Anwendungen aufzuteilen.</p><h3>Schlüsselstrategien:</h3><ul><li><strong>Domänen identifizieren:</strong> Nutzen Sie Domain-Driven Design (DDD), um natürliche Grenzen zu finden.</li><li><strong>Strangler-Fig-Muster:</strong> Ersetzen Sie langsam spezifische Funktionen durch neue Dienste.</li><li><strong>Datenbank-Refactoring:</strong> Das ist der schwierigste Teil. Die Entkopplung der Datenschicht ist entscheidend.</li></ul>"
-    },
-    {
-        "id": "angular-performance",
-        "title": "Angular-Performance skalieren",
-        "date": "2026-01-15",
-        "summary": "Tipps zur Optimierung großer Frontend-Anwendungen: Lazy Loading, Change Detection Strategien und mehr.",
-        "content": "<p>Beim Erstellen großer Angular-Anwendungen kann die Leistung schnell nachlassen, wenn sie nicht proaktiv verwaltet wird.</p><h3>Top-Tipps:</h3><ul><li><strong>OnPush Change Detection:</strong> Wechseln Sie standardmäßig zu `ChangeDetectionStrategy.OnPush`.</li><li><strong>Lazy Loading:</strong> Teilen Sie Ihre App in Feature-Module auf und laden Sie diese bei Bedarf.</li><li><strong>RxJS Best Practices:</strong> Vermeiden Sie Speicherlecks, indem Sie Observables korrekt abbestellen.</li></ul>"
-    },
-    {
-        "id": "clean-code",
-        "title": "Die Kunst von Clean Code",
-        "date": "2025-12-20",
-        "summary": "Gedanken über Wartbarkeit, SOLID-Prinzipien und warum Code für Menschen wichtiger ist als für Maschinen.",
-        "content": "<p>\"Jeder Narr kann Code schreiben, den ein Computer verstehen kann. Gute Programmierer schreiben Code, den Menschen verstehen können.\" - Martin Fowler.</p><p>Clean Code handelt von Lesbarkeit und Wartbarkeit. Es geht darum, den nächsten Entwickler zu respektieren, der Ihren Code anfassen wird (was Sie selbst in 6 Monaten sein könnten).</p>"
-    },
-    {
-        "id": "terminal-design",
-        "title": "Warum Terminals niemals sterben",
-        "date": "2025-11-05",
-        "summary": "Ein Meta-Beitrag darüber, warum ich diese Retro-Ästhetik für mein Portfolio gewählt habe.",
-        "content": "<p>Die Kommandozeile hat eine zeitlose Eleganz. Sie steht für direkte Kontrolle, fehlende Ablenkung und reinen Nutzen. Dieses Portfolio ist eine Hommage an die Werkzeuge, die wir jeden Tag nutzen.</p><p>Grüner Text auf schwarzem Hintergrund ist nicht nur ein Stil; es ist ein Lebensstil.</p>"
-    },
-    {
-        "id": "distributed-teams",
-        "title": "Verteilte Teams managen",
-        "date": "2025-10-10",
-        "summary": "Einblicke in Führung, asynchrone Kommunikation und den Aufbau einer Kultur aus der Ferne.",
-        "content": "<p>Remote-Arbeit ist gekommen, um zu bleiben. Das Management verteilter Teams erfordert einen Wechsel vom präsenzbasierten Management zum ergebnisorientierten Management.</p><h3>Kernprinzipien:</h3><ul><li><strong>Überkommunikation:</strong> Inhalte gehen im Text leicht verloren.</li><li><strong>Vertrauen Sie Ihrem Team:</strong> Konzentrieren Sie sich auf Ergebnisse, nicht auf Stunden.</li></ul>"
-    }
+  {
+    "id": "decoupling-monoliths",
+    "title": "Monolithen entkoppeln: Strategien für Java-Entwickler",
+    "date": "2026-01-24",
+    "summary": "Ein tiefer Einblick in die Migration von Legacy-Java-Monolithen zu Microservices-Architekturen mit Spring Boot.",
+    "content": "<p>Die Migration von einer monolithischen Architektur zu Microservices ist eine Reise, kein Sprint. Für Java-Entwickler bedeutet das oft, große EAR/WAR-Deployments in kleinere, unabhängige Spring Boot-Anwendungen aufzuteilen.</p><h3>Schlüsselstrategien:</h3><ul><li><strong>Domänen identifizieren:</strong> Nutzen Sie Domain-Driven Design (DDD), um natürliche Grenzen zu finden.</li><li><strong>Strangler-Fig-Muster:</strong> Ersetzen Sie langsam spezifische Funktionen durch neue Dienste.</li><li><strong>Datenbank-Refactoring:</strong> Das ist der schwierigste Teil. Die Entkopplung der Datenschicht ist entscheidend.</li></ul>"
+  },
+  {
+    "id": "angular-performance",
+    "title": "Angular-Performance skalieren",
+    "date": "2026-01-15",
+    "summary": "Tipps zur Optimierung großer Frontend-Anwendungen: Lazy Loading, Change Detection Strategien und mehr.",
+    "content": "<p>Beim Erstellen großer Angular-Anwendungen kann die Leistung schnell nachlassen, wenn sie nicht proaktiv verwaltet wird.</p><h3>Top-Tipps:</h3><ul><li><strong>OnPush Change Detection:</strong> Wechseln Sie standardmäßig zu `ChangeDetectionStrategy.OnPush`.</li><li><strong>Lazy Loading:</strong> Teilen Sie Ihre App in Feature-Module auf und laden Sie diese bei Bedarf.</li><li><strong>RxJS Best Practices:</strong> Vermeiden Sie Speicherlecks, indem Sie Observables korrekt abbestellen.</li></ul>"
+  },
+  {
+    "id": "clean-code",
+    "title": "Die Kunst von Clean Code",
+    "date": "2025-12-20",
+    "summary": "Gedanken über Wartbarkeit, SOLID-Prinzipien und warum Code für Menschen wichtiger ist als für Maschinen.",
+    "content": "<p>\"Jeder Narr kann Code schreiben, den ein Computer verstehen kann. Gute Programmierer schreiben Code, den Menschen verstehen können.\" - Martin Fowler.</p><p>Clean Code handelt von Lesbarkeit und Wartbarkeit. Es geht darum, den nächsten Entwickler zu respektieren, der Ihren Code anfassen wird (was Sie selbst in 6 Monaten sein könnten).</p>"
+  },
+  {
+    "id": "terminal-design",
+    "title": "Warum Terminals niemals sterben",
+    "date": "2025-11-05",
+    "summary": "Ein Meta-Beitrag darüber, warum ich diese Retro-Ästhetik für mein Portfolio gewählt habe.",
+    "content": "<p>Die Kommandozeile hat eine zeitlose Eleganz. Sie steht für direkte Kontrolle, fehlende Ablenkung und reinen Nutzen. Dieses Portfolio ist eine Hommage an die Werkzeuge, die wir jeden Tag nutzen.</p><p>Grüner Text auf schwarzem Hintergrund ist nicht nur ein Stil; es ist ein Lebensstil.</p>"
+  },
+  {
+    "id": "distributed-teams",
+    "title": "Verteilte Teams managen",
+    "date": "2025-10-10",
+    "summary": "Einblicke in Führung, asynchrone Kommunikation und den Aufbau einer Kultur aus der Ferne.",
+    "content": "<p>Remote-Arbeit ist gekommen, um zu bleiben. Das Management verteilter Teams erfordert einen Wechsel vom präsenzbasierten Management zum ergebnisorientierten Management.</p><h3>Kernprinzipien:</h3><ul><li><strong>Überkommunikation:</strong> Inhalte gehen im Text leicht verloren.</li><li><strong>Vertrauen Sie Ihrem Team:</strong> Konzentrieren Sie sich auf Ergebnisse, nicht auf Stunden.</li></ul>"
+  }
 ]

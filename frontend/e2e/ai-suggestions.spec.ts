@@ -1,62 +1,63 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('AI Suggestions Flow', () => {
-    test.setTimeout(180000); // AI can be slow
+  test.setTimeout(180000); // AI can be slow
 
-    test.beforeEach(async ({ page }) => {
-        // Login first
-        await page.goto('http://localhost:4200/admin/login');
-        await page.fill('input[name="username"]', 'admin');
-        await page.fill('input[name="password"]', 'admin');
-        await page.click('button[type="submit"]');
-        await expect(page).toHaveURL('http://localhost:4200/admin/dashboard');
-    });
+  test.beforeEach(async ({ page }) => {
+    // Login first
+    await page.goto('http://localhost:4200/admin/login');
+    await page.fill('input[name="username"]', 'admin');
+    await page.fill('input[name="password"]', 'admin');
+    await page.click('button[type="submit"]');
+    await expect(page).toHaveURL('http://localhost:4200/admin/dashboard');
+  });
 
-    test('should suggest all fields from content', async ({ page }) => {
-        await page.goto('http://localhost:4200/admin/posts/new');
+  test('should suggest all fields from content', async ({ page }) => {
+    await page.goto('http://localhost:4200/admin/posts/new');
 
-        const content = 'This is a test post about Artificial Intelligence and how it is changing the software development world in 2026.';
-        await page.fill('textarea[id="content"]', content);
+    const content =
+      'This is a test post about Artificial Intelligence and how it is changing the software development world in 2026.';
+    await page.fill('textarea[id="content"]', content);
 
-        // Click "Suggest All from Content"
-        await page.click('button[title="Suggest Title, Slug, and Summary from content"]');
+    // Click "Suggest All from Content"
+    await page.click('button[title="Suggest Title, Slug, and Summary from content"]');
 
-        // Wait for results
-        await expect(page.locator('input[id="title"]')).not.toHaveValue('', { timeout: 180000 });
-        await expect(page.locator('input[id="slug"]')).not.toHaveValue('', { timeout: 10000 });
-        await expect(page.locator('textarea[id="summary"]')).not.toHaveValue('', { timeout: 10000 });
+    // Wait for results
+    await expect(page.locator('input[id="title"]')).not.toHaveValue('', { timeout: 180000 });
+    await expect(page.locator('input[id="slug"]')).not.toHaveValue('', { timeout: 10000 });
+    await expect(page.locator('textarea[id="summary"]')).not.toHaveValue('', { timeout: 10000 });
 
-        expect(await page.inputValue('input[id="title"]')).toBeTruthy();
-    });
+    expect(await page.inputValue('input[id="title"]')).toBeTruthy();
+  });
 
-    test('should suggest title individually', async ({ page }) => {
-        await page.goto('http://localhost:4200/admin/posts/new');
-        await page.fill('textarea[id="content"]', 'AI and Future');
+  test('should suggest title individually', async ({ page }) => {
+    await page.goto('http://localhost:4200/admin/posts/new');
+    await page.fill('textarea[id="content"]', 'AI and Future');
 
-        await page.click('button[title="Suggest title from content"]');
-        await expect(page.locator('input[id="title"]')).not.toHaveValue('', { timeout: 180000 });
-        expect(await page.inputValue('input[id="title"]')).toBeTruthy();
-    });
+    await page.click('button[title="Suggest title from content"]');
+    await expect(page.locator('input[id="title"]')).not.toHaveValue('', { timeout: 180000 });
+    expect(await page.inputValue('input[id="title"]')).toBeTruthy();
+  });
 
-    test('should suggest summary individually', async ({ page }) => {
-        await page.goto('http://localhost:4200/admin/posts/new');
-        await page.fill('textarea[id="content"]', 'AI and Future');
+  test('should suggest summary individually', async ({ page }) => {
+    await page.goto('http://localhost:4200/admin/posts/new');
+    await page.fill('textarea[id="content"]', 'AI and Future');
 
-        await page.click('button[title="Suggest summary from content"]');
-        await expect(page.locator('textarea[id="summary"]')).not.toHaveValue('', { timeout: 180000 });
-        expect(await page.inputValue('textarea[id="summary"]')).toBeTruthy();
-    });
+    await page.click('button[title="Suggest summary from content"]');
+    await expect(page.locator('textarea[id="summary"]')).not.toHaveValue('', { timeout: 180000 });
+    expect(await page.inputValue('textarea[id="summary"]')).toBeTruthy();
+  });
 
-    test('should suggest tags from title and content', async ({ page }) => {
-        await page.goto('http://localhost:4200/admin/posts/new');
+  test('should suggest tags from title and content', async ({ page }) => {
+    await page.goto('http://localhost:4200/admin/posts/new');
 
-        await page.fill('input[id="title"]', 'Future of AI');
-        await page.fill('textarea[id="content"]', 'AI is evolving rapidly.');
+    await page.fill('input[id="title"]', 'Future of AI');
+    await page.fill('textarea[id="content"]', 'AI is evolving rapidly.');
 
-        await page.click('button[title="Generate tags with AI"]');
+    await page.click('button[title="Generate tags with AI"]');
 
-        await page.waitForSelector('.tag-chip', { timeout: 180000 });
-        const tagsCount = await page.locator('.tag-chip').count();
-        expect(tagsCount).toBeGreaterThan(0);
-    });
+    await page.waitForSelector('.tag-chip', { timeout: 180000 });
+    const tagsCount = await page.locator('.tag-chip').count();
+    expect(tagsCount).toBeGreaterThan(0);
+  });
 });

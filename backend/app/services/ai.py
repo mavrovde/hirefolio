@@ -106,7 +106,7 @@ async def suggest_post_details(content: str) -> dict[str, Union[str, List[str]]]
                 details = json.loads(response_text)
                 if isinstance(details, dict):
                     # Clean all string values in the dict
-                    clean_details = {}
+                    clean_details: dict[str, Union[str, list[str]]] = {}
                     for k, v in details.items():
                         if k == "tags":
                             if isinstance(v, list):

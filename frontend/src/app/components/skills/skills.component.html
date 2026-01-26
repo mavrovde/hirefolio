@@ -1,16 +1,18 @@
 <section id="skills" class="py-20 border-b border-terminal">
-    <div class="container mx-auto px-6">
-        <h2 class="text-2xl font-bold mb-12 text-secondary font-mono">
-            {{ 'SECTION.SKILLS' | translate }}
-        </h2>
+  <div class="container mx-auto px-6">
+    <h2 class="text-2xl font-bold mb-12 text-secondary font-mono">
+      {{ 'SECTION.SKILLS' | translate }}
+    </h2>
 
-        <div class="max-w-5xl mx-auto">
-            <div *ngIf="profile" class="flex flex-wrap gap-4">
-                <div *ngFor="let skill of profile.skills"
-                    class="px-4 py-2 border border-terminal bg-black hover:bg-primary hover:text-black hover:border-primary transition-colors cursor-default">
-                    <span class="font-mono text-secondary hover:text-black font-medium">{{ skill }}</span>
-                </div>
-            </div>
+    <div class="max-w-5xl mx-auto">
+      <div *ngIf="profile" class="flex flex-wrap gap-4">
+        <div
+          *ngFor="let skill of profile.skills"
+          class="px-4 py-2 border border-terminal bg-black hover:bg-primary hover:text-black hover:border-primary transition-colors cursor-default"
+        >
+          <span class="font-mono text-secondary hover:text-black font-medium">{{ skill }}</span>
         </div>
+      </div>
     </div>
+  </div>
 </section>

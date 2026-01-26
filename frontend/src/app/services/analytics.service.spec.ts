@@ -5,40 +5,37 @@ import { Subject } from 'rxjs';
 import { vi } from 'vitest';
 
 describe('GoogleAnalyticsService', () => {
-    let service: GoogleAnalyticsService;
-    let router: Router;
-    let routerEventsSubject: Subject<any>;
+  let service: GoogleAnalyticsService;
+  let router: Router;
+  let routerEventsSubject: Subject<any>;
 
-    beforeEach(() => {
-        routerEventsSubject = new Subject<any>();
-        const routerMock = {
-            events: routerEventsSubject.asObservable()
-        };
+  beforeEach(() => {
+    routerEventsSubject = new Subject<any>();
+    const routerMock = {
+      events: routerEventsSubject.asObservable(),
+    };
 
-        TestBed.configureTestingModule({
-            providers: [
-                GoogleAnalyticsService,
-                { provide: Router, useValue: routerMock }
-            ]
-        });
-        service = TestBed.inject(GoogleAnalyticsService);
-        router = TestBed.inject(Router);
-
-        // Mock window.gtag
-        (window as any).gtag = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [GoogleAnalyticsService, { provide: Router, useValue: routerMock }],
     });
+    service = TestBed.inject(GoogleAnalyticsService);
+    router = TestBed.inject(Router);
 
-    it('should be created', () => {
-        expect(service).toBeTruthy();
-    });
+    // Mock window.gtag
+    (window as any).gtag = vi.fn();
+  });
 
-    it('should initialize Google Analytics script', () => {
-        const createElementSpy = vi.spyOn(document, 'createElement');
-        const appendChildSpy = vi.spyOn(document.head, 'appendChild');
+  it('should be created', () => {
+    expect(service).toBeTruthy();
+  });
 
-        service.initializeGoogleAnalytics();
+  it('should initialize Google Analytics script', () => {
+    const createElementSpy = vi.spyOn(document, 'createElement');
+    const appendChildSpy = vi.spyOn(document.head, 'appendChild');
 
-        expect(createElementSpy).toHaveBeenCalledWith('script');
-        expect(appendChildSpy).toHaveBeenCalled();
-    });
+    service.initializeGoogleAnalytics();
+
+    expect(createElementSpy).toHaveBeenCalledWith('script');
+    expect(appendChildSpy).toHaveBeenCalled();
+  });
 });

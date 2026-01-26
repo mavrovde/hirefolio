@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   --color-primary: #0f0;
@@ -6,10 +6,9 @@
   --color-background: #000;
   --color-surface: #111;
   --color-muted: #666;
-  --font-mono: "Courier Prime", "Courier", "monospace";
-  --font-sans: "Courier Prime", "Courier", "monospace";
+  --font-mono: 'Courier Prime', 'Courier', 'monospace';
+  --font-sans: 'Courier Prime', 'Courier', 'monospace';
 }
-
 
 body {
   @apply bg-black text-primary font-mono antialiased overflow-x-hidden;
@@ -42,7 +41,6 @@ body {
 }
 
 @keyframes cursor-blink {
-
   0%,
   100% {
     opacity: 1;

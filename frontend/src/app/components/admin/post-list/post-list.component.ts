@@ -8,7 +8,7 @@ import { BlogService, BlogPost } from '../../../services/blog.service';
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './post-list.component.html',
-  styleUrls: ['./post-list.component.css']
+  styleUrls: ['./post-list.component.css'],
 })
 export class PostListComponent implements OnInit {
   posts: BlogPost[] = [];
@@ -18,8 +18,8 @@ export class PostListComponent implements OnInit {
 
   constructor(
     private blogService: BlogService,
-    private cdr: ChangeDetectorRef
-  ) { }
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit(): void {
     this.loadPosts();
@@ -28,20 +28,19 @@ export class PostListComponent implements OnInit {
   loadPosts(): void {
     this.loading = true;
     this.error = null;
-    this.blogService.getPosts(false, null)
-      .subscribe({
-        next: (posts) => {
-          this.posts = posts;
-          this.loading = false;
-          this.cdr.detectChanges();
-        },
-        error: (error) => {
-          console.error('Failed to load posts:', error);
-          this.error = 'Failed to load posts. Please try again later.';
-          this.loading = false;
-          this.cdr.detectChanges();
-        }
-      });
+    this.blogService.getPosts(false, null).subscribe({
+      next: (posts) => {
+        this.posts = posts;
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Failed to load posts:', error);
+        this.error = 'Failed to load posts. Please try again later.';
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   formatDate(dateString: string): string {
@@ -49,7 +48,7 @@ export class PostListComponent implements OnInit {
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   }
 
@@ -61,19 +60,18 @@ export class PostListComponent implements OnInit {
     this.deletingIds.add(post.id);
     this.cdr.detectChanges();
 
-    this.blogService.deletePostById(post.id)
-      .subscribe({
-        next: () => {
-          this.posts = this.posts.filter(p => p.id !== post.id);
-          this.deletingIds.delete(post.id);
-          this.cdr.detectChanges();
-        },
-        error: (error) => {
-          console.error('Failed to delete post:', error);
-          alert('Failed to delete post. Please try again.');
-          this.deletingIds.delete(post.id);
-          this.cdr.detectChanges();
-        }
-      });
+    this.blogService.deletePostById(post.id).subscribe({
+      next: () => {
+        this.posts = this.posts.filter((p) => p.id !== post.id);
+        this.deletingIds.delete(post.id);
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Failed to delete post:', error);
+        alert('Failed to delete post. Please try again.');
+        this.deletingIds.delete(post.id);
+        this.cdr.detectChanges();
+      },
+    });
   }
 }

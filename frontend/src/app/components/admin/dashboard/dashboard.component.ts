@@ -8,7 +8,7 @@ import { StatsService, SystemStats } from '../../../services/stats.service';
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.css']
+  styleUrls: ['./dashboard.component.css'],
 })
 export class DashboardComponent implements OnInit {
   stats: SystemStats | null = null;
@@ -17,8 +17,8 @@ export class DashboardComponent implements OnInit {
 
   constructor(
     private statsService: StatsService,
-    private cdr: ChangeDetectorRef
-  ) { }
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit(): void {
     this.loadStats();
@@ -28,24 +28,23 @@ export class DashboardComponent implements OnInit {
     console.log('Dashboard: loadStats called');
     this.loading = true;
     this.error = null;
-    this.statsService.getStats()
-      .subscribe({
-        next: (data) => {
-          console.log('Dashboard: Stats received', data);
-          this.stats = data;
-          this.loading = false;
-          this.cdr.detectChanges(); // Force UI update
-        },
-        error: (error) => {
-          console.error('Dashboard: Failed to load stats:', error);
-          this.error = 'Failed to load dashboard statistics';
-          this.loading = false;
-          this.cdr.detectChanges(); // Force UI update
-        },
-        complete: () => {
-          console.log('Dashboard: Stats request completed');
-        }
-      });
+    this.statsService.getStats().subscribe({
+      next: (data) => {
+        console.log('Dashboard: Stats received', data);
+        this.stats = data;
+        this.loading = false;
+        this.cdr.detectChanges(); // Force UI update
+      },
+      error: (error) => {
+        console.error('Dashboard: Failed to load stats:', error);
+        this.error = 'Failed to load dashboard statistics';
+        this.loading = false;
+        this.cdr.detectChanges(); // Force UI update
+      },
+      complete: () => {
+        console.log('Dashboard: Stats request completed');
+      },
+    });
   }
 
   getLanguages(): string[] {

@@ -1,37 +1,37 @@
 {
-    "NAV": {
-        "ABOUT": "Über Mich",
-        "EXPERIENCE": "Erfahrung",
-        "SKILLS": "Fähigkeiten",
-        "EDUCATION": "Ausbildung",
-        "RECOMMENDATIONS": "Empfehlungen",
-        "BLOG": "Blog",
-        "CONTACT": "Kontakt"
-    },
-    "SECTION": {
-        "HI": "> Hallo, ich bin",
-        "READ_MORE": "[ Mehr lesen ]",
-        "GET_IN_TOUCH": "[ Kontakt aufnehmen ]",
-        "ABOUT": "> Über_Mich",
-        "EXPERIENCE": "> Berufserfahrung",
-        "SKILLS": "> Technische_Fähigkeiten",
-        "EDUCATION": "> Ausbildung_&_Zertifikate",
-        "EDUCATION_SUB": "> Ausbildung",
-        "CERTIFICATIONS_SUB": "> Zertifikate",
-        "RECOMMENDATIONS": "> Empfehlungen",
-        "BLOG": "> Blog_Beiträge",
-        "CONTACT": "> Kontakt_Info"
-    },
-    "COMMON": {
-        "VIEW_CREDENTIAL": "[ Zertifikat ansehen ]",
-        "VIEW_LINKEDIN": "[ Auf LinkedIn ansehen ]"
-    },
-    "STATS": {
-        "SYSTEM_STATUS": "SYSTEM_STATUS",
-        "UPTIME": "LAUFZEIT",
-        "MEMORY": "SPEICHER",
-        "CLIENT": "KLIENT",
-        "MODULES": "MODULE",
-        "LOADED": "GELADEN"
-    }
+  "NAV": {
+    "ABOUT": "Über Mich",
+    "EXPERIENCE": "Erfahrung",
+    "SKILLS": "Fähigkeiten",
+    "EDUCATION": "Ausbildung",
+    "RECOMMENDATIONS": "Empfehlungen",
+    "BLOG": "Blog",
+    "CONTACT": "Kontakt"
+  },
+  "SECTION": {
+    "HI": "> Hallo, ich bin",
+    "READ_MORE": "[ Mehr lesen ]",
+    "GET_IN_TOUCH": "[ Kontakt aufnehmen ]",
+    "ABOUT": "> Über_Mich",
+    "EXPERIENCE": "> Berufserfahrung",
+    "SKILLS": "> Technische_Fähigkeiten",
+    "EDUCATION": "> Ausbildung_&_Zertifikate",
+    "EDUCATION_SUB": "> Ausbildung",
+    "CERTIFICATIONS_SUB": "> Zertifikate",
+    "RECOMMENDATIONS": "> Empfehlungen",
+    "BLOG": "> Blog_Beiträge",
+    "CONTACT": "> Kontakt_Info"
+  },
+  "COMMON": {
+    "VIEW_CREDENTIAL": "[ Zertifikat ansehen ]",
+    "VIEW_LINKEDIN": "[ Auf LinkedIn ansehen ]"
+  },
+  "STATS": {
+    "SYSTEM_STATUS": "SYSTEM_STATUS",
+    "UPTIME": "LAUFZEIT",
+    "MEMORY": "SPEICHER",
+    "CLIENT": "KLIENT",
+    "MODULES": "MODULE",
+    "LOADED": "GELADEN"
+  }
 }

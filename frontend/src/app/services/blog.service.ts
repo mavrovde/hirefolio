@@ -6,106 +6,112 @@ import { LanguageService } from './language.service';
 import { environment } from '../../environments/environment';
 
 export interface BlogPost {
-    id: number;
-    title: string;
-    slug: string;
-    date: string;
-    summary: string;
-    content: string;
-    language: string;
-    published: boolean;
-    tags: string[];
-    created_at?: string;
+  id: number;
+  title: string;
+  slug: string;
+  date: string;
+  summary: string;
+  content: string;
+  language: string;
+  published: boolean;
+  tags: string[];
+  created_at?: string;
 }
 
 export interface BlogSearchResult {
-    id: number;
-    title: string;
-    slug: string;
-    summary: string;
-    relevance: number;
+  id: number;
+  title: string;
+  slug: string;
+  summary: string;
+  relevance: number;
 }
 
 @Injectable({
-    providedIn: 'root'
+  providedIn: 'root',
 })
 export class BlogService {
-    private apiUrl = `${environment.apiUrl}/api/posts`;
+  private apiUrl = `${environment.apiUrl}/api/posts`;
 
-    constructor(private http: HttpClient, private languageService: LanguageService) { }
+  constructor(
+    private http: HttpClient,
+    private languageService: LanguageService,
+  ) {}
 
-    getPosts(publishedOnly: boolean = true, lang: string | null | undefined = undefined, tag: string | null = null): Observable<BlogPost[]> {
-        // If lang is explicitly provided (string) or null (no filter), use it directly
-        if (lang !== undefined) {
-            const params: any = {};
-            if (lang !== null) {
-                params.lang = lang;
-            }
-            if (tag) {
-                params.tag = tag;
-            }
-            if (publishedOnly) {
-                params.published_only = 'true';
-            } else {
-                params.published_only = 'false';
-            }
-            return this.http.get<BlogPost[]>(this.apiUrl, { params }).pipe(shareReplay(1));
+  getPosts(
+    publishedOnly: boolean = true,
+    lang: string | null | undefined = undefined,
+    tag: string | null = null,
+  ): Observable<BlogPost[]> {
+    // If lang is explicitly provided (string) or null (no filter), use it directly
+    if (lang !== undefined) {
+      const params: any = {};
+      if (lang !== null) {
+        params.lang = lang;
+      }
+      if (tag) {
+        params.tag = tag;
+      }
+      if (publishedOnly) {
+        params.published_only = 'true';
+      } else {
+        params.published_only = 'false';
+      }
+      return this.http.get<BlogPost[]>(this.apiUrl, { params }).pipe(shareReplay(1));
+    }
+
+    // Otherwise fallback to current language from service
+    return this.languageService.currentLang$.pipe(
+      switchMap((currentLang) => {
+        const params: any = { lang: currentLang };
+        if (tag) {
+          params.tag = tag;
         }
+        if (publishedOnly) {
+          params.published_only = 'true';
+        } else {
+          params.published_only = 'false';
+        }
+        return this.http.get<BlogPost[]>(this.apiUrl, { params });
+      }),
+      shareReplay(1),
+    );
+  }
 
-        // Otherwise fallback to current language from service
-        return this.languageService.currentLang$.pipe(
-            switchMap(currentLang => {
-                const params: any = { lang: currentLang };
-                if (tag) {
-                    params.tag = tag;
-                }
-                if (publishedOnly) {
-                    params.published_only = 'true';
-                } else {
-                    params.published_only = 'false';
-                }
-                return this.http.get<BlogPost[]>(this.apiUrl, { params });
-            }),
-            shareReplay(1)
-        );
-    }
+  getPost(slug: string): Observable<BlogPost | undefined> {
+    return this.http.get<BlogPost>(`${this.apiUrl}/${slug}`);
+  }
 
-    getPost(slug: string): Observable<BlogPost | undefined> {
-        return this.http.get<BlogPost>(`${this.apiUrl}/${slug}`);
-    }
+  createPost(post: any): Observable<BlogPost> {
+    return this.http.post<BlogPost>(this.apiUrl, post);
+  }
 
-    createPost(post: any): Observable<BlogPost> {
-        return this.http.post<BlogPost>(this.apiUrl, post);
-    }
+  getPostById(id: number): Observable<BlogPost> {
+    return this.http.get<BlogPost>(`${this.apiUrl}/${id}`);
+  }
 
+  updatePostById(id: number, post: any): Observable<BlogPost> {
+    return this.http.put<BlogPost>(`${this.apiUrl}/${id}`, post);
+  }
 
-    getPostById(id: number): Observable<BlogPost> {
-        return this.http.get<BlogPost>(`${this.apiUrl}/${id}`);
-    }
+  deletePostById(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
 
-    updatePostById(id: number, post: any): Observable<BlogPost> {
-        return this.http.put<BlogPost>(`${this.apiUrl}/${id}`, post);
-    }
+  searchPosts(query: string): Observable<BlogSearchResult[]> {
+    return this.languageService.currentLang$.pipe(
+      switchMap((lang) => {
+        return this.http.get<BlogSearchResult[]>(`${this.apiUrl}/search/semantic`, {
+          params: { q: query, lang: lang },
+        });
+      }),
+    );
+  }
 
-    deletePostById(id: number): Observable<void> {
-        return this.http.delete<void>(`${this.apiUrl}/${id}`);
-    }
+  suggestTags(title: string, content: string): Observable<{ tags: string[] }> {
+    return this.http.post<{ tags: string[] }>(`${this.apiUrl}/suggest-tags`, { title, content });
+  }
 
-    searchPosts(query: string): Observable<BlogSearchResult[]> {
-        return this.languageService.currentLang$.pipe(
-            switchMap(lang => {
-                return this.http.get<BlogSearchResult[]>(`${this.apiUrl}/search/semantic`, {
-                    params: { q: query, lang: lang }
-                });
-            })
-        );
-    }
-
-    suggestTags(title: string, content: string): Observable<{ tags: string[] }> {
-        return this.http.post<{ tags: string[] }>(`${this.apiUrl}/suggest-tags`, { title, content });
-    }
-
-    suggestPostDetails(content: string, field: string = 'all'): Observable<any> {
-        return this.http.post<any>(`${this.apiUrl}/suggest-details`, { content, field });
-    }
+  suggestPostDetails(content: string, field: string = 'all'): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/suggest-details`, { content, field });
+  }
 }

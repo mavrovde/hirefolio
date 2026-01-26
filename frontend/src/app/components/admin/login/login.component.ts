@@ -10,7 +10,7 @@ import { AuthService } from '../../../services/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './login.component.html',
-  styleUrls: ['./login.component.css']
+  styleUrls: ['./login.component.css'],
 })
 export class LoginComponent {
   username = '';
@@ -22,8 +22,8 @@ export class LoginComponent {
     private authService: AuthService,
     private router: Router,
     private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
-  ) { }
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   onSubmit(): void {
     if (!this.username || !this.password) {
@@ -33,8 +33,9 @@ export class LoginComponent {
     this.loading = true;
     this.errorMessage = '';
 
-    this.authService.login(this.username, this.password)
-      .pipe(finalize(() => this.loading = false))
+    this.authService
+      .login(this.username, this.password)
+      .pipe(finalize(() => (this.loading = false)))
       .subscribe({
         next: () => {
           const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/admin/dashboard';
@@ -45,13 +46,15 @@ export class LoginComponent {
           if (error.status === 401) {
             this.errorMessage = 'Incorrect username or password.';
           } else if (error.status === 0) {
-            this.errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+            this.errorMessage =
+              'Unable to connect to the server. Please check your internet connection.';
           } else {
-            this.errorMessage = error.error?.detail || 'An unexpected error occurred. Please try again.';
+            this.errorMessage =
+              error.error?.detail || 'An unexpected error occurred. Please try again.';
           }
           this.loading = false;
           this.cdr.detectChanges();
-        }
+        },
       });
   }
 }

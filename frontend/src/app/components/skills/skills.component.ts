@@ -8,8 +8,7 @@ import { Profile } from '../../services/profile.service';
   standalone: true,
   imports: [CommonModule, TranslatePipe],
   templateUrl: './skills.component.html',
-  styleUrls: ['./skills.component.css']
-
+  styleUrls: ['./skills.component.css'],
 })
 export class SkillsComponent {
   @Input() profile: Profile | null = null;

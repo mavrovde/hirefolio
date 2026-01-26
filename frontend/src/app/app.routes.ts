@@ -7,41 +7,47 @@ import { PostListComponent } from './components/admin/post-list/post-list.compon
 import { HomeComponent } from './components/home/home.component';
 
 export const routes: Routes = [
-    {
+  {
+    path: '',
+    component: HomeComponent,
+  },
+  {
+    path: 'admin/login',
+    component: LoginComponent,
+  },
+  {
+    path: 'admin',
+    component: AdminLayoutComponent,
+    canActivate: [authGuard],
+    data: { requireAdmin: true },
+    children: [
+      {
         path: '',
-        component: HomeComponent
-    },
-    {
-        path: 'admin/login',
-        component: LoginComponent
-    },
-    {
-        path: 'admin',
-        component: AdminLayoutComponent,
-        canActivate: [authGuard],
-        data: { requireAdmin: true },
-        children: [
-            {
-                path: '',
-                redirectTo: 'dashboard',
-                pathMatch: 'full'
-            },
-            {
-                path: 'dashboard',
-                component: DashboardComponent
-            },
-            {
-                path: 'posts',
-                component: PostListComponent
-            },
-            {
-                path: 'posts/new',
-                loadComponent: () => import('./components/admin/post-editor/post-editor.component').then(m => m.PostEditorComponent)
-            },
-            {
-                path: 'posts/edit/:id',
-                loadComponent: () => import('./components/admin/post-editor/post-editor.component').then(m => m.PostEditorComponent)
-            }
-        ]
-    }
+        redirectTo: 'dashboard',
+        pathMatch: 'full',
+      },
+      {
+        path: 'dashboard',
+        component: DashboardComponent,
+      },
+      {
+        path: 'posts',
+        component: PostListComponent,
+      },
+      {
+        path: 'posts/new',
+        loadComponent: () =>
+          import('./components/admin/post-editor/post-editor.component').then(
+            (m) => m.PostEditorComponent,
+          ),
+      },
+      {
+        path: 'posts/edit/:id',
+        loadComponent: () =>
+          import('./components/admin/post-editor/post-editor.component').then(
+            (m) => m.PostEditorComponent,
+          ),
+      },
+    ],
+  },
 ];

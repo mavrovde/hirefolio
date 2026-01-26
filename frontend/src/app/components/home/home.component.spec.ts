@@ -9,55 +9,55 @@ import { MockLanguageService } from '../../testing/mock-language.service';
 
 // Mock Services
 class MockProfileService {
-    getProfile() {
-        return of({
-            name: 'Test',
-            headline: 'Headline',
-            location: 'Loc',
-            about: 'About',
-            contact: { email: 'e', linkedin: 'l' },
-            experience: [],
-            education: [],
-            skills: [],
-            certifications: [],
-            languages: [],
-            recommendations: []
-        });
-    }
+  getProfile() {
+    return of({
+      name: 'Test',
+      headline: 'Headline',
+      location: 'Loc',
+      about: 'About',
+      contact: { email: 'e', linkedin: 'l' },
+      experience: [],
+      education: [],
+      skills: [],
+      certifications: [],
+      languages: [],
+      recommendations: [],
+    });
+  }
 }
 
 class MockAnalyticsService {
-    initializeGoogleAnalytics() { }
-    trackPageViews() { }
+  initializeGoogleAnalytics() {}
+  trackPageViews() {}
 }
 
 describe('HomeComponent', () => {
-    let component: HomeComponent;
-    let fixture: ComponentFixture<HomeComponent>;
+  let component: HomeComponent;
+  let fixture: ComponentFixture<HomeComponent>;
 
-    beforeEach(async () => {
-        await TestBed.configureTestingModule({
-            imports: [
-                HomeComponent,
-                HttpClientTestingModule // For child components or service deps if any leak
-            ],
-            providers: [
-                { provide: ProfileService, useClass: MockProfileService },
-                { provide: GoogleAnalyticsService, useClass: MockAnalyticsService },
-                { provide: LanguageService, useClass: MockLanguageService }
-            ]
-        }).compileComponents();
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [
+        HomeComponent,
+        HttpClientTestingModule, // For child components or service deps if any leak
+      ],
+      providers: [
+        { provide: ProfileService, useClass: MockProfileService },
+        { provide: GoogleAnalyticsService, useClass: MockAnalyticsService },
+        { provide: LanguageService, useClass: MockLanguageService },
+      ],
+    }).compileComponents();
 
-        fixture = TestBed.createComponent(HomeComponent);
-        component = fixture.componentInstance;
-        fixture.detectChanges();
-    });
+    fixture = TestBed.createComponent(HomeComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
 
-    it('should create', () => {
-        expect(component).toBeTruthy();
-    });
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
 
-    it('should fetch profile on init', () => {
-        expect(component.profile$).toBeTruthy();
-    });
+  it('should fetch profile on init', () => {
+    expect(component.profile$).toBeTruthy();
+  });
 });

@@ -5,40 +5,40 @@ import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
 import { Profile } from '../../services/profile.service';
 
 describe('ContactComponent', () => {
-    let component: ContactComponent;
-    let fixture: ComponentFixture<ContactComponent>;
+  let component: ContactComponent;
+  let fixture: ComponentFixture<ContactComponent>;
 
-    const mockProfile: Profile = {
-        name: 'Test Name',
-        headline: 'Test Headline',
-        location: 'Test Location',
-        about: '',
-        contact: { email: 'test@example.com', linkedin: 'https://linkedin.com/test' },
-        experience: [],
-        education: [],
-        skills: [],
-        certifications: [],
-        languages: [],
-        recommendations: []
-    };
+  const mockProfile: Profile = {
+    name: 'Test Name',
+    headline: 'Test Headline',
+    location: 'Test Location',
+    about: '',
+    contact: { email: 'test@example.com', linkedin: 'https://linkedin.com/test' },
+    experience: [],
+    education: [],
+    skills: [],
+    certifications: [],
+    languages: [],
+    recommendations: [],
+  };
 
-    beforeEach(async () => {
-        await TestBed.configureTestingModule({
-            imports: [ContactComponent]
-        })
-            .overrideComponent(ContactComponent, {
-                remove: { imports: [TranslatePipe] },
-                add: { imports: [MockTranslatePipe] }
-            })
-            .compileComponents();
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [ContactComponent],
+    })
+      .overrideComponent(ContactComponent, {
+        remove: { imports: [TranslatePipe] },
+        add: { imports: [MockTranslatePipe] },
+      })
+      .compileComponents();
 
-        fixture = TestBed.createComponent(ContactComponent);
-        component = fixture.componentInstance;
-        component.profile = mockProfile;
-        fixture.detectChanges();
-    });
+    fixture = TestBed.createComponent(ContactComponent);
+    component = fixture.componentInstance;
+    component.profile = mockProfile;
+    fixture.detectChanges();
+  });
 
-    it('should create', () => {
-        expect(component).toBeTruthy();
-    });
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
 });
