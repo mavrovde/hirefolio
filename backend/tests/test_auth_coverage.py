@@ -152,6 +152,8 @@ async def test_get_current_user_optional_inactive(db_session):
 
         result = await get_current_user_optional(token="token", db=db)
         assert result is None  # Inactive user returns None
+
+
 @pytest.mark.asyncio
 async def test_create_access_token_with_delta():
     delta = timedelta(minutes=15)

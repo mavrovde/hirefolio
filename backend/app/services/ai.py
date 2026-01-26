@@ -114,16 +114,25 @@ async def suggest_post_details(content: str) -> dict[str, Union[str, List[str]]]
                                 clean_tags = []
                                 for t in v:
                                     if isinstance(t, str):
-                                        clean_tags.append(t.strip().strip('"').strip("'"))
+                                        clean_tags.append(
+                                            t.strip().strip('"').strip("'")
+                                        )
                                 clean_details[k] = clean_tags[:5]
                             elif isinstance(v, str):
                                 # Handle case where model returns tags as a comma-separated string
-                                clean_details[k] = [t.strip() for t in v.split(",") if t.strip()][:5]
+                                clean_details[k] = [
+                                    t.strip() for t in v.split(",") if t.strip()
+                                ][:5]
                             else:
                                 clean_details[k] = []
                         elif isinstance(v, str):
                             # Remove labels like "Title: " or "Summary: " and surrounding quotes
-                            v = re.sub(r"^(title|slug|summary|suggestion|description):\s*", "", v, flags=re.IGNORECASE)
+                            v = re.sub(
+                                r"^(title|slug|summary|suggestion|description):\s*",
+                                "",
+                                v,
+                                flags=re.IGNORECASE,
+                            )
                             clean_details[k] = v.strip().strip('"').strip("'")
                         else:
                             clean_details[k] = v
@@ -139,15 +148,19 @@ async def suggest_post_details(content: str) -> dict[str, Union[str, List[str]]]
                 slug_match = re.search(r'"slug":\s*"([^"]+)"', response_text)
                 summary_match = re.search(r'"summary":\s*"([^"]+)"', response_text)
                 tags_match = re.search(r'"tags":\s*\[([^\]]+)\]', response_text)
-                
+
                 tags = []
                 if tags_match:
-                    tags = [t.strip().strip('"') for t in tags_match.group(1).split(",")][:5]
+                    tags = [
+                        t.strip().strip('"') for t in tags_match.group(1).split(",")
+                    ][:5]
 
                 return {
                     "title": title_match.group(1) if title_match else "Suggested Title",
                     "slug": slug_match.group(1) if slug_match else "suggested-slug",
-                    "summary": summary_match.group(1) if summary_match else "Suggested summary...",
+                    "summary": summary_match.group(1)
+                    if summary_match
+                    else "Suggested summary...",
                     "tags": tags,
                 }
 
@@ -186,7 +199,12 @@ async def suggest_field(content: str, field: str) -> dict[str, str]:
             data = response.json()
             suggestion = data.get("response", "").strip()
             # Defensive cleaning: remove common labels and quotes
-            suggestion = re.sub(r"^(title|slug|summary|suggestion|description):\s*", "", suggestion, flags=re.IGNORECASE)
+            suggestion = re.sub(
+                r"^(title|slug|summary|suggestion|description):\s*",
+                "",
+                suggestion,
+                flags=re.IGNORECASE,
+            )
             suggestion = suggestion.strip().strip('"').strip("'")
             return {field: suggestion}
     except Exception as e:

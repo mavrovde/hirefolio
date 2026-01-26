@@ -36,6 +36,8 @@ async def test_get_embedding_http_error():
 @pytest.mark.asyncio
 async def test_get_embedding_connection_error():
     """Test handling of connection errors."""
+
+
 @pytest.mark.asyncio
 async def test_get_embedding_logging():
     """Test that errors are logged in get_embedding."""

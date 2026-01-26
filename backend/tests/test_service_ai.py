@@ -173,7 +173,9 @@ async def test_suggest_field_title_with_label():
     """Test AI service for single field (title) and ensuring label stripping."""
     with respx.mock(base_url=settings.ollama_url) as respx_mock:
         respx_mock.post("/api/generate").mock(
-            return_value=Response(200, json={"response": 'Title: "A Great Catchy Title"'})
+            return_value=Response(
+                200, json={"response": 'Title: "A Great Catchy Title"'}
+            )
         )
 
         result = await suggest_field("Some content here", "title")
