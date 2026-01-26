@@ -1,4 +1,4 @@
-from typing import Optional, Union, List
+from typing import Optional, List
 from datetime import datetime, timezone
 from sqlalchemy import String, Text, DateTime, Boolean, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY

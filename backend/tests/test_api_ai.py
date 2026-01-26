@@ -1,7 +1,6 @@
 import pytest
 from httpx import AsyncClient
 from unittest.mock import patch
-from app.services.ai import suggest_tags, suggest_post_details, suggest_field
 from app.main import app
 
 
