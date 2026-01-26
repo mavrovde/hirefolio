@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
@@ -6,7 +6,11 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     gcc \
+    cargo \
     && rm -rf /var/lib/apt/lists/*
+
+# Pre-install build tools for Rust-based extensions
+RUN pip install --no-cache-dir maturin
 
 # Copy requirements and install
 COPY requirements.txt .

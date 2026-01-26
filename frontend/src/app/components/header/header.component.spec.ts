@@ -46,6 +46,15 @@ describe('HeaderComponent', () => {
         expect(navLinks.length).toBe(5);
     });
 
+    it('should have terminal design classes', () => {
+        // Check for border-terminal on the header or nav element
+        const headerElement = fixture.debugElement.query(By.css('header'));
+        // Assuming header tag has the border class, or a child
+        // If not found, we check if ANY element has .border-terminal
+        const terminalBorders = fixture.debugElement.queryAll(By.css('.border-terminal'));
+        expect(terminalBorders.length).toBeGreaterThan(0);
+    });
+
     it('active scrollTo should prevent default behavior and scroll', () => {
         const event = new Event('click');
         const preventDefaultSpy = vi.spyOn(event, 'preventDefault');

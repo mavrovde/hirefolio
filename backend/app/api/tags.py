@@ -1,8 +1,10 @@
+from typing import List, cast
+
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func, update, text
-from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
-from typing import List
+from sqlalchemy import func, select, text, update
+from sqlalchemy.engine import CursorResult
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.post import Post
@@ -70,7 +72,9 @@ async def rename_tag(
     result = await db.execute(stmt)
     await db.commit()
 
-    return {"message": f"Tag renamed. Affected {result.rowcount} posts."}
+    return {
+        "message": f"Tag renamed. Affected {cast(CursorResult, result).rowcount} posts."
+    }
 
 
 @router.delete("/{name}")
@@ -91,4 +95,6 @@ async def delete_tag(
     result = await db.execute(stmt)
     await db.commit()
 
-    return {"message": f"Tag removed. Affected {result.rowcount} posts."}
+    return {
+        "message": f"Tag removed. Affected {cast(CursorResult, result).rowcount} posts."
+    }
