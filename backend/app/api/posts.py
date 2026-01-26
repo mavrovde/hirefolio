@@ -1,3 +1,4 @@
+from typing import Optional, Union, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,10 +17,10 @@ class PostCreate(BaseModel):
     title: str
     slug: str
     content: str
-    summary: str | None = None
+    summary: Optional[str] = None
     language: str = "en"
     published: bool = False
-    tags: list[str] = []
+    tags: List[str] = []
 
     @field_validator("tags")
     @classmethod
@@ -30,12 +31,12 @@ class PostCreate(BaseModel):
 
 
 class PostUpdate(BaseModel):
-    title: str | None = None
-    content: str | None = None
-    summary: str | None = None
-    language: str | None = None
-    published: bool | None = None
-    tags: list[str] | None = None
+    title: Optional[str] = None
+    content: Optional[str] = None
+    summary: Optional[str] = None
+    language: Optional[str] = None
+    published: Optional[bool] = None
+    tags: Optional[List[str]] = None
 
     @field_validator("tags")
     @classmethod
@@ -50,10 +51,10 @@ class PostResponse(BaseModel):
     title: str
     slug: str
     content: str
-    summary: str | None
+    summary: Optional[str]
     language: str
     published: bool
-    tags: list[str]
+    tags: List[str]
     created_at: str
     updated_at: str
 
@@ -64,10 +65,10 @@ class PostListResponse(BaseModel):
     id: int
     title: str
     slug: str
-    summary: str | None
+    summary: Optional[str]
     language: str
     published: bool
-    tags: list[str]
+    tags: List[str]
     created_at: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -77,7 +78,7 @@ class SimilarPostResponse(BaseModel):
     id: int
     title: str
     slug: str
-    summary: str | None
+    summary: Optional[str]
     similarity: float
 
 
@@ -86,13 +87,25 @@ class TagSuggestionRequest(BaseModel):
     content: str
 
 
-@router.get("", response_model=list[PostListResponse])
+class PostDetailSuggestionRequest(BaseModel):
+    content: str
+    field: Optional[str] = "all"
+
+
+class PostDetailSuggestionResponse(BaseModel):
+    title: str
+    slug: str
+    summary: str
+    tags: List[str]
+
+
+@router.get("", response_model=List[PostListResponse])
 async def list_posts(
     published_only: bool = True,
-    lang: str | None = None,
-    tag: str | None = None,
+    lang: Optional[str] = None,
+    tag: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """List all posts."""
     # Restrict access to drafts
@@ -130,7 +143,7 @@ async def list_posts(
 async def get_post_by_id(
     id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """Get a single post by ID."""
     result = await db.execute(select(Post).where(Post.id == id))
@@ -162,7 +175,7 @@ async def get_post_by_id(
 async def get_post(
     slug: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(get_current_user_optional),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """Get a single post by slug."""
     result = await db.execute(select(Post).where(Post.slug == slug))
@@ -230,7 +243,7 @@ async def create_post(
     )
 
 
-@router.get("/{slug}/similar", response_model=list[SimilarPostResponse])
+@router.get("/{slug}/similar", response_model=List[SimilarPostResponse])
 async def get_similar_posts(
     slug: str,
     limit: int = 5,
@@ -278,7 +291,7 @@ async def get_similar_posts(
 @router.get("/search/semantic")
 async def semantic_search(
     q: str,
-    lang: str | None = "en",
+    lang: Optional[str] = "en",
     limit: int = 10,
     db: AsyncSession = Depends(get_db),
 ):
@@ -315,6 +328,20 @@ async def semantic_search(
         }
         for p, distance in posts
     ]
+
+
+@router.post("/suggest-details")
+async def suggest_post_details_endpoint(
+    request: PostDetailSuggestionRequest,
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Suggest title, slug, and/or summary for a post using AI."""
+    from app.services.ai import suggest_field, suggest_post_details
+
+    if not request.field or request.field == "all":
+        return await suggest_post_details(request.content)
+
+    return await suggest_field(request.content, request.field)
 
 
 @router.post("/suggest-tags")

@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 from unittest.mock import patch
-
+from app.services.ai import suggest_tags, suggest_post_details, suggest_field
 from app.main import app
 
 
@@ -62,3 +62,86 @@ async def test_suggest_tags_validation(client: AsyncClient):
         json={"title": "Only Title"},  # Missing content
     )
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_suggest_details_endpoint(client: AsyncClient):
+    """Test suggest details endpoint with mocked AI service."""
+    mock_details = {
+        "title": "Mock Title",
+        "slug": "mock-slug",
+        "summary": "Mock summary.",
+        "tags": ["tag1", "tag2"],
+    }
+
+    with patch(
+        "app.services.ai.suggest_post_details", return_value=mock_details
+    ) as mock_suggest:
+        response = await client.post(
+            "/api/posts/suggest-details",
+            json={"content": "Test Content"},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == mock_details
+        mock_suggest.assert_called_once_with("Test Content")
+
+
+@pytest.mark.asyncio
+async def test_suggest_details_unauthorized():
+    """Test suggest details endpoint without authentication."""
+    from httpx import ASGITransport
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post(
+            "/api/posts/suggest-details",
+            json={"content": "Test"},
+        )
+        assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_suggest_details_field_granular(client: AsyncClient):
+    """Test suggest details endpoint for a specific field."""
+    with patch(
+        "app.services.ai.suggest_field", return_value={"title": "Single Title"}
+    ) as mock_suggest:
+        response = await client.post(
+            "/api/posts/suggest-details",
+            json={"content": "Test Content", "field": "title"},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"title": "Single Title"}
+        mock_suggest.assert_called_once_with("Test Content", "title")
+
+
+@pytest.mark.asyncio
+async def test_suggest_details_field_all(client: AsyncClient):
+    """Test suggest details endpoint with explicit 'all' field."""
+    mock_details = {"title": "T", "slug": "s", "summary": "sum", "tags": []}
+    with patch(
+        "app.services.ai.suggest_post_details", return_value=mock_details
+    ) as mock_suggest:
+        response = await client.post(
+            "/api/posts/suggest-details",
+            json={"content": "Content", "field": "all"},
+        )
+        assert response.status_code == 200
+        assert response.json() == mock_details
+        mock_suggest.assert_called_once_with("Content")
+
+
+@pytest.mark.asyncio
+async def test_suggest_details_invalid_field(client: AsyncClient):
+    """Test suggest details endpoint with an invalid field name."""
+    with patch("app.services.ai.suggest_field", return_value={}) as mock_suggest:
+        response = await client.post(
+            "/api/posts/suggest-details",
+            json={"content": "Content", "field": "invalid"},
+        )
+        assert response.status_code == 200
+        assert response.json() == {}
+        mock_suggest.assert_called_once_with("Content", "invalid")

@@ -6,7 +6,10 @@ from app.services.auth import (
     get_current_admin_user,
     create_access_token,
     get_current_user_optional,
+    decode_access_token,
 )
+from datetime import timedelta
+from jose import JWTError
 from app.models.user import User
 from app.services.auth import get_password_hash
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -149,3 +152,51 @@ async def test_get_current_user_optional_inactive(db_session):
 
         result = await get_current_user_optional(token="token", db=db)
         assert result is None  # Inactive user returns None
+@pytest.mark.asyncio
+async def test_create_access_token_with_delta():
+    delta = timedelta(minutes=15)
+    token = create_access_token(data={"sub": "test"}, expires_delta=delta)
+    assert token is not None
+
+
+@pytest.mark.asyncio
+async def test_decode_access_token_error():
+    with patch("jose.jwt.decode", side_effect=JWTError("Invalid token")):
+        result = decode_access_token("some_token")
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_success(db_session):
+    user = User(
+        username="validuser",
+        email="valid@example.com",
+        hashed_password=get_password_hash("password"),
+    )
+    db_session.add(user)
+    await db_session.commit()
+    token = create_access_token(data={"sub": "validuser"})
+    result = await get_current_user(token=token, db=db_session)
+    assert result.username == "validuser"
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_optional_missing_sub():
+    with patch("app.services.auth.decode_access_token", return_value={"no": "sub"}):
+        db = MagicMock(spec=AsyncSession)
+        result = await get_current_user_optional(token="token", db=db)
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_optional_success(db_session):
+    user = User(
+        username="optionaluser",
+        email="optional@example.com",
+        hashed_password=get_password_hash("password"),
+    )
+    db_session.add(user)
+    await db_session.commit()
+    token = create_access_token(data={"sub": "optionaluser"})
+    result = await get_current_user_optional(token=token, db=db_session)
+    assert result.username == "optionaluser"

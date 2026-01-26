@@ -1,3 +1,4 @@
+from typing import Optional, Union, List
 from datetime import datetime, timezone
 from sqlalchemy import String, Text, DateTime, Boolean, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -20,7 +21,7 @@ class Post(Base):
     title: Mapped[str] = mapped_column(String(255))
     slug: Mapped[str] = mapped_column(String(255), index=True)
     content: Mapped[str] = mapped_column(Text)
-    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     language: Mapped[str] = mapped_column(String(2), default="en", index=True)
     published: Mapped[bool] = mapped_column(Boolean, default=False)
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
@@ -32,6 +33,6 @@ class Post(Base):
     )
 
     # Vector embedding for semantic search
-    embedding: Mapped[list[float] | None] = mapped_column(
+    embedding: Mapped[Optional[List[float]]] = mapped_column(
         Vector(settings.embedding_dimensions), nullable=True
     )

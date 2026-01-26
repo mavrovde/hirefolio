@@ -124,6 +124,54 @@ test.describe('Post Management', () => {
         await expect(page.locator('table')).not.toContainText(`Delete Me ${timestamp}`);
     });
 
+    test('should suggest post details (bulk and individual)', async ({ page }) => {
+        await page.click('.btn-new');
+
+        // Fill content first
+        const postContent = 'The ethics of artificial intelligence is the branch of the ethics of technology specific to artificially intelligent systems.';
+        await page.fill('textarea[id="content"]', postContent);
+
+        // 1. Test "Suggest All"
+        const suggestAllBtn = page.getByTitle('Suggest Title, Slug, and Summary from content');
+        await expect(suggestAllBtn).toBeVisible();
+
+        const bulkResponsePromise = page.waitForResponse(response =>
+            response.url().includes('/api/posts/suggest-details') && response.status() === 200
+        );
+
+        await suggestAllBtn.click();
+        await expect(page.getByText('Brainstorming...')).toBeVisible();
+
+        const bulkResponse = await bulkResponsePromise;
+        const bulkData = await bulkResponse.json();
+        expect(bulkData).toHaveProperty('title');
+        expect(bulkData).toHaveProperty('slug');
+        expect(bulkData).toHaveProperty('summary');
+
+        // Wait for UI to update
+        await expect(page.locator('input[id="title"]')).not.toHaveValue('', { timeout: 180000 });
+        await expect(page.locator('input[id="slug"]')).not.toHaveValue('', { timeout: 5000 });
+        await expect(page.locator('textarea[id="summary"]')).not.toHaveValue('', { timeout: 5000 });
+
+        // 2. Test individual "Suggest" for Title
+        await page.fill('input[id="title"]', ''); // Clear title
+        const suggestTitleBtn = page.getByTitle('Suggest title from content');
+
+        const titleResponsePromise = page.waitForResponse(response => {
+            const url = response.url();
+            const postData = response.request().postData();
+            return url.includes('/api/posts/suggest-details') &&
+                !!postData && postData.includes('"field":"title"');
+        });
+
+        await suggestTitleBtn.click();
+        await expect(page.locator('input[id="title"]')).not.toHaveValue('', { timeout: 180000 });
+
+        const titleResponse = await titleResponsePromise;
+        const titleData = await titleResponse.json();
+        expect(titleData).toHaveProperty('title');
+    });
+
     test('should logout', async ({ page }) => {
         await page.click('.logout-btn');
         await expect(page).toHaveURL('/admin/login');

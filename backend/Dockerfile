@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --no-cache-dir maturin
 
 # Copy requirements and install
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Copy the rest of the application
 COPY . .

@@ -1,7 +1,9 @@
 import pytest
 import respx
+import re
+from unittest.mock import patch
 from httpx import Response
-from app.services.ai import suggest_tags
+from app.services.ai import suggest_tags, suggest_post_details, suggest_field
 from app.config import settings
 
 
@@ -37,7 +39,6 @@ async def test_suggest_tags_wrapped_json():
 async def test_suggest_tags_fallback_text():
     """Test AI service with plain text response (fallback regex)."""
     with respx.mock(base_url=settings.ollama_url) as respx_mock:
-        # Malformed JSON or just text
         respx_mock.post("/api/generate").mock(
             return_value=Response(
                 200,
@@ -46,12 +47,8 @@ async def test_suggest_tags_fallback_text():
         )
 
         tags = await suggest_tags("Title", "Content")
-        # Regex should split by words and filter generic short ones
         assert "rust" in tags
         assert "performance" in tags
-        # memory-safety might be split or kept depending on regex \b\w+\b
-        # \w includes alphanumeric and underscore, not hyphen usually.
-        # So "memory", "safety".
         assert "memory" in tags
 
 
@@ -68,8 +65,6 @@ async def test_suggest_tags_http_error():
 @pytest.mark.asyncio
 async def test_suggest_tags_connection_error():
     """Test AI service with connection failure."""
-    # Mocking httpx ConnectError is harder with respx sometimes,
-    # but we can rely on route side_effect
     with respx.mock(base_url=settings.ollama_url) as respx_mock:
         import httpx
 
@@ -79,3 +74,175 @@ async def test_suggest_tags_connection_error():
 
         tags = await suggest_tags("Title", "Content")
         assert tags == []
+
+
+@pytest.mark.asyncio
+async def test_suggest_post_details_valid_json():
+    """Test AI service with valid JSON response for post details."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(
+                200,
+                json={
+                    "response": '{"title": "Suggested Title", "slug": "suggested-slug", "summary": "Suggested summary.", "tags": ["tag1"]}'
+                },
+            )
+        )
+
+        details = await suggest_post_details("Content")
+        assert details == {
+            "title": "Suggested Title",
+            "slug": "suggested-slug",
+            "summary": "Suggested summary.",
+            "tags": ["tag1"],
+        }
+
+
+@pytest.mark.asyncio
+async def test_suggest_post_details_fallback_regex():
+    """Test AI service with malformed JSON but extractable details."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(
+                200,
+                json={
+                    "response": 'Here is the JSON: "title": "Fallback Title", "slug": "fallback-slug", "summary": "Fallback summary.", "tags": ["f1"]'
+                },
+            )
+        )
+
+        details = await suggest_post_details("Content")
+        assert details == {
+            "title": "Fallback Title",
+            "slug": "fallback-slug",
+            "summary": "Fallback summary.",
+            "tags": ["f1"],
+        }
+
+
+@pytest.mark.asyncio
+async def test_suggest_post_details_error():
+    """Test AI service handles errors gracefully."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(return_value=Response(500))
+
+        details = await suggest_post_details("Content")
+        assert details == {"title": "", "slug": "", "summary": "", "tags": []}
+
+
+@pytest.mark.asyncio
+async def test_suggest_tags_regex_fallback():
+    """Test suggest_tags fallback to regex parsing when JSON is invalid."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(
+                200, json={"response": "Here are some tags: coding, python, tests"}
+            )
+        )
+        tags = await suggest_tags("Title", "Content")
+        assert len(tags) == 5
+        assert "coding" in tags
+        assert "python" in tags
+
+
+@pytest.mark.asyncio
+async def test_suggest_tags_exception():
+    """Test suggest_tags with an unexpected exception."""
+    with patch("httpx.AsyncClient.post", side_effect=Exception("Unexpected")):
+        tags = await suggest_tags("Title", "Content")
+        assert tags == []
+
+
+@pytest.mark.asyncio
+async def test_suggest_post_details_exception():
+    """Test suggest_post_details with an unexpected exception."""
+    with patch("httpx.AsyncClient.post", side_effect=Exception("Unexpected")):
+        details = await suggest_post_details("Content")
+        assert details == {"title": "", "slug": "", "summary": "", "tags": []}
+
+
+@pytest.mark.asyncio
+async def test_suggest_field_exception():
+    """Test suggest_field with an unexpected exception."""
+    with patch("httpx.AsyncClient.post", side_effect=Exception("Unexpected")):
+        result = await suggest_field("Content", "title")
+        assert result == {"title": ""}
+
+
+@pytest.mark.asyncio
+async def test_suggest_field_title_with_label():
+    """Test AI service for single field (title) and ensuring label stripping."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(200, json={"response": 'Title: "A Great Catchy Title"'})
+        )
+
+        result = await suggest_field("Some content here", "title")
+        # Should strip "Title: " and quotes
+        assert result == {"title": "A Great Catchy Title"}
+
+
+@pytest.mark.asyncio
+async def test_suggest_field_slug():
+    """Test AI service for single field (slug)."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(200, json={"response": "a-great-catchy-title"})
+        )
+
+        result = await suggest_field("Some content here", "slug")
+        assert result == {"slug": "a-great-catchy-title"}
+
+
+@pytest.mark.asyncio
+async def test_suggest_field_summary():
+    """Test AI service for single field (summary)."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(200, json={"response": "This is a brief summary."})
+        )
+
+        result = await suggest_field("Some content here", "summary")
+        assert result == {"summary": "This is a brief summary."}
+
+
+@pytest.mark.asyncio
+async def test_suggest_field_invalid():
+    """Test AI service with invalid field."""
+    result = await suggest_field("Content", "invalid")
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_suggest_tags_invalid_json_type():
+    """Test suggest_tags with JSON that is neither list nor dict."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(200, json={"response": "123"})
+        )
+        tags = await suggest_tags("Title", "Content")
+        assert tags == []
+
+
+@pytest.mark.asyncio
+async def test_suggest_post_details_invalid_json_type():
+    """Test suggest_post_details with JSON that is not a dict."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(200, json={"response": "[1, 2, 3]"})
+        )
+        details = await suggest_post_details("Content")
+        assert details == {"title": "", "slug": "", "summary": "", "tags": []}
+
+
+@pytest.mark.asyncio
+async def test_suggest_post_details_tags_as_string():
+    """Test AI service when tags are returned as a comma-separated string instead of list."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(
+                200, json={"response": '{"title": "T", "tags": "tag1, tag2, tag3"}'}
+            )
+        )
+        details = await suggest_post_details("Content")
+        assert details["tags"] == ["tag1", "tag2", "tag3"]

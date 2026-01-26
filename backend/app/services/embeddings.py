@@ -1,8 +1,12 @@
+from typing import Optional, List
 import httpx
 from app.config import settings
+from app.logger import get_logger
+
+logger = get_logger(__name__)
 
 
-async def get_embedding(text: str) -> list[float] | None:
+async def get_embedding(text: str) -> Optional[List[float]]:
     """Generate embedding vector for text using Ollama."""
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -17,5 +21,5 @@ async def get_embedding(text: str) -> list[float] | None:
             data = response.json()
             return data.get("embedding")
     except (httpx.HTTPError, httpx.ConnectError) as e:
-        print(f"Error generating embedding: {e}")
+        logger.error(f"Error generating embedding: {e}", exc_info=True)
         return None

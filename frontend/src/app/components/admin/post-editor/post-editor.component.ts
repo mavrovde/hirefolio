@@ -42,6 +42,11 @@ export class PostEditorComponent implements OnInit {
   errorMessage = '';
   newTag = '';
 
+  suggestingTitle = false;
+  suggestingSlug = false;
+  suggestingSummary = false;
+  suggestingAll = false;
+
   constructor(
     private blogService: BlogService,
     private router: Router,
@@ -128,16 +133,15 @@ export class PostEditorComponent implements OnInit {
 
   suggestTags(): void {
     if (!this.post.title || !this.post.content) {
-      alert('Please fill in title and content first.'); // Keep this alert for user feedback
+      alert('Please fill in title and content first.');
       return;
     }
 
-    this.generatingTags = true; // Use new flag
+    this.generatingTags = true;
     this.blogService.suggestTags(this.post.title, this.post.content).subscribe({
       next: (response) => {
         this.generatingTags = false;
         if (response.tags && response.tags.length > 0) {
-          // Add non-duplicate tags (max 5 total)
           const remainingSlots = 5 - this.post.tags.length;
           if (remainingSlots > 0) {
             const newTags = response.tags
@@ -156,6 +160,93 @@ export class PostEditorComponent implements OnInit {
         this.generatingTags = false;
         console.error('Error suggesting tags:', err);
         alert('Failed to suggest tags. Ensure AI service is available.');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  suggestTitle(): void {
+    if (!this.post.content) {
+      alert('Please provide content first.');
+      return;
+    }
+    this.suggestingTitle = true;
+    this.blogService.suggestPostDetails(this.post.content, 'title').subscribe({
+      next: (res) => {
+        if (res.title) this.post.title = res.title;
+        this.suggestingTitle = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.suggestingTitle = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  suggestSlug(): void {
+    if (!this.post.content) {
+      alert('Please provide content first.');
+      return;
+    }
+    this.suggestingSlug = true;
+    this.blogService.suggestPostDetails(this.post.content, 'slug').subscribe({
+      next: (res) => {
+        if (res.slug) this.post.slug = res.slug;
+        this.suggestingSlug = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.suggestingSlug = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  suggestSummary(): void {
+    if (!this.post.content) {
+      alert('Please provide content first.');
+      return;
+    }
+    this.suggestingSummary = true;
+    this.blogService.suggestPostDetails(this.post.content, 'summary').subscribe({
+      next: (res) => {
+        if (res.summary) this.post.summary = res.summary;
+        this.suggestingSummary = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.suggestingSummary = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  suggestAll(): void {
+    if (!this.post.content) {
+      alert('Please provide content first.');
+      return;
+    }
+    this.suggestingAll = true;
+    this.blogService.suggestPostDetails(this.post.content, 'all').subscribe({
+      next: (res) => {
+        if (res.title) this.post.title = res.title;
+        if (res.slug) this.post.slug = res.slug;
+        if (res.summary) this.post.summary = res.summary;
+        if (res.tags && Array.isArray(res.tags)) {
+          const remainingSlots = 5 - this.post.tags.length;
+          if (remainingSlots > 0) {
+            const newTags = res.tags
+              .filter((t: string) => !this.post.tags.includes(t))
+              .slice(0, remainingSlots);
+            this.post.tags = [...this.post.tags, ...newTags];
+          }
+        }
+        this.suggestingAll = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.suggestingAll = false;
         this.cdr.detectChanges();
       }
     });

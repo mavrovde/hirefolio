@@ -36,12 +36,15 @@ async def test_get_embedding_http_error():
 @pytest.mark.asyncio
 async def test_get_embedding_connection_error():
     """Test handling of connection errors."""
+@pytest.mark.asyncio
+async def test_get_embedding_logging():
+    """Test that errors are logged in get_embedding."""
     with patch("httpx.AsyncClient.post") as mock_post:
-        mock_post.side_effect = httpx.ConnectError("Cannot connect to Ollama")
-
-        result = await get_embedding("test text")
-
-        assert result is None
+        mock_post.side_effect = httpx.HTTPError("Log this error")
+        with patch("app.services.embeddings.logger") as mock_logger:
+            result = await get_embedding("test")
+            assert result is None
+            mock_logger.error.assert_called()
 
 
 @pytest.mark.asyncio

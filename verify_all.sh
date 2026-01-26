@@ -40,8 +40,14 @@ echo "Starting full stack..."
 docker-compose up -d --build backend frontend
 # Wait for health with timeouts instead of fixed sleeps
 echo "Waiting for Backend to be ready..."
-timeout 30s bash -c "until curl -s http://localhost:8000/api/health > /dev/null; do sleep 1; done"
-if [ $? -ne 0 ]; then
+# Portable wait function
+count=0
+until curl -s http://localhost:8000/api/health > /dev/null || [ $count -eq 30 ]; do
+    sleep 1
+    count=$((count + 1))
+done
+
+if [ $count -eq 30 ]; then
     echo "Backend failed to start"
     exit 1
 fi
@@ -50,8 +56,13 @@ echo "🔄 Restarting Frontend to ensure fresh DNS resolution..."
 docker-compose restart frontend
 
 echo "Waiting for Frontend to be ready..."
-timeout 60s bash -c "until curl -s http://localhost:4200 > /dev/null; do sleep 1; done"
-if [ $? -ne 0 ]; then
+count=0
+until curl -s http://localhost:4200 > /dev/null || [ $count -eq 60 ]; do
+    sleep 1
+    count=$((count + 1))
+done
+
+if [ $count -eq 60 ]; then
     echo "Frontend failed to start"
     exit 1
 fi

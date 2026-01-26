@@ -104,4 +104,8 @@ export class BlogService {
     suggestTags(title: string, content: string): Observable<{ tags: string[] }> {
         return this.http.post<{ tags: string[] }>(`${this.apiUrl}/suggest-tags`, { title, content });
     }
+
+    suggestPostDetails(content: string, field: string = 'all'): Observable<any> {
+        return this.http.post<any>(`${this.apiUrl}/suggest-details`, { content, field });
+    }
 }

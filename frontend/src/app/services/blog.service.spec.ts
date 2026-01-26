@@ -78,6 +78,30 @@ describe('BlogService', () => {
             );
             req.flush([]);
         });
+
+        it('should fallback to current language from service when lang is undefined', () => {
+            // Call without lang parameter
+            service.getPosts(true).subscribe();
+
+            const req = httpMock.expectOne(req =>
+                req.url.endsWith('/api/posts') &&
+                req.params.get('lang') === 'en'
+            );
+            req.flush([]);
+        });
+
+        it('should handle tag and publishedOnly correctly in fallback mode', () => {
+            // Call without lang, but with tag and publishedOnly=false
+            service.getPosts(false, undefined, 'tech').subscribe();
+
+            const req = httpMock.expectOne(req =>
+                req.url.endsWith('/api/posts') &&
+                req.params.get('lang') === 'en' &&
+                req.params.get('tag') === 'tech' &&
+                req.params.get('published_only') === 'false'
+            );
+            req.flush([]);
+        });
     });
 
     describe('suggestTags', () => {
@@ -94,6 +118,23 @@ describe('BlogService', () => {
             const req = httpMock.expectOne(req => req.url.includes('/api/posts/suggest-tags'));
             expect(req.request.method).toBe('POST');
             expect(req.request.body).toEqual({ title, content });
+            req.flush(mockResponse);
+        });
+    });
+
+    describe('suggestPostDetails', () => {
+        it('should call suggest-details endpoint via POST', () => {
+            const content = 'Test Content';
+            const field = 'title';
+            const mockResponse = { title: 'Suggested' };
+
+            service.suggestPostDetails(content, field).subscribe(res => {
+                expect(res).toEqual(mockResponse);
+            });
+
+            const req = httpMock.expectOne(req => req.url.includes('/api/posts/suggest-details'));
+            expect(req.request.method).toBe('POST');
+            expect(req.request.body).toEqual({ content, field });
             req.flush(mockResponse);
         });
     });

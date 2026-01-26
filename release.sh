@@ -27,13 +27,14 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
+DESC="Release v$VERSION: Standardize dev credentials, upgrade pgvector to PostgreSQL 18, add Open WebUI service, and sync remote updates."
 git add VERSION backend/app/main.py frontend/package.json
-git commit -m "Release v$VERSION"
+git commit -m "$DESC"
 
 # 4. Git Tagging
 echo ""
 echo "Step 4: Tagging and pushing..."
-git tag -a "v$VERSION" -m "Release v$VERSION"
+git tag -a "v$VERSION" -m "$DESC"
 git push origin main
 git push origin "v$VERSION"
 

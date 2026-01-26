@@ -1,12 +1,13 @@
 {
   "name": "frontend",
-  "version": "1.0.49",
+  "version": "1.0.50",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
     "e2e": "npx playwright test"
   },
   "prettier": {

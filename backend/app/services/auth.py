@@ -11,6 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.logger import get_logger
+
+logger = get_logger(__name__)
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -57,7 +60,8 @@ def decode_access_token(token: str) -> Optional[dict]:
             token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
         )
         return payload
-    except JWTError:
+    except JWTError as e:
+        logger.warning(f"JWT decode error: {e}")
         return None
 
 
@@ -75,7 +79,7 @@ async def get_current_user(
     if payload is None:
         raise credentials_exception
 
-    username: str | None = payload.get("sub")
+    username: Optional[str] = payload.get("sub")
     if username is None:
         raise credentials_exception
 
@@ -92,9 +96,9 @@ async def get_current_user(
 
 
 async def get_current_user_optional(
-    token: str | None = Depends(oauth2_scheme_optional),
+    token: Optional[str] = Depends(oauth2_scheme_optional),
     db: AsyncSession = Depends(get_db),
-) -> User | None:
+) -> Optional[User]:
     """Get the current authenticated user from JWT token, if present."""
     if not token:
         return None
@@ -103,7 +107,7 @@ async def get_current_user_optional(
     if payload is None:
         return None
 
-    username: str | None = payload.get("sub")
+    username: Optional[str] = payload.get("sub")
     if username is None:
         return None
 

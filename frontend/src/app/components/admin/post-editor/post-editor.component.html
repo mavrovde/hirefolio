@@ -9,13 +9,37 @@
     <form (ngSubmit)="onSubmit()" #postForm="ngForm">
         <div class="form-row">
             <div class="form-group">
-                <label for="title" [class.field-changed]="isChanged('title')">Title *</label>
+                <div class="flex items-center justify-between mb-1">
+                    <label for="title" [class.field-changed]="isChanged('title')" class="mb-0">Title *</label>
+                    <button type="button" (click)="suggestTitle()" [disabled]="saving || suggestingTitle"
+                        class="text-[10px] text-terminal-dim hover:text-secondary flex items-center gap-1 border border-terminal-dim/30 rounded px-2 py-0.5 hover:border-secondary transition-all"
+                        title="Suggest title from content">
+                        <span *ngIf="!suggestingTitle">✨ Suggest</span>
+                        <span *ngIf="suggestingTitle" class="flex items-center gap-1">
+                            <span
+                                class="animate-spin h-2 w-2 border border-current border-t-transparent rounded-full"></span>
+                            Thinking...
+                        </span>
+                    </button>
+                </div>
                 <input type="text" id="title" name="title" [(ngModel)]="post.title" (input)="onTitleChange()" required
                     [disabled]="saving" />
             </div>
 
             <div class="form-group">
-                <label for="slug" [class.field-changed]="isChanged('slug')">Slug *</label>
+                <div class="flex items-center justify-between mb-1">
+                    <label for="slug" [class.field-changed]="isChanged('slug')" class="mb-0">Slug *</label>
+                    <button type="button" (click)="suggestSlug()" [disabled]="saving || suggestingSlug"
+                        class="text-[10px] text-terminal-dim hover:text-secondary flex items-center gap-1 border border-terminal-dim/30 rounded px-2 py-0.5 hover:border-secondary transition-all"
+                        title="Suggest slug from content">
+                        <span *ngIf="!suggestingSlug">✨ Suggest</span>
+                        <span *ngIf="suggestingSlug" class="flex items-center gap-1">
+                            <span
+                                class="animate-spin h-2 w-2 border border-current border-t-transparent rounded-full"></span>
+                            Thinking...
+                        </span>
+                    </button>
+                </div>
                 <input type="text" id="slug" name="slug" [(ngModel)]="post.slug" required [disabled]="saving" />
             </div>
         </div>
@@ -48,12 +72,12 @@
                     +
                 </button>
                 <button type="button" (click)="suggestTags()" [disabled]="saving || !post.content || generatingTags"
-                    class="btn-secondary text-xs px-2 ml-auto flex items-center gap-1 min-w-[80px] justify-center"
+                    class="text-[10px] text-terminal-dim hover:text-secondary flex items-center gap-1 border border-terminal-dim/30 rounded px-2 py-0.5 hover:border-secondary transition-all ml-auto"
                     title="Generate tags with AI">
-                    <span *ngIf="!generatingTags">✨ Suggest</span>
+                    <span *ngIf="!generatingTags">✨ Suggest Tags</span>
                     <span *ngIf="generatingTags" class="flex items-center gap-1">
                         <span
-                            class="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full"></span>
+                            class="animate-spin h-2 w-2 border border-current border-t-transparent rounded-full"></span>
                         Thinking...
                     </span>
                 </button>
@@ -68,13 +92,37 @@
         </div>
 
         <div class="form-group">
-            <label for="summary" [class.field-changed]="isChanged('summary')">Summary</label>
+            <div class="flex items-center justify-between mb-1">
+                <label for="summary" [class.field-changed]="isChanged('summary')" class="mb-0">Summary</label>
+                <button type="button" (click)="suggestSummary()" [disabled]="saving || suggestingSummary"
+                    class="text-[10px] text-terminal-dim hover:text-secondary flex items-center gap-1 border border-terminal-dim/30 rounded px-2 py-0.5 hover:border-secondary transition-all"
+                    title="Suggest summary from content">
+                    <span *ngIf="!suggestingSummary">✨ Suggest</span>
+                    <span *ngIf="suggestingSummary" class="flex items-center gap-1">
+                        <span
+                            class="animate-spin h-2 w-2 border border-current border-t-transparent rounded-full"></span>
+                        Thinking...
+                    </span>
+                </button>
+            </div>
             <textarea id="summary" name="summary" [(ngModel)]="post.summary" rows="3" [disabled]="saving"
                 placeholder="Brief description of the post..."></textarea>
         </div>
 
         <div class="form-group">
-            <label for="content" [class.field-changed]="isChanged('content')">Content *</label>
+            <div class="flex items-center justify-between mb-1">
+                <label for="content" [class.field-changed]="isChanged('content')" class="mb-0">Content *</label>
+                <button type="button" (click)="suggestAll()" [disabled]="saving || suggestingAll"
+                    class="text-[10px] text-terminal-dim hover:text-secondary flex items-center gap-1 border border-terminal-dim/30 rounded px-2 py-0.5 hover:border-secondary transition-all"
+                    title="Suggest Title, Slug, and Summary from content">
+                    <span *ngIf="!suggestingAll">✨ Suggest All from Content</span>
+                    <span *ngIf="suggestingAll" class="flex items-center gap-1">
+                        <span
+                            class="animate-spin h-2 w-2 border border-current border-t-transparent rounded-full"></span>
+                        Thinking...
+                    </span>
+                </button>
+            </div>
             <textarea id="content" name="content" [(ngModel)]="post.content" rows="20" required [disabled]="saving"
                 placeholder="Write your post content here..."></textarea>
         </div>
