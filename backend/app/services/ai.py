@@ -39,30 +39,57 @@ async def suggest_tags(title: str, content: str) -> list[str]:
             response_text = data.get("response", "")
 
             # Parse JSON
+            tags = []
             try:
-                tags = json.loads(response_text)
-                if isinstance(tags, list):
-                    return [str(t).lower().replace(" ", "-") for t in tags[:5]]
-                # Try to find list in dict if wrapped
-                if isinstance(tags, dict):
-                    for k, v in tags.items():
+                parsed_json = json.loads(response_text)
+                if isinstance(parsed_json, list):
+                    tags = parsed_json
+                elif isinstance(parsed_json, dict):
+                    for k, v in parsed_json.items():
                         if isinstance(v, list):
-                            return [str(t).lower().replace(" ", "-") for t in v[:5]]
-            except json.JSONDecodeError:
-                # Fallback: simple text parsing if JSON mode fails or model hallucinates
-                # Look for comma separated or newline separated words
-                words = re.findall(r"\b\w+\b", response_text)
-                # Filter out common stop words if necessary, but for now just take top unique long words
-                unique_tags = []
-                for w in words:
-                    w = w.lower()
-                    if len(w) > 3 and w not in unique_tags:
-                        unique_tags.append(w)
-                        if len(unique_tags) >= 5:
+                            tags = v
                             break
-                return unique_tags
+            except json.JSONDecodeError:
+                # Fallback: simple text parsing if JSON mode fails
+                tags = re.findall(r"\b\w+\b", response_text)
 
-            return []
+            # Process and filter tags
+            processed_tags = []
+            # Improved stop words for conversational AI lead-ins
+            stop_words = {
+                "here",
+                "are",
+                "some",
+                "tags",
+                "the",
+                "is",
+                "for",
+                "and",
+                "title",
+                "slug",
+                "summary",
+            }
+            for t in tags:
+                t_str = str(t).lower().strip().replace(" ", "-")
+                if t_str in stop_words:
+                    continue
+                # Filter out short tags, common numbers, or hex-heavy strings (hallucinations like UUID parts)
+                if len(t_str) > 2 and not re.match(r"^[0-9a-f\-]+$", t_str):
+                    if t_str not in processed_tags:
+                        processed_tags.append(t_str)
+
+            # Final Fallback: if no valid tags, extract from title/content
+            if not processed_tags:
+                source_text = f"{title} {content[:500]}".lower()
+                # Find words > 4 chars, not including common stop words
+                words = re.findall(r"\b[a-z]{5,}\b", source_text)
+                for w in words:
+                    if w not in processed_tags:
+                        processed_tags.append(w)
+                        if len(processed_tags) >= 5:
+                            break
+
+            return processed_tags[:5]
     except Exception as e:
         logger.error(f"Unexpected error in suggest_tags: {e}", exc_info=True)
         return []

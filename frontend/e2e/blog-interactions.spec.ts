@@ -1,0 +1,152 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('Blog Interactions', () => {
+    test.beforeEach(async ({ page }) => {
+        // 1. Login
+        await page.goto('/admin/login');
+        await page.fill('input[name="username"]', 'admin');
+        await page.fill('input[name="password"]', 'admin');
+        await page.click('button[type="submit"]');
+        await expect(page).toHaveURL(/\/admin\/dashboard/);
+
+        // 2. Create a clean test post
+        await page.goto('/admin/posts');
+        await page.click('.btn-new');
+
+        // Use a fixed timestamp for this test run to ensure uniqueness but predictability within the test context
+        const uniqueId = Date.now();
+        const title = `Stable E2E Post ${uniqueId}`;
+        const slug = `stable-e2e-post-${uniqueId}`;
+
+        await page.fill('input[id="title"]', title);
+        await page.fill('input[id="slug"]', slug);
+        await page.selectOption('select[id="language"]', 'en');
+        await page.fill('textarea[id="content"]', '# Test Content\n\nThis is a stable post for E2E testing.');
+        await page.fill('textarea[id="summary"]', 'Stable summary for E2E testing.');
+
+        // Click Publish to ensure it appears on the public site
+        await page.click('button:has-text("[ Publish ]")');
+        await page.waitForURL('/admin/posts');
+
+        // 3. Logout to view as guest
+        await page.click('.logout-btn');
+        await expect(page).toHaveURL('/admin/login');
+
+        // 4. Navigate to home
+        await page.goto('/');
+    });
+
+    test('should expand summary and navigate to full post', async ({ page }) => {
+        // Find our specific stable post
+        // We look for the row containing our stable title
+        const postGroup = page.locator('.group', { hasText: 'Stable E2E Post' }).first();
+        const postTitle = postGroup.locator('.text-primary.font-bold');
+
+        await expect(postTitle).toBeVisible();
+
+        // Get title text for verification later
+        // The previous selector includes badges and tags. 
+        // We want the text content of the direct text node or filter out children.
+        // Easier approach: Get the whole text and clean it up or expect substring.
+        // Or better: Use the title property from the data if possible, but we are testing UI.
+
+        // The structure is: 
+        // <span class="text-primary font-bold ...">
+        //   <span class="badge">EN</span>
+        //   Title Text
+        //   <span class="tag">#tag</span>
+        // </span>
+
+        // Let's grab the full text and split/clean it. 
+        // "EN Title #tag" -> we want "Title"
+        // Since we know the structure, we can verify the H1 contains the title part.
+        // But since the title length varies, let's just make sure the H1 text is IN the list item text (minus badges/tags).
+        // Actually, reverse: The list item text contains the title. The H1 IS the title.
+        // So H1 should be a substring of the List Item? No, List Item has extra text.
+        // List Item: "EN My Title #tag"
+        // H1: "My Title".
+        // So List Item contains H1.
+
+        const listItemText = await postTitle.innerText();
+
+        // 1. Expand Summary
+        // Click the title
+        await postTitle.click();
+
+        // Check for expanded area visibility
+        const expandedArea = postGroup.locator('.border-l-2.border-dashed');
+        await expect(expandedArea).toBeVisible();
+
+        const summary = expandedArea.locator('.italic.text-primary');
+        await expect(summary).toBeVisible();
+
+        // Check for "Read More" button ($ cat full_post.md)
+        const readMoreBtn = postGroup.getByRole('link', { name: '$ cat full_post.md' });
+        await expect(readMoreBtn).toBeVisible();
+
+        // 2. Navigate to Full Post
+        await readMoreBtn.click();
+
+        // Verify URL pattern /blog/:slug
+        await expect(page).toHaveURL(/\/blog\/.+/);
+
+        // Verify changed view
+        // Header should contain ~/blog/slug
+        await expect(page.locator('text=~/blog/')).toBeVisible();
+
+        // Check H1 is visible matches the expected title.
+        // We know the title is "Stable E2E Post ...". 
+        // Just verify H1 contains "Stable E2E Post".
+        await expect(page.locator('h1')).toBeVisible();
+        await expect(page.locator('h1')).toContainText('Stable E2E Post');
+
+        // Check for "Back" button in the footer. 
+        // There are two "[ cd .. ]" buttons now (header and footer). We want the last one.
+        const footerBackBtn = page.getByRole('button', { name: '[ cd .. ]' }).last();
+        // Scroll to it to ensure visibility (Playwright does this on action, but check might need it)
+        await footerBackBtn.scrollIntoViewIfNeeded();
+        await expect(footerBackBtn).toBeVisible();
+
+        // 3. Navigate Back (using the footer button this time to verify it works)
+        await footerBackBtn.click();
+
+        // Verify return to home with fragment
+        // The router navigates to /#blog
+        await expect(page).toHaveURL(/.*#blog/);
+    });
+
+    test('should navigate directly to a post via URL', async ({ page }) => {
+        // Find our specific stable post
+        const postGroup = page.locator('.group', { hasText: 'Stable E2E Post' }).first();
+        const postTitle = postGroup.locator('.text-primary.font-bold').first();
+
+        // Expand to get the link
+        await postTitle.click();
+
+        // Get the link from the expanded area within this group
+        const readMoreLink = postGroup.getByRole('link', { name: '$ cat full_post.md' });
+        const href = await readMoreLink.getAttribute('href');
+        expect(href).toBeTruthy();
+
+        // Now navigate directly
+        await page.goto(href!);
+
+        await expect(page.locator('h1')).toBeVisible();
+        await expect(page.locator('text=End of file')).toBeVisible();
+    });
+
+    test('should redirect to home for invalid slug', async ({ page }) => {
+        await page.goto('/blog/non-existent-completely-fake-slug-12345');
+
+        // Should be redirected back to home
+        await expect(page).toHaveURL('/');
+    });
+
+    test('should support terminal commands in UI', async ({ page }) => {
+        // Verify terminal aesthetics on the list page
+        await expect(page.locator('text=user@mavrov:~/blog$')).toBeVisible();
+
+        // Verify grep search input exists
+        await expect(page.getByPlaceholder('search semantically...')).toBeVisible();
+    });
+});

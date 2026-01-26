@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { BlogComponent } from './blog.component';
 import { BlogService } from '../../services/blog.service';
 import { LanguageService } from '../../services/language.service';
@@ -56,6 +57,7 @@ describe('BlogComponent', () => {
       providers: [
         { provide: BlogService, useValue: blogServiceSpy },
         { provide: LanguageService, useValue: languageServiceMock },
+        provideRouter([])
       ],
     }).compileComponents();
 

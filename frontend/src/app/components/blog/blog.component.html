@@ -1,32 +1,18 @@
 <section id="blog" class="py-20 px-6 max-w-4xl mx-auto font-mono text-sm md:text-base">
-  <h2
-    class="text-xl md:text-2xl font-bold mb-8 text-primary border-b border-dashed border-terminal pb-2"
-  >
+  <h2 class="text-xl md:text-2xl font-bold mb-8 text-primary border-b border-dashed border-terminal pb-2">
     {{ 'SECTION.BLOG' | translate }}
   </h2>
 
   <!-- Terminal Search Bar -->
   <div
-    class="mb-12 p-4 border border-terminal-dim bg-black/50 rounded flex flex-col md:flex-row items-start md:items-center gap-2 group focus-within:border-primary transition-colors"
-  >
+    class="mb-12 p-4 border border-terminal-dim bg-black/50 rounded flex flex-col md:flex-row items-start md:items-center gap-2 group focus-within:border-primary transition-colors">
     <div class="text-secondary shrink-0 whitespace-nowrap">
-      <span class="text-terminal-highlight">user@mavrov</span>:<span class="text-primary"
-        >~/blog</span
-      >$ grep -i
+      <span class="text-terminal-highlight">user@mavrov</span>:<span class="text-primary">~/blog</span>$ grep -i
     </div>
-    <input
-      #searchInput
-      (keyup.enter)="onSearch($event)"
-      type="text"
-      placeholder="search semantically..."
+    <input #searchInput (keyup.enter)="onSearch($event)" type="text" placeholder="search semantically..."
       class="bg-transparent border-none outline-none text-primary w-full caret-primary placeholder:text-terminal-dim placeholder:opacity-50"
-      (blur)="onSearch($event)"
-    />
-    <button
-      *ngIf="currentQuery"
-      (click)="clearSearch(searchInput)"
-      class="text-secondary hover:text-white px-2"
-    >
+      (blur)="onSearch($event)" />
+    <button *ngIf="currentQuery" (click)="clearSearch(searchInput)" class="text-secondary hover:text-white px-2">
       [ clear ]
     </button>
   </div>
@@ -51,7 +37,7 @@
           <span class="text-terminal-highlight">[{{ (result.relevance * 100).toFixed(0) }}%]</span>
           <span class="text-primary font-bold ml-2 group-hover:underline decoration-dashed">{{
             result.title
-          }}</span>
+            }}</span>
         </div>
         <div class="text-secondary text-sm ml-12 opacity-80">{{ result.summary }}</div>
       </div>
@@ -69,10 +55,8 @@
   <div class="space-y-6" *ngIf="!searchResults$">
     <div *ngFor="let post of posts$ | async" class="group">
       <!-- Terminal File Line -->
-      <div
-        (click)="togglePost(post.id)"
-        class="cursor-pointer flex flex-col md:flex-row md:items-center gap-2 md:gap-4 hover:bg-terminal-dim p-2 rounded transition-colors duration-200"
-      >
+      <div (click)="togglePost(post.id)"
+        class="cursor-pointer flex flex-col md:flex-row md:items-center gap-2 md:gap-4 hover:bg-terminal-dim p-2 rounded transition-colors duration-200">
         <span class="text-secondary shrink-0"> -rw-r--r-- 1 sergii users </span>
 
         <span class="text-terminal-highlight shrink-0">
@@ -80,34 +64,33 @@
         </span>
 
         <span
-          class="text-primary font-bold group-hover:underline decoration-dashed underline-offset-4 break-all flex flex-wrap items-center gap-2"
-        >
+          class="text-primary font-bold group-hover:underline decoration-dashed underline-offset-4 break-all flex flex-wrap items-center gap-2">
           <span class="text-xs text-black bg-primary px-1 rounded uppercase font-bold select-none">
             {{ post.language }}
           </span>
           {{ post.title }}
           <!-- Tags Display -->
-          <span
-            *ngFor="let tag of post.tags"
-            (click)="$event.stopPropagation(); filterByTag(tag)"
-            class="text-xs border border-terminal-dim text-secondary px-1 rounded hover:text-primary hover:border-primary transition-colors ml-1"
-          >
+          <span *ngFor="let tag of post.tags" (click)="$event.stopPropagation(); filterByTag(tag)"
+            class="text-xs border border-terminal-dim text-secondary px-1 rounded hover:text-primary hover:border-primary transition-colors ml-1">
             #{{ tag }}
           </span>
         </span>
       </div>
 
-      <!-- Content Area (cat display) -->
-      <div
-        *ngIf="isExpanded(post.id)"
-        class="mt-4 pl-4 md:pl-8 border-l-2 border-dashed border-terminal-dim animate-fadeIn"
-      >
-        <div class="text-secondary mb-4 opacity-75">$ cat {{ post.id }}.md</div>
+      <!-- Summary Area -->
+      <div *ngIf="isExpanded(post.id)"
+        class="mt-4 pl-4 md:pl-8 border-l-2 border-dashed border-terminal-dim animate-fadeIn">
+        <!-- Summary -->
+        <div class="text-primary mb-4 italic">
+          {{ post.summary }}
+        </div>
 
-        <div
-          class="prose prose-invert prose-p:text-primary prose-a:text-terminal-highlight prose-headings:text-primary max-w-none"
-          [innerHTML]="post.content"
-        ></div>
+        <!-- Read More Button -->
+        <a [routerLink]="['/blog', post.slug]"
+          class="inline-flex items-center gap-2 text-terminal-highlight hover:text-white hover:underline decoration-dashed cursor-pointer">
+          $ cat full_post.md
+          <span>&rarr;</span>
+        </a>
 
         <div class="mt-4 text-secondary opacity-75">
           <span class="animate-pulse">_</span>

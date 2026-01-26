@@ -139,9 +139,9 @@ async def test_suggest_tags_regex_fallback():
             )
         )
         tags = await suggest_tags("Title", "Content")
-        assert len(tags) == 5
         assert "coding" in tags
         assert "python" in tags
+        assert "tests" in tags
 
 
 @pytest.mark.asyncio
@@ -221,8 +221,13 @@ async def test_suggest_tags_invalid_json_type():
         respx_mock.post("/api/generate").mock(
             return_value=Response(200, json={"response": "123"})
         )
-        tags = await suggest_tags("Title", "Content")
-        assert tags == []
+        tags = await suggest_tags(
+            "Deep Learning",
+            "Convolutional neural networks are great for image recognition.",
+        )
+        # Keywords should be extracted from title/content
+        assert "learning" in tags
+        assert "networks" in tags
 
 
 @pytest.mark.asyncio

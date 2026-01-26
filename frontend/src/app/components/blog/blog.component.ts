@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { BlogService, BlogPost, BlogSearchResult } from '../../services/blog.service';
 import { Observable, map } from 'rxjs';
 import { TranslatePipe } from '../../pipes/translate.pipe';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-blog',
   standalone: true,
-  imports: [CommonModule, TranslatePipe],
+  imports: [CommonModule, TranslatePipe, RouterModule],
   templateUrl: './blog.component.html',
   styleUrls: ['./blog.component.css'],
 })
@@ -19,7 +20,7 @@ export class BlogComponent implements OnInit {
   currentQuery = '';
   activeTag: string | null = null;
 
-  constructor(private blogService: BlogService) {}
+  constructor(private blogService: BlogService) { }
 
   ngOnInit() {
     this.loadPosts();
