@@ -34,5 +34,31 @@ else
     echo "Valid certificate found. Skipping dummy generation."
 fi
 
+# 3. Start background certificate watcher (Auto-Reload)
+# This monitors the certificate for changes (e.g., Certbot renewal) and reloads Nginx.
+(
+    echo "Starting certificate watcher..."
+    # Initial checksum
+    if [ -f "$CERT_DIR/fullchain.pem" ]; then
+        CHECKSUM=$(md5sum "$CERT_DIR/fullchain.pem" | awk '{print $1}')
+    else
+        CHECKSUM=""
+    fi
+
+    while :; do
+        sleep 60
+        if [ -f "$CERT_DIR/fullchain.pem" ]; then
+            NEW_CHECKSUM=$(md5sum "$CERT_DIR/fullchain.pem" | awk '{print $1}')
+            
+            # If checksum changed (or file appeared for the first time)
+            if [ "$CHECKSUM" != "$NEW_CHECKSUM" ]; then
+                echo "Certificate changed (or initialized). Reloading Nginx..."
+                nginx -s reload
+                CHECKSUM="$NEW_CHECKSUM"
+            fi
+        fi
+    done
+) &
+
 echo "Starting Nginx..."
 exec "$@"
