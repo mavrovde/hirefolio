@@ -372,11 +372,9 @@ jobs:
             docker pull pgvector/pgvector:pg18
             docker pull ollama/ollama:latest
             docker pull ghcr.io/open-webui/open-webui:latest
-            docker pull certbot/certbot
             docker save pgvector/pgvector:pg18 -o std-images/pgvector.tar
             docker save ollama/ollama:latest -o std-images/ollama.tar
             docker save ghcr.io/open-webui/open-webui:latest -o std-images/open-webui.tar
-            docker save certbot/certbot -o std-images/certbot.tar
           fi
 
       - name: Start Full Stack (Prod Topology)
@@ -559,7 +557,9 @@ jobs:
              docker pull pgvector/pgvector:pg18
              docker pull ollama/ollama:latest
              docker pull ghcr.io/open-webui/open-webui:latest
-             docker save certbot/certbot -o std-images/certbot.tar # Still needed for some jobs or legacy? No, remove.
+             docker save pgvector/pgvector:pg18 -o std-images/pgvector.tar
+             docker save ollama/ollama:latest -o std-images/ollama.tar
+             docker save ghcr.io/open-webui/open-webui:latest -o std-images/open-webui.tar
           fi
 
       - name: Start Proxy Stack
