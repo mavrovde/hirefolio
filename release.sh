@@ -27,7 +27,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Production hardening, security improvements, and LLM stability."
+DESC="Release v$VERSION: Containerized global proxy (OpenResty) for robust 1Panel deployment."
 git add VERSION backend/app/main.py frontend/package.json
 git commit -m "$DESC"
 
