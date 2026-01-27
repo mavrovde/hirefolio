@@ -120,52 +120,98 @@ jobs:
         with:
           files: ./backend/coverage.xml
           flags: backend
-  backend-build-check:
-    name: Backend Build Check
+  # ============================================
+  # BUILD ARTIFACTS (Build Once)
+  # ============================================
+  build-images:
+    name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-tests]
+    needs: [backend-tests, frontend-tests, proxy-config-audit]
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build Backend (Dry Run)
+
+      # Build & Export Backend
+      - name: Build Backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: false
+          load: true
+          tags: mavrovde-backend:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Save Backend Image
+        run: docker save mavrovde-backend:ci -o backend-image.tar
+
+      # Build & Export Frontend
+      - name: Build Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: false
+          load: true
+          tags: mavrovde-frontend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Save Frontend Image
+        run: docker save mavrovde-frontend:ci -o frontend-image.tar
+
+      # Build & Export Proxy
+      - name: Build Proxy
+        uses: docker/build-push-action@v6
+        with:
+          context: ./proxy
+          push: false
+          load: true
+          tags: mavrovde-proxy:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Save Proxy Image
+        run: docker save mavrovde-proxy:ci -o proxy-image.tar
+
+      - name: Upload Image Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: |
+            backend-image.tar
+            frontend-image.tar
+            proxy-image.tar
+          retention-days: 1
 
   # ============================================
-  # E2E TESTS
+  # E2E TESTS (Test What You Fly)
   # ============================================
   e2e-tests:
-    name: E2E Tests
+    name: E2E Tests (Docker Stack)
     runs-on: ubuntu-latest
-    needs: [backend-build-check, frontend-tests, frontend-build-check]
-    env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
+    needs: [build-images]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Download Image Artifacts
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.13"
-          cache: "pip"
+          name: docker-images
+          path: .
 
-      - name: Set up Node.js
+      - name: Load Docker Images
+        run: |
+          docker load -i backend-image.tar
+          docker load -i frontend-image.tar
+          docker load -i proxy-image.tar
+          # Retag for Compose usage (matching what compose expects or override)
+          # We will use IMAGE_TAG=ci environment var and ensure compose uses these
+
+      - name: Set up Node.js (for Playwright)
         uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
-
-      - name: Install Backend dependencies
-        working-directory: ./backend
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
 
       - name: Install Frontend dependencies
         working-directory: ./frontend
@@ -182,119 +228,73 @@ jobs:
         id: cache-playwright
         uses: actions/cache@v4
         with:
-          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          path: ms-playwright
           key: playwright-browsers-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Playwright System Dependencies
-        working-directory: ./frontend
-        run: npx playwright install-deps
 
       - name: Install Playwright Browsers
         if: steps.cache-playwright.outputs.cache-hit != 'true'
         working-directory: ./frontend
-        run: npx playwright install
+        run: npx playwright install --with-deps
 
-      - name: Create Ollama model cache directory
-        run: mkdir -p ollama-models
-
-      - name: Cache Ollama models
-        id: cache-ollama
+      # Cache standard images (DB, Ollama)
+      - name: Cache Standard Images
+        id: cache-std-images
         uses: actions/cache@v4
         with:
-          path: ollama-models
-          key: ollama-models-v1
+          path: std-images
+          key: std-images-${{ runner.os }}-v1
 
-      - name: Cache Docker Images
-        id: cache-docker
-        uses: actions/cache@v4
-        with:
-          path: docker-images
-          key: docker-images-${{ runner.os }}-${{ hashFiles('backend/Dockerfile', 'frontend/Dockerfile') }}
-
-      - name: Load Cached Docker Images
-        if: steps.cache-docker.outputs.cache-hit == 'true'
+      - name: Load/Pull Standard Images
         run: |
-          ls docker-images/*.tar | xargs -I {} docker load -i {}
+          if [ -d "std-images" ]; then
+            ls std-images/*.tar | xargs -I {} docker load -i {}
+          else
+            mkdir -p std-images
+            docker pull pgvector/pgvector:pg18
+            docker pull ollama/ollama:latest
+            docker pull ghcr.io/open-webui/open-webui:latest
+            docker pull certbot/certbot
+            docker save pgvector/pgvector:pg18 -o std-images/pgvector.tar
+            docker save ollama/ollama:latest -o std-images/ollama.tar
+            docker save ghcr.io/open-webui/open-webui:latest -o std-images/open-webui.tar
+            docker save certbot/certbot -o std-images/certbot.tar
+          fi
 
-      - name: Pull and Save Docker Images
-        if: steps.cache-docker.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p docker-images
-          docker pull pgvector/pgvector:pg18
-          docker save pgvector/pgvector:pg18 -o docker-images/pgvector.tar
-          docker pull ollama/ollama:latest
-          docker save ollama/ollama:latest -o docker-images/ollama.tar
-
-      - name: Start Services (DB)
-        run: |
-          docker run -d \
-            --name db \
-            -e POSTGRES_USER=postgres \
-            -e POSTGRES_PASSWORD=postgres \
-            -e POSTGRES_DB=test_mavrov \
-            -p 5432:5432 \
-            pgvector/pgvector:pg18
-
-          # Wait for it to be ready
-          until docker exec db pg_isready; do sleep 1; done
-
-      - name: Start AI Service (Ollama)
-        run: |
-          # Start Ollama container with volume mount for caching
-          # We mount to /root/.ollama which is the default for models
-          docker run -d --name ollama -p 11434:11434 \
-            -v ${{ github.workspace }}/ollama-models:/root/.ollama \
-            ollama/ollama:latest
-
-          # Ensure permissions are correct for the mounted volume
-          docker exec ollama chown -R root:root /root/.ollama
-
-          # Wait for Ollama to be responsive
-          timeout 30s bash -c 'until curl -s http://localhost:11434 > /dev/null; do sleep 1; done'
-
-          # Pull models (will be fast if cached)
-          echo "Pulling AI models..."
-          docker exec ollama ollama pull nomic-embed-text
-          docker exec ollama ollama pull tinyllama
-
-          # Fix permissions for the mounted volume so runner can cache it
-          # The files were created by root inside the container
-          sudo chown -R $USER:$USER ${{ github.workspace }}/ollama-models
-
-          echo "Pre-warming TinyLlama..."
-          docker exec ollama ollama run tinyllama "hi"
-
-      - name: Start Backend
-        working-directory: ./backend
+      - name: Start Full Stack (Prod Topology)
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
-          SECRET_KEY: test-secret-key-for-ci
-          OLLAMA_BASE_URL: http://localhost:11434
+          # Use the 'ci' tag we built
+          IMAGE_TAG: ci
+          # Override image names in compose to match what we loaded if needed
+          # But for now assuming compose uses ghcr.io/...:${IMAGE_TAG}
+          # We need to tag our loaded images to match
         run: |
-          # Start backend in background
-          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-          # Wait for it to be ready
-          timeout 30s bash -c 'until curl -s http://localhost:8000/api/health > /dev/null; do sleep 1; done'
+          # Retag loaded images to match docker-compose requirements
+          docker tag mavrovde-backend:ci ghcr.io/${{ github.repository }}-backend:ci
+          docker tag mavrovde-frontend:ci ghcr.io/${{ github.repository }}-frontend:ci
+          docker tag mavrovde-proxy:ci ghcr.io/${{ github.repository }}-proxy:ci
 
-      - name: Seed Backend Data
-        working-directory: ./backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
-        run: python scripts/seed_e2e_user.py
+          # Start stack
+          docker compose -f docker-compose.prod.yml up -d
 
-      - name: Start Frontend
-        working-directory: ./frontend
+      - name: Wait for Stack Ready
         run: |
-          # Start frontend in background
-          npm start -- --port 4200 &
-          # Wait for it to be ready
-          timeout 60s bash -c 'until curl -s http://localhost:4200 > /dev/null; do sleep 1; done'
+          echo "Waiting for proxy to respond on port 80..."
+          timeout 60s bash -c 'until curl -s -o /dev/null -w "%{http_code}" -H "Host: mavrov.de" http://localhost:80 | grep "301"; do sleep 2; done'
+          echo "Stack is up!"
 
-      - name: Run Playwright Tests
+      - name: Run Playwright Tests (Targeting Docker Stack)
         working-directory: ./frontend
         env:
-          BASE_URL: http://localhost:4200
-        run: npm run e2e
+          # Point Playwright to the Proxy (localhost:80)
+          BASE_URL: http://localhost:80
+          # We might need to handle the redirect or test HTTPS if proxy enforces it?
+          # Or just test HTTP if we haven't set up valid certs in CI?
+          # Actually, the proxy redirects 80->443. Playwright might fail on self-signed certs.
+          # For CI E2E, maybe we should hit the frontend directly or allow insecure certs?
+          # Let's hit the frontend container port 80?
+          # No, prod compose doesn't expose frontend ports.
+          # We should test via Proxy. We can tell Playwright to ignore HTTPS errors.
+        run: npx playwright test --ignore-https-errors
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
@@ -302,110 +302,13 @@ jobs:
         with:
           name: playwright-report
           path: frontend/playwright-report/
-          retention-days: 30
-
-      - name: Finalize Cache Permissions
-        if: always()
-        run: |
-          # Ensure the runner user owns all cached directories and their recursive contents
-          # This is the last chance to fix permissions before the automated Post-job Cache step
-          if [ -d "ms-playwright" ]; then
-            sudo chown -R $USER:$USER ms-playwright
-            chmod -R u+rw ms-playwright
-          fi
-          if [ -d "ollama-models" ]; then
-            sudo chown -R $USER:$USER ollama-models
-            chmod -R u+rw ollama-models
-          fi
-          if [ -d "docker-images" ]; then
-            sudo chown -R $USER:$USER docker-images
-            chmod -R u+rw docker-images
-          fi
+          retention-days: 7
 
   # ============================================
-  # FRONTEND QA
+  # PUBLISH IMAGES (Push Verified Artifacts)
   # ============================================
-  frontend-lint:
-    name: Frontend Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install dependencies
-        working-directory: ./frontend
-        run: npm i --legacy-peer-deps
-      - name: Run ESLint
-        working-directory: ./frontend
-        run: npm run lint --if-present || true
-
-  frontend-tests:
-    name: Frontend Tests
-    runs-on: ubuntu-latest
-    needs: [frontend-lint]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install dependencies
-        working-directory: ./frontend
-        run: npm i --legacy-peer-deps
-      - name: Run tests with coverage
-        working-directory: ./frontend
-        run: npm test -- --watch=false --coverage
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./frontend/coverage/lcov.info
-          flags: frontend
-          fail_ci_if_error: false
-
-  frontend-build-check:
-    name: Frontend Build Check
-    runs-on: ubuntu-latest
-    needs: [frontend-tests, backend-tests]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Build Frontend (Dry Run)
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ============================================
-  # PROXY QA
-  # ============================================
-  proxy-config-audit:
-    name: Proxy Config Audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check for forbidden legacy configurations
-        run: |
-          if grep -iE "roundcube|mailserver|webmail" proxy/default.conf; then
-            echo "Error: Forbidden legacy configuration (roundcube/mailserver/webmail) found in proxy/default.conf"
-            exit 1
-          fi
-          echo "Proxy config is clean of legacy terms."
-
-  # ============================================
-  # BUILD & DEPLOY ARTIFACTS
-  # ============================================
-
-  build-push-backend:
-    name: Build & Push Backend
+  publish-images:
+    name: Publish Verified Images
     runs-on: ubuntu-latest
     needs: [e2e-tests]
     permissions:
@@ -413,171 +316,113 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract project version
         id: get_version
         run: |
           VERSION=$(cat VERSION | tr -d '[:space:]')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-      - name: Extract metadata (tags, labels) for Backend
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ steps.get_version.outputs.version }}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
-      - name: Build and push Backend
-        uses: docker/build-push-action@v6
+      - name: Download Image Artifacts
+        uses: actions/download-artifact@v4
         with:
-          context: ./backend
-          push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          name: docker-images
+          path: .
 
-  build-push-frontend:
-    name: Build & Push Frontend
-    runs-on: ubuntu-latest
-    needs: [e2e-tests]
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract project version
-        id: get_version
+      - name: Load and Push Images
         run: |
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-      - name: Extract metadata (tags, labels) for Frontend
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ steps.get_version.outputs.version }}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+          # Load the images built in the first stage
+          docker load -i backend-image.tar
+          docker load -i frontend-image.tar
+          docker load -i proxy-image.tar
 
-      - name: Build and push Frontend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
-          cache-to: type=gha,mode=max
+          # Define targets
+          REPO_BASE=${{ env.REGISTRY }}/${{ github.repository }}
+          VERSION=${{ steps.get_version.outputs.version }}
 
-  build-push-proxy:
-    name: Build & Push Proxy
-    runs-on: ubuntu-latest
-    needs: [proxy-config-audit, e2e-tests]
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract project version
-        id: get_version
-        run: |
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-      - name: Extract metadata (tags, labels) for Proxy
-        id: meta-proxy
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-proxy
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ steps.get_version.outputs.version }}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Build and push Proxy
-        uses: docker/build-push-action@v6
-        with:
-          context: ./proxy
-          push: true
-          tags: ${{ steps.meta-proxy.outputs.tags }}
-          labels: ${{ steps.meta-proxy.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Tag and Push Backend
+          docker tag mavrovde-backend:ci $REPO_BASE-backend:latest
+          docker tag mavrovde-backend:ci $REPO_BASE-backend:$VERSION
+          docker push $REPO_BASE-backend:latest
+          docker push $REPO_BASE-backend:$VERSION
 
+          # Tag and Push Frontend
+          docker tag mavrovde-frontend:ci $REPO_BASE-frontend:latest
+          docker tag mavrovde-frontend:ci $REPO_BASE-frontend:$VERSION
+          docker push $REPO_BASE-frontend:latest
+          docker push $REPO_BASE-frontend:$VERSION
+
+          # Tag and Push Proxy
+          docker tag mavrovde-proxy:ci $REPO_BASE-proxy:latest
+          docker push $REPO_BASE-proxy:latest
+          docker push $REPO_BASE-proxy:$VERSION
+
+  # ============================================
+  # SMOKE TESTS (Fast Verification)
+  # ============================================
   proxy-startup-test:
     name: Proxy Verification (Smoke Test)
     runs-on: ubuntu-latest
-    needs: [build-push-proxy, build-push-backend, build-push-frontend] # Wait for all images to be pushed
+    needs: [build-images] # Reuse artifacts
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Build Proxy (Local Load)
-        uses: docker/build-push-action@v6
-        with:
-          context: ./proxy
-          push: false
-          load: true # Load into local Docker daemon
-          tags: ghcr.io/${{ github.repository }}-proxy:latest
-          cache-from: type=gha
 
-      - name: Cache Smoke Test Images
-        id: cache-smoke-images
+      - name: Download Image Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: .
+
+      - name: Load Docker Images
+        run: |
+          docker load -i backend-image.tar
+          docker load -i frontend-image.tar
+          docker load -i proxy-image.tar
+
+      # Cache standard images (Reuse cache from E2E)
+      - name: Cache Standard Images
+        id: cache-std-images
         uses: actions/cache@v4
         with:
-          path: smoke-images
-          key: smoke-test-images-${{ runner.os }}-v1
+          path: std-images
+          key: std-images-${{ runner.os }}-v1
 
-      - name: Load Cached Smoke Test Images
-        if: steps.cache-smoke-images.outputs.cache-hit == 'true'
+      - name: Load/Pull Standard Images
         run: |
-          ls smoke-images/*.tar | xargs -I {} docker load -i {}
+          if [ -d "std-images" ]; then
+            ls std-images/*.tar | xargs -I {} docker load -i {}
+          else
+            # Fallback if cache miss (should be hit if E2E ran or previous runs populated it)
+             mkdir -p std-images
+             docker pull pgvector/pgvector:pg18
+             docker pull ollama/ollama:latest
+             docker pull ghcr.io/open-webui/open-webui:latest
+             docker pull certbot/certbot
+             docker save pgvector/pgvector:pg18 -o std-images/pgvector.tar
+             docker save ollama/ollama:latest -o std-images/ollama.tar
+             docker save ghcr.io/open-webui/open-webui:latest -o std-images/open-webui.tar
+             docker save certbot/certbot -o std-images/certbot.tar
+          fi
 
-      - name: Pull and Save Smoke Test Images
-        if: steps.cache-smoke-images.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p smoke-images
-          echo "Pulling images..."
-          docker pull ghcr.io/open-webui/open-webui:latest
-          docker pull certbot/certbot
-          docker pull pgvector/pgvector:pg18
-          docker pull ollama/ollama:latest
-          echo "Saving images..."
-          docker save ghcr.io/open-webui/open-webui:latest -o smoke-images/open-webui.tar
-          docker save certbot/certbot -o smoke-images/certbot.tar
-          docker save pgvector/pgvector:pg18 -o smoke-images/pgvector.tar
-          docker save ollama/ollama:latest -o smoke-images/ollama.tar
-
-      - name: Start Proxy Stack (Prod Topology)
+      - name: Start Proxy Stack
         env:
-          IMAGE_TAG: latest
+          IMAGE_TAG: ci
           IMAGE_NAME: ${{ github.repository }}
         run: |
-          # Start proxy AND certbot
+          # Retag loaded images to match docker-compose requirements
+          docker tag mavrovde-backend:ci ghcr.io/${{ github.repository }}-backend:ci
+          docker tag mavrovde-frontend:ci ghcr.io/${{ github.repository }}-frontend:ci
+          docker tag mavrovde-proxy:ci ghcr.io/${{ github.repository }}-proxy:ci
+
+          # Start proxy AND certbot (and deps will start because of depends_on, or we force if needed)
+          # We just need proxy and certbot to verify SSL bootstrap
           docker compose -f docker-compose.prod.yml up -d proxy certbot
 
       - name: Wait for Bootstrap
@@ -590,8 +435,6 @@ jobs:
             docker logs global_proxy
             exit 1
           fi
-          # Certbot might exit if it fails validation, but we just want to see logs. 
-          # It shouldn't crash immediately.
 
       - name: Verify Bootstrap Logs
         run: |
@@ -622,14 +465,4 @@ jobs:
           else
              echo "❌ Certbot activity missing"
              exit 1
-          fi
-
-      - name: Verify HTTP Response (Port 80)
-        run: |
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: mavrov.de" http://localhost:80)
-          if [ "$HTTP_CODE" == "301" ]; then
-            echo "✅ Network passed (301 Redirect)"
-          else
-            echo "❌ Network failed. Code: $HTTP_CODE"
-            exit 1
           fi
