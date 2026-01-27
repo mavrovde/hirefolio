@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.0.65",
+    version="1.0.66",
     lifespan=lifespan,
 )
 
@@ -32,6 +32,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:4200",  # Angular dev server
+        "https://mavrov.de",
+        "https://www.mavrov.de",
+        "http://mavrov.de",
+        "http://www.mavrov.de",
     ],
     allow_credentials=True,
     allow_methods=["*"],
