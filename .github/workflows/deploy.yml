@@ -360,18 +360,15 @@ jobs:
           timeout 60s bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 | grep "200\|302"; do sleep 2; done'
           echo "Stack is up!"
 
+      - name: Seed E2E Data
+        run: |
+          docker compose -f docker-compose.prod.yml exec -T backend python scripts/seed_e2e_user.py
+
       - name: Run Playwright Tests (Targeting Frontend Directly)
         working-directory: ./frontend
         env:
           # Point Playwright directly to the Frontend
           BASE_URL: http://localhost:4200
-          # We might need to handle the redirect or test HTTPS if proxy enforces it?
-          # Or just test HTTP if we haven't set up valid certs in CI?
-          # Actually, the proxy redirects 80->443. Playwright might fail on self-signed certs.
-          # For CI E2E, maybe we should hit the frontend directly or allow insecure certs?
-          # Let's hit the frontend container port 80?
-          # No, prod compose doesn't expose frontend ports.
-          # We should test via Proxy. We can tell Playwright to ignore HTTPS errors.
         run: npx playwright test
 
       - name: Upload Playwright Report
