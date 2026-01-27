@@ -104,18 +104,8 @@ services:
     networks:
       - app-network
 
-  proxy:
-    image: ghcr.io/mavrovde/mavrov.de-proxy:${IMAGE_TAG:-latest}
-    container_name: global_proxy
-    restart: always
-    ports:
-      - "80:80"
-    depends_on:
-      - frontend
-      - roundcube
-      - open-webui
-    networks:
-      - app-network
+
+
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:latest
