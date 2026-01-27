@@ -550,28 +550,32 @@ jobs:
           IMAGE_TAG: latest
           IMAGE_NAME: ${{ github.repository }}
         run: |
-          # Use docker-compose to start the proxy and its dependencies (frontend, open-webui)
-          # We set IMAGE_TAG so it uses the locally built proxy image
-          # Dependencies (frontend, etc.) will be pulled as 'latest' or whatever is in compose
-          # Note: We need to ensure compose uses the image name matching what we built
-          docker compose -f docker-compose.prod.yml up -d proxy
+          # Start proxy AND certbot
+          docker compose -f docker-compose.prod.yml up -d proxy certbot
 
       - name: Wait for Bootstrap
-        run: sleep 10 # Give entrypoint time to download/gen certs
+        run: sleep 10
 
       - name: Check Container Status
         run: |
-          # Get container name from compose (usually project_proxy_1 or similar, but we force container_name: global_proxy in compose)
           if [ "$(docker inspect -f '{{.State.Running}}' global_proxy)" != "true" ]; then
             echo "Proxy container died!"
             docker logs global_proxy
             exit 1
           fi
+          # Certbot might exit if it fails validation, but we just want to see logs. 
+          # It shouldn't crash immediately.
 
       - name: Verify Bootstrap Logs
         run: |
           LOGS=$(docker logs global_proxy 2>&1)
+          CERTBOT_LOGS=$(docker compose -f docker-compose.prod.yml logs certbot 2>&1)
+
+          echo "=== PROXY LOGS ==="
           echo "$LOGS"
+          echo "=== CERTBOT LOGS ==="
+          echo "$CERTBOT_LOGS"
+
           if echo "$LOGS" | grep -q "Bootstrapping Nginx SSL"; then
             echo "✅ Bootstrap started"
           else
@@ -585,10 +589,16 @@ jobs:
              exit 1
           fi
 
+          # Verify Certbot
+          if echo "$CERTBOT_LOGS" | grep -q "Requesting start certificate..."; then
+             echo "✅ Certbot attempting request"
+          else
+             echo "❌ Certbot activity missing"
+             exit 1
+          fi
+
       - name: Verify HTTP Response (Port 80)
         run: |
-          # Check connectivity (expect 301 Redirect to HTTPS) on localhost:80
-          # We send Host: mavrov.de to match the server block and avoid 444
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: mavrov.de" http://localhost:80)
           if [ "$HTTP_CODE" == "301" ]; then
             echo "✅ Network passed (301 Redirect)"

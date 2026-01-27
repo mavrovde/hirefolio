@@ -36,7 +36,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: CI/Local Proxy Verification Fix (Tags)."
+DESC="Release v$VERSION: Verify Certbot Activity."
 git add .
 git commit -m "$DESC"
 

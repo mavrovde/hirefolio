@@ -21,10 +21,10 @@ trap cleanup EXIT
 echo "[1/4] Building Proxy image ($PROXY_IMAGE)..."
 docker build -t "$PROXY_IMAGE" ./proxy >/dev/null
 
-# 2. Start Proxy (and dependencies) using Prod Compose
-echo "[2/4] Starting Proxy stack (Prod Env)..."
-# We only start 'proxy', but depends_on will pull/start frontend and open-webui
-docker-compose -f docker-compose.prod.yml up -d proxy
+# 2. Start Proxy AND Certbot (and dependencies) using Prod Compose
+echo "[2/4] Starting Proxy & Certbot stack (Prod Env)..."
+# We start proxy (which triggers deps) and certbot explicitly
+docker-compose -f docker-compose.prod.yml up -d proxy certbot
 
 # 3. Wait for Bootstrap
 echo "[3/4] Waiting for bootstrap (10s)..."
@@ -33,21 +33,34 @@ sleep 10
 # 4. Verify Logs
 echo "[4/4] Verifying logs..."
 LOGS=$(docker-compose -f docker-compose.prod.yml logs proxy 2>&1)
+CERTBOT_LOGS=$(docker-compose -f docker-compose.prod.yml logs certbot 2>&1)
 
 if echo "$LOGS" | grep -q "Bootstrapping Nginx SSL"; then
-    echo "✅ Log Check: Bootstrap started"
+    echo "✅ Proxy Log Check: Bootstrap started"
 else
-    echo "❌ Log Check: Bootstrap log missing"
+    echo "❌ Proxy Log Check: Bootstrap log missing"
     echo "$LOGS"
     exit 1
 fi
 
 if echo "$LOGS" | grep -q "Starting Nginx"; then
-    echo "✅ Log Check: Nginx started"
+    echo "✅ Proxy Log Check: Nginx started"
 else
-    echo "❌ Log Check: Nginx start log missing"
+    echo "❌ Proxy Log Check: Nginx start log missing"
     echo "$LOGS"
     exit 1
+fi
+
+# Verify Certbot is trying to request/renew
+if echo "$CERTBOT_LOGS" | grep -q "Requesting start certificate..."; then
+    echo "✅ Certbot Log Check: Requesting/checking certificate"
+elif echo "$CERTBOT_LOGS" | grep -q "renew"; then
+     # Might just say it's renewing if the file exists from a previous run (unlikely in clean test but possible)
+     echo "✅ Certbot Log Check: Renew/Request logic active"
+else
+     echo "❌ Certbot Log Check: No activity found"
+     echo "$CERTBOT_LOGS"
+     exit 1
 fi
 
 # No network connectivity check requested ("do not test something, just successfully start")
