@@ -32,7 +32,7 @@ export class LanguageService {
 
   private loadTranslations(lang: Language) {
     this.http
-      .get(`assets/i18n/${lang}.json`)
+      .get(`/assets/i18n/${lang}.json`)
       .pipe(
         catchError((err) => {
           console.error(`Error loading translations for ${lang}`, err);

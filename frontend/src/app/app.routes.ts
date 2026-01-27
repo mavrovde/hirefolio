@@ -12,6 +12,16 @@ export const routes: Routes = [
     component: HomeComponent,
   },
   {
+    path: 'llm',
+    loadComponent: () =>
+      import('./components/llm/llm.component').then((m) => m.LlmComponent),
+  },
+  {
+    path: 'blog',
+    loadComponent: () =>
+      import('./components/blog/blog.component').then((m) => m.BlogComponent),
+  },
+  {
     path: 'blog/:slug',
     loadComponent: () =>
       import('./components/blog/blog-post/blog-post.component').then(

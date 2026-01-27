@@ -1,0 +1,29 @@
+:host {
+    display: block;
+    height: 100vh;
+    background: black;
+}
+
+.terminal-container {
+    height: 100%;
+}
+
+input {
+    caret-color: #0f0;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
+.terminal-cursor {
+    animation: blink 1s step-end infinite;
+}

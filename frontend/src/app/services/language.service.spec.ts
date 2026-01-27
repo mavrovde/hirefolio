@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { LanguageService } from './language.service';
+import { firstValueFrom } from 'rxjs';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('LanguageService', () => {
   let service: LanguageService;
@@ -19,85 +21,84 @@ describe('LanguageService', () => {
     httpMock.verify();
   });
 
-  it('should be created', () => {
-    const req = httpMock.expectOne('assets/i18n/en.json');
+  it('should load default language on init', () => {
+    const req = httpMock.expectOne('/assets/i18n/en.json');
     expect(req.request.method).toBe('GET');
-    req.flush({});
-    expect(service).toBeTruthy();
+    req.flush({ TEST: 'Test' });
+    expect(service.getCurrentLanguage()).toBe('en');
   });
 
-  it('should load translations on init', () => {
-    const req = httpMock.expectOne('assets/i18n/en.json');
-    expect(req.request.method).toBe('GET');
-    req.flush({ HELLO: 'Hello' });
+  it('should translate correctly using nested keys', async () => {
+    const initReq = httpMock.expectOne('/assets/i18n/en.json');
+    initReq.flush({ NAV: { LLM: 'LLM Support' } });
 
-    service.translations$.subscribe((translations) => {
-      expect(translations['HELLO']).toBe('Hello');
-    });
+    const translation = await firstValueFrom(service.translate('NAV.LLM'));
+    expect(translation).toBe('LLM Support');
   });
 
-  it('should switch language', () => {
-    const req1 = httpMock.expectOne('assets/i18n/en.json');
-    req1.flush({});
+  it('should return the key if translation is missing', async () => {
+    const initReq = httpMock.expectOne('/assets/i18n/en.json');
+    initReq.flush({});
+
+    const translation = await firstValueFrom(service.translate('MISSING.KEY'));
+    expect(translation).toBe('MISSING.KEY');
+  });
+
+  it('should handle malformed keys gracefully', async () => {
+    const initReq = httpMock.expectOne('/assets/i18n/en.json');
+    initReq.flush({ A: { B: 'C' } });
+
+    // Path that exists then stops
+    const t1 = await firstValueFrom(service.translate('A.B.D'));
+    expect(t1).toBe('A.B.D');
+  });
+
+  it('should load translations when setting language', () => {
+    const initReq = httpMock.expectOne('/assets/i18n/en.json');
+    initReq.flush({});
 
     service.setLanguage('de');
-
-    const req2 = httpMock.expectOne('assets/i18n/de.json');
-    expect(req2.request.method).toBe('GET');
-    req2.flush({ HELLO: 'Hallo' });
+    const deReq = httpMock.expectOne('/assets/i18n/de.json');
+    deReq.flush({ TEST: 'Deutsch' });
 
     expect(service.getCurrentLanguage()).toBe('de');
   });
 
-  it('should handle missing translation files', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const req1 = httpMock.expectOne('assets/i18n/en.json');
-    req1.flush({});
+  it('should not reload if setting same language', () => {
+    const initReq = httpMock.expectOne('/assets/i18n/en.json');
+    initReq.flush({});
 
-    service.setLanguage('de');
+    service.setLanguage('en');
+    httpMock.expectNone('/assets/i18n/en.json');
+  });
 
-    const req2 = httpMock.expectOne('assets/i18n/de.json');
-    req2.error(new ProgressEvent('error'));
+  it('should handle http error gracefully', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+    const initReq = httpMock.expectOne('/assets/i18n/en.json');
+    initReq.error(new ProgressEvent('Network Error'));
 
-    // Should still work despite error
-    expect(service.getCurrentLanguage()).toBe('de');
+    // Should still emit empty object (fallback)
+    const translation = await firstValueFrom(service.translate('ANY'));
+    expect(translation).toBe('ANY');
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
 
-  it('should provide translation observable', () => {
-    const req = httpMock.expectOne('assets/i18n/en.json');
-    req.flush({ TEST_KEY: 'Test Value' });
+  it('should return multiple results when translations change', async () => {
+    const initReq = httpMock.expectOne('/assets/i18n/en.json');
+    initReq.flush({ KEY: 'Initial' });
 
-    service.translations$.subscribe((translations) => {
-      expect(translations['TEST_KEY']).toBe('Test Value');
-    });
-  });
+    const results: string[] = [];
+    const sub = service.translate('KEY').subscribe(val => results.push(val));
 
-  it('should emit current language', () => {
-    const req = httpMock.expectOne('assets/i18n/en.json');
-    req.flush({});
+    expect(results[0]).toBe('Initial');
 
-    service.currentLang$.subscribe((lang) => {
-      expect(lang).toBe('en');
-    });
-  });
-
-  it('should handle rapid language switches', () => {
-    const req1 = httpMock.expectOne('assets/i18n/en.json');
-    req1.flush({});
-
+    // Trigger second change
     service.setLanguage('de');
-    service.setLanguage('en');
-    service.setLanguage('de');
+    const deReq = httpMock.expectOne('/assets/i18n/de.json');
+    deReq.flush({ KEY: 'Deutsch' });
 
-    // Should handle multiple requests
-    const deRequests = httpMock.match('assets/i18n/de.json');
-    const enRequests = httpMock.match('assets/i18n/en.json');
-
-    deRequests.forEach((req) => req.flush({}));
-    enRequests.forEach((req) => req.flush({}));
-
-    expect(service.getCurrentLanguage()).toBe('de');
+    expect(results[1]).toBe('Deutsch');
+    sub.unsubscribe();
   });
 });

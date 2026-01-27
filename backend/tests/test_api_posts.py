@@ -317,3 +317,42 @@ async def test_delete_post_by_id(client: AsyncClient, mock_embedding):
     # Verify gone
     get_response = await client.get(f"/api/posts/{post_id}")
     assert get_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_suggest_tags_endpoint(client: AsyncClient):
+    """Test the suggest-tags endpoint."""
+    with patch("app.services.ai.suggest_tags", return_value=["tag1", "tag2"]) as mock:
+        response = await client.post(
+            "/api/posts/suggest-tags", json={"title": "T", "content": "C"}
+        )
+        assert response.status_code == 200
+        assert response.json() == {"tags": ["tag1", "tag2"]}
+        mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_suggest_details_endpoint_all(client: AsyncClient):
+    """Test the suggest-details endpoint with field=all."""
+    mock_res = {"title": "T", "slug": "s", "summary": "Sum", "tags": []}
+    with patch("app.services.ai.suggest_post_details", return_value=mock_res) as mock:
+        response = await client.post(
+            "/api/posts/suggest-details", json={"content": "C", "field": "all"}
+        )
+        assert response.status_code == 200
+        assert response.json() == mock_res
+        mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_suggest_details_endpoint_single_field(client: AsyncClient):
+    """Test the suggest-details endpoint with a specific field."""
+    with patch(
+        "app.services.ai.suggest_field", return_value={"title": "Suggested"}
+    ) as mock:
+        response = await client.post(
+            "/api/posts/suggest-details", json={"content": "C", "field": "title"}
+        )
+        assert response.status_code == 200
+        assert response.json() == {"title": "Suggested"}
+        mock.assert_called_once()

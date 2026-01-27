@@ -1,0 +1,47 @@
+import { TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { StatsService, SystemStats } from './stats.service';
+import { environment } from '../../environments/environment';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+describe('StatsService', () => {
+    let service: StatsService;
+    let httpMock: HttpTestingController;
+
+    beforeEach(() => {
+        TestBed.configureTestingModule({
+            imports: [HttpClientTestingModule],
+            providers: [StatsService],
+        });
+        service = TestBed.inject(StatsService);
+        httpMock = TestBed.inject(HttpTestingController);
+    });
+
+    afterEach(() => {
+        httpMock.verify();
+    });
+
+    it('should be created', () => {
+        expect(service).toBeTruthy();
+    });
+
+    it('should get stats', () => {
+        const mockStats: SystemStats = {
+            posts: { total: 10, published: 8, drafts: 2, by_language: { en: 5, de: 5 } },
+            users: 1,
+            subscribers: 0,
+            visitors: '100',
+            top_tags: { angular: 5 },
+            recent_posts: [],
+            system_health: { database: true, ai_service: true },
+        };
+
+        service.getStats().subscribe((stats) => {
+            expect(stats).toEqual(mockStats);
+        });
+
+        const req = httpMock.expectOne(`${environment.apiUrl}/api/stats`);
+        expect(req.request.method).toBe('GET');
+        req.flush(mockStats);
+    });
+});

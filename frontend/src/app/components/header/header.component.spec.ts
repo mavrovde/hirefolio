@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HeaderComponent } from './header.component';
 import { By } from '@angular/platform-browser';
-import { vi } from 'vitest';
+import { vi, afterEach } from 'vitest';
+import { Router } from '@angular/router';
 
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
@@ -12,16 +13,20 @@ import { MockLanguageService } from '../../testing/mock-language.service';
 describe('HeaderComponent', () => {
   let component: HeaderComponent;
   let fixture: ComponentFixture<HeaderComponent>;
+  let router: any;
 
   beforeEach(async () => {
+    router = {
+      navigate: vi.fn(),
+    };
+
     await TestBed.configureTestingModule({
       imports: [HeaderComponent],
-      providers: [{ provide: LanguageService, useClass: MockLanguageService }],
+      providers: [
+        { provide: LanguageService, useClass: MockLanguageService },
+        { provide: Router, useValue: router },
+      ],
     })
-      .overrideComponent(HeaderComponent, {
-        remove: { imports: [TranslatePipe] },
-        add: { imports: [MockTranslatePipe] },
-      })
       .compileComponents();
 
     fixture = TestBed.createComponent(HeaderComponent);
@@ -29,18 +34,22 @@ describe('HeaderComponent', () => {
     fixture.detectChanges();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should have 5 nav items', () => {
-    expect(component.navItems.length).toBe(5);
+  it('should have 6 nav items', () => {
+    expect(component.navItems.length).toBe(6);
   });
 
   it('should render navigation links', () => {
     const DEBUG_ELEMENT = fixture.debugElement;
     const navLinks = DEBUG_ELEMENT.queryAll(By.css('nav a'));
-    expect(navLinks.length).toBe(5);
+    expect(navLinks.length).toBe(6);
   });
 
   it('should have terminal design classes', () => {
@@ -62,7 +71,7 @@ describe('HeaderComponent', () => {
     vi.spyOn(document, 'querySelector').mockReturnValue(mockElement);
 
     // Mock window.scrollTo
-    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => { });
 
     component.scrollTo('#test', event);
 
@@ -72,5 +81,38 @@ describe('HeaderComponent', () => {
       top: 20, // 100 (pos) + 0 (scrollY) - 80 (offset)
       behavior: 'smooth',
     });
+  });
+
+  it('scrollTo should navigate via router if href starts with /', () => {
+    const event = new Event('click');
+    component.scrollTo('/llm', event);
+    expect(router.navigate).toHaveBeenCalledWith(['/llm']);
+  });
+
+  it('scrollTo should not call window.scrollTo if element is not found', () => {
+    const event = new Event('click');
+    vi.spyOn(document, 'querySelector').mockReturnValue(null);
+    const scrollToSpy = vi.spyOn(window, 'scrollTo');
+
+    component.scrollTo('#non-existent', event);
+    expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
+  it('switchLanguage should call setLanguage on LanguageService', () => {
+    const languageService = TestBed.inject(LanguageService);
+    const setLanguageSpy = vi.spyOn(languageService, 'setLanguage');
+    component.switchLanguage('de');
+    expect(setLanguageSpy).toHaveBeenCalledWith('de');
+  });
+
+  it('should update currentLang when LanguageService emits new language', () => {
+    const mockLangService = TestBed.inject(LanguageService) as any;
+    mockLangService.setLanguage('de');
+    expect(component.currentLang).toBe('de');
+  });
+
+  it('should have correct properties in navItems', () => {
+    expect(component.navItems[0]).toEqual({ labelKey: 'NAV.ABOUT', href: '#about' });
+    expect(component.navItems[component.navItems.length - 1]).toEqual({ labelKey: 'NAV.LLM', href: '/llm' });
   });
 });

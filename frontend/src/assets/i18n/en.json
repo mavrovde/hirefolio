@@ -6,7 +6,8 @@
     "EDUCATION": "Education",
     "RECOMMENDATIONS": "Recommendations",
     "BLOG": "Blog",
-    "CONTACT": "Contact"
+    "CONTACT": "Contact",
+    "LLM": "[ LLM ]"
   },
   "SECTION": {
     "HI": "> Hi, I'm",

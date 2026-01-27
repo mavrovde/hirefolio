@@ -9,7 +9,7 @@ export default defineConfig({
   workers: 1, // Run sequentially for stability
   reporter: 'html',
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:4200', // Default to local dev, override for Docker
+    baseURL: process.env.BASE_URL || 'http://localhost:4201', // Default to local dev, override for Docker
     trace: 'on-first-retry',
     screenshot: 'on',
     video: 'on-first-retry',

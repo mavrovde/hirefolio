@@ -138,4 +138,20 @@ describe('BlogComponent', () => {
     expect(component.searchResults$).toBeNull();
     expect(component.isSearching).toBe(false);
   });
+
+  it('should filter by tag', () => {
+    fixture.detectChanges();
+    component.filterByTag('angular');
+    expect(component.activeTag).toBe('angular');
+    expect(component.currentQuery).toBe('');
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, 'angular');
+  });
+
+  it('should clear tag filter', () => {
+    fixture.detectChanges();
+    component.filterByTag('angular');
+    component.clearTagFilter();
+    expect(component.activeTag).toBeNull();
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null);
+  });
 });

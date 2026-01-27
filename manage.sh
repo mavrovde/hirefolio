@@ -5,18 +5,24 @@
 
 set -e
 
-# Detect container engine and compose tool
+# Detect container engine
+if command -v podman >/dev/null 2>&1; then
+    ENGINE="podman"
+elif docker version 2>/dev/null | grep -iq "podman"; then
+    ENGINE="podman"
+else
+    ENGINE="docker"
+fi
+
+# Detect compose tool
 if command -v podman-compose >/dev/null 2>&1; then
     COMPOSE_CMD="podman-compose"
-    ENGINE="podman"
-elif command -v docker-compose >/dev/null 2>&1; then
-    COMPOSE_CMD="docker-compose"
-    ENGINE="docker"
 elif docker compose version >/dev/null 2>&1; then
     COMPOSE_CMD="docker compose"
-    ENGINE="docker"
+elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE_CMD="docker-compose"
 else
-    echo "Error: Neither podman-compose nor docker-compose found."
+    echo "Error: No compatible compose tool (podman-compose, docker compose, or docker-compose) found."
     exit 1
 fi
 

@@ -252,3 +252,30 @@ async def test_suggest_post_details_tags_as_string():
         )
         details = await suggest_post_details("Content")
         assert details["tags"] == ["tag1", "tag2", "tag3"]
+
+
+@pytest.mark.asyncio
+async def test_suggest_post_details_invalid_tag_type():
+    """Test suggest_post_details when tags is an invalid type (e.g. number)."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(200, json={"response": '{"title": "T", "tags": 123}'})
+        )
+        details = await suggest_post_details("Content")
+        assert details["tags"] == []
+
+
+@pytest.mark.asyncio
+async def test_suggest_post_details_non_string_value():
+    """Test suggest_post_details when a field is not a string (e.g. number)."""
+    with respx.mock(base_url=settings.ollama_url) as respx_mock:
+        respx_mock.post("/api/generate").mock(
+            return_value=Response(
+                200,
+                json={
+                    "response": '{"title": 123, "slug": "s", "summary": "sum", "tags": []}'
+                },
+            )
+        )
+        details = await suggest_post_details("Content")
+        assert details["title"] == "123"

@@ -27,7 +27,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Standardize dev credentials, upgrade pgvector to PostgreSQL 18, add Open WebUI service, and sync remote updates."
+DESC="Release v$VERSION: Stabilize LLM feature, 100% test coverage, and frontend improvements."
 git add VERSION backend/app/main.py frontend/package.json
 git commit -m "$DESC"
 

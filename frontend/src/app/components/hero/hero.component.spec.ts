@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HeroComponent } from './hero.component';
 import { Profile } from '../../services/profile.service';
 import { By } from '@angular/platform-browser';
+import { vi } from 'vitest';
 
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
@@ -57,5 +58,27 @@ describe('HeroComponent', () => {
   it('should display location', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('Test Location');
+  });
+
+  it('active scrollTo should prevent default behavior and scroll', () => {
+    const event = new Event('click');
+    const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+
+    // Mock document.querySelector
+    const mockElement = document.createElement('div');
+    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 100 } as DOMRect);
+    vi.spyOn(document, 'querySelector').mockReturnValue(mockElement);
+
+    // Mock window.scrollTo
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => { });
+
+    component.scrollTo('#about', event);
+
+    expect(preventDefaultSpy).toHaveBeenCalled();
+    expect(document.querySelector).toHaveBeenCalledWith('#about');
+    expect(scrollToSpy).toHaveBeenCalledWith({
+      top: 20, // 100 (pos) + 0 (scrollY) - 80 (offset)
+      behavior: 'smooth',
+    });
   });
 });

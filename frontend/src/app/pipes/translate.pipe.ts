@@ -15,7 +15,7 @@ export class TranslatePipe implements PipeTransform, OnDestroy {
   constructor(
     private languageService: LanguageService,
     private cdr: ChangeDetectorRef,
-  ) {}
+  ) { }
 
   transform(key: string): string {
     if (key !== this.lastKey) {
@@ -24,8 +24,11 @@ export class TranslatePipe implements PipeTransform, OnDestroy {
         this.subscription.unsubscribe();
       }
       this.subscription = this.languageService.translate(key).subscribe((value) => {
+        const changed = this.lastValue !== value;
         this.lastValue = value;
-        this.cdr.markForCheck();
+        if (changed) {
+          this.cdr.markForCheck();
+        }
       });
     }
     return this.lastValue || key; // Return key while loading or if not found

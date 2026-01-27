@@ -206,3 +206,89 @@ async def test_semantic_search_embedding_unavailable(client: AsyncClient):
 
     assert response.status_code == 400
     assert "Embedding service unavailable" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_similar_posts_missing_embedding(
+    client: AsyncClient, mock_embedding, db_session
+):
+    """Test get_similar_posts when the source post has no embedding."""
+    from app.models.post import Post
+
+    # Create post with embedding
+    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+        await client.post(
+            "/api/posts",
+            json={
+                "title": "NoEmbSource",
+                "slug": "no-emb-source",
+                "content": "x",
+                "published": True,
+            },
+        )
+
+    # Manually clear embedding in DB
+    from sqlalchemy import select
+
+    res = await db_session.execute(select(Post).where(Post.slug == "no-emb-source"))
+    post = res.scalar_one()
+    post.embedding = None
+    await db_session.commit()
+
+    response = await client.get("/api/posts/no-emb-source/similar")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+@pytest.mark.asyncio
+async def test_list_posts_drafts_as_anon_force_published(
+    client: AsyncClient, mock_embedding
+):
+    """Test that non-admins are forced to published_only=true."""
+    # 1. Create draft (as admin)
+    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+        await client.post(
+            "/api/posts",
+            json={
+                "title": "Draft",
+                "slug": "d1",
+                "content": "x",
+                "published": False,
+            },
+        )
+
+    # 2. Switch to Anon
+    app.dependency_overrides[get_current_user_optional] = lambda: None
+
+    # 3. Request drafts
+    try:
+        response = await client.get("/api/posts?published_only=false")
+        assert response.status_code == 200
+        data = response.json()
+        assert not any(p["slug"] == "d1" for p in data)
+    finally:
+        pass
+
+
+@pytest.mark.asyncio
+async def test_get_draft_post_by_id_as_anon(client: AsyncClient, mock_embedding):
+    """Test retrieving a draft post by ID as anon results in 404."""
+    # 1. Create draft (as admin)
+    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
+        create_res = await client.post(
+            "/api/posts",
+            json={
+                "title": "Draft",
+                "slug": "d1-id",
+                "content": "x",
+                "published": False,
+            },
+        )
+    post_id = create_res.json()["id"]
+
+    # 2. Switch to Anon
+    app.dependency_overrides[get_current_user_optional] = lambda: None
+
+    # 3. Try to get by ID
+    response = await client.get(f"/api/posts/{post_id}")
+    assert response.status_code == 404

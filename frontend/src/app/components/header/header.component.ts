@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { Language, LanguageService } from '../../services/language.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 
@@ -20,15 +21,20 @@ export class HeaderComponent {
     { labelKey: 'NAV.EDUCATION', href: '#education' },
     // { labelKey: 'NAV.RECOMMENDATIONS', href: '#recommendations' },
     { labelKey: 'NAV.BLOG', href: '#blog' },
+    { labelKey: 'NAV.LLM', href: '/llm' },
   ];
 
-  constructor(private languageService: LanguageService) {
+  constructor(private languageService: LanguageService, private router: Router) {
     this.languageService.currentLang$.subscribe((lang) => (this.currentLang = lang));
   }
 
-  scrollTo(id: string, event: Event) {
+  scrollTo(href: string, event: Event) {
     event.preventDefault();
-    const element = document.querySelector(id);
+    if (href.startsWith('/')) {
+      this.router.navigate([href]);
+      return;
+    }
+    const element = document.querySelector(href);
     if (element) {
       const headerOffset = 80;
       const elementPosition = element.getBoundingClientRect().top;
