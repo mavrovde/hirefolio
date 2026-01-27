@@ -325,6 +325,9 @@ jobs:
           # Start stack
           docker compose -f docker-compose.prod.yml up -d
 
+      - name: Add mavrov.de to /etc/hosts
+        run: echo "127.0.0.1 mavrov.de" | sudo tee -a /etc/hosts
+
       - name: Set up Node.js (for Playwright)
         uses: actions/setup-node@v4
         with:
@@ -364,14 +367,14 @@ jobs:
       - name: Wait for Stack Ready
         run: |
           echo "Waiting for proxy to respond on port 80..."
-          timeout 60s bash -c 'until curl -s -o /dev/null -w "%{http_code}" -H "Host: mavrov.de" http://localhost:80 | grep "301"; do sleep 2; done'
+          timeout 60s bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://mavrov.de | grep "301"; do sleep 2; done'
           echo "Stack is up!"
 
       - name: Run Playwright Tests (Targeting Docker Stack)
         working-directory: ./frontend
         env:
-          # Point Playwright to the Proxy (localhost:80)
-          BASE_URL: http://localhost:80
+          # Point Playwright to the Proxy (mavrov.de)
+          BASE_URL: https://mavrov.de
           # We might need to handle the redirect or test HTTPS if proxy enforces it?
           # Or just test HTTP if we haven't set up valid certs in CI?
           # Actually, the proxy redirects 80->443. Playwright might fail on self-signed certs.
