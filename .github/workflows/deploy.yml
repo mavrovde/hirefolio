@@ -308,11 +308,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Start Proxy & Dependencies
+      - name: Start Full Stack (Prod Topology)
         env:
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: password
           POSTGRES_DB: mavrov
+          IMAGE_TAG: sha-${{ github.sha }}
         run: |
           # Create dummy certs for CI E2E tests so proxy starts
           mkdir -p certs
@@ -321,9 +322,8 @@ jobs:
             -out certs/mavrov.de.bundle.cer \
             -subj "/CN=mavrov.de"
 
-          # Use "sha-<hash>" tag to pull the candidate images
-          export IMAGE_TAG=sha-${{ github.sha }}
-          docker compose -f docker-compose.prod.yml up -d proxy
+          # Start stack
+          docker compose -f docker-compose.prod.yml up -d
 
       - name: Set up Node.js (for Playwright)
         uses: actions/setup-node@v4
@@ -360,22 +360,6 @@ jobs:
           docker pull pgvector/pgvector:pg18
           docker pull ollama/ollama:latest
           docker pull ghcr.io/open-webui/open-webui:latest
-
-      - name: Start Full Stack (Prod Topology)
-        env:
-          # Use the 'ci' tag we built
-          IMAGE_TAG: ci
-          # Override image names in compose to match what we loaded if needed
-          # But for now assuming compose uses ghcr.io/...:${IMAGE_TAG}
-          # We need to tag our loaded images to match
-        run: |
-          # Retag loaded images to match docker-compose requirements
-          docker tag mavrovde-backend:ci ghcr.io/${{ github.repository }}-backend:ci
-          docker tag mavrovde-frontend:ci ghcr.io/${{ github.repository }}-frontend:ci
-          docker tag mavrovde-proxy:ci ghcr.io/${{ github.repository }}-proxy:ci
-
-          # Start stack
-          docker compose -f docker-compose.prod.yml up -d
 
       - name: Wait for Stack Ready
         run: |
