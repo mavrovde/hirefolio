@@ -280,13 +280,28 @@ jobs:
           merge-multiple: true
           path: .
 
-      - name: Load Docker Images
+      - name: Prune Pre-Load (Free Space)
+        run: docker system prune -a -f --volumes
+
+      - name: Load Images & Cleanup Artifacts
         run: |
           docker load -i backend-image.tar
+          rm backend-image.tar
+
           docker load -i frontend-image.tar
+          rm frontend-image.tar
+
           docker load -i proxy-image.tar
-          # Retag for Compose usage (matching what compose expects or override)
-          # We will use IMAGE_TAG=ci environment var and ensure compose uses these
+          rm proxy-image.tar
+
+      - name: Start Proxy & Dependencies
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: mavrov
+        run: |
+          export IMAGE_TAG=ci
+          docker compose -f docker-compose.prod.yml up -d proxy
 
       - name: Set up Node.js (for Playwright)
         uses: actions/setup-node@v4
@@ -505,11 +520,26 @@ jobs:
           merge-multiple: true
           path: .
 
-      - name: Load Docker Images
+      - name: Prune Pre-Load (Free Space)
+        run: docker system prune -a -f --volumes
+
+      - name: Load Backend Image
         run: |
           docker load -i backend-image.tar
+          rm backend-image.tar
+
+      - name: Load Frontend Image
+        run: |
           docker load -i frontend-image.tar
+          rm frontend-image.tar
+
+      - name: Load Proxy Image
+        run: |
           docker load -i proxy-image.tar
+          rm proxy-image.tar
+
+      - name: Check Disk Space (Post-Load)
+        run: df -h
 
       # Cache standard images (Reuse cache from E2E)
       - name: Cache Standard Images
