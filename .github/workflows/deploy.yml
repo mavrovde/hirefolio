@@ -121,6 +121,68 @@ jobs:
           files: ./backend/coverage.xml
           flags: backend
   # ============================================
+  # FRONTEND QA
+  # ============================================
+  frontend-lint:
+    name: Frontend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm i --legacy-peer-deps
+      - name: Run ESLint
+        working-directory: ./frontend
+        run: npm run lint --if-present || true
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: [frontend-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm i --legacy-peer-deps
+      - name: Run tests with coverage
+        working-directory: ./frontend
+        run: npm test -- --watch=false --coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./frontend/coverage/lcov.info
+          flags: frontend
+          fail_ci_if_error: false
+
+  # ============================================
+  # PROXY QA
+  # ============================================
+  proxy-config-audit:
+    name: Proxy Config Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for forbidden legacy configurations
+        run: |
+          if grep -iE "roundcube|mailserver|webmail" proxy/default.conf; then
+            echo "Error: Forbidden legacy configuration (roundcube/mailserver/webmail) found in proxy/default.conf"
+            exit 1
+          fi
+          echo "Proxy config is clean of legacy terms."
+
+  # ============================================
   # BUILD ARTIFACTS (Build Once)
   # ============================================
   build-images:
