@@ -27,8 +27,8 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Official build with mailserver removed and proxy port 8090."
-git add VERSION backend/app/main.py frontend/package.json
+DESC="Release v$VERSION: Revert to Nginx base image, Enforce Audit, Final Cleanup."
+git add .
 git commit -m "$DESC"
 
 # 4. Git Tagging

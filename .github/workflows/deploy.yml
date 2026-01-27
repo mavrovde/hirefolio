@@ -385,8 +385,25 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ============================================
+  # PROXY QA
+  # ============================================
+  proxy-config-audit:
+    name: Proxy Config Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for forbidden legacy configurations
+        run: |
+          if grep -iE "roundcube|mailserver|webmail" proxy/default.conf; then
+            echo "Error: Forbidden legacy configuration (roundcube/mailserver/webmail) found in proxy/default.conf"
+            exit 1
+          fi
+          echo "Proxy config is clean of legacy terms."
+
+  # ============================================
   # BUILD & DEPLOY ARTIFACTS
   # ============================================
+
   build-push-backend:
     name: Build & Push Backend
     runs-on: ubuntu-latest
