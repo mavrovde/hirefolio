@@ -105,13 +105,11 @@ services:
       - app-network
 
   proxy:
-    image: nginx:alpine
+    image: ghcr.io/mavrovde/mavrov.de-proxy:${IMAGE_TAG:-latest}
     container_name: global_proxy
     restart: always
     ports:
       - "80:80"
-    volumes:
-      - ./nginx.proxy.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - frontend
       - roundcube
