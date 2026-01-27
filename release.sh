@@ -11,6 +11,7 @@ echo "========================================"
 echo "Step 1: Bumping version..."
 ./bump_version.sh
 VERSION=$(cat VERSION)
+export IMAGE_TAG="$VERSION"
 echo "Target Version: v$VERSION"
 
 # 2. Run Full Verification Suite
@@ -36,7 +37,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Split Publish Jobs."
+DESC="Release v$VERSION: Parallel Build Jobs."
 git add .
 git commit -m "$DESC"
 

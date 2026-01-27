@@ -7,8 +7,11 @@ echo "========================================"
 
 # Use 'latest' to ensure backend/frontend images can be pulled (they exist as latest)
 # We will verify our LOCALLY built proxy:latest against them.
-export IMAGE_TAG="latest"
+# Use environment IMAGE_TAG or default to 'latest'
+export IMAGE_TAG="${IMAGE_TAG:-latest}"
 PROXY_IMAGE="ghcr.io/mavrovde/mavrov.de-proxy:$IMAGE_TAG"
+BACKEND_IMAGE="ghcr.io/mavrovde/mavrov.de-backend:$IMAGE_TAG"
+FRONTEND_IMAGE="ghcr.io/mavrovde/mavrov.de-frontend:$IMAGE_TAG"
 
 cleanup() {
     echo "🧹 Cleaning up..."
@@ -17,9 +20,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# 1. Build Proxy Image Locally
-echo "[1/4] Building Proxy image ($PROXY_IMAGE)..."
+# 1. Build Images Locally (Ensure we test what we just wrote)
+echo "[1/4] Building Images ($IMAGE_TAG)..."
+echo "  - Building Proxy $PROXY_IMAGE..."
 docker build -t "$PROXY_IMAGE" ./proxy >/dev/null
+
+echo "  - Building Backend $BACKEND_IMAGE..."
+docker build -t "$BACKEND_IMAGE" ./backend >/dev/null
+
+echo "  - Building Frontend $FRONTEND_IMAGE..."
+docker build -t "$FRONTEND_IMAGE" ./frontend >/dev/null
 
 # 2. Start Proxy AND Certbot (and dependencies) using Prod Compose
 echo "[2/4] Starting Proxy & Certbot stack (Prod Env)..."
