@@ -7,8 +7,8 @@ echo "========================================"
 
 NETWORK="proxy-smoke-test-net"
 PROXY_CONTAINER="proxy-smoke-test"
-FRONTEND_MOCK="frontend-mock"
-WEBUI_MOCK="webui-mock"
+FRONTEND_MOCK="frontend"
+WEBUI_MOCK="open-webui"
 IMAGE_TAG="mavrovde-proxy:smoke-test"
 
 cleanup() {
@@ -65,11 +65,14 @@ else
     exit 1
 fi
 
-# Check connectivity (expect 301 or 444) on localhost:8888
-if curl -v http://localhost:8888 2>&1 | grep -E "301 Moved Permanently|444|200 OK"; then
-    echo "✅ Network Check: Proxy is listening and responding"
+# Check connectivity (expect 301 Redirect to HTTPS) on localhost:8888
+# We send Host: mavrov.de to match the server block and avoid 444 (Connection Closed)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: mavrov.de" http://localhost:8888)
+
+if [ "$HTTP_CODE" == "301" ]; then
+    echo "✅ Network Check: Proxy responded with 301 Redirect (Correct)"
 else
-    echo "❌ Network Check: connection failed"
+    echo "❌ Network Check: unexpected status code '$HTTP_CODE'"
     exit 1
 fi
 
