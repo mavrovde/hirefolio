@@ -9,6 +9,7 @@ from app.api.posts import router as posts_router
 from app.api.auth import router as auth_router
 from app.api.stats import router as stats_router
 from app.api.tags import router as tags_router
+from app.api.ai import router as ai_router
 
 
 @asynccontextmanager
@@ -23,7 +24,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.0.59",
+    version="1.0.64",
     lifespan=lifespan,
 )
 
@@ -41,6 +42,7 @@ app.include_router(auth_router)
 app.include_router(posts_router)
 app.include_router(stats_router)
 app.include_router(tags_router)
+app.include_router(ai_router)
 
 
 @app.get("/")
