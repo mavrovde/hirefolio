@@ -36,7 +36,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: CI Refactor (Build-Test-Deploy)."
+DESC="Release v$VERSION: Split Publish Jobs."
 git add .
 git commit -m "$DESC"
 
