@@ -10,6 +10,7 @@ export default defineConfig({
   reporter: 'html',
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:4201', // Default to local dev, override for Docker
+    ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
     screenshot: 'on',
     video: 'on-first-retry',

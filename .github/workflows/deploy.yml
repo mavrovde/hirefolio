@@ -379,7 +379,7 @@ jobs:
           # Let's hit the frontend container port 80?
           # No, prod compose doesn't expose frontend ports.
           # We should test via Proxy. We can tell Playwright to ignore HTTPS errors.
-        run: npx playwright test --ignore-https-errors
+        run: npx playwright test
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
