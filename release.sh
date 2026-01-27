@@ -27,7 +27,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Revert to Nginx base image, Enforce Audit, Final Cleanup."
+DESC="Release v$VERSION: SSL Enabled (Certbot Sidecar), Enforce Audit, Final Cleanup."
 git add .
 git commit -m "$DESC"
 
