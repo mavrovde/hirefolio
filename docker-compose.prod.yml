@@ -76,6 +76,8 @@ services:
     depends_on:
       - frontend
       - open-webui
+    networks:
+      - app-network
 
   certbot:
     image: certbot/certbot

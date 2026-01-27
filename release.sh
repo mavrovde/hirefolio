@@ -27,7 +27,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Fix CI Proxy Upstreams (Correct Mocks)."
+DESC="Release v$VERSION: Fix Proxy Network Config."
 git add .
 git commit -m "$DESC"
 
