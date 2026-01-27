@@ -27,7 +27,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Removed global_proxy (delegated to host)."
+DESC="Release v$VERSION: Restored proxy, Removed mailserver/roundcube."
 git add VERSION backend/app/main.py frontend/package.json
 git commit -m "$DESC"
 
