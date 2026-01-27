@@ -42,4 +42,5 @@ async def chat_with_llm(messages: List[Dict[str, str]]) -> AsyncGenerator[str, N
                             continue
     except Exception as e:
         logger.error(f"Error in chat_with_llm: {e}", exc_info=True)
-        yield f"\n[System Error: {str(e)}]"
+        # Return a generic error message to the client to avoid leaking internal details.
+        yield "\n[System Error: An internal error occurred. Please try again later.]"
