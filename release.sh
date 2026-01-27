@@ -27,7 +27,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Stabilize LLM feature, 100% test coverage, and frontend improvements."
+DESC="Release v$VERSION: Production hardening, security improvements, and LLM stability."
 git add VERSION backend/app/main.py frontend/package.json
 git commit -m "$DESC"
 
