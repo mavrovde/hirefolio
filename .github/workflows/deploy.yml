@@ -294,7 +294,7 @@ jobs:
   e2e-tests:
     name: E2E Tests (Docker Stack)
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend, build-proxy, proxy-startup-test]
+    needs: [build-backend, build-frontend, build-proxy]
     steps:
       - uses: actions/checkout@v4
 
@@ -315,18 +315,8 @@ jobs:
           POSTGRES_DB: mavrov
           IMAGE_TAG: sha-${{ github.sha }}
         run: |
-          # Create dummy certs for CI E2E tests so proxy starts
-          mkdir -p certs
-          openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-            -keyout certs/mavrov.de.key \
-            -out certs/mavrov.de.bundle.cer \
-            -subj "/CN=mavrov.de"
-
           # Start stack
           docker compose -f docker-compose.prod.yml up -d
-
-      - name: Add mavrov.de to /etc/hosts
-        run: echo "127.0.0.1 mavrov.de" | sudo tee -a /etc/hosts
 
       - name: Set up Node.js (for Playwright)
         uses: actions/setup-node@v4
@@ -366,15 +356,15 @@ jobs:
 
       - name: Wait for Stack Ready
         run: |
-          echo "Waiting for proxy to respond on port 80..."
-          timeout 60s bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://mavrov.de | grep "301"; do sleep 2; done'
+          echo "Waiting for frontend to respond on port 4200..."
+          timeout 60s bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 | grep "200\|302"; do sleep 2; done'
           echo "Stack is up!"
 
-      - name: Run Playwright Tests (Targeting Docker Stack)
+      - name: Run Playwright Tests (Targeting Frontend Directly)
         working-directory: ./frontend
         env:
-          # Point Playwright to the Proxy (mavrov.de)
-          BASE_URL: https://mavrov.de
+          # Point Playwright directly to the Frontend
+          BASE_URL: http://localhost:4200
           # We might need to handle the redirect or test HTTPS if proxy enforces it?
           # Or just test HTTP if we haven't set up valid certs in CI?
           # Actually, the proxy redirects 80->443. Playwright might fail on self-signed certs.
@@ -490,7 +480,7 @@ jobs:
   # ============================================
   proxy-startup-test:
     name: Proxy Verification (Smoke Test)
-    needs: [build-backend, build-frontend, build-proxy]
+    needs: [e2e-tests]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

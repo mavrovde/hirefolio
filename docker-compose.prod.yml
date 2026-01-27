@@ -57,6 +57,8 @@ services:
     restart: always
     environment:
       - NODE_ENV=production
+    ports:
+      - "4200:80"
     depends_on:
       - backend
     networks:
