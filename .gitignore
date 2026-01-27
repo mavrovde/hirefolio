@@ -30,3 +30,10 @@ htmlcov/
 dist/
 build/
 *.log
+
+# SSL
+certs/*.key
+certs/*.pem
+!certs/mavrov.de.bundle.cer
+proxy/certs/
+
