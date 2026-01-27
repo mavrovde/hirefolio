@@ -36,7 +36,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: SSL Auto-Reload (Stable)."
+DESC="Release v$VERSION: CI Cache for Smoke Test."
 git add .
 git commit -m "$DESC"
 

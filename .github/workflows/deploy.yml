@@ -545,6 +545,33 @@ jobs:
           tags: ghcr.io/${{ github.repository }}-proxy:latest
           cache-from: type=gha
 
+      - name: Cache Smoke Test Images
+        id: cache-smoke-images
+        uses: actions/cache@v4
+        with:
+          path: smoke-images
+          key: smoke-test-images-${{ runner.os }}-v1
+
+      - name: Load Cached Smoke Test Images
+        if: steps.cache-smoke-images.outputs.cache-hit == 'true'
+        run: |
+          ls smoke-images/*.tar | xargs -I {} docker load -i {}
+
+      - name: Pull and Save Smoke Test Images
+        if: steps.cache-smoke-images.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p smoke-images
+          echo "Pulling images..."
+          docker pull ghcr.io/open-webui/open-webui:latest
+          docker pull certbot/certbot
+          docker pull pgvector/pgvector:pg18
+          docker pull ollama/ollama:latest
+          echo "Saving images..."
+          docker save ghcr.io/open-webui/open-webui:latest -o smoke-images/open-webui.tar
+          docker save certbot/certbot -o smoke-images/certbot.tar
+          docker save pgvector/pgvector:pg18 -o smoke-images/pgvector.tar
+          docker save ollama/ollama:latest -o smoke-images/ollama.tar
+
       - name: Start Proxy Stack (Prod Topology)
         env:
           IMAGE_TAG: latest
