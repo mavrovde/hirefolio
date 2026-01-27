@@ -531,7 +531,7 @@ jobs:
   proxy-startup-test:
     name: Proxy Verification (Smoke Test)
     runs-on: ubuntu-latest
-    needs: [build-push-proxy] # Run AFTER push (or could run parallel if building locally)
+    needs: [build-push-proxy, build-push-backend, build-push-frontend] # Wait for all images to be pushed
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
@@ -542,28 +542,35 @@ jobs:
           context: ./proxy
           push: false
           load: true # Load into local Docker daemon
-          tags: local-proxy:test
+          tags: ghcr.io/${{ github.repository }}-proxy:latest
           cache-from: type=gha
 
-      - name: Run Proxy Container
+      - name: Start Proxy Stack (Prod Topology)
+        env:
+          IMAGE_TAG: latest
+          IMAGE_NAME: ${{ github.repository }}
         run: |
-          # Run detach, mapping port 80
-          docker run -d --name proxy-test -p 80:80 local-proxy:test
+          # Use docker-compose to start the proxy and its dependencies (frontend, open-webui)
+          # We set IMAGE_TAG so it uses the locally built proxy image
+          # Dependencies (frontend, etc.) will be pulled as 'latest' or whatever is in compose
+          # Note: We need to ensure compose uses the image name matching what we built
+          docker compose -f docker-compose.prod.yml up -d proxy
 
       - name: Wait for Bootstrap
         run: sleep 10 # Give entrypoint time to download/gen certs
 
       - name: Check Container Status
         run: |
-          if [ "$(docker inspect -f '{{.State.Running}}' proxy-test)" != "true" ]; then
+          # Get container name from compose (usually project_proxy_1 or similar, but we force container_name: global_proxy in compose)
+          if [ "$(docker inspect -f '{{.State.Running}}' global_proxy)" != "true" ]; then
             echo "Proxy container died!"
-            docker logs proxy-test
+            docker logs global_proxy
             exit 1
           fi
 
       - name: Verify Bootstrap Logs
         run: |
-          LOGS=$(docker logs proxy-test 2>&1)
+          LOGS=$(docker logs global_proxy 2>&1)
           echo "$LOGS"
           if echo "$LOGS" | grep -q "Bootstrapping Nginx SSL"; then
             echo "✅ Bootstrap started"
@@ -580,7 +587,12 @@ jobs:
 
       - name: Verify HTTP Response (Port 80)
         run: |
-          # Should return 301 (Redirect to HTTPS) or 444 depending on host, checking connectivity
-          # Using -v to see headers
-          curl -v http://localhost 2>&1 | grep "301 Moved Permanently" || curl -v http://localhost 2>&1 | grep "444" || true
-          echo "Network check passed (container is listening)"
+          # Check connectivity (expect 301 Redirect to HTTPS) on localhost:80
+          # We send Host: mavrov.de to match the server block and avoid 444
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: mavrov.de" http://localhost:80)
+          if [ "$HTTP_CODE" == "301" ]; then
+            echo "✅ Network passed (301 Redirect)"
+          else
+            echo "❌ Network failed. Code: $HTTP_CODE"
+            exit 1
+          fi

@@ -24,10 +24,19 @@ else
     exit 1
 fi
 
+echo ""
+echo "Step 2b: Running Proxy Smoke Test (Prod Env)..."
+if ./verify_proxy_startup.sh; then
+    echo "✅ Proxy Smoke Test PASSED."
+else
+    echo "❌ Proxy Smoke Test FAILED. Release aborted."
+    exit 1
+fi
+
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Fix Proxy Network Config."
+DESC="Release v$VERSION: CI/Local Proxy Verification Fix (Tags)."
 git add .
 git commit -m "$DESC"
 
