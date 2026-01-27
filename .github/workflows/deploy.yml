@@ -189,79 +189,87 @@ jobs:
     name: Build Backend Image
     runs-on: ubuntu-latest
     needs: [backend-tests]
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build Backend
+      - name: Build and Push Backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
-          push: false
-          load: true
-          tags: mavrovde-backend:ci
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}-backend:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Save Backend Image
-        run: docker save mavrovde-backend:ci -o backend-image.tar
-      - name: Upload Backend Image
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-image
-          path: backend-image.tar
-          retention-days: 1
 
   build-frontend:
     name: Build Frontend Image
     runs-on: ubuntu-latest
     needs: [frontend-tests]
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build Frontend
+
+      # Build & Push Frontend
+      - name: Build and Push Frontend
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
-          push: false
-          load: true
-          tags: mavrovde-frontend:ci
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}-frontend:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Save Frontend Image
-        run: docker save mavrovde-frontend:ci -o frontend-image.tar
-      - name: Upload Frontend Image
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-image
-          path: frontend-image.tar
-          retention-days: 1
 
   build-proxy:
     name: Build Proxy Image
     runs-on: ubuntu-latest
     needs: [proxy-config-audit]
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build Proxy
+
+      # Build & Push Proxy
+      - name: Build and Push Proxy
         uses: docker/build-push-action@v6
         with:
           context: ./proxy
-          push: false
-          load: true
-          tags: mavrovde-proxy:ci
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}-proxy:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Save Proxy Image
-        run: docker save mavrovde-proxy:ci -o proxy-image.tar
-      - name: Upload Proxy Image
-        uses: actions/upload-artifact@v4
-        with:
-          name: proxy-image
-          path: proxy-image.tar
-          retention-days: 1
 
   # ============================================
   # E2E TESTS (Test What You Fly)
@@ -273,26 +281,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Image Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: "*-image"
-          merge-multiple: true
-          path: .
-
-      - name: Prune Pre-Load (Free Space)
+      - name: Prune Pre-Run (Free Space)
         run: docker system prune -a -f --volumes
 
-      - name: Load Images & Cleanup Artifacts
-        run: |
-          docker load -i backend-image.tar
-          rm backend-image.tar
-
-          docker load -i frontend-image.tar
-          rm frontend-image.tar
-
-          docker load -i proxy-image.tar
-          rm proxy-image.tar
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Start Proxy & Dependencies
         env:
@@ -300,7 +297,8 @@ jobs:
           POSTGRES_PASSWORD: password
           POSTGRES_DB: mavrov
         run: |
-          export IMAGE_TAG=ci
+          # Use "sha-<hash>" tag to pull the candidate images
+          export IMAGE_TAG=sha-${{ github.sha }}
           docker compose -f docker-compose.prod.yml up -d proxy
 
       - name: Set up Node.js (for Playwright)
@@ -422,18 +420,15 @@ jobs:
       - name: Extract project version
         id: get_version
         run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_OUTPUT
-      - name: Download Image Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-image
-          path: .
-      - name: Load and Push Backend
+      - name: Promote Backend Image
         run: |
-          docker load -i backend-image.tar
           REPO_BASE=${{ env.REGISTRY }}/${{ github.repository }}
+          SHA_TAG=$REPO_BASE-backend:sha-${{ github.sha }}
           VERSION=${{ steps.get_version.outputs.version }}
-          docker tag mavrovde-backend:ci $REPO_BASE-backend:latest
-          docker tag mavrovde-backend:ci $REPO_BASE-backend:$VERSION
+
+          docker pull $SHA_TAG
+          docker tag $SHA_TAG $REPO_BASE-backend:latest
+          docker tag $SHA_TAG $REPO_BASE-backend:$VERSION
           docker push $REPO_BASE-backend:latest
           docker push $REPO_BASE-backend:$VERSION
 
@@ -455,18 +450,15 @@ jobs:
       - name: Extract project version
         id: get_version
         run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_OUTPUT
-      - name: Download Image Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-image
-          path: .
-      - name: Load and Push Frontend
+      - name: Promote Frontend Image
         run: |
-          docker load -i frontend-image.tar
           REPO_BASE=${{ env.REGISTRY }}/${{ github.repository }}
+          SHA_TAG=$REPO_BASE-frontend:sha-${{ github.sha }}
           VERSION=${{ steps.get_version.outputs.version }}
-          docker tag mavrovde-frontend:ci $REPO_BASE-frontend:latest
-          docker tag mavrovde-frontend:ci $REPO_BASE-frontend:$VERSION
+
+          docker pull $SHA_TAG
+          docker tag $SHA_TAG $REPO_BASE-frontend:latest
+          docker tag $SHA_TAG $REPO_BASE-frontend:$VERSION
           docker push $REPO_BASE-frontend:latest
           docker push $REPO_BASE-frontend:$VERSION
 
@@ -488,18 +480,15 @@ jobs:
       - name: Extract project version
         id: get_version
         run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_OUTPUT
-      - name: Download Image Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: proxy-image
-          path: .
-      - name: Load and Push Proxy
+      - name: Promote Proxy Image
         run: |
-          docker load -i proxy-image.tar
           REPO_BASE=${{ env.REGISTRY }}/${{ github.repository }}
+          SHA_TAG=$REPO_BASE-proxy:sha-${{ github.sha }}
           VERSION=${{ steps.get_version.outputs.version }}
-          docker tag mavrovde-proxy:ci $REPO_BASE-proxy:latest
-          docker tag mavrovde-proxy:ci $REPO_BASE-proxy:$VERSION
+
+          docker pull $SHA_TAG
+          docker tag $SHA_TAG $REPO_BASE-proxy:latest
+          docker tag $SHA_TAG $REPO_BASE-proxy:$VERSION
           docker push $REPO_BASE-proxy:latest
           docker push $REPO_BASE-proxy:$VERSION
 
@@ -508,38 +497,25 @@ jobs:
   # ============================================
   proxy-startup-test:
     name: Proxy Verification (Smoke Test)
+    needs: [build-backend, build-frontend, build-proxy]
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend, build-proxy] # Reuse artifacts
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Image Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: "*-image"
-          merge-multiple: true
-          path: .
-
-      - name: Prune Pre-Load (Free Space)
+      - name: Prune Pre-Run (Free Space)
         run: docker system prune -a -f --volumes
 
-      - name: Load Backend Image
-        run: |
-          docker load -i backend-image.tar
-          rm backend-image.tar
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Load Frontend Image
-        run: |
-          docker load -i frontend-image.tar
-          rm frontend-image.tar
-
-      - name: Load Proxy Image
-        run: |
-          docker load -i proxy-image.tar
-          rm proxy-image.tar
-
-      - name: Check Disk Space (Post-Load)
-        run: df -h
+      - name: Set up Node.js (for Playwright)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
 
       # Cache standard images (Reuse cache from E2E)
       - name: Cache Standard Images
@@ -568,14 +544,10 @@ jobs:
 
       - name: Start Proxy Stack
         env:
-          IMAGE_TAG: ci
+          # Use "sha-<hash>" tag to pull the candidate images
+          IMAGE_TAG: sha-${{ github.sha }}
           IMAGE_NAME: ${{ github.repository }}
         run: |
-          # Retag loaded images to match docker-compose requirements
-          docker tag mavrovde-backend:ci ghcr.io/${{ github.repository }}-backend:ci
-          docker tag mavrovde-frontend:ci ghcr.io/${{ github.repository }}-frontend:ci
-          docker tag mavrovde-proxy:ci ghcr.io/${{ github.repository }}-proxy:ci
-
           # Start proxy AND certbot (and deps will start because of depends_on, or we force if needed)
           # We just need proxy and certbot to verify SSL bootstrap
           docker compose -f docker-compose.prod.yml up -d proxy certbot
