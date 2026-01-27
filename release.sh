@@ -37,7 +37,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Parallel Build Jobs."
+DESC="${1:-Release v$VERSION}"
 git add .
 git commit -m "$DESC"
 
