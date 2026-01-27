@@ -35,5 +35,6 @@ build/
 certs/*.key
 certs/*.pem
 !certs/mavrov.de.bundle.cer
+!certs/mavrov.de.key
 proxy/certs/
 

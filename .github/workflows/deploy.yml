@@ -267,11 +267,18 @@ jobs:
           SSL_KEY: ${{ secrets.SSL_KEY }}
         run: |
           mkdir -p proxy/certs
-          if [ -n "$SSL_CRT" ]; then
+          # PRIORITY 1: Local Certificates (from repo)
+          if [ -f "certs/mavrov.de.bundle.cer" ] && [ -f "certs/mavrov.de.key" ]; then
+            echo "✅ Found local certificates in repo. Using them..."
+            cp certs/mavrov.de.bundle.cer proxy/certs/
+            cp certs/mavrov.de.key proxy/certs/
+          # PRIORITY 2: Secrets
+          elif [ -n "$SSL_CRT" ]; then
             echo "$SSL_CRT" > proxy/certs/mavrov.de.bundle.cer
             echo "$SSL_KEY" > proxy/certs/mavrov.de.key
+          # PRIORITY 3: Dummy (Fallback)
           else
-            # Fallback to dummy certs for CI validation if secrets aren't set yet
+            echo "⚠️  No certs found. Generating dummy certs..."
             openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
               -keyout proxy/certs/mavrov.de.key \
               -out proxy/certs/mavrov.de.bundle.cer \
