@@ -355,27 +355,11 @@ jobs:
         working-directory: ./frontend
         run: npx playwright install --with-deps
 
-      # Cache standard images (DB, Ollama)
-      - name: Cache Standard Images
-        id: cache-std-images
-        uses: actions/cache@v4
-        with:
-          path: std-images
-          key: std-images-${{ runner.os }}-v1
-
-      - name: Load/Pull Standard Images
+      - name: Pull Standard Images
         run: |
-          if [ -d "std-images" ]; then
-            ls std-images/*.tar | xargs -I {} docker load -i {}
-          else
-            mkdir -p std-images
-            docker pull pgvector/pgvector:pg18
-            docker pull ollama/ollama:latest
-            docker pull ghcr.io/open-webui/open-webui:latest
-            docker save pgvector/pgvector:pg18 -o std-images/pgvector.tar
-            docker save ollama/ollama:latest -o std-images/ollama.tar
-            docker save ghcr.io/open-webui/open-webui:latest -o std-images/open-webui.tar
-          fi
+          docker pull pgvector/pgvector:pg18
+          docker pull ollama/ollama:latest
+          docker pull ghcr.io/open-webui/open-webui:latest
 
       - name: Start Full Stack (Prod Topology)
         env:
@@ -539,28 +523,11 @@ jobs:
         with:
           node-version: "24"
 
-      # Cache standard images (Reuse cache from E2E)
-      - name: Cache Standard Images
-        id: cache-std-images
-        uses: actions/cache@v4
-        with:
-          path: std-images
-          key: std-images-${{ runner.os }}-v1
-
-      - name: Load/Pull Standard Images
+      - name: Pull Standard Images
         run: |
-          if [ -d "std-images" ]; then
-            ls std-images/*.tar | xargs -I {} docker load -i {}
-          else
-            # Fallback if cache miss (should be hit if E2E ran or previous runs populated it)
-             mkdir -p std-images
-             docker pull pgvector/pgvector:pg18
-             docker pull ollama/ollama:latest
-             docker pull ghcr.io/open-webui/open-webui:latest
-             docker save pgvector/pgvector:pg18 -o std-images/pgvector.tar
-             docker save ollama/ollama:latest -o std-images/ollama.tar
-             docker save ghcr.io/open-webui/open-webui:latest -o std-images/open-webui.tar
-          fi
+          docker pull pgvector/pgvector:pg18
+          docker pull ollama/ollama:latest
+          docker pull ghcr.io/open-webui/open-webui:latest
 
       - name: Start Proxy Stack
         env:
