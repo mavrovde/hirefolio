@@ -68,7 +68,7 @@ services:
     container_name: global_proxy
     restart: always
     ports:
-      - "80:80"
+      - "8090:80"
     depends_on:
       - frontend
       - open-webui

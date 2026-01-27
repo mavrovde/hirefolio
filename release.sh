@@ -27,7 +27,7 @@ fi
 # 3. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="Release v$VERSION: Restored proxy, Removed mailserver/roundcube."
+DESC="Release v$VERSION: Cleaned up legacy checks and configurations."
 git add VERSION backend/app/main.py frontend/package.json
 git commit -m "$DESC"
 
