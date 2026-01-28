@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ProfileComponent } from './profile';
 import { AuthService } from '../../../services/auth.service';
 import { of, throwError } from 'rxjs';
@@ -37,45 +37,56 @@ describe('ProfileComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should handle successful password change', () => {
+  it('should handle successful password change', fakeAsync(() => {
     component.oldPassword = 'old';
     component.newPassword = 'new';
 
-    // reset mock if needed, or rely on vi.fn
-    // But we defined it in beforeEach. 
-
     component.onSubmit();
 
+    expect(component.statusMessage).toBe('Requesting password change...');
+
+    tick(500); // Phase 1 & 2 (request happens here)
+    expect(component.statusMessage).toBe('Password updated successfully.');
+
+    tick(500); // Phase 3 (success message appears)
     expect(authServiceMock.changePassword).toHaveBeenCalledWith('old', 'new');
     expect(component.message).toBe('Password changed successfully.');
+    expect(component.statusMessage).toBe('');
     expect(component.oldPassword).toBe('');
     expect(component.newPassword).toBe('');
     expect(component.loading).toBe(false);
-  });
 
-  it('should handle password change error', () => {
+    // Phase 4: Verify message clears after 5 seconds
+    tick(5000);
+    expect(component.message).toBe('');
+  }));
+
+  it('should handle password change error', fakeAsync(() => {
     component.oldPassword = 'old';
     component.newPassword = 'new';
 
     authServiceMock.changePassword.mockReturnValue(throwError(() => ({ error: { detail: 'Incorrect password' } })));
 
     component.onSubmit();
+    tick(800); // Pass the status update timeouts
 
     expect(component.error).toBe('Incorrect password');
     expect(component.loading).toBe(false);
-  });
+    expect(component.statusMessage).toBe('');
+  }));
 
-  it('should handle password change error without detail', () => {
+  it('should handle password change error without detail', fakeAsync(() => {
     component.oldPassword = 'old';
     component.newPassword = 'new';
 
     authServiceMock.changePassword.mockReturnValue(throwError(() => ({ error: {} })));
 
     component.onSubmit();
+    tick(800); // Pass the status update timeouts
 
     expect(component.error).toBe('Failed to change password.');
     expect(component.loading).toBe(false);
-  });
+  }));
 
   it('should display user details', () => {
     fixture.detectChanges();

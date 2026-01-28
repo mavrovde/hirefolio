@@ -38,6 +38,10 @@
                         minlength="8" [disabled]="loading" />
                 </div>
 
+                @if (statusMessage) {
+                <div class="status-message"><span class="status-icon">⚙</span> {{ statusMessage }}</div>
+                }
+
                 @if (message) {
                 <div class="success-message"><span class="success-icon">✓</span> {{ message }}</div>
                 }
