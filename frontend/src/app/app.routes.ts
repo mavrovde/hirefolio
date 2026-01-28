@@ -77,6 +77,13 @@ export const routes: Routes = [
             (m) => m.CvManagerComponent,
           ),
       },
+      {
+        path: 'profile',
+        loadComponent: () =>
+          import('./components/admin/profile/profile').then(
+            (m) => m.ProfileComponent,
+          ),
+      },
     ],
   },
 ];

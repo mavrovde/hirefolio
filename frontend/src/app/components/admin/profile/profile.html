@@ -1,0 +1,38 @@
+<div class="profile-container">
+    <div class="terminal-window">
+        <div class="terminal-header">
+            <span class="terminal-title">admin@mavrov.de:~$ ./passwd</span>
+        </div>
+        <div class="terminal-body">
+            <h2 class="profile-title">&gt; Change Password</h2>
+
+            <form (ngSubmit)="onSubmit()" #passwordForm="ngForm">
+                <div class="form-group">
+                    <label for="oldPassword">&gt; Current Password:</label>
+                    <input type="password" id="oldPassword" name="oldPassword" [(ngModel)]="oldPassword" required
+                        [disabled]="loading" />
+                </div>
+
+                <div class="form-group">
+                    <label for="newPassword">&gt; New Password:</label>
+                    <input type="password" id="newPassword" name="newPassword" [(ngModel)]="newPassword" required
+                        minlength="8" [disabled]="loading" />
+                </div>
+
+                @if (message) {
+                <div class="success-message"><span class="success-icon">✓</span> {{ message }}</div>
+                }
+
+                @if (error) {
+                <div class="error-message"><span class="error-icon">✗</span> {{ error }}</div>
+                }
+
+                <div class="button-group">
+                    <button type="submit" [disabled]="!passwordForm.valid || loading" class="btn-primary">
+                        {{ loading ? '[ Processing... ]' : '[ Change Password ]' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

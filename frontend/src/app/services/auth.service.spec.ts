@@ -81,9 +81,25 @@ describe('AuthService', () => {
 
   describe('logout', () => {
     it('should remove token and clear current user', () => {
+      service = TestBed.inject(AuthService);
       service.logout();
       expect(window.localStorage.removeItem).toHaveBeenCalledWith('auth_token');
       expect(service.getCurrentUser()).toBeNull();
+    });
+  });
+
+  describe('changePassword', () => {
+    it('should call api/auth/password with PUT method', () => {
+      service = TestBed.inject(AuthService);
+      const oldPwd = 'old';
+      const newPwd = 'new';
+
+      service.changePassword(oldPwd, newPwd).subscribe();
+
+      const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/password`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ old_password: oldPwd, new_password: newPwd });
+      req.flush(null);
     });
   });
 

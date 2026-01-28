@@ -58,6 +58,11 @@ export class AuthService {
     this.currentUserSubject.next(null);
   }
 
+  changePassword(oldPassword: string, newPassword: string): Observable<void> {
+    const body = { old_password: oldPassword, new_password: newPassword };
+    return this.http.put<void>(`${this.apiUrl}/api/auth/password`, body);
+  }
+
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
   }

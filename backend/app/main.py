@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.database import engine, Base
+from app.database import engine, Base, async_session
 from app.api.posts import router as posts_router
 from app.api.auth import router as auth_router
 from app.api.stats import router as stats_router
@@ -22,6 +22,29 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
+
+    # Check and create default admin user if no users exist
+    async with async_session() as session:
+        from sqlalchemy import select
+        from app.models.user import User
+        from app.services.auth import get_password_hash
+
+        result = await session.execute(select(User))
+        user = result.scalars().first()
+
+        if not user:
+            print("No users found. Creating default admin user 'master'...")
+            master_admin = User(
+                username="master",
+                email="admin@mavrov.de",
+                hashed_password=get_password_hash("master"),
+                is_admin=True,
+                is_active=True,
+            )
+            session.add(master_admin)
+            await session.commit()
+            print("Default admin user 'master' created successfully.")
+    
     yield
 
 

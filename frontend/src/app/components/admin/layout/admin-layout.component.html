@@ -3,7 +3,7 @@
     <div class="sidebar-header">
       <h2>&gt; Admin Panel</h2>
       @if (currentUser) {
-        <p class="user-info">{{ currentUser.username }}</p>
+      <p class="user-info">{{ currentUser.username }}</p>
       }
     </div>
 
@@ -28,6 +28,18 @@
       <li>
         <a routerLink="/admin/posts/new" routerLinkActive="active">
           <span class="icon">➕</span> New Post
+        </a>
+      </li>
+      <li>
+        <a routerLink="/admin/cv-manager" routerLinkActive="active" class="nav-item">
+          <span class="icon">📄</span>
+          <span>CV Manager</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/admin/profile" routerLinkActive="active" class="nav-item">
+          <span class="icon">👤</span>
+          <span>Profile</span>
         </a>
       </li>
       <li>
