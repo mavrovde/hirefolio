@@ -65,7 +65,10 @@ async def get_stats(
 
     # Top Tags (Top 5)
     tags_query = (
-        select(func.unnest(Post.tags).label("tag"), func.count(Post.id).label("usage_count"))
+        select(
+            func.unnest(Post.tags).label("tag"),
+            func.count(Post.id).label("usage_count"),
+        )
         .group_by("tag")
         .order_by(text("usage_count DESC"))
         .limit(5)
