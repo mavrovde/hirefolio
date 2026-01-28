@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute } from '@angular/router';
 import { HomeComponent } from './home.component';
 import { ProfileService } from '../../services/profile.service';
 import { LanguageService } from '../../services/language.service';
@@ -37,8 +38,15 @@ describe('HomeComponent', () => {
       ],
       providers: [
         { provide: ProfileService, useClass: MockProfileService },
-        { provide: ProfileService, useClass: MockProfileService },
         { provide: LanguageService, useClass: MockLanguageService },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              fragment: 'about'
+            }
+          }
+        }
       ],
     }).compileComponents();
 

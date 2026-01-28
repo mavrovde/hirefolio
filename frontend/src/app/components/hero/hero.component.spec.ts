@@ -41,7 +41,11 @@ describe('HeroComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('create', () => {
     expect(component).toBeTruthy();
   });
 
@@ -80,5 +84,19 @@ describe('HeroComponent', () => {
       top: 20, // 100 (pos) + 0 (scrollY) - 80 (offset)
       behavior: 'smooth',
     });
+  });
+
+  it('scrollTo should do nothing if element is not found', () => {
+    const event = new Event('click');
+    const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+
+    vi.spyOn(document, 'querySelector').mockReturnValue(null);
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => { });
+
+    component.scrollTo('#non-existent', event);
+
+    expect(preventDefaultSpy).toHaveBeenCalled();
+    expect(document.querySelector).toHaveBeenCalledWith('#non-existent');
+    expect(scrollToSpy).not.toHaveBeenCalled();
   });
 });

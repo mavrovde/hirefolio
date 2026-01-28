@@ -57,6 +57,9 @@ describe('SystemStatsComponent - Browser', () => {
 
     const result2 = (component as any).formatTime(3661000); // 1h 1m 1s
     expect(result2).toBe('01:01:01');
+
+    const result3 = (component as any).formatTime(36610000); // 10h 10m 10s
+    expect(result3).toBe('10:10:10');
   });
 
   it('should clear interval on destroy', () => {
@@ -88,5 +91,9 @@ describe('SystemStatsComponent - Non-Browser', () => {
 
   it('should not start uptime counter on server', () => {
     expect((component as any).intervalId).toBeUndefined();
+
+    // Explicitly call private method to test the safe guard
+    (component as any).simulateMemoryFluctuation();
+    // No side effect expected, just line coverage
   });
 });

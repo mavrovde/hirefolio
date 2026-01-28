@@ -86,4 +86,27 @@ describe('AuthGuard', () => {
       });
     }
   });
+
+  it('should redirect if authenticated but user details are missing accessing admin route', () => {
+    authServiceSpy.isAuthenticated.mockReturnValue(true);
+    authServiceSpy.getCurrentUser.mockReturnValue(null);
+
+    const result = TestBed.runInInjectionContext(() =>
+      authGuard(
+        { data: { requireAdmin: true } } as any,
+        { url: '/admin/dashboard' } as any,
+      ),
+    );
+
+    if (typeof result === 'object' && 'subscribe' in result) {
+      result.subscribe((r) => {
+        expect(r).toBe(false);
+        expect(routerSpy.navigate).toHaveBeenCalledWith(
+          ['/admin/login'],
+          expect.anything(),
+        );
+      });
+    }
+  });
 });
+

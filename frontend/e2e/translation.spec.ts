@@ -26,7 +26,7 @@ test.describe('Translation Integrity', () => {
         await expect(page.locator('nav').getByText('Fähigkeiten')).toBeVisible();
         await expect(page.locator('nav').getByText('Ausbildung')).toBeVisible();
         await expect(page.locator('nav').getByText('Blog')).toBeVisible();
-        await expect(page.locator('nav').getByText('CV')).toBeVisible();
+        await expect(page.locator('nav').getByText('Lebenslauf')).toBeVisible();
         await expect(page.locator('nav').getByText('LLM')).toBeVisible();
 
         // Switch back to EN
