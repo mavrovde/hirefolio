@@ -102,3 +102,36 @@ async def test_stats_ai_service_health_check(client: AsyncClient):
         response = await client.get("/api/stats")
         assert response.status_code == 200
         assert response.json()["system_health"]["ai_service"] is False
+
+
+@pytest.mark.asyncio
+async def test_stats_with_tags_and_languages(client: AsyncClient):
+    """Test stats endpoint with various tags and languages."""
+    # Create posts with overlapping tags and different languages
+    posts = [
+        {"title": "P1", "slug": "p1", "content": "c", "published": True, "language": "en", "tags": ["tag1", "tag2"]},
+        {"title": "P2", "slug": "p2", "content": "c", "published": True, "language": "en", "tags": ["tag1", "tag3"]},
+        {"title": "P3", "slug": "p3", "content": "c", "published": True, "language": "de", "tags": ["tag2"]},
+        {"title": "P4", "slug": "p4", "content": "c", "published": False, "language": "en", "tags": ["tag1"]},
+    ]
+    
+    for p in posts:
+        await client.post("/api/posts", json=p)
+
+    response = await client.get("/api/stats")
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Check language grouping
+    assert data["posts"]["by_language"]["en"] >= 3
+    assert data["posts"]["by_language"]["de"] >= 1
+    
+    # Check top tags
+    assert data["top_tags"]["tag1"] >= 3
+    assert data["top_tags"]["tag2"] >= 2
+    assert data["top_tags"]["tag3"] >= 1
+    
+    # Check counts
+    assert data["posts"]["total"] >= 4
+    assert data["posts"]["published"] >= 3
+    assert data["posts"]["drafts"] >= 1

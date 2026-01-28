@@ -61,6 +61,19 @@ describe('ProfileComponent', () => {
     expect(component.message).toBe('');
   }));
 
+  it('should not clear messsage if it was changed before timeout', fakeAsync(() => {
+    component.oldPassword = 'old';
+    component.newPassword = 'new';
+
+    component.onSubmit();
+    tick(1000); // Trigger original success
+
+    component.message = 'Something else';
+
+    tick(5000);
+    expect(component.message).toBe('Something else');
+  }));
+
   it('should handle password change error', fakeAsync(() => {
     component.oldPassword = 'old';
     component.newPassword = 'new';
