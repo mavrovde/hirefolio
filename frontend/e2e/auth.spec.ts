@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Authentication Flow', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('cookie_consent', 'true');
+    });
+  });
+
   test('should login successfully with admin credentials', async ({ page }) => {
     // Enable request logging
     page.on('request', (request) => console.log('>>', request.method(), request.url()));

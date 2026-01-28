@@ -27,10 +27,25 @@ afterEach(() => {
 
 // Global mocks
 const mockLocalStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
+  store: {} as Record<string, string>,
+  getItem: vi.fn((key: string) => {
+    return key in mockLocalStorage.store ? mockLocalStorage.store[key] : null;
+  }),
+  setItem: vi.fn((key: string, value: string) => {
+    mockLocalStorage.store[key] = `${value}`;
+  }),
+  removeItem: vi.fn((key: string) => {
+    delete mockLocalStorage.store[key];
+  }),
+  clear: vi.fn(() => {
+    mockLocalStorage.store = {};
+  }),
+  key: vi.fn((index: number) => {
+    return Object.keys(mockLocalStorage.store)[index] || null;
+  }),
+  get length() {
+    return Object.keys(this.store).length;
+  }
 };
 
 Object.defineProperty(window, 'localStorage', {

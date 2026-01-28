@@ -4,6 +4,9 @@ test.describe('AI Suggestions Flow', () => {
   test.setTimeout(180000); // AI can be slow
 
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('cookie_consent', 'true');
+    });
     // Login first
     await page.goto('http://localhost:4200/admin/login');
     await page.fill('input[name="username"]', 'admin');

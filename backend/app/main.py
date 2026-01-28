@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +19,7 @@ from app.api.admin_cv import router as admin_cv_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.start_time = datetime.now(timezone.utc)
     # Create pgvector extension and tables on startup
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -51,7 +53,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.0.135",
+    version="1.0.136",
     lifespan=lifespan,
 )
 

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { map, catchError, shareReplay } from 'rxjs/operators';
+import { StorageService } from './storage.service';
 
 export type Language = 'en' | 'de';
 
@@ -15,13 +16,21 @@ export class LanguageService {
   private translationsSubject = new BehaviorSubject<any>({});
   translations$ = this.translationsSubject.asObservable();
 
-  constructor(private http: HttpClient) {
-    this.loadTranslations('en');
+  constructor(private http: HttpClient, private storageService: StorageService) {
+    // Try to load saved language if exists (and consented)
+    const savedLang = this.storageService.getItem('language') as Language;
+    if (savedLang && (savedLang === 'en' || savedLang === 'de')) {
+      this.currentLangSubject.next(savedLang);
+      this.loadTranslations(savedLang);
+    } else {
+      this.loadTranslations('en');
+    }
   }
 
   setLanguage(lang: Language) {
     if (this.currentLangSubject.value !== lang) {
       this.currentLangSubject.next(lang);
+      this.storageService.setItem('language', lang);
       this.loadTranslations(lang);
     }
   }

@@ -4,6 +4,9 @@ test.describe('Post Management', () => {
   test.setTimeout(60000);
 
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('cookie_consent', 'true');
+    });
     // Login before each test
     await page.goto('/admin/login');
     await page.fill('input[name="username"]', 'admin');

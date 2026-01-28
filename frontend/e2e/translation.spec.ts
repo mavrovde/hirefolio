@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Translation Integrity', () => {
     test.beforeEach(async ({ page }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('cookie_consent', 'true');
+        });
         await page.goto('/');
         // Wait for potential initial load
         await page.waitForLoadState('networkidle');

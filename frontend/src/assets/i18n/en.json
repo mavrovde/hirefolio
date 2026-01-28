@@ -56,5 +56,11 @@
     "CLIENT": "CLIENT",
     "MODULES": "MODULES",
     "LOADED": "LOADED"
+  },
+  "COOKIES": {
+    "TITLE": "Cookie Consent",
+    "MESSAGE": "We use local storage to save your language preference and improve your experience. According to European laws, we need your consent to persist this data. Without consent, your preferences will reset on refresh.",
+    "ACCEPT": "Accept & Save",
+    "DECLINE": "Decline"
   }
 }

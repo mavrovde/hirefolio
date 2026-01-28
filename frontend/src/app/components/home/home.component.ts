@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule, ViewportScroller } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { tap, take } from 'rxjs/operators';
 
 import { HeaderComponent } from '../header/header.component';
 import { HeroComponent } from '../hero/hero.component';
@@ -13,7 +13,6 @@ import { EducationComponent } from '../education/education.component';
 // import { RecommendationsComponent } from '../recommendations/recommendations.component';
 import { BlogComponent } from '../blog/blog.component';
 import { ContactComponent } from '../contact/contact.component';
-import { SystemStatsComponent } from '../stats/stats.component';
 
 import { ProfileService, Profile } from '../../services/profile.service';
 
@@ -31,7 +30,6 @@ import { ProfileService, Profile } from '../../services/profile.service';
     // RecommendationsComponent,
     BlogComponent,
     ContactComponent,
-    SystemStatsComponent,
   ],
   template: `
     <div
@@ -50,8 +48,6 @@ import { ProfileService, Profile } from '../../services/profile.service';
         <app-contact [profile]="profile"></app-contact>
       </main>
 
-      <app-system-stats></app-system-stats>
-
       <footer class="bg-black py-8 text-center text-secondary text-sm border-t border-terminal">
         <p>&copy; {{ currentYear }} Sergii Mavrov. All rights reserved.</p>
       </footer>
@@ -69,42 +65,42 @@ export class HomeComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.profile$ = this.profileService.getProfile().pipe(
-      tap(() => {
-        // Persistent scroll logic to handle layout expansion
-        let attempts = 0;
-        const maxAttempts = 30; // 3 seconds max look time
-        let scrollAttempts = 0;
-        const maxScrollAttempts = 15; // Continue scrolling for 1.5 seconds after finding
+    this.profile$ = this.profileService.getProfile();
 
-        const interval = setInterval(() => {
-          attempts++;
-          const fragment = this.route.snapshot.fragment;
-          if (fragment) {
-            const element = document.getElementById(fragment);
-            if (element) {
-              if (scrollAttempts === 0) {
-                console.log(`HomeComponent: Found anchor '${fragment}', starting persistent scroll...`);
-              }
-              this.viewportScroller.scrollToAnchor(fragment);
-              scrollAttempts++;
+    this.profile$.pipe(take(1)).subscribe(() => {
+      // Persistent scroll logic to handle layout expansion
+      let attempts = 0;
+      const maxAttempts = 30; // 3 seconds max look time
+      let scrollAttempts = 0;
+      const maxScrollAttempts = 15; // Continue scrolling for 1.5 seconds after finding
 
-              if (scrollAttempts >= maxScrollAttempts) {
-                console.log(`HomeComponent: Finished persistent scroll for '${fragment}'`);
-                clearInterval(interval);
-              }
-            } else {
-              // Not found yet
-              if (attempts >= maxAttempts) {
-                console.log(`HomeComponent: Failed to find anchor '${fragment}' after ${maxAttempts} attempts`);
-                clearInterval(interval);
-              }
+      const interval = setInterval(() => {
+        attempts++;
+        const fragment = this.route.snapshot.fragment;
+        if (fragment) {
+          const element = document.getElementById(fragment);
+          if (element) {
+            if (scrollAttempts === 0) {
+              console.log(`HomeComponent: Found anchor '${fragment}', starting persistent scroll...`);
+            }
+            this.viewportScroller.scrollToAnchor(fragment);
+            scrollAttempts++;
+
+            if (scrollAttempts >= maxScrollAttempts) {
+              console.log(`HomeComponent: Finished persistent scroll for '${fragment}'`);
+              clearInterval(interval);
             }
           } else {
-            clearInterval(interval);
+            // Not found yet
+            if (attempts >= maxAttempts) {
+              console.log(`HomeComponent: Failed to find anchor '${fragment}' after ${maxAttempts} attempts`);
+              clearInterval(interval);
+            }
           }
-        }, 100);
-      })
-    );
+        } else {
+          clearInterval(interval);
+        }
+      }, 100);
+    });
   }
 }

@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Design Regression Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('cookie_consent', 'true');
+    });
+  });
+
   test('should use correct terminal green colors', async ({ page }) => {
     await page.goto('/');
 

@@ -33,9 +33,13 @@ export interface SystemStats {
 export class StatsService {
   private apiUrl = `${environment.apiUrl}/api/stats`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getStats(): Observable<SystemStats> {
     return this.http.get<SystemStats>(this.apiUrl);
+  }
+
+  getPublicStats(): Observable<{ visitor_ip: string; backend_version: string; uptime: string; start_time: string | null }> {
+    return this.http.get<{ visitor_ip: string; backend_version: string; uptime: string; start_time: string | null }>(`${this.apiUrl}/public`);
   }
 }

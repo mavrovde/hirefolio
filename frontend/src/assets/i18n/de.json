@@ -56,5 +56,11 @@
     "CLIENT": "KLIENT",
     "MODULES": "MODULE",
     "LOADED": "GELADEN"
+  },
+  "COOKIES": {
+    "TITLE": "Cookie-Einwilligung",
+    "MESSAGE": "Wir verwenden lokalen Speicher, um Ihre Spracheinstellung zu speichern und Ihr Erlebnis zu verbessern. Gemäß europäischen Gesetzen benötigen wir Ihre Zustimmung, um diese Daten zu speichern. Ohne Zustimmung werden Ihre Einstellungen beim Aktualisieren zurückgesetzt.",
+    "ACCEPT": "Akzeptieren & Speichern",
+    "DECLINE": "Ablehnen"
   }
 }

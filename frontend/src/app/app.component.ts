@@ -2,14 +2,20 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { GoogleAnalyticsService } from './services/google-analytics.service';
+import { CookieConsentComponent } from './components/cookie-consent/cookie-consent.component';
+import { SystemStatsComponent } from './components/stats/stats.component';
 
 import { ViewportScroller } from '@angular/common';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
-  template: ` <router-outlet></router-outlet> `,
+  imports: [CommonModule, RouterOutlet, CookieConsentComponent, SystemStatsComponent],
+  template: `
+    <router-outlet></router-outlet>
+    <app-cookie-consent></app-cookie-consent>
+    <app-system-stats></app-system-stats>
+  `,
 })
 export class AppComponent implements OnInit {
   constructor(

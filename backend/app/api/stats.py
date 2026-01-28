@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
@@ -109,4 +109,46 @@ async def get_stats(
         top_tags=top_tags,
         recent_posts=recent_posts_data,
         system_health={"database": True, "ai_service": ai_status},
+    )
+
+
+class PublicStats(BaseModel):
+    visitor_ip: str
+    backend_version: str
+    uptime: str
+    start_time: str | None = None
+
+
+@router.get("/public", response_model=PublicStats)
+async def get_public_stats(
+    request: Request,
+):
+    """
+    Get public statistics (e.g. visitor IP, uptime, version).
+    """
+    # Visitor IP
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.client.host if request.client else "Unknown"
+
+    # Uptime
+    uptime_str = "Unknown"
+    start_time_iso = None
+    if hasattr(request.app.state, "start_time"):
+        from datetime import datetime, timezone
+
+        st = request.app.state.start_time
+        now = datetime.now(timezone.utc)
+        uptime_delta = now - st
+        # Format: "X days, H:M:S" or "H:M:S"
+        uptime_str = str(uptime_delta).split(".")[0]  # remove microseconds
+        start_time_iso = st.isoformat()
+
+    return PublicStats(
+        visitor_ip=ip,
+        backend_version=request.app.version,
+        uptime=uptime_str,
+        start_time=start_time_iso,
     )

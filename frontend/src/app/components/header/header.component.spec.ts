@@ -43,13 +43,13 @@ describe('HeaderComponent', () => {
   });
 
   it('should have 6 nav items', () => {
-    expect(component.navItems.length).toBe(7);
+    expect(component.navItems.length).toBe(8);
   });
 
   it('should render navigation links', () => {
     const DEBUG_ELEMENT = fixture.debugElement;
     const navLinks = DEBUG_ELEMENT.queryAll(By.css('nav a'));
-    expect(navLinks.length).toBe(7);
+    expect(navLinks.length).toBe(8);
   });
 
   it('should NOT have border-terminal on the header', () => {

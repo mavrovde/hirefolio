@@ -1,6 +1,11 @@
 import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { TranslatePipe } from '../../pipes/translate.pipe';
+import { StatsService } from '../../services/stats.service';
+
+import packageJson from '../../../../package.json';
 
 @Component({
   selector: 'app-system-stats',
@@ -11,18 +16,60 @@ import { TranslatePipe } from '../../pipes/translate.pipe';
 })
 export class SystemStatsComponent implements OnInit, OnDestroy {
   uptime: string = '00:00:00';
-  private startTime: number = Date.now();
+  private serverStartTime: number | null = null;
   private intervalId: any;
   visitorIp: string = '127.0.0.1'; // Mock for now
   memoryUsage: number = 24; // Mock MB usage
+  isVisible: boolean = true;
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
+  backendVersion: string = 'Unknown';
+  frontendVersion: string = packageJson.version;
+
+  constructor(
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private statsService: StatsService,
+    private router: Router
+  ) { }
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
-      this.startUptimeCounter();
       this.simulateMemoryFluctuation();
+      this.fetchPublicStats();
+
+      // Check visibility on init
+      this.checkVisibility(this.router.url);
+
+      // Check visibility on route change
+      this.router.events.pipe(
+        filter(event => event instanceof NavigationEnd)
+      ).subscribe((event: NavigationEnd) => {
+        this.checkVisibility(event.urlAfterRedirects || event.url);
+      });
     }
+  }
+
+  private checkVisibility(url: string): void {
+    this.isVisible = !url.includes('/admin');
+  }
+
+  private fetchPublicStats(): void {
+    this.statsService.getPublicStats().subscribe({
+      next: (stats) => {
+        this.visitorIp = stats.visitor_ip;
+        this.backendVersion = stats.backend_version;
+        if (stats.start_time) {
+          this.serverStartTime = new Date(stats.start_time).getTime();
+          this.startUptimeCounter();
+        } else {
+          // Fallback if no start time provided
+          this.uptime = stats.uptime;
+        }
+      },
+      error: () => {
+        this.visitorIp = 'Unknown';
+        this.startUptimeCounter(); // Fallback to client uptime if API fails
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -30,19 +77,31 @@ export class SystemStatsComponent implements OnInit, OnDestroy {
   }
 
   private startUptimeCounter(): void {
+    const startTime = this.serverStartTime || Date.now();
+
+    // Clear existing if any
+    if (this.intervalId) clearInterval(this.intervalId);
+
     this.intervalId = setInterval(() => {
       const now = Date.now();
-      const diff = now - this.startTime;
-      this.uptime = this.formatTime(diff);
+      const diff = now - startTime;
+      this.uptime = this.formatTime(Math.max(0, diff)); // Ensure non-negative
     }, 1000);
+
+    // Initial call
+    const now = Date.now();
+    const diff = now - startTime;
+    this.uptime = this.formatTime(Math.max(0, diff));
   }
 
   private formatTime(ms: number): string {
     const seconds = Math.floor((ms / 1000) % 60);
     const minutes = Math.floor((ms / (1000 * 60)) % 60);
     const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(ms / (1000 * 60 * 60 * 24));
 
-    return `${this.pad(hours)}:${this.pad(minutes)}:${this.pad(seconds)}`;
+    const timeStr = `${this.pad(hours)}:${this.pad(minutes)}:${this.pad(seconds)}`;
+    return days > 0 ? `${days}d ${timeStr}` : timeStr;
   }
 
   private pad(num: number): string {

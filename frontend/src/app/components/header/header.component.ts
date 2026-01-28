@@ -21,6 +21,7 @@ export class HeaderComponent {
     { labelKey: 'NAV.EDUCATION', href: '#education' },
     { labelKey: 'NAV.CV', href: '/cv' },
     { labelKey: 'NAV.BLOG', href: '#blog' },
+    { labelKey: 'NAV.CONTACT', href: '#contact' },
     { labelKey: 'NAV.LLM', href: '/llm' },
   ];
 

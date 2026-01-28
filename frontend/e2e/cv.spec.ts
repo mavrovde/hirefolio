@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('CV Request Flow', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('cookie_consent', 'true');
+        });
+    });
+
     test('should submit CV request successfully', async ({ page }) => {
         // Intercept the request to verify payload and response
         let requestPayload: any;

@@ -2,6 +2,11 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Blog Interactions', () => {
     test.beforeEach(async ({ page }) => {
+        // Bypass cookie consent persistently
+        await page.addInitScript(() => {
+            window.localStorage.setItem('cookie_consent', 'true');
+        });
+
         // 1. Login
         await page.goto('/admin/login');
         await page.fill('input[name="username"]', 'admin');

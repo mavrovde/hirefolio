@@ -44,4 +44,15 @@ describe('StatsService', () => {
         expect(req.request.method).toBe('GET');
         req.flush(mockStats);
     });
+    it('should get public stats', () => {
+        const mockPublicStats = { visitor_ip: '1.2.3.4' };
+
+        service.getPublicStats().subscribe((stats) => {
+            expect(stats).toEqual(mockPublicStats);
+        });
+
+        const req = httpMock.expectOne(`${environment.apiUrl}/api/stats/public`);
+        expect(req.request.method).toBe('GET');
+        req.flush(mockPublicStats);
+    });
 });

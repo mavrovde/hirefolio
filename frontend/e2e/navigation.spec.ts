@@ -10,6 +10,12 @@ const navItems = [
 ];
 
 test.describe('Cross-Route Navigation', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.addInitScript(() => {
+            window.localStorage.setItem('cookie_consent', 'true');
+        });
+    });
+
     // 1. Check navigation from CV page
     for (const item of navItems) {
         test(`should navigate from CV to ${item.label}`, async ({ page }) => {

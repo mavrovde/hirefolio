@@ -1,17 +1,27 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { LanguageService } from './language.service';
+import { StorageService } from './storage.service';
 import { firstValueFrom } from 'rxjs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('LanguageService', () => {
   let service: LanguageService;
   let httpMock: HttpTestingController;
+  let storageServiceMock: any;
 
   beforeEach(() => {
+    storageServiceMock = {
+      getItem: vi.fn().mockReturnValue(null),
+      setItem: vi.fn(),
+    };
+
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [LanguageService],
+      providers: [
+        LanguageService,
+        { provide: StorageService, useValue: storageServiceMock },
+      ],
     });
     service = TestBed.inject(LanguageService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -70,6 +80,20 @@ describe('LanguageService', () => {
 
     service.setLanguage('en');
     httpMock.expectNone('/assets/i18n/en.json');
+    // It should NOT try to set storage if logic prevents redundant setLanguage
+    // But implementation says: if (current != lang)
+    // So if current is 'en', setLanguage('en') does nothing.
+  });
+
+  it('should persist language on setLanguage', () => {
+    const initReq = httpMock.expectOne('/assets/i18n/en.json');
+    initReq.flush({});
+
+    service.setLanguage('de');
+    const deReq = httpMock.expectOne('/assets/i18n/de.json');
+    deReq.flush({});
+
+    expect(storageServiceMock.setItem).toHaveBeenCalledWith('language', 'de');
   });
 
   it('should handle http error gracefully', async () => {

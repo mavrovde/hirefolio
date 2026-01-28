@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SystemStatsComponent } from './stats.component';
+import { StatsService } from '../../services/stats.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
 import { PLATFORM_ID } from '@angular/core';
@@ -13,7 +14,27 @@ describe('SystemStatsComponent - Browser', () => {
     vi.useFakeTimers();
     await TestBed.configureTestingModule({
       imports: [SystemStatsComponent],
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
+      providers: [
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        {
+          provide: StatsService,
+          useValue: {
+            getPublicStats: vi.fn().mockReturnValue({
+              subscribe: (observer: any) => {
+                if (observer.next) {
+                  observer.next({
+                    visitor_ip: '127.0.0.1',
+                    backend_version: '1.0.0',
+                    uptime: '0:00:00',
+                    start_time: new Date().toISOString()
+                  });
+                }
+                return { unsubscribe: () => { } };
+              }
+            })
+          }
+        }
+      ],
     })
       .overrideComponent(SystemStatsComponent, {
         remove: { imports: [TranslatePipe] },
@@ -76,7 +97,10 @@ describe('SystemStatsComponent - Non-Browser', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SystemStatsComponent],
-      providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
+      providers: [
+        { provide: PLATFORM_ID, useValue: 'server' },
+        { provide: StatsService, useValue: { getPublicStats: vi.fn() } }
+      ],
     })
       .overrideComponent(SystemStatsComponent, {
         remove: { imports: [TranslatePipe] },
