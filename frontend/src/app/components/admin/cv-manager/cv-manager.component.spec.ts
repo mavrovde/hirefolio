@@ -106,4 +106,18 @@ describe('CvManagerComponent', () => {
         component.onUpload();
         expect(mockCvService.uploadCv).not.toHaveBeenCalled();
     });
+
+    it('should handle loadRequests error', () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+        mockCvService.getRequests.mockReturnValue(throwError(() => new Error('Load failed')));
+        component.loadRequests();
+        expect(consoleSpy).toHaveBeenCalledWith('Failed to load requests', expect.anything());
+    });
+
+    it('should handle loadVersions error', () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+        mockCvService.getVersions.mockReturnValue(throwError(() => new Error('Load failed')));
+        component.loadVersions();
+        expect(consoleSpy).toHaveBeenCalledWith('Failed to load versions', expect.anything());
+    });
 });

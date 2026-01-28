@@ -52,13 +52,9 @@ describe('HeaderComponent', () => {
     expect(navLinks.length).toBe(7);
   });
 
-  it('should have terminal design classes', () => {
-    // Check for border-terminal on the header or nav element
-    const headerElement = fixture.debugElement.query(By.css('header'));
-    // Assuming header tag has the border class, or a child
-    // If not found, we check if ANY element has .border-terminal
-    const terminalBorders = fixture.debugElement.queryAll(By.css('.border-terminal'));
-    expect(terminalBorders.length).toBeGreaterThan(0);
+  it('should NOT have border-terminal on the header', () => {
+    const terminalBorders = fixture.debugElement.queryAll(By.css('header.border-terminal'));
+    expect(terminalBorders.length).toBe(0);
   });
 
   it('active scrollTo should prevent default behavior and scroll', () => {
@@ -113,6 +109,7 @@ describe('HeaderComponent', () => {
 
   it('should have correct properties in navItems', () => {
     expect(component.navItems[0]).toEqual({ labelKey: 'NAV.ABOUT', href: '#about' });
-    expect(component.navItems[component.navItems.length - 1]).toEqual({ labelKey: 'NAV.CV', href: '/cv' });
+    expect(component.navItems[4]).toEqual({ labelKey: 'NAV.CV', href: '/cv' });
+    expect(component.navItems[component.navItems.length - 1]).toEqual({ labelKey: 'NAV.LLM', href: '/llm' });
   });
 });

@@ -13,7 +13,8 @@ test.describe('Translation Integrity', () => {
         await expect(page.locator('nav').getByText('Skills')).toBeVisible();
         await expect(page.locator('nav').getByText('Education')).toBeVisible();
         await expect(page.locator('nav').getByText('Blog')).toBeVisible();
-        await expect(page.locator('nav').getByText('[ LLM ]')).toBeVisible();
+        await expect(page.locator('nav').getByText('CV')).toBeVisible();
+        await expect(page.locator('nav').getByText('LLM')).toBeVisible();
     });
 
     test('should switch to German and back', async ({ page }) => {
@@ -25,7 +26,8 @@ test.describe('Translation Integrity', () => {
         await expect(page.locator('nav').getByText('Fähigkeiten')).toBeVisible();
         await expect(page.locator('nav').getByText('Ausbildung')).toBeVisible();
         await expect(page.locator('nav').getByText('Blog')).toBeVisible();
-        await expect(page.locator('nav').getByText('[ LLM ]')).toBeVisible();
+        await expect(page.locator('nav').getByText('CV')).toBeVisible();
+        await expect(page.locator('nav').getByText('LLM')).toBeVisible();
 
         // Switch back to EN
         await page.getByRole('button', { name: 'EN' }).click();
@@ -34,7 +36,7 @@ test.describe('Translation Integrity', () => {
 
     test('should maintain translation when navigating to sub-routes', async ({ page }) => {
         // Go to LLM page
-        await page.getByRole('link', { name: '[ LLM ]' }).click();
+        await page.getByRole('link', { name: 'LLM' }).click();
         await expect(page).toHaveURL(/\/llm/);
 
         // Wait for it to load
@@ -42,13 +44,13 @@ test.describe('Translation Integrity', () => {
 
         // Header is not in LLM page, but if it were, we would check here.
         // Let's verify that the back link has the correct logo text as fallback or translation
-        await expect(page.locator('a', { hasText: '>_ SM' })).toBeVisible();
+        await expect(page.locator('header a', { hasText: '>_ SM' })).toBeVisible();
 
-        // Navigate back to home
-        await page.getByRole('link', { name: 'EXIT' }).click();
+        // Navigate back to home via logo
+        await page.locator('header a', { hasText: '>_ SM' }).click();
         await expect(page).toHaveURL(/\/$/);
 
         // Menu should still be correctly translated
-        await expect(page.locator('nav').getByText('[ LLM ]')).toBeVisible();
+        await expect(page.locator('nav').getByText('LLM')).toBeVisible();
     });
 });

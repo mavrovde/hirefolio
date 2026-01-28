@@ -7,8 +7,8 @@
     "RECOMMENDATIONS": "Empfehlungen",
     "BLOG": "Blog",
     "CONTACT": "Kontakt",
-    "LLM": "[ LLM ]",
-    "CV": "[ CV ]"
+    "LLM": "LLM",
+    "CV": "CV"
   },
   "CV": {
     "TITLE": "Lebenslauf anfordern",
@@ -22,9 +22,9 @@
     "COMPANY": "Firma",
     "COMPANY_PLACEHOLDER": "Firmenname (Optional)",
     "MESSAGE": "Nachricht",
-    "MESSAGE_PLACEHOLDER": "Kurze Nachricht... (Optional)",
-    "CONSENT": "Ich stimme der Verarbeitung meiner persönlichen Daten (Name, E-Mail, Firma, Nachricht) bezüglich dieser Anfrage gemäß DSGVO (EU) und geltenden US-Datenschutzgesetzen zu.",
-    "CONSENT_ERROR": "Sie müssen der Datenschutzerklärung zustimmen, um fortzufahren.",
+    "MESSAGE_PLACEHOLDER": "Kurze Nachricht...",
+    "MESSAGE_ERROR": "Nachricht ist erforderlich (mind. 5 Zeichen).",
+    "AGREEMENT": "Mit dem Absenden dieser Anfrage erklären Sie sich damit einverstanden, dass Sergii Mavrov Ihre angegebenen Daten verarbeitet, um den Download des Lebenslaufs zu ermöglichen und für eine potenzielle zukünftige professionelle Kommunikation.",
     "SUBMIT": "Download anfordern",
     "SUCCESS": "Wenn der Download nicht automatisch gestartet ist, prüfen Sie die Benachrichtigung oder versuchen Sie es erneut.",
     "REQUEST_AGAIN": "Erneut anfordern",

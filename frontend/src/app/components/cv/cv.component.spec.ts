@@ -55,21 +55,16 @@ describe('CvComponent', () => {
     it('should be valid when filled correctly', () => {
         component.cvForm.controls['name'].setValue('John Doe');
         component.cvForm.controls['email'].setValue('john@example.com');
-        component.cvForm.controls['consent'].setValue(true);
+        component.cvForm.controls['message'].setValue('Hello, I would like to request your CV.');
         expect(component.cvForm.valid).toBe(true);
     });
 
-    it('should be invalid if consent not given', () => {
-        component.cvForm.controls['name'].setValue('John Doe');
-        component.cvForm.controls['email'].setValue('john@example.com');
-        component.cvForm.controls['consent'].setValue(false);
-        expect(component.cvForm.valid).toBe(false);
-    });
+
 
     it('should call requestCv on submit', () => {
         component.cvForm.controls['name'].setValue('John Doe');
         component.cvForm.controls['email'].setValue('john@example.com');
-        component.cvForm.controls['consent'].setValue(true);
+        component.cvForm.controls['message'].setValue('Relevant message');
 
         cvService.requestCv.mockReturnValue(of({ success: true, message: 'Success', download_url: '/url' }));
         cvService.getDownloadUrl.mockReturnValue('http://full/url');
@@ -81,8 +76,7 @@ describe('CvComponent', () => {
 
         expect(cvService.requestCv).toHaveBeenCalledWith(expect.objectContaining({
             name: 'John Doe',
-            email: 'john@example.com',
-            consent: true
+            email: 'john@example.com'
         }));
         expect(component.successMessage).toBe('Success');
 
@@ -95,16 +89,29 @@ describe('CvComponent', () => {
         expect(cvService.requestCv).not.toHaveBeenCalled();
     });
 
+    it('should handle response.success = false', () => {
+        component.cvForm.controls['name'].setValue('John Doe');
+        component.cvForm.controls['email'].setValue('john@example.com');
+        component.cvForm.controls['message'].setValue('Msg');
+
+        cvService.requestCv.mockReturnValue(of({ success: false, message: 'Failed' }));
+
+        component.onSubmit();
+
+        expect(component.isLoading).toBe(false);
+        expect(component.successMessage).toBeNull();
+    });
+
     it('should handle error', () => {
         component.cvForm.controls['name'].setValue('John Doe');
         component.cvForm.controls['email'].setValue('john@example.com');
-        component.cvForm.controls['consent'].setValue(true);
+        component.cvForm.controls['message'].setValue('Relevant message');
 
         cvService.requestCv.mockReturnValue(throwError(() => new Error('Err')));
 
         component.onSubmit();
 
-        expect(component.errorMessage).toContain('Failed to submit request');
+        expect(component.errorMessage).toBe('Failed to submit request. Please try again later.');
         expect(component.isLoading).toBe(false);
     });
 });

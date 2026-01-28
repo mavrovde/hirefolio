@@ -19,10 +19,9 @@ export class HeaderComponent {
     { labelKey: 'NAV.EXPERIENCE', href: '#experience' },
     { labelKey: 'NAV.SKILLS', href: '#skills' },
     { labelKey: 'NAV.EDUCATION', href: '#education' },
-    // { labelKey: 'NAV.RECOMMENDATIONS', href: '#recommendations' },
+    { labelKey: 'NAV.CV', href: '/cv' },
     { labelKey: 'NAV.BLOG', href: '#blog' },
     { labelKey: 'NAV.LLM', href: '/llm' },
-    { labelKey: 'NAV.CV', href: '/cv' },
   ];
 
   constructor(private languageService: LanguageService, private router: Router) {
@@ -45,6 +44,9 @@ export class HeaderComponent {
         top: offsetPosition,
         behavior: 'smooth',
       });
+    } else {
+      // If element not found, navigate to home with the fragment
+      this.router.navigate(['/'], { fragment: href.substring(1) });
     }
   }
 

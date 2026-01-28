@@ -44,7 +44,7 @@ import { ProfileService, Profile } from '../../services/profile.service';
         <app-skills [profile]="profile"></app-skills>
         <app-education [profile]="profile"></app-education>
         <!-- <app-recommendations [profile]="profile"></app-recommendations> -->
-        <app-blog></app-blog>
+        <app-blog [standalone]="false"></app-blog>
         <app-contact [profile]="profile"></app-contact>
       </main>
 

@@ -41,7 +41,11 @@ async def test_upload_cv_invalid_type(client):
 async def test_get_cv_requests(client, db_session):
     # Seed a request
     req = CvRequest(
-        name="Test User", email="test@test.com", consent_given=True, cv_version="v1.0"
+        name="Test User",
+        email="test@test.com",
+        message="Interested",
+        consent_given=True,
+        cv_version="v1.0",
     )
     db_session.add(req)
     await db_session.commit()

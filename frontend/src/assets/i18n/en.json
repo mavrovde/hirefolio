@@ -7,8 +7,8 @@
     "RECOMMENDATIONS": "Recommendations",
     "BLOG": "Blog",
     "CONTACT": "Contact",
-    "LLM": "[ LLM ]",
-    "CV": "[ CV ]"
+    "LLM": "LLM",
+    "CV": "CV"
   },
   "CV": {
     "TITLE": "Request CV",
@@ -22,9 +22,9 @@
     "COMPANY": "Company",
     "COMPANY_PLACEHOLDER": "Company Name (Optional)",
     "MESSAGE": "Message",
-    "MESSAGE_PLACEHOLDER": "Short message... (Optional)",
-    "CONSENT": "I agree to the processing of my personal data (Name, Email, Company, Message) regarding this request, in compliance with GDPR (EU) and applicable US data privacy laws.",
-    "CONSENT_ERROR": "You must agree to the privacy policy to proceed.",
+    "MESSAGE_PLACEHOLDER": "Short message...",
+    "MESSAGE_ERROR": "Message is required (min 5 characters).",
+    "AGREEMENT": "By submitting this request, you acknowledge that Sergii Mavrov will process your provided data to facilitate the CV download and for potential future professional communication.",
     "SUBMIT": "Request Download",
     "SUCCESS": "If the download didn't start automatically, check the notification or try again.",
     "REQUEST_AGAIN": "Request Again",

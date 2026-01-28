@@ -1,18 +1,21 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BlogService, BlogPost, BlogSearchResult } from '../../services/blog.service';
 import { Observable, map } from 'rxjs';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { RouterModule } from '@angular/router';
 
+import { HeaderComponent } from '../header/header.component';
+
 @Component({
   selector: 'app-blog',
   standalone: true,
-  imports: [CommonModule, TranslatePipe, RouterModule],
+  imports: [CommonModule, TranslatePipe, RouterModule, HeaderComponent],
   templateUrl: './blog.component.html',
   styleUrls: ['./blog.component.css'],
 })
 export class BlogComponent implements OnInit {
+  @Input() standalone = true;
   posts$: Observable<BlogPost[]> | null = null;
   searchResults$: Observable<BlogSearchResult[]> | null = null;
   expandedPostId: string | null = null;

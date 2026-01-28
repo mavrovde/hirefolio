@@ -18,8 +18,7 @@ class CvRequestPayload(BaseModel):
     name: str
     email: EmailStr
     company: str | None = None
-    message: str | None = None
-    consent: bool
+    message: str
 
 
 @router.post("/request")
@@ -28,11 +27,6 @@ async def request_cv(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
-    if not payload.consent:
-        raise HTTPException(
-            status_code=400, detail="Data processing consent is required."
-        )
-
     try:
         # 1. Save request to DB
         cv_request = CvRequest(
@@ -40,7 +34,7 @@ async def request_cv(
             email=payload.email,
             company=payload.company,
             message=payload.message,
-            consent_given=payload.consent,
+            consent_given=True,  # Default to true as per new policy
             cv_version=settings.cv_version,
         )
         db.add(cv_request)

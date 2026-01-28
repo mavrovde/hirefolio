@@ -12,7 +12,7 @@ class CvRequest(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, nullable=False)
     company: Mapped[str] = mapped_column(String, nullable=True)
-    message: Mapped[str] = mapped_column(Text, nullable=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
     consent_given: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     cv_version: Mapped[str] = mapped_column(String, nullable=True)
 

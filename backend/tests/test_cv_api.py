@@ -15,7 +15,6 @@ async def test_cv_request_success(client, db_session):
             "email": "recruiter@example.com",
             "company": "Big Tech",
             "message": "Interested in your profile.",
-            "consent": True,
         }
         response = await client.post("/api/cv/request", json=payload)
 
@@ -69,13 +68,58 @@ async def test_download_cv_not_found(client):
 
 # Test the actual background task function to ensure coverage
 @pytest.mark.asyncio
-async def test_process_email_notification(db_session):
-    # Mock specific dependencies
+async def test_download_cv_db_success(client, db_session):
+    # Add a document to DB
+    from app.models.cv_document import CvDocument
+    import uuid
+
+    doc = CvDocument(
+        id=uuid.uuid4(),
+        filename="test.pdf",
+        data=b"db pdf content",
+        version="v1.0",
+        is_active=True,
+    )
+    db_session.add(doc)
+    await db_session.commit()
+
+    response = await client.get("/api/cv/download")
+    assert response.status_code == 200
+    assert response.content == b"db pdf content"
+
+
+@pytest.mark.asyncio
+async def test_process_email_notification_success(db_session):
+    from app.api.cv import process_email_notification
+    import uuid
+
     mock_payload = AsyncMock()
     mock_payload.name = "Test"
     mock_payload.email = "test@example.com"
     mock_payload.company = "Co"
     mock_payload.message = "Msg"
+
+    with patch(
+        "app.api.cv.email_service.send_cv_request_notification", return_value=True
+    ):
+        await process_email_notification(uuid.uuid4(), mock_payload, db_session)
+
+
+@pytest.mark.asyncio
+async def test_process_email_notification_failure(db_session):
+    from app.api.cv import process_email_notification
+    import uuid
+
+    mock_payload = AsyncMock()
+    mock_payload.name = "Test"
+    mock_payload.email = "test@example.com"
+    mock_payload.company = "Co"
+    mock_payload.message = "Msg"
+
+    with patch(
+        "app.api.cv.email_service.send_cv_request_notification", return_value=False
+    ):
+        await process_email_notification(uuid.uuid4(), mock_payload, db_session)
 
 
 @pytest.mark.asyncio
@@ -84,16 +128,9 @@ async def test_cv_request_exception(client):
         payload = {
             "name": "Recruiter Three",
             "email": "recruiter@example.com",
-            # missing consent to fail validation first? No, we want DB error.
-            "consent": True,
+            "message": "Valid message",
         }
-        # But wait, validation happens BEFORE DB.
-        # So we must provide valid payload to reach DB.
         response = await client.post("/api/cv/request", json=payload)
-
-        # If we reach here, it means we passed Pydantic validation.
-        # But wait, `app.api.cv.CvRequest` is the model constructor used inside the endpoint.
-        # Patching it should raise exception.
 
         assert response.status_code == 500
         assert response.json()["detail"] == "Failed to process request"

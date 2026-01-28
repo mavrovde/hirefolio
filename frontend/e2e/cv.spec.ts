@@ -17,8 +17,6 @@ test.describe('CV Request Flow', () => {
         await page.fill('input[formControlName="company"]', 'Test Co');
         await page.fill('textarea[formControlName="message"]', 'Hello from E2E');
 
-        // Check consent box
-        await page.check('input[type="checkbox"]');
 
         // Handle the download event
         const downloadPromise = page.waitForEvent('download').catch(() => null);
@@ -32,7 +30,6 @@ test.describe('CV Request Flow', () => {
         // Verify request payload was correct
         expect(requestPayload).toBeTruthy();
         expect(requestPayload.name).toBe('E2E Tester');
-        expect(requestPayload.consent).toBe(true);
 
         // Verify success state - e.g. success message or form reset
         // Assuming the component shows a success message or clears the form

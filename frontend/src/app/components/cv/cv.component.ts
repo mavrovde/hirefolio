@@ -2,12 +2,13 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CvService } from '../../services/cv.service';
+import { HeaderComponent } from '../header/header.component';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
     selector: 'app-cv',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, TranslatePipe],
+    imports: [CommonModule, ReactiveFormsModule, TranslatePipe, HeaderComponent],
     templateUrl: './cv.component.html',
     styleUrl: './cv.component.css'
 })
@@ -25,8 +26,7 @@ export class CvComponent {
             name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]],
             company: [''],
-            message: [''],
-            consent: [false, Validators.requiredTrue]
+            message: ['', Validators.required]
         });
     }
 

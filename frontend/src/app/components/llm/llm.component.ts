@@ -1,17 +1,20 @@
-import { Component, ElementRef, ViewChild, AfterViewChecked, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewChecked, OnInit, ChangeDetectorRef, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { LlmService, ChatMessage } from '../../services/llm.service';
 
+import { HeaderComponent } from '../header/header.component';
+
 @Component({
   selector: 'app-llm',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, HeaderComponent],
   templateUrl: './llm.component.html',
   styleUrls: ['./llm.component.css']
 })
 export class LlmComponent implements OnInit, AfterViewChecked {
+  @Input() standalone = true;
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
 
   private terminalInputRef: ElementRef | null = null;
