@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import Response
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
@@ -15,10 +15,10 @@ router = APIRouter(prefix="/api/cv", tags=["CV"])
 
 
 class CvRequestPayload(BaseModel):
-    name: str
+    name: str = Field(..., min_length=2)
     email: EmailStr
     company: str | None = None
-    message: str
+    message: str = Field(..., min_length=5)
 
 
 @router.post("/request")
@@ -61,7 +61,6 @@ async def request_cv(
 
 
 @router.get("/download")
-@router.get("/download")
 async def download_cv(db: AsyncSession = Depends(get_db)):
     # 1. Get active CV from DB
     result = await db.execute(select(CvDocument).where(CvDocument.is_active))
@@ -102,7 +101,7 @@ async def process_email_notification(request_id, payload, db: AsyncSession):
         name=payload.name,
         email=payload.email,
         company=payload.company or "N/A",
-        message=payload.message or "N/A",
+        message=payload.message,
     )
 
     if success:

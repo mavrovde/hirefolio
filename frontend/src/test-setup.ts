@@ -8,7 +8,11 @@ import {
   platformBrowserDynamicTesting,
 } from '@angular/platform-browser-dynamic/testing';
 
-getTestBed().initTestEnvironment(BrowserDynamicTestingModule, platformBrowserDynamicTesting());
+try {
+  getTestBed().initTestEnvironment(BrowserDynamicTestingModule, platformBrowserDynamicTesting());
+} catch (e) {
+  // Ignore "already called" error during parallel test execution
+}
 
 // Global mocks
 const mockLocalStorage = {
