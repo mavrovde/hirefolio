@@ -62,8 +62,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    ports:
-      - "4200:80"
+    # ports:
+    #   - "4200:80"
+    expose:
+      - "80"
+      - "4000"
     environment:
       - NODE_ENV=production
     depends_on:
@@ -82,6 +85,19 @@ services:
       - open-webui_data:/app/backend/data
     depends_on:
       - ollama
+    networks:
+      - app-network
+
+  proxy:
+    build: ./proxy
+    ports:
+      - "4200:80"
+    volumes:
+      - ./certs:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+      - open-webui
     networks:
       - app-network
 

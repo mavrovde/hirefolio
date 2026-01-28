@@ -118,9 +118,23 @@ export class BlogPostComponent implements OnInit {
                 keywords: post.tags?.join(', ')
               });
 
-              if (isPlatformBrowser(this.platformId)) {
-                this.addJsonLd(post);
-              }
+              this.seoService.setJsonLd({
+                "@context": "https://schema.org",
+                "@type": "BlogPosting",
+                "headline": post.title,
+                "datePublished": post.date,
+                "author": {
+                  "@type": "Person",
+                  "name": "Sergii Mavrov",
+                  "url": "https://mavrov.de"
+                },
+                "description": post.summary || post.content.substring(0, 160),
+                "mainEntityOfPage": {
+                  "@type": "WebPage",
+                  "@id": `https://mavrov.de/blog/${post.slug}`
+                },
+                "keywords": post.tags?.join(', ')
+              });
             }
           }),
           catchError(() => {
@@ -132,30 +146,7 @@ export class BlogPostComponent implements OnInit {
     );
   }
 
-  private addJsonLd(post: BlogPost): void {
-    const schema = {
-      "@context": "https://schema.org",
-      "@type": "BlogPosting",
-      "headline": post.title,
-      "datePublished": post.date,
-      "author": {
-        "@type": "Person",
-        "name": "Sergii Mavrov",
-        "url": "https://mavrov.de"
-      },
-      "description": post.summary || post.content.substring(0, 160),
-      "mainEntityOfPage": {
-        "@type": "WebPage",
-        "@id": `https://mavrov.de/blog/${post.slug}`
-      },
-      "keywords": post.tags?.join(', ')
-    };
 
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.text = JSON.stringify(schema);
-    document.head.appendChild(script);
-  }
 
   goBack() {
     this.router.navigate(['/'], { fragment: 'blog' });

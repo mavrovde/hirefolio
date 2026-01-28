@@ -37,7 +37,7 @@ echo ""
 echo "e2e: 🎭 Running E2E Tests..."
 # Ensure full stack is running
 echo "Starting full stack..."
-docker-compose up -d --build backend frontend
+docker-compose up -d --build backend frontend proxy
 # Wait for health with timeouts instead of fixed sleeps
 echo "Waiting for Backend to be ready..."
 # Portable wait function
@@ -52,8 +52,8 @@ if [ $count -eq 30 ]; then
     exit 1
 fi
 
-echo "🔄 Restarting Frontend to ensure fresh DNS resolution..."
-docker-compose restart frontend
+echo "🔄 Restarting Frontend & Proxy to ensure fresh DNS resolution..."
+docker-compose restart frontend proxy
 
 echo "Waiting for Frontend to be ready..."
 count=0

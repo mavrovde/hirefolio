@@ -1,6 +1,7 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
 import { isPlatformBrowser } from '@angular/common';
+import { BehaviorSubject } from 'rxjs';
 
 export interface SeoData {
     title?: string;
@@ -18,8 +19,10 @@ export interface SeoData {
 export class SeoService {
     private baseTitle = 'Sergii Mavrov | Principal Software Engineer';
     private defaultDescription = 'Professional portfolio of Sergii Mavrov, a Principal Software Engineer specialized in Cloud, AI, and Full-Stack Development.';
-    private defaultImage = 'https://mavrov.de/assets/og-image.png'; // Should exist in public assets
+    private defaultImage = 'https://mavrov.de/assets/og-image.png';
     private baseUrl = 'https://mavrov.de';
+
+    public jsonLdSchema$ = new BehaviorSubject<any>(null);
 
     constructor(
         private titleService: Title,
@@ -58,6 +61,10 @@ export class SeoService {
         if (isPlatformBrowser(this.platformId)) {
             this.updateCanonicalUrl(url);
         }
+    }
+
+    setJsonLd(schema: any): void {
+        this.jsonLdSchema$.next(schema);
     }
 
     private updateCanonicalUrl(url: string): void {

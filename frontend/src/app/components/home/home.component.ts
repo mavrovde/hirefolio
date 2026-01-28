@@ -79,9 +79,22 @@ export class HomeComponent implements OnInit {
         });
 
         if (isPlatformBrowser(this.platformId)) {
-          this.addJsonLd(profile);
           this.initScrollLogic();
         }
+
+        this.seoService.setJsonLd({
+          "@context": "https://schema.org",
+          "@type": "Person",
+          "name": profile.name,
+          "jobTitle": profile.headline,
+          "url": "https://mavrov.de",
+          "description": profile.about,
+          "sameAs": [
+            "https://linkedin.com/in/smavrov",
+            "https://github.com/mavrovde"
+          ],
+          "knowsAbout": profile.skills
+        });
       }
     });
   }
@@ -122,24 +135,5 @@ export class HomeComponent implements OnInit {
     }, 100);
   }
 
-  private addJsonLd(profile: Profile): void {
-    const schema = {
-      "@context": "https://schema.org",
-      "@type": "Person",
-      "name": profile.name,
-      "jobTitle": profile.headline,
-      "url": "https://mavrov.de",
-      "description": profile.about,
-      "sameAs": [
-        "https://linkedin.com/in/smavrov",
-        "https://github.com/mavrovde"
-      ],
-      "knowsAbout": profile.skills
-    };
 
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.text = JSON.stringify(schema);
-    document.head.appendChild(script);
-  }
 }

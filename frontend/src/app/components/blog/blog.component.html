@@ -1,9 +1,12 @@
 <div [class.bg-black]="standalone" [class.min-h-screen]="standalone">
   <app-header *ngIf="standalone"></app-header>
   <section id="blog" class="py-20 px-6 max-w-4xl mx-auto font-mono text-sm md:text-base">
-    <h1 class="text-xl md:text-2xl font-bold mb-8 text-primary pb-2">
+    <h1 *ngIf="standalone" class="text-xl md:text-2xl font-bold mb-8 text-primary pb-2">
       {{ 'SECTION.BLOG' | translate }}
     </h1>
+    <h2 *ngIf="!standalone" class="text-xl md:text-2xl font-bold mb-8 text-primary pb-2">
+      {{ 'SECTION.BLOG' | translate }}
+    </h2>
 
     <!-- Terminal Search Bar -->
     <div
