@@ -7,14 +7,33 @@ echo "========================================"
 echo "🚀 STARTING AUTOMATED RELEASE PROCESS 🚀"
 echo "========================================"
 
-# 1. Bump Version
-echo "Step 1: Bumping version..."
-./bump_version.sh
+# 1. Version Bump Type
+BUMP_TYPE=$1
+if [[ "$BUMP_TYPE" != "--patch" && "$BUMP_TYPE" != "--minor" && "$BUMP_TYPE" != "--major" ]]; then
+    echo "Usage: ./release.sh [--patch|--minor|--major] [message]"
+    exit 1
+fi
+
+# 2. Informative Message
+DESC=$2
+if [ -z "$DESC" ]; then
+    echo "Please enter an informative commit message for this release:"
+    read -r DESC
+fi
+
+if [ -z "$DESC" ]; then
+    echo "❌ Error: Release message cannot be empty."
+    exit 1
+fi
+
+# 3. Bump Version
+echo "Step 1: Bumping version ($BUMP_TYPE)..."
+./bump_version.sh "$BUMP_TYPE"
 VERSION=$(cat VERSION)
 export IMAGE_TAG="$VERSION"
 echo "Target Version: v$VERSION"
 
-# 2. Run Full Verification Suite
+# 4. Run Full Verification Suite
 echo ""
 echo "Step 2: Running mandatory verification suite..."
 if ./verify_all.sh; then
@@ -34,10 +53,9 @@ else
     exit 1
 fi
 
-# 3. Commit synchronized version files
+# 5. Commit synchronized version files
 echo ""
 echo "Step 3: Committing version updates..."
-DESC="${1:-Release v$VERSION}"
 git add .
 git commit -m "$DESC"
 

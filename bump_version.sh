@@ -4,11 +4,25 @@
 current_version=$(cat VERSION)
 IFS='.' read -r major minor patch <<< "$current_version"
 
-# Increment patch
-new_patch=$((patch + 1))
-new_version="$major.$minor.$new_patch"
+# Handle arguments
+BUMP_TYPE=$1
+if [ -z "$BUMP_TYPE" ]; then
+    BUMP_TYPE="--patch"
+fi
 
-echo "Bumping version: $current_version -> $new_version"
+# Increment based on type
+if [[ "$BUMP_TYPE" == "--major" ]]; then
+    new_major=$((major + 1))
+    new_version="$new_major.0.0"
+elif [[ "$BUMP_TYPE" == "--minor" ]]; then
+    new_minor=$((minor + 1))
+    new_version="$major.$new_minor.0"
+else
+    new_patch=$((patch + 1))
+    new_version="$major.$minor.$new_patch"
+fi
+
+echo "Bumping version ($BUMP_TYPE): $current_version -> $new_version"
 
 # Update VERSION file
 echo "$new_version" > VERSION
