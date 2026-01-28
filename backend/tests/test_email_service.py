@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from app.services.email import EmailService
-from app.config import settings
+
 
 class TestEmailService(unittest.TestCase):
     @patch("app.services.email.settings")
@@ -20,29 +20,29 @@ class TestEmailService(unittest.TestCase):
 
         service = EmailService()
         result = service.send_cv_request_notification(
-            name="John Doe", 
-            email="john@example.com", 
-            company="Test Corp", 
-            message="Please send CV"
+            name="John Doe",
+            email="john@example.com",
+            company="Test Corp",
+            message="Please send CV",
         )
 
         self.assertTrue(result)
         mock_server.starttls.assert_called_once()
         mock_server.login.assert_called_with("user@example.com", "password")
         mock_server.send_message.assert_called_once()
-        
+
         # Verify message content roughly
         args, _ = mock_server.send_message.call_args
         msg = args[0]
-        self.assertEqual(msg['Subject'], "CV Request from John Doe (Test Corp)")
+        self.assertEqual(msg["Subject"], "CV Request from John Doe (Test Corp)")
 
     @patch("app.services.email.settings")
     def test_send_cv_request_missing_config(self, mock_settings):
         mock_settings.smtp_host = ""
-        
+
         service = EmailService()
         result = service.send_cv_request_notification("Name", "email", "co", "msg")
-        
+
         self.assertFalse(result)
 
     @patch("app.services.email.settings")
@@ -58,5 +58,5 @@ class TestEmailService(unittest.TestCase):
 
         service = EmailService()
         result = service.send_cv_request_notification("Name", "email", "co", "msg")
-        
+
         self.assertFalse(result)

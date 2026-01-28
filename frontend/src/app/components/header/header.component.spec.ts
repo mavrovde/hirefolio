@@ -43,13 +43,13 @@ describe('HeaderComponent', () => {
   });
 
   it('should have 6 nav items', () => {
-    expect(component.navItems.length).toBe(6);
+    expect(component.navItems.length).toBe(7);
   });
 
   it('should render navigation links', () => {
     const DEBUG_ELEMENT = fixture.debugElement;
     const navLinks = DEBUG_ELEMENT.queryAll(By.css('nav a'));
-    expect(navLinks.length).toBe(6);
+    expect(navLinks.length).toBe(7);
   });
 
   it('should have terminal design classes', () => {
@@ -113,6 +113,6 @@ describe('HeaderComponent', () => {
 
   it('should have correct properties in navItems', () => {
     expect(component.navItems[0]).toEqual({ labelKey: 'NAV.ABOUT', href: '#about' });
-    expect(component.navItems[component.navItems.length - 1]).toEqual({ labelKey: 'NAV.LLM', href: '/llm' });
+    expect(component.navItems[component.navItems.length - 1]).toEqual({ labelKey: 'NAV.CV', href: '/cv' });
   });
 });

@@ -13,6 +13,8 @@ from app.api.ai import router as ai_router
 
 
 from app.api.cv import router as cv_router
+from app.api.admin_cv import router as admin_cv_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,7 +28,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.0.110",
+    version="1.0.112",
     lifespan=lifespan,
 )
 
@@ -50,6 +52,7 @@ app.include_router(stats_router)
 app.include_router(tags_router)
 app.include_router(ai_router)
 app.include_router(cv_router)
+app.include_router(admin_cv_router)
 
 
 @app.get("/")

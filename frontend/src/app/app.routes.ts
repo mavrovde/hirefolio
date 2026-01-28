@@ -70,6 +70,13 @@ export const routes: Routes = [
             (m) => m.PostEditorComponent,
           ),
       },
+      {
+        path: 'cv-manager',
+        loadComponent: () =>
+          import('./components/admin/cv-manager/cv-manager.component').then(
+            (m) => m.CvManagerComponent,
+          ),
+      },
     ],
   },
 ];

@@ -4,6 +4,7 @@ from sqlalchemy import String, Text, DateTime, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
+
 class CvRequest(Base):
     __tablename__ = "cv_requests"
 
@@ -13,7 +14,8 @@ class CvRequest(Base):
     company: Mapped[str] = mapped_column(String, nullable=True)
     message: Mapped[str] = mapped_column(Text, nullable=True)
     consent_given: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    
+    cv_version: Mapped[str] = mapped_column(String, nullable=True)
+
     # Tracking
     email_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
