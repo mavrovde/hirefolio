@@ -59,7 +59,12 @@ describe('CvComponent', () => {
         expect(component.cvForm.valid).toBe(true);
     });
 
-
+    it('should be invalid if message is too short', () => {
+        component.cvForm.controls['name'].setValue('John Doe');
+        component.cvForm.controls['email'].setValue('john@example.com');
+        component.cvForm.controls['message'].setValue('123');
+        expect(component.cvForm.valid).toBe(false);
+    });
 
     it('should call requestCv on submit', () => {
         component.cvForm.controls['name'].setValue('John Doe');
@@ -70,7 +75,7 @@ describe('CvComponent', () => {
         cvService.getDownloadUrl.mockReturnValue('http://full/url');
 
         // Mock window.open
-        const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+        const openSpy = vi.spyOn(window, 'open').mockImplementation(() => ({}) as Window);
 
         component.onSubmit();
 
@@ -92,7 +97,7 @@ describe('CvComponent', () => {
     it('should handle response.success = false', () => {
         component.cvForm.controls['name'].setValue('John Doe');
         component.cvForm.controls['email'].setValue('john@example.com');
-        component.cvForm.controls['message'].setValue('Msg');
+        component.cvForm.controls['message'].setValue('Message long enough');
 
         cvService.requestCv.mockReturnValue(of({ success: false, message: 'Failed' }));
 
@@ -102,16 +107,32 @@ describe('CvComponent', () => {
         expect(component.successMessage).toBeNull();
     });
 
-    it('should handle error', () => {
+    it('should handle 404 error specifically', () => {
         component.cvForm.controls['name'].setValue('John Doe');
         component.cvForm.controls['email'].setValue('john@example.com');
-        component.cvForm.controls['message'].setValue('Relevant message');
+        component.cvForm.controls['message'].setValue('Message long enough');
 
-        cvService.requestCv.mockReturnValue(throwError(() => new Error('Err')));
+        cvService.requestCv.mockReturnValue(throwError(() => ({
+            status: 404,
+            error: { detail: 'Unavailable' }
+        })));
 
         component.onSubmit();
 
-        expect(component.errorMessage).toBe('Failed to submit request. Please try again later.');
+        expect(component.errorMessage).toBe('CV.ERROR_UNAVAILABLE');
+        expect(component.isLoading).toBe(false);
+    });
+
+    it('should handle general error', () => {
+        component.cvForm.controls['name'].setValue('John Doe');
+        component.cvForm.controls['email'].setValue('john@example.com');
+        component.cvForm.controls['message'].setValue('Message long enough');
+
+        cvService.requestCv.mockReturnValue(throwError(() => ({ status: 500 })));
+
+        component.onSubmit();
+
+        expect(component.errorMessage).toBe('CV.ERROR_SUBMIT');
         expect(component.isLoading).toBe(false);
     });
 });

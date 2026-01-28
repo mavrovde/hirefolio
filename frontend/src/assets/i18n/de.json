@@ -28,7 +28,8 @@
     "SUBMIT": "Download anfordern",
     "SUCCESS": "Wenn der Download nicht automatisch gestartet ist, prüfen Sie die Benachrichtigung oder versuchen Sie es erneut.",
     "REQUEST_AGAIN": "Erneut anfordern",
-    "ERROR_SUBMIT": "Anfrage fehlgeschlagen. Bitte versuchen Sie es später erneut."
+    "ERROR_SUBMIT": "Anfrage fehlgeschlagen. Bitte versuchen Sie es später erneut.",
+    "ERROR_UNAVAILABLE": "Der Lebenslauf ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut."
   },
   "SECTION": {
     "HI": "> Hallo, ich bin",

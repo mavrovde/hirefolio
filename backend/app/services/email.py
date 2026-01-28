@@ -49,5 +49,40 @@ Please review and respond if necessary.
             logger.error(f"Failed to send email: {e}")
             return False
 
+    def send_requester_confirmation(self, name: str, email: str):
+        if (
+            not settings.smtp_host
+            or not settings.smtp_user
+            or not settings.smtp_password
+        ):
+            return False
+
+        try:
+            msg = EmailMessage()
+            msg.set_content(f"""
+Hello {name},
+
+This is an automated confirmation that your request for Sergii Mavrov's CV has been received.
+
+If you weren't able to download it immediately, you can try again later or respond to this email.
+
+Best regards,
+Sergii Mavrov
+""")
+            msg["Subject"] = "CV Request Confirmation - Sergii Mavrov"
+            msg["From"] = settings.smtp_user
+            msg["To"] = email
+
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+                server.starttls()
+                server.login(settings.smtp_user, settings.smtp_password)
+                server.send_message(msg)
+
+            logger.info(f"Requester confirmation sent to {email}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send confirmation email to {email}: {e}")
+            return False
+
 
 email_service = EmailService()

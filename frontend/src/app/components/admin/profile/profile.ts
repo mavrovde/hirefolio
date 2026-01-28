@@ -23,6 +23,7 @@ export class ProfileComponent {
   constructor() { }
 
   onSubmit() {
+    console.log('DEBUG: onSubmit started');
     this.loading = true;
     this.message = '';
     this.error = '';
@@ -30,15 +31,19 @@ export class ProfileComponent {
 
     // Phase 1: Verification feedback
     setTimeout(() => {
+      console.log('DEBUG: Phase 1 timeout reached');
       this.statusMessage = 'Verifying credentials...';
 
       // Phase 2: Actual request
+      console.log('DEBUG: Calling changePassword');
       this.authService.changePassword(this.oldPassword, this.newPassword).subscribe({
         next: () => {
+          console.log('DEBUG: changePassword next callback');
           this.statusMessage = 'Password updated successfully.';
 
           // Phase 3: Success feedback
           setTimeout(() => {
+            console.log('DEBUG: Phase 3 timeout reached');
             this.message = 'Password changed successfully.';
             this.statusMessage = '';
             this.oldPassword = '';

@@ -54,7 +54,7 @@ import { HeaderComponent } from '../../header/header.component';
 
             <!-- Content -->
             <article class="prose prose-invert prose-p:text-primary prose-a:text-terminal-highlight prose-headings:text-primary prose-pre:bg-terminal-dim/20 prose-pre:border prose-pre:border-terminal-dim max-w-none">
-              <div [innerHTML]="post.content"></div>
+              <div [innerHTML]="post.content" class="whitespace-pre-wrap"></div>
             </article>
 
             <!-- Footer -->

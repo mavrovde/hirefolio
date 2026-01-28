@@ -1,6 +1,7 @@
 .post-editor {
   max-width: 1200px;
   color: #0f0;
+  font-family: var(--font-mono, 'Courier Prime', monospace);
 }
 
 .page-title {
@@ -25,12 +26,11 @@
   margin-bottom: 8px;
   color: #0f0;
   transition: color 0.3s;
+  font-size: 0.9rem;
 }
 
 .form-group label.field-changed {
   color: #f90;
-
-  /* Orange highlight for changes */
 }
 
 .form-group label.field-changed::after {
@@ -45,11 +45,13 @@
 .form-group textarea {
   width: 100%;
   padding: 10px;
-  background: #000;
-  border: 1px solid var(--primary-color, #0ea5e9);
-  color: #0f0;
-  font-family: 'Courier Prime', monospace;
-  font-size: 16px;
+  background: transparent;
+  border: 1px solid #333;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.3s;
 }
 
 .form-group textarea {
@@ -59,8 +61,8 @@
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
-  outline: none;
-  box-shadow: 0 0 10px rgb(14 165 233 / 50%);
+  border-color: var(--primary-color, #0ea5e9);
+  background: rgba(14, 165, 233, 0.05);
 }
 
 .form-group input:disabled,
@@ -81,6 +83,7 @@
   align-items: center;
   cursor: pointer;
   margin: 0;
+  color: #666;
 }
 
 .checkbox-group input[type='checkbox'] {
@@ -89,33 +92,45 @@
   cursor: pointer;
 }
 
+.tag-input {
+  max-width: 200px;
+}
+
+.tag-chip {
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid var(--primary-color, #0ea5e9);
+  color: var(--primary-color, #0ea5e9);
+}
+
 .error-message {
-  background: rgb(255 0 0 / 10%);
+  background: rgba(255, 0, 0, 0.1);
   border: 1px solid #f00;
   color: #f00;
-  padding: 10px;
+  padding: 12px;
   margin-bottom: 20px;
-  border-radius: 4px;
+  font-size: 0.9rem;
 }
 
 .error-icon {
   font-weight: bold;
-  margin-right: 5px;
+  margin-right: 8px;
 }
 
 .button-group {
   display: flex;
   gap: 15px;
-  margin-top: 30px;
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 1px solid #333;
 }
 
 .btn-primary,
 .btn-secondary {
-  padding: 12px 24px;
-  border: 2px solid;
+  padding: 10px 20px;
+  border: 1px solid;
   background: transparent;
-  font-family: 'Courier Prime', monospace;
-  font-size: 16px;
+  font-family: inherit;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -128,6 +143,8 @@
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  border-color: #333;
+  color: #666;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -136,18 +153,13 @@
 }
 
 .btn-secondary {
-  border-color: #666;
+  border-color: #333;
   color: #666;
 }
 
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .btn-secondary:hover:not(:disabled) {
-  border-color: #0f0;
-  color: #0f0;
+  border-color: #ccc;
+  color: #ccc;
 }
 
 @media (width <=768px) {
@@ -157,10 +169,10 @@
 }
 
 .loading-overlay {
-  background: rgb(0 0 0 / 70%);
+  background: rgba(0, 0, 0, 0.5);
   color: var(--primary-color, #0ea5e9);
-  padding: 20px;
+  padding: 30px;
   text-align: center;
-  border: 1px dashed var(--primary-color, #0ea5e9);
+  border: 1px dashed #333;
   margin-bottom: 20px;
 }

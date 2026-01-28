@@ -26,7 +26,7 @@ export class CvComponent {
             name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]],
             company: [''],
-            message: ['', Validators.required]
+            message: ['', [Validators.required, Validators.minLength(5)]]
         });
     }
 
@@ -52,7 +52,11 @@ export class CvComponent {
             },
             error: (error) => {
                 this.isLoading = false;
-                this.errorMessage = 'Failed to submit request. Please try again later.';
+                if (error.status === 404) {
+                    this.errorMessage = 'CV.ERROR_UNAVAILABLE';
+                } else {
+                    this.errorMessage = 'CV.ERROR_SUBMIT';
+                }
                 console.error('CV Request Error:', error);
             }
         });

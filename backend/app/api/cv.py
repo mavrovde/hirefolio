@@ -7,9 +7,7 @@ from app.database import get_db
 from app.models.cv_request import CvRequest
 from app.models.cv_document import CvDocument
 from app.services.email import email_service
-from app.config import settings
 from app.logger import logger
-import os
 
 router = APIRouter(prefix="/api/cv", tags=["CV"])
 
@@ -28,6 +26,14 @@ async def request_cv(
     db: AsyncSession = Depends(get_db),
 ):
     try:
+        # Pre-check: Verify there is an active CV document
+        # This prevents users from being "informed" they can download it when it's missing.
+        result = await db.execute(select(CvDocument).where(CvDocument.is_active))
+        active_cv = result.scalar_one_or_none()
+
+        if not active_cv:
+            raise HTTPException(status_code=404, detail="CV_ERROR_UNAVAILABLE")
+
         # 1. Save request to DB
         cv_request = CvRequest(
             name=payload.name,
@@ -35,26 +41,22 @@ async def request_cv(
             company=payload.company,
             message=payload.message,
             consent_given=True,  # Default to true as per new policy
-            cv_version=settings.cv_version,
+            cv_version=active_cv.version if active_cv else "fallback",
         )
         db.add(cv_request)
         await db.commit()
         await db.refresh(cv_request)
 
-        # 2. Send email in background
-        # We wrap it to update DB status on success if needed,
-        # or just fire and forget for speed (but we want reliability).
-        # For simplicity, we'll try to send immediately or queue it.
-        # Let's use BackgroundTasks for non-blocking UI response.
-        background_tasks.add_task(
-            process_email_notification, cv_request.id, payload, db
-        )
+        # 2. Send emails in background
+        background_tasks.add_task(process_email_notifications, cv_request.id, payload)
 
         return {
             "success": True,
             "message": "Request received. You can now download the CV.",
             "download_url": "/api/cv/download",
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error processing CV request: {e}")
         raise HTTPException(status_code=500, detail="Failed to process request")
@@ -67,21 +69,8 @@ async def download_cv(db: AsyncSession = Depends(get_db)):
     cv_doc = result.scalar_one_or_none()
 
     if not cv_doc:
-        # Fallback to static if DB is empty (dev mode)
-        file_path = "app/static/cv.pdf"
-        if os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                content = f.read()
-            return Response(
-                content=content,
-                media_type="application/pdf",
-                headers={
-                    "Content-Disposition": 'attachment; filename="Sergii_Mavrov_CV_Fallback.pdf"'
-                },
-            )
-
-        logger.warning("No active CV found in DB and no fallback file.")
-        raise HTTPException(status_code=404, detail="CV file not found")
+        logger.warning("No active CV found in DB.")
+        raise HTTPException(status_code=404, detail="CV_ERROR_UNAVAILABLE")
 
     # 2. Return DB content
     return Response(
@@ -91,21 +80,16 @@ async def download_cv(db: AsyncSession = Depends(get_db)):
     )
 
 
-async def process_email_notification(request_id, payload, db: AsyncSession):
-    # Note: re-using the session passed from dependency might cause issues if the request finishes.
-    # Ideally we'd create a new session or send email synchronously if fast enough.
-    # Given smtplib is sync blocking, we should probably run it in a threadpool or
-    # keep it simple. For now, let's just send it.
-
-    success = email_service.send_cv_request_notification(
+async def process_email_notifications(request_id, payload):
+    # 1. Notify Admin
+    email_service.send_cv_request_notification(
         name=payload.name,
         email=payload.email,
         company=payload.company or "N/A",
         message=payload.message,
     )
 
-    if success:
-        # We need a new session context here properly to update the record background
-        # Avoiding complex async session handling for this MVP step.
-        # Just logging for now.
-        logger.info(f"Email sent for request {request_id}")
+    # 2. Notify Requester
+    email_service.send_requester_confirmation(name=payload.name, email=payload.email)
+
+    logger.info(f"Emails sent for CV request {request_id}")

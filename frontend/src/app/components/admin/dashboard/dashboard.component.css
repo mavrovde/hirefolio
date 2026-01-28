@@ -1,5 +1,6 @@
 .dashboard {
   color: #0f0;
+  font-family: var(--font-mono, 'Courier Prime', monospace);
 }
 
 .page-title {
@@ -34,72 +35,83 @@
 }
 
 .stat-card {
-  background: #0a0a0a;
-  border: 2px solid var(--primary-color, #0ea5e9);
-  padding: 30px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid #333;
+  padding: 25px;
   text-align: center;
   transition: all 0.3s;
 }
 
 .stat-card:hover {
-  box-shadow: 0 0 20px rgb(14 165 233 / 30%);
-  transform: translateY(-5px);
+  border-color: var(--primary-color, #0ea5e9);
+  background: rgba(14, 165, 233, 0.05);
+  box-shadow: 0 0 15px rgba(14, 165, 233, 0.1);
 }
 
 .stat-value {
-  font-size: 48px;
+  font-size: 3rem;
   font-weight: bold;
   color: var(--primary-color, #0ea5e9);
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .stat-label {
-  font-size: 16px;
-  color: #0f0;
+  font-size: 0.9rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stat-subtext {
+  margin-top: 10px;
+  font-size: 0.8rem;
 }
 
 .quick-actions h2 {
-  font-size: 24px;
-  color: var(--primary-color, #0ea5e9);
+  font-size: 20px;
+  color: #0f0;
   margin-bottom: 20px;
 }
 
 .action-buttons {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 15px;
 }
 
 .action-btn {
   display: flex;
   align-items: center;
-  padding: 20px;
-  background: #0a0a0a;
-  border: 2px solid var(--primary-color, #0ea5e9);
-  color: #0f0;
+  padding: 15px 20px;
+  background: transparent;
+  border: 1px solid #333;
+  color: var(--primary-color, #0ea5e9);
   text-decoration: none;
   transition: all 0.3s;
+  font-weight: 500;
 }
 
 .action-btn:hover {
-  background: rgb(14 165 233 / 10%);
-  box-shadow: 0 0 15px rgb(14 165 233 / 30%);
+  border-color: var(--primary-color, #0ea5e9);
+  background: rgba(14, 165, 233, 0.1);
+  color: #fff;
 }
 
 .action-btn .icon {
-  font-size: 24px;
-  margin-right: 15px;
+  font-size: 1.2rem;
+  margin-right: 12px;
 }
 
 .btn-primary {
   display: inline-block;
-  padding: 12px 24px;
+  padding: 10px 20px;
   background: transparent;
-  border: 2px solid var(--primary-color, #0ea5e9);
+  border: 1px solid var(--primary-color, #0ea5e9);
   color: var(--primary-color, #0ea5e9);
   text-decoration: none;
   transition: all 0.3s;
   cursor: pointer;
+  font-family: inherit;
 }
 
 .btn-primary:hover {

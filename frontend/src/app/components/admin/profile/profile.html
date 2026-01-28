@@ -4,36 +4,36 @@
             <span class="terminal-title">admin@mavrov.de:~$ ./passwd</span>
         </div>
         <div class="terminal-body">
-            <h2 class="profile-title">&gt; User Profile</h2>
+            <h2 class="profile-title">> User Profile</h2>
 
             @if (currentUser$ | async; as user) {
             <div class="user-details">
                 <div class="detail-row">
-                    <span class="detail-label">&gt; Username:</span>
+                    <span class="detail-label">> Username:</span>
                     <span class="detail-value">{{ user.username }}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">&gt; Email:</span>
+                    <span class="detail-label">> Email:</span>
                     <span class="detail-value">{{ user.email }}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">&gt; Role:</span>
+                    <span class="detail-label">> Role:</span>
                     <span class="detail-value">{{ user.is_admin ? 'Superuser/Admin' : 'Regular User' }}</span>
                 </div>
             </div>
             }
 
-            <h2 class="profile-title" style="margin-top: 2rem;">&gt; Change Password</h2>
+            <h2 class="profile-title" style="margin-top: 2rem;">> Change Password</h2>
 
             <form (ngSubmit)="onSubmit()" #passwordForm="ngForm">
                 <div class="form-group">
-                    <label for="oldPassword">&gt; Current Password:</label>
+                    <label for="oldPassword">> Current Password:</label>
                     <input type="password" id="oldPassword" name="oldPassword" [(ngModel)]="oldPassword" required
                         [disabled]="loading" />
                 </div>
 
                 <div class="form-group">
-                    <label for="newPassword">&gt; New Password:</label>
+                    <label for="newPassword">> New Password:</label>
                     <input type="password" id="newPassword" name="newPassword" [(ngModel)]="newPassword" required
                         minlength="8" [disabled]="loading" />
                 </div>
@@ -51,7 +51,8 @@
                 }
 
                 <div class="button-group">
-                    <button type="submit" [disabled]="!passwordForm.valid || loading" class="btn-primary">
+                    <button type="submit" [disabled]="!passwordForm.valid || loading" class="btn-primary"
+                        [class.is-loading]="loading">
                         {{ loading ? '[ Processing... ]' : '[ Change Password ]' }}
                     </button>
                 </div>

@@ -28,7 +28,8 @@
     "SUBMIT": "Request Download",
     "SUCCESS": "If the download didn't start automatically, check the notification or try again.",
     "REQUEST_AGAIN": "Request Again",
-    "ERROR_SUBMIT": "Failed to submit request. Please try again later."
+    "ERROR_SUBMIT": "Failed to submit request. Please try again later.",
+    "ERROR_UNAVAILABLE": "CV is currently unavailable. Please try again later."
   },
   "SECTION": {
     "HI": "> Hi, I'm",

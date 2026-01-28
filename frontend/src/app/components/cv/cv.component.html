@@ -10,7 +10,7 @@
             </div>
 
             <div *ngIf="errorMessage" class="alert error">
-                {{ 'CV.ERROR_SUBMIT' | translate }}
+                {{ errorMessage | translate }}
             </div>
 
             <form [formGroup]="cvForm" (ngSubmit)="onSubmit()" *ngIf="!successMessage">

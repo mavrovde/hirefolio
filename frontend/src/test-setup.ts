@@ -1,3 +1,5 @@
+import 'zone.js';
+import 'zone.js/testing';
 import { vi, afterEach } from 'vitest';
 import '@analogjs/vite-plugin-angular/setup-vitest';
 import { getTestBed, TestBed } from '@angular/core/testing';

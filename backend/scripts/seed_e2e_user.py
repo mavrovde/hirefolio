@@ -38,8 +38,29 @@ async def seed_e2e_user():
             )
             session.add(user)
 
+        # Seed Active CV
+        print("Seeding active CV document...")
+        from app.models.cv_document import CvDocument
+
+        result_cv = await session.execute(
+            select(CvDocument).where(CvDocument.is_active.is_(True))
+        )
+        active_cv = result_cv.scalar_one_or_none()
+
+        if not active_cv:
+            print("Creating active CV document...")
+            cv = CvDocument(
+                filename="e2e_test_cv.pdf",
+                data=b"%PDF-1.4 E2E Test Content",
+                version="v1.0.0-e2e",
+                is_active=True,
+            )
+            session.add(cv)
+        else:
+            print("Active CV already exists.")
+
         await session.commit()
-        print("E2E user 'admin' ready.")
+        print("E2E data (user + cv) ready.")
 
 
 if __name__ == "__main__":

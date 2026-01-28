@@ -7,7 +7,7 @@ export interface CvRequestPayload {
     name: string;
     email: string;
     company?: string;
-    message?: string;
+    message: string;
 }
 
 export interface CvResponse {

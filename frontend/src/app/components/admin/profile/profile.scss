@@ -99,19 +99,19 @@ input {
         cursor: not-allowed;
         border-color: #333;
         color: #666;
+    }
 
-        &::after {
-            content: '';
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            margin-left: 10px;
-            border: 2px solid var(--terminal-border, #333);
-            border-top-color: var(--terminal-accent, #238636);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            vertical-align: middle;
-        }
+    &.is-loading::after {
+        content: '';
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-left: 10px;
+        border: 2px solid var(--terminal-border, #333);
+        border-top-color: var(--primary-color, #0ea5e9);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        vertical-align: middle;
     }
 }
 

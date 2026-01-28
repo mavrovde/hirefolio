@@ -60,3 +60,39 @@ class TestEmailService(unittest.TestCase):
         result = service.send_cv_request_notification("Name", "email", "co", "msg")
 
         self.assertFalse(result)
+
+    @patch("app.services.email.settings")
+    @patch("smtplib.SMTP")
+    def test_send_requester_confirmation_success(self, mock_smtp, mock_settings):
+        mock_settings.smtp_host = "smtp.example.com"
+        mock_settings.smtp_port = 587
+        mock_settings.smtp_user = "user@example.com"
+        mock_settings.smtp_password = "password"
+
+        mock_server = MagicMock()
+        mock_smtp.return_value.__enter__.return_value = mock_server
+
+        service = EmailService()
+        result = service.send_requester_confirmation("John", "john@example.com")
+
+        self.assertTrue(result)
+        mock_server.send_message.assert_called_once()
+        args, _ = mock_server.send_message.call_args
+        msg = args[0]
+        self.assertEqual(msg["Subject"], "CV Request Confirmation - Sergii Mavrov")
+
+    @patch("app.services.email.settings")
+    def test_send_requester_confirmation_missing_config(self, mock_settings):
+        mock_settings.smtp_host = ""
+        service = EmailService()
+        result = service.send_requester_confirmation("Name", "email")
+        self.assertFalse(result)
+
+    @patch("app.services.email.settings")
+    @patch("smtplib.SMTP")
+    def test_send_requester_confirmation_exception(self, mock_smtp, mock_settings):
+        mock_settings.smtp_host = "smtp.example.com"
+        mock_smtp.side_effect = Exception("SMTP Error")
+        service = EmailService()
+        result = service.send_requester_confirmation("Name", "email")
+        self.assertFalse(result)
