@@ -1,10 +1,11 @@
-import { Component, ElementRef, ViewChild, AfterViewChecked, OnInit, ChangeDetectorRef, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ElementRef, ViewChild, AfterViewChecked, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID, Input } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { LlmService, ChatMessage } from '../../services/llm.service';
 
 import { HeaderComponent } from '../header/header.component';
+import { SeoService } from '../../services/seo.service';
 
 @Component({
   selector: 'app-llm',
@@ -32,10 +33,20 @@ export class LlmComponent implements OnInit, AfterViewChecked {
   constructor(
     private llmService: LlmService,
     private cdr: ChangeDetectorRef,
-    private router: Router
+    private router: Router,
+    private seoService: SeoService,
+    @Inject(PLATFORM_ID) private platformId: Object
   ) { }
 
   ngOnInit() {
+    if (this.standalone) {
+      this.seoService.updateSeo({
+        title: 'Local AI Terminal',
+        description: 'Interactive terminal interface for communicating with a local AI assistant. Developed by Sergii Mavrov.',
+        url: '/llm',
+        keywords: 'AI, LLM, Ollama, Terminal, Local AI, Chatbot, Sergii Mavrov'
+      });
+    }
     this.messages.push({ role: 'system', content: 'Connected to local AI agent. Ready for input.' });
   }
 

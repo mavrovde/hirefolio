@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { BlogService, BlogPost } from '../../../services/blog.service';
-import { Observable, switchMap, catchError, of } from 'rxjs';
+import { Observable, switchMap, catchError, of, tap } from 'rxjs';
 import { HeaderComponent } from '../../header/header.component';
+import { SeoService } from '../../../services/seo.service';
 
 @Component({
   selector: 'app-blog-post',
@@ -93,7 +94,9 @@ export class BlogPostComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private blogService: BlogService
+    private blogService: BlogService,
+    private seoService: SeoService,
+    @Inject(PLATFORM_ID) private platformId: Object
   ) { }
 
   ngOnInit() {
@@ -105,6 +108,21 @@ export class BlogPostComponent implements OnInit {
           return of(undefined);
         }
         return this.blogService.getPost(slug).pipe(
+          tap((post) => {
+            if (post) {
+              this.seoService.updateSeo({
+                title: post.title,
+                description: post.summary || post.content.substring(0, 160),
+                url: `/blog/${post.slug}`,
+                type: 'article',
+                keywords: post.tags?.join(', ')
+              });
+
+              if (isPlatformBrowser(this.platformId)) {
+                this.addJsonLd(post);
+              }
+            }
+          }),
           catchError(() => {
             this.router.navigate(['/']);
             return of(undefined);
@@ -112,6 +130,31 @@ export class BlogPostComponent implements OnInit {
         );
       })
     );
+  }
+
+  private addJsonLd(post: BlogPost): void {
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": post.title,
+      "datePublished": post.date,
+      "author": {
+        "@type": "Person",
+        "name": "Sergii Mavrov",
+        "url": "https://mavrov.de"
+      },
+      "description": post.summary || post.content.substring(0, 160),
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": `https://mavrov.de/blog/${post.slug}`
+      },
+      "keywords": post.tags?.join(', ')
+    };
+
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.text = JSON.stringify(schema);
+    document.head.appendChild(script);
   }
 
   goBack() {

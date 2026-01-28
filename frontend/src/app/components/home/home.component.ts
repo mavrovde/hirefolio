@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule, ViewportScroller } from '@angular/common';
+import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, ViewportScroller, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { Observable } from 'rxjs';
 import { tap, take } from 'rxjs/operators';
@@ -15,6 +15,7 @@ import { BlogComponent } from '../blog/blog.component';
 import { ContactComponent } from '../contact/contact.component';
 
 import { ProfileService, Profile } from '../../services/profile.service';
+import { SeoService } from '../../services/seo.service';
 
 @Component({
   selector: 'app-home',
@@ -61,13 +62,27 @@ export class HomeComponent implements OnInit {
   constructor(
     private profileService: ProfileService,
     private route: ActivatedRoute,
-    private viewportScroller: ViewportScroller
+    private viewportScroller: ViewportScroller,
+    private seoService: SeoService,
+    @Inject(PLATFORM_ID) private platformId: Object
   ) { }
 
   ngOnInit() {
     this.profile$ = this.profileService.getProfile();
 
-    this.profile$.pipe(take(1)).subscribe(() => {
+    this.profile$.pipe(take(1)).subscribe((profile) => {
+      if (profile) {
+        this.seoService.updateSeo({
+          title: 'Home',
+          description: profile.about || profile.headline || 'Professional portfolio of Sergii Mavrov, a Principal Software Engineer.',
+          keywords: `Software Development, ${profile.headline}, Cloud, AI, ${profile.skills.join(', ')}`
+        });
+
+        if (isPlatformBrowser(this.platformId)) {
+          this.addJsonLd(profile);
+        }
+      }
+
       // Persistent scroll logic to handle layout expansion
       let attempts = 0;
       const maxAttempts = 30; // 3 seconds max look time
@@ -102,5 +117,26 @@ export class HomeComponent implements OnInit {
         }
       }, 100);
     });
+  }
+
+  private addJsonLd(profile: Profile): void {
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": profile.name,
+      "jobTitle": profile.headline,
+      "url": "https://mavrov.de",
+      "description": profile.about,
+      "sameAs": [
+        "https://linkedin.com/in/smavrov",
+        "https://github.com/mavrovde"
+      ],
+      "knowsAbout": profile.skills
+    };
+
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.text = JSON.stringify(schema);
+    document.head.appendChild(script);
   }
 }

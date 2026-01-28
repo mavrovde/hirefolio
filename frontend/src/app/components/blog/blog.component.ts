@@ -1,9 +1,10 @@
-import { Component, OnInit, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, Input, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BlogService, BlogPost, BlogSearchResult } from '../../services/blog.service';
 import { Observable, map } from 'rxjs';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { RouterModule } from '@angular/router';
+import { SeoService } from '../../services/seo.service';
 
 import { HeaderComponent } from '../header/header.component';
 
@@ -23,9 +24,21 @@ export class BlogComponent implements OnInit {
   currentQuery = '';
   activeTag: string | null = null;
 
-  constructor(private blogService: BlogService) { }
+  constructor(
+    private blogService: BlogService,
+    private seoService: SeoService,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) { }
 
   ngOnInit() {
+    if (this.standalone) {
+      this.seoService.updateSeo({
+        title: 'Blog',
+        description: 'Read the latest insights and professional reflections from Sergii Mavrov, covering Cloud Architecture, AI, and Software Engineering.',
+        url: '/blog',
+        keywords: 'Blog, Technology, Software Engineering, AI, Cloud, Sergii Mavrov'
+      });
+    }
     this.loadPosts();
   }
 
