@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 1440  # 24 hours
 
+    # Email
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    admin_email: str = "admin@mavrov.de"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

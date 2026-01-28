@@ -22,6 +22,7 @@ export class HeaderComponent {
     // { labelKey: 'NAV.RECOMMENDATIONS', href: '#recommendations' },
     { labelKey: 'NAV.BLOG', href: '#blog' },
     { labelKey: 'NAV.LLM', href: '/llm' },
+    { labelKey: 'NAV.CV', href: '/cv' },
   ];
 
   constructor(private languageService: LanguageService, private router: Router) {

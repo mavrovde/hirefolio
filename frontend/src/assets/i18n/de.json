@@ -7,7 +7,28 @@
     "RECOMMENDATIONS": "Empfehlungen",
     "BLOG": "Blog",
     "CONTACT": "Kontakt",
-    "LLM": "[ LLM ]"
+    "LLM": "[ LLM ]",
+    "CV": "[ CV ]"
+  },
+  "CV": {
+    "TITLE": "Lebenslauf anfordern",
+    "SUBTITLE": "Bitte geben Sie Ihre Daten an, um meinen Lebenslauf herunterzuladen.",
+    "NAME": "Name",
+    "NAME_PLACEHOLDER": "Ihr Name",
+    "NAME_ERROR": "Name ist erforderlich (mind. 2 Zeichen).",
+    "EMAIL": "E-Mail",
+    "EMAIL_PLACEHOLDER": "ihre@email.com",
+    "EMAIL_ERROR": "Gültige E-Mail ist erforderlich.",
+    "COMPANY": "Firma",
+    "COMPANY_PLACEHOLDER": "Firmenname (Optional)",
+    "MESSAGE": "Nachricht",
+    "MESSAGE_PLACEHOLDER": "Kurze Nachricht... (Optional)",
+    "CONSENT": "Ich stimme der Verarbeitung meiner persönlichen Daten (Name, E-Mail, Firma, Nachricht) bezüglich dieser Anfrage gemäß DSGVO (EU) und geltenden US-Datenschutzgesetzen zu.",
+    "CONSENT_ERROR": "Sie müssen der Datenschutzerklärung zustimmen, um fortzufahren.",
+    "SUBMIT": "Download anfordern",
+    "SUCCESS": "Wenn der Download nicht automatisch gestartet ist, prüfen Sie die Benachrichtigung oder versuchen Sie es erneut.",
+    "REQUEST_AGAIN": "Erneut anfordern",
+    "ERROR_SUBMIT": "Anfrage fehlgeschlagen. Bitte versuchen Sie es später erneut."
   },
   "SECTION": {
     "HI": "> Hallo, ich bin",

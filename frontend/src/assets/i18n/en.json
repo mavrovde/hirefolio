@@ -7,7 +7,28 @@
     "RECOMMENDATIONS": "Recommendations",
     "BLOG": "Blog",
     "CONTACT": "Contact",
-    "LLM": "[ LLM ]"
+    "LLM": "[ LLM ]",
+    "CV": "[ CV ]"
+  },
+  "CV": {
+    "TITLE": "Request CV",
+    "SUBTITLE": "Please provide your details to download my CV.",
+    "NAME": "Name",
+    "NAME_PLACEHOLDER": "Your Name",
+    "NAME_ERROR": "Name is required (min 2 chars).",
+    "EMAIL": "Email",
+    "EMAIL_PLACEHOLDER": "your@email.com",
+    "EMAIL_ERROR": "Valid email is required.",
+    "COMPANY": "Company",
+    "COMPANY_PLACEHOLDER": "Company Name (Optional)",
+    "MESSAGE": "Message",
+    "MESSAGE_PLACEHOLDER": "Short message... (Optional)",
+    "CONSENT": "I agree to the processing of my personal data (Name, Email, Company, Message) regarding this request, in compliance with GDPR (EU) and applicable US data privacy laws.",
+    "CONSENT_ERROR": "You must agree to the privacy policy to proceed.",
+    "SUBMIT": "Request Download",
+    "SUCCESS": "If the download didn't start automatically, check the notification or try again.",
+    "REQUEST_AGAIN": "Request Again",
+    "ERROR_SUBMIT": "Failed to submit request. Please try again later."
   },
   "SECTION": {
     "HI": "> Hi, I'm",

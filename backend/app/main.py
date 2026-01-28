@@ -12,6 +12,8 @@ from app.api.tags import router as tags_router
 from app.api.ai import router as ai_router
 
 
+from app.api.cv import router as cv_router
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Create pgvector extension and tables on startup
@@ -47,6 +49,7 @@ app.include_router(posts_router)
 app.include_router(stats_router)
 app.include_router(tags_router)
 app.include_router(ai_router)
+app.include_router(cv_router)
 
 
 @app.get("/")

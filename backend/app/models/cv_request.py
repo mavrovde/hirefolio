@@ -1,0 +1,21 @@
+from datetime import datetime, timezone
+import uuid
+from sqlalchemy import String, Text, DateTime, Boolean
+from sqlalchemy.orm import Mapped, mapped_column
+from app.database import Base
+
+class CvRequest(Base):
+    __tablename__ = "cv_requests"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    company: Mapped[str] = mapped_column(String, nullable=True)
+    message: Mapped[str] = mapped_column(Text, nullable=True)
+    consent_given: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    
+    # Tracking
+    email_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )

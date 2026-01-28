@@ -12,3 +12,5 @@ logging.basicConfig(
 def get_logger(name: str):
     """Return a logger with the specified name."""
     return logging.getLogger(name)
+
+logger = get_logger("app")
