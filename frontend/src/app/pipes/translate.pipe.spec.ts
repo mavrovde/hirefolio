@@ -63,10 +63,8 @@ describe('TranslatePipe', () => {
   });
 
   it('should handle null/undefined keys', () => {
-    // @ts-ignore
-    expect(pipe.transform(null)).toBe(null);
-    // @ts-ignore
-    expect(pipe.transform(undefined)).toBe(undefined);
+    expect(pipe.transform(null as any)).toBe(null);
+    expect(pipe.transform(undefined as any)).toBe(undefined);
 
     // Call missing mock methods for coverage
     languageService.setLanguage('de');
@@ -77,8 +75,7 @@ describe('TranslatePipe', () => {
     languageService.setTranslations({ TEST: 'Value' });
     pipe.transform('TEST');
 
-    // @ts-ignore - access private sub for testing
-    const sub = pipe.subscription;
+    const sub = (pipe as any).subscription;
     expect(sub?.closed).toBe(false);
 
     pipe.ngOnDestroy();

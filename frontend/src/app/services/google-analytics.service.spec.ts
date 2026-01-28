@@ -34,6 +34,10 @@ describe('GoogleAnalyticsService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    ['google-analytics-script', 'google-analytics-init'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
   });
 
   it('should be created', () => {

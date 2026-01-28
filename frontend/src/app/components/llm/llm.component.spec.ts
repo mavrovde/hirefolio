@@ -106,8 +106,7 @@ describe('LlmComponent', () => {
     });
 
     it('should handle scrollToBottom error gracefully', () => {
-        // @ts-ignore - trigger null check branch
-        component['scrollContainer'] = null;
+        (component as any).scrollContainer = null;
         expect(() => component.scrollToBottom()).not.toThrow();
     });
 
@@ -148,8 +147,7 @@ describe('LlmComponent', () => {
     it('should maintain focus on terminal input', async () => {
         vi.useFakeTimers();
         const mockInput = { nativeElement: { focus: vi.fn() } };
-        // @ts-ignore
-        component.terminalInput = mockInput as any;
+        (component as any).terminalInput = mockInput as any;
 
         vi.runAllTimers();
         expect(mockInput.nativeElement.focus).toHaveBeenCalled();

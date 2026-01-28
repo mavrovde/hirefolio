@@ -8,8 +8,7 @@ describe('LlmService', () => {
     beforeEach(() => {
         TestBed.configureTestingModule({});
         service = TestBed.inject(LlmService);
-        // @ts-ignore
-        globalThis.fetch = vi.fn();
+        (globalThis as any).fetch = vi.fn();
     });
 
     it('should be created', () => {

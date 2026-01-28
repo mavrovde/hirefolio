@@ -18,28 +18,44 @@ export class GoogleAnalyticsService {
         private router: Router
     ) { }
 
+    private isInitialized = false;
+
     public initialize() {
-        if (isPlatformBrowser(this.platformId) && this.googleAnalyticsId) {
+        if (isPlatformBrowser(this.platformId) && this.googleAnalyticsId && !this.isInitialized) {
             this.loadScript();
             this.initGtag();
             this.trackPageViews();
+            this.isInitialized = true;
         }
     }
 
     private loadScript() {
+        const scriptId = 'google-analytics-script';
+        if (document.getElementById(scriptId)) {
+            return;
+        }
         const script = document.createElement('script');
+        script.id = scriptId;
         script.async = true;
         script.src = `https://www.googletagmanager.com/gtag/js?id=${this.googleAnalyticsId}`;
         document.head.appendChild(script);
     }
 
     private initGtag() {
+        const scriptId = 'google-analytics-init';
+        if (document.getElementById(scriptId)) {
+            return;
+        }
         const script = document.createElement('script');
+        script.id = scriptId;
         script.innerHTML = `
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', '${this.googleAnalyticsId}');
+      if (!window.gtag) {
+        function gtag(){dataLayer.push(arguments);}
+        window.gtag = gtag;
+        gtag('js', new Date());
+        gtag('config', '${this.googleAnalyticsId}');
+      }
     `;
         document.head.appendChild(script);
     }
