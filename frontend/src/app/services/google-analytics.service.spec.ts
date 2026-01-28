@@ -102,4 +102,37 @@ describe('GoogleAnalyticsService', () => {
 
     expect(appendChildSpy).not.toHaveBeenCalled();
   });
+
+  it('should return early if scripts already exist', () => {
+    // Reset state for this test
+    (service as any).isInitialized = false;
+
+    // Mock getElementById to simulate scripts already existing in DOM
+    const getSpy = vi.spyOn(document, 'getElementById').mockReturnValue({} as HTMLElement);
+    const appendChildSpy = vi.spyOn(document.head, 'appendChild');
+
+    service.initialize();
+
+    expect(appendChildSpy).not.toHaveBeenCalled();
+    getSpy.mockRestore();
+  });
+
+  it('should return early from loadScript/initGtag if elements exist by ID', () => {
+    // Reset state
+    (service as any).isInitialized = false;
+
+    // Mock getElementById to return something for both script IDs
+    const getSpy = vi.spyOn(document, 'getElementById').mockImplementation((id: string) => {
+      if (id === 'google-analytics-script' || id === 'google-analytics-init') {
+        return {} as HTMLElement;
+      }
+      return null;
+    });
+
+    const appendChildSpy = vi.spyOn(document.head, 'appendChild');
+    service.initialize();
+
+    expect(appendChildSpy).not.toHaveBeenCalled();
+    getSpy.mockRestore();
+  });
 });

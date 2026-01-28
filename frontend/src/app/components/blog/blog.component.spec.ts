@@ -110,6 +110,10 @@ describe('BlogComponent', () => {
     await wait(200);
 
     expect(blogServiceSpy.searchPosts).toHaveBeenCalledWith('angular');
+
+    // Subscribe to exercise the map operator
+    component.searchResults$?.subscribe();
+    expect(component.isSearching).toBe(false);
   });
 
   it('should clear search', async () => {

@@ -80,12 +80,16 @@ describe('HomeComponent', () => {
 
     fixture.detectChanges(); // triggers ngOnInit
 
-    // Fast forward time to trigger interval
+    // First interval tick: scrollAttempts === 0 branch
     tick(100);
     expect(scrollSpy).toHaveBeenCalledWith('about');
 
-    // Advance to complete the persistence loop
-    tick(2000);
+    // Multiple ticks: scrollAttempts > 0 branch
+    tick(100);
+    tick(100);
+
+    // Fast forward to finish loop: maxScrollAttempts branch
+    tick(1500);
 
     document.body.removeChild(div);
   }));
@@ -97,9 +101,23 @@ describe('HomeComponent', () => {
 
     fixture.detectChanges(); // triggers ngOnInit
 
-    // Wait for max attempts (30 * 100ms = 3000ms)
-    tick(3100);
+    // Fast forward just below max attempts
+    tick(2900);
+    expect(scrollSpy).not.toHaveBeenCalled();
+
+    // Hit max attempts (30)
+    tick(100);
+
+    // Verify it doesn't run anymore
+    tick(1000);
 
     expect(scrollSpy).not.toHaveBeenCalled();
+  }));
+
+  it('should do nothing if no fragment', fakeAsync(() => {
+    mockActivatedRoute.snapshot.fragment = null;
+    fixture.detectChanges();
+    tick(1000);
+    // No interval started/everything cleared
   }));
 });

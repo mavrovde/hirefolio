@@ -137,4 +137,36 @@ describe('TagManagerComponent', () => {
 
         expect(tagsServiceSpy.deleteTag).not.toHaveBeenCalled();
     });
+
+    it('should not rename if name is same or empty', () => {
+        fixture.detectChanges();
+        const tag = { name: 'old', count: 5 };
+        component.editingTag = 'old';
+        component.editName = 'old';
+
+        component.saveRename(tag);
+        expect(component.editingTag).toBeNull();
+        expect(tagsServiceSpy.renameTag).not.toHaveBeenCalled();
+
+        component.editingTag = 'old';
+        component.editName = '';
+        component.saveRename(tag);
+        expect(component.editingTag).toBeNull();
+        expect(tagsServiceSpy.renameTag).not.toHaveBeenCalled();
+    });
+
+    it('should handle delete error', () => {
+        fixture.detectChanges();
+        const tag = { name: 'test', count: 1 };
+        vi.spyOn(window, 'confirm').mockReturnValue(true);
+        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => { });
+        vi.spyOn(console, 'error').mockImplementation(() => { }); // Mock console.error to prevent noise
+
+        tagsServiceSpy.deleteTag.mockReturnValue(throwError(() => new Error('Delete error')));
+
+        component.deleteTag(tag);
+        expect(tagsServiceSpy.deleteTag).toHaveBeenCalledWith(tag.name);
+        expect(alertSpy).toHaveBeenCalledWith('Failed to delete tag.');
+        expect(tagsServiceSpy.getAllTags).toHaveBeenCalledTimes(1); // Only initial load, no reload on error
+    });
 });

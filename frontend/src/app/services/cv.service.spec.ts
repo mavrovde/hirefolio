@@ -49,9 +49,26 @@ describe('CvService', () => {
     });
 
     it('should format download URL', () => {
+        const originalApiUrl = environment.apiUrl;
+        (environment as any).apiUrl = 'http://localhost:8000';
+
         const relative = '/api/download/cv.pdf';
-        const expected = `${environment.apiUrl}${relative}`;
+        const expected = `http://localhost:8000${relative}`;
         expect(service.getDownloadUrl(relative)).toBe(expected);
+
+        (environment as any).apiUrl = originalApiUrl;
+    });
+
+    it('should return relative URL as is if environment.apiUrl is missing', () => {
+        // Mock environment.apiUrl to be empty
+        const originalApiUrl = environment.apiUrl;
+        (environment as any).apiUrl = '';
+
+        const relative = '/api/download/cv.pdf';
+        expect(service.getDownloadUrl(relative)).toBe(relative);
+
+        // Restore
+        (environment as any).apiUrl = originalApiUrl;
     });
 
     it('should return absolute URL as is', () => {

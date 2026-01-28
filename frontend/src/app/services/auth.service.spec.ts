@@ -116,17 +116,43 @@ describe('AuthService', () => {
       expect(newService.getCurrentUser()?.username).toBe('loaded');
     });
 
-    it('should logout if loading user fails', () => {
+    it('should logout if loading user fails with 401', () => {
       (window.localStorage.getItem as any).mockReturnValue('bad-token');
 
       const spyLogout = vi.spyOn(AuthService.prototype, 'logout');
       const newService = TestBed.inject(AuthService);
-      vi.runAllTimers(); // Trigger setTimeout
+      vi.runAllTimers();
 
       const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
       req.flush('Error', { status: 401, statusText: 'Unauthorized' });
 
       expect(spyLogout).toHaveBeenCalled();
+    });
+
+    it('should logout if loading user fails with 403', () => {
+      (window.localStorage.getItem as any).mockReturnValue('bad-token');
+
+      const spyLogout = vi.spyOn(AuthService.prototype, 'logout');
+      const newService = TestBed.inject(AuthService);
+      vi.runAllTimers();
+
+      const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
+      req.flush('Error', { status: 403, statusText: 'Forbidden' });
+
+      expect(spyLogout).toHaveBeenCalled();
+    });
+
+    it('should not logout if loading user fails with 500', () => {
+      (window.localStorage.getItem as any).mockReturnValue('some-token');
+
+      const spyLogout = vi.spyOn(AuthService.prototype, 'logout');
+      const newService = TestBed.inject(AuthService);
+      vi.runAllTimers();
+
+      const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
+      req.flush('Error', { status: 500, statusText: 'Server Error' });
+
+      expect(spyLogout).not.toHaveBeenCalled();
     });
   });
 
