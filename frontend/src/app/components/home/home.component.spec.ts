@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HomeComponent } from './home.component';
 import { ProfileService } from '../../services/profile.service';
-import { GoogleAnalyticsService } from '../../services/analytics.service';
 import { LanguageService } from '../../services/language.service';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { of } from 'rxjs';
@@ -26,11 +25,6 @@ class MockProfileService {
   }
 }
 
-class MockAnalyticsService {
-  initializeGoogleAnalytics() {}
-  trackPageViews() {}
-}
-
 describe('HomeComponent', () => {
   let component: HomeComponent;
   let fixture: ComponentFixture<HomeComponent>;
@@ -43,7 +37,7 @@ describe('HomeComponent', () => {
       ],
       providers: [
         { provide: ProfileService, useClass: MockProfileService },
-        { provide: GoogleAnalyticsService, useClass: MockAnalyticsService },
+        { provide: ProfileService, useClass: MockProfileService },
         { provide: LanguageService, useClass: MockLanguageService },
       ],
     }).compileComponents();

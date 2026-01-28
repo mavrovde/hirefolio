@@ -14,7 +14,6 @@ import { ContactComponent } from '../contact/contact.component';
 import { SystemStatsComponent } from '../stats/stats.component';
 
 import { ProfileService, Profile } from '../../services/profile.service';
-import { GoogleAnalyticsService } from '../../services/analytics.service';
 
 @Component({
   selector: 'app-home',
@@ -63,12 +62,9 @@ export class HomeComponent implements OnInit {
 
   constructor(
     private profileService: ProfileService,
-    private analyticsService: GoogleAnalyticsService,
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.profile$ = this.profileService.getProfile();
-    this.analyticsService.initializeGoogleAnalytics();
-    this.analyticsService.trackPageViews();
   }
 }

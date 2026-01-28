@@ -3,6 +3,7 @@ import { GoogleAnalyticsService } from './google-analytics.service';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { vi } from 'vitest';
+import { PLATFORM_ID } from '@angular/core';
 
 describe('GoogleAnalyticsService', () => {
   let service: GoogleAnalyticsService;
@@ -26,6 +27,13 @@ describe('GoogleAnalyticsService', () => {
       value: vi.fn(),
       writable: true
     });
+
+    // Prevent script execution in JSDOM for all tests by mocking appendChild
+    vi.spyOn(document.head, 'appendChild').mockImplementation((node: Node) => node);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('should be created', () => {
@@ -34,8 +42,7 @@ describe('GoogleAnalyticsService', () => {
 
   it('should initialize Google Analytics script', () => {
     const createElementSpy = vi.spyOn(document, 'createElement');
-    // Prevent verify script execution
-    const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((node: Node) => node);
+    const appendChildSpy = vi.spyOn(document.head, 'appendChild');
 
     service.initialize();
 
@@ -57,5 +64,38 @@ describe('GoogleAnalyticsService', () => {
     expect((window as any).gtag).toHaveBeenCalledWith('config', 'G-1QSMT6N045', {
       page_path: '/test-url',
     });
+  });
+
+  it('should not throw if gtag is undefined during navigation', () => {
+    service.initialize();
+
+    // Unset gtag
+    (window as any).gtag = undefined;
+
+    const navigationEnd = new NavigationEnd(1, '/test-url', '/test-url');
+    // Should not throw
+    routerEventsSubject.next(navigationEnd);
+  });
+
+  it('should not initialize on server platform', () => {
+    // Re-configure for server platform
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        GoogleAnalyticsService,
+        { provide: Router, useValue: { events: new Subject() } },
+        { provide: PLATFORM_ID, useValue: 'server' }
+      ]
+    });
+    const serverService = TestBed.inject(GoogleAnalyticsService);
+    // Spy again because TestBed reset might rely on fresh injectors, but document is global.
+    // However, vi.restoreAllMocks() in afterEach removes the spy. 
+    // We need to re-spy or rely on proper cleanup.
+    // Since we restore mocks in afterEach, we must re-spy here or remove restoreAllMocks.
+    const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((node: Node) => node);
+
+    serverService.initialize();
+
+    expect(appendChildSpy).not.toHaveBeenCalled();
   });
 });
