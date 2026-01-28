@@ -14,13 +14,16 @@ from app.services.auth import get_password_hash
 async def seed_e2e_user():
     async with async_session() as session:
         print("Seeding E2E admin user...")
-        result = await session.execute(select(User).where(User.username == "admin"))
+        result = await session.execute(
+            select(User).where(User.email == "admin@mavrov.de")
+        )
         user = result.scalar_one_or_none()
 
         hashed = get_password_hash("admin")
 
         if user:
             print("Updating existing admin user...")
+            user.username = "admin"
             user.hashed_password = hashed
             user.is_active = True
             user.is_admin = True

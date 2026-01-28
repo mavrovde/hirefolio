@@ -44,14 +44,14 @@ async def lifespan(app: FastAPI):
             session.add(master_admin)
             await session.commit()
             print("Default admin user 'master' created successfully.")
-    
+
     yield
 
 
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.0.118",
+    version="1.0.122",
     lifespan=lifespan,
 )
 
