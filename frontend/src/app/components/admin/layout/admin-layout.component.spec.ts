@@ -69,4 +69,13 @@ describe('AdminLayoutComponent', () => {
     expect(authServiceSpy.logout).toHaveBeenCalled();
     expect(navigateSpy).toHaveBeenCalledWith(['/admin/login']);
   });
+
+  it('should not show Tags link', () => {
+    fixture.detectChanges();
+    const nativeElement = fixture.nativeElement as HTMLElement;
+    const tagsLink = Array.from(nativeElement.querySelectorAll('a')).find(
+      (a) => a.textContent?.trim().includes('Tags')
+    );
+    expect(tagsLink).toBeFalsy();
+  });
 });

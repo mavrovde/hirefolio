@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
@@ -11,13 +11,15 @@ import { AuthService } from '../../../services/auth.service';
   styleUrls: ['./profile.scss'],
 })
 export class ProfileComponent {
+  private authService = inject(AuthService);
   oldPassword = '';
   newPassword = '';
   loading = false;
   message = '';
   error = '';
+  currentUser$ = this.authService.currentUser$;
 
-  constructor(private authService: AuthService) { }
+  constructor() { }
 
   onSubmit() {
     this.loading = true;

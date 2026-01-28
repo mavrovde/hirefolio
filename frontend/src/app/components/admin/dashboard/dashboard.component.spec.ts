@@ -56,7 +56,7 @@ describe('DashboardComponent', () => {
   });
 
   it('should handle error when loading stats', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     statsServiceSpy.getStats.mockReturnValue(throwError(() => new Error('Network error')));
     fixture.detectChanges();
 
@@ -66,5 +66,15 @@ describe('DashboardComponent', () => {
     expect(consoleSpy).toHaveBeenCalledWith('Dashboard: Failed to load stats:', expect.any(Error));
 
     consoleSpy.mockRestore();
+  });
+
+  it('should return empty languages if stats are null', () => {
+    component.stats = null;
+    expect(component.getLanguages()).toEqual([]);
+  });
+
+  it('should return empty languages if by_language is missing', () => {
+    component.stats = { posts: {} } as any;
+    expect(component.getLanguages()).toEqual([]);
   });
 });

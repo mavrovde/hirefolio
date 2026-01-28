@@ -125,6 +125,28 @@ input {
     gap: 0.5rem;
 }
 
+.user-details {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px dashed var(--terminal-border, #333);
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.detail-label {
+    color: var(--terminal-dim, #8b949e);
+}
+
+.detail-value {
+    color: var(--terminal-highlight, #fff);
+    font-weight: bold;
+}
+
 .profile-info {
     margin-top: 2rem;
     padding-top: 1.5rem;

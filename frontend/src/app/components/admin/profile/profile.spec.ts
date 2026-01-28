@@ -11,7 +11,13 @@ describe('ProfileComponent', () => {
 
   beforeEach(async () => {
     authServiceMock = {
-      changePassword: vi.fn().mockReturnValue(of(void 0))
+      changePassword: vi.fn().mockReturnValue(of(void 0)),
+      currentUser$: of({
+        id: 1,
+        username: 'testadmin',
+        email: 'admin@test.com',
+        is_admin: true
+      })
     };
 
     await TestBed.configureTestingModule({
@@ -69,5 +75,15 @@ describe('ProfileComponent', () => {
 
     expect(component.error).toBe('Failed to change password.');
     expect(component.loading).toBe(false);
+  });
+
+  it('should display user details', () => {
+    fixture.detectChanges();
+    const nativeElement = fixture.nativeElement as HTMLElement;
+    const details = nativeElement.querySelector('.user-details');
+    expect(details).toBeTruthy();
+    expect(details?.textContent).toContain('testadmin');
+    expect(details?.textContent).toContain('admin@test.com');
+    expect(details?.textContent).toContain('Superuser/Admin');
   });
 });
