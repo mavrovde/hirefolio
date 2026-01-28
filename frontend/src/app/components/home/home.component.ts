@@ -80,43 +80,46 @@ export class HomeComponent implements OnInit {
 
         if (isPlatformBrowser(this.platformId)) {
           this.addJsonLd(profile);
+          this.initScrollLogic();
         }
       }
+    });
+  }
 
-      // Persistent scroll logic to handle layout expansion
-      let attempts = 0;
-      const maxAttempts = 30; // 3 seconds max look time
-      let scrollAttempts = 0;
-      const maxScrollAttempts = 15; // Continue scrolling for 1.5 seconds after finding
+  private initScrollLogic() {
+    // Persistent scroll logic to handle layout expansion
+    let attempts = 0;
+    const maxAttempts = 30; // 3 seconds max look time
+    let scrollAttempts = 0;
+    const maxScrollAttempts = 15; // Continue scrolling for 1.5 seconds after finding
 
-      const interval = setInterval(() => {
-        attempts++;
-        const fragment = this.route.snapshot.fragment;
-        if (fragment) {
-          const element = document.getElementById(fragment);
-          if (element) {
-            if (scrollAttempts === 0) {
-              console.log(`HomeComponent: Found anchor '${fragment}', starting persistent scroll...`);
-            }
-            this.viewportScroller.scrollToAnchor(fragment);
-            scrollAttempts++;
+    const interval = setInterval(() => {
+      attempts++;
+      const fragment = this.route.snapshot.fragment;
+      if (fragment) {
+        const element = document.getElementById(fragment);
+        if (element) {
+          if (scrollAttempts === 0) {
+            console.log(`HomeComponent: Found anchor '${fragment}', starting persistent scroll...`);
+          }
+          this.viewportScroller.scrollToAnchor(fragment);
+          scrollAttempts++;
 
-            if (scrollAttempts >= maxScrollAttempts) {
-              console.log(`HomeComponent: Finished persistent scroll for '${fragment}'`);
-              clearInterval(interval);
-            }
-          } else {
-            // Not found yet
-            if (attempts >= maxAttempts) {
-              console.log(`HomeComponent: Failed to find anchor '${fragment}' after ${maxAttempts} attempts`);
-              clearInterval(interval);
-            }
+          if (scrollAttempts >= maxScrollAttempts) {
+            console.log(`HomeComponent: Finished persistent scroll for '${fragment}'`);
+            clearInterval(interval);
           }
         } else {
-          clearInterval(interval);
+          // Not found yet
+          if (attempts >= maxAttempts) {
+            console.log(`HomeComponent: Failed to find anchor '${fragment}' after ${maxAttempts} attempts`);
+            clearInterval(interval);
+          }
         }
-      }, 100);
-    });
+      } else {
+        clearInterval(interval);
+      }
+    }, 100);
   }
 
   private addJsonLd(profile: Profile): void {

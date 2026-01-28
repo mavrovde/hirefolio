@@ -51,11 +51,14 @@ export class LlmComponent implements OnInit, AfterViewChecked {
   }
 
   ngAfterViewChecked() {
-    this.scrollToBottom();
-    this.focusInput();
+    if (isPlatformBrowser(this.platformId)) {
+      this.scrollToBottom();
+      this.focusInput();
+    }
   }
 
   scrollToBottom(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     try {
       if (this.scrollContainer) {
         this.scrollContainer.nativeElement.scrollTop = this.scrollContainer.nativeElement.scrollHeight;
@@ -64,6 +67,7 @@ export class LlmComponent implements OnInit, AfterViewChecked {
   }
 
   focusInput() {
+    if (!isPlatformBrowser(this.platformId)) return;
     if (this.terminalInputRef && !this.isThinking) {
       this.terminalInputRef.nativeElement.focus();
     }

@@ -1,5 +1,5 @@
-import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { Profile } from '../../services/profile.service';
 
@@ -13,8 +13,15 @@ import { Profile } from '../../services/profile.service';
 export class HeroComponent {
   @Input() profile: Profile | null = null;
 
+  constructor(@Inject(PLATFORM_ID) private platformId: Object) { }
+
   scrollTo(id: string, event: Event) {
     event.preventDefault();
+
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
     const element = document.querySelector(id);
     if (element) {
       const headerOffset = 80;

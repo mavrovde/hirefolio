@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Language, LanguageService } from '../../services/language.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
@@ -25,7 +25,11 @@ export class HeaderComponent {
     { labelKey: 'NAV.LLM', href: '/llm' },
   ];
 
-  constructor(private languageService: LanguageService, private router: Router) {
+  constructor(
+    private languageService: LanguageService,
+    private router: Router,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {
     this.languageService.currentLang$.subscribe((lang) => (this.currentLang = lang));
   }
 
@@ -35,6 +39,12 @@ export class HeaderComponent {
       this.router.navigate([href]);
       return;
     }
+
+    if (!isPlatformBrowser(this.platformId)) {
+      this.router.navigate(['/'], { fragment: href.substring(1) });
+      return;
+    }
+
     const element = document.querySelector(href);
     if (element) {
       const headerOffset = 80;

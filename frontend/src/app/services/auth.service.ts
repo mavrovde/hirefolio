@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
+import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, tap, switchMap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -29,9 +30,15 @@ export class AuthService {
   private isInitializingSubject = new BehaviorSubject<boolean>(true);
   public isInitializing$ = this.isInitializingSubject.asObservable();
 
-  constructor(private http: HttpClient) {
+  private isBrowser: boolean;
+
+  constructor(
+    private http: HttpClient,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {
+    this.isBrowser = isPlatformBrowser(this.platformId);
     // Load user on service initialization if token exists
-    if (this.getToken()) {
+    if (this.isBrowser && this.getToken()) {
       // Defer loading to avoid circular dependency with AuthInterceptor
       setTimeout(() => {
         this.loadCurrentUser();
@@ -64,15 +71,20 @@ export class AuthService {
   }
 
   getToken(): string | null {
+    if (!this.isBrowser) return null;
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
   private setToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
+    if (this.isBrowser) {
+      localStorage.setItem(this.TOKEN_KEY, token);
+    }
   }
 
   private removeToken(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
+    if (this.isBrowser) {
+      localStorage.removeItem(this.TOKEN_KEY);
+    }
   }
 
   isAuthenticated(): boolean {

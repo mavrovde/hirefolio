@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 @Injectable({
@@ -6,15 +7,21 @@ import { BehaviorSubject, Observable } from 'rxjs';
 })
 export class StorageService {
     private readonly CONSENT_KEY = 'cookie_consent';
-    private consentSubject = new BehaviorSubject<boolean>(this.hasConsented());
-    consent$ = this.consentSubject.asObservable();
+    private consentSubject: BehaviorSubject<boolean>;
+    consent$: Observable<boolean>;
+    private isBrowser: boolean;
 
-    constructor() { }
+    constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+        this.isBrowser = isPlatformBrowser(this.platformId);
+        this.consentSubject = new BehaviorSubject<boolean>(this.hasConsented());
+        this.consent$ = this.consentSubject.asObservable();
+    }
 
     /**
      * Checks if the user has explicitly consented to cookies.
      */
     hasConsented(): boolean {
+        if (!this.isBrowser) return false;
         return localStorage.getItem(this.CONSENT_KEY) === 'true';
     }
 
@@ -22,6 +29,7 @@ export class StorageService {
      * Checks if the user has made a decision (either accepted or declined).
      */
     isDecisionMade(): boolean {
+        if (!this.isBrowser) return false;
         return localStorage.getItem(this.CONSENT_KEY) !== null;
     }
 
@@ -30,7 +38,9 @@ export class StorageService {
      * @param granted True if consent is granted, false otherwise.
      */
     setConsent(granted: boolean): void {
-        localStorage.setItem(this.CONSENT_KEY, String(granted));
+        if (this.isBrowser) {
+            localStorage.setItem(this.CONSENT_KEY, String(granted));
+        }
         this.consentSubject.next(granted);
 
         if (!granted) {
@@ -44,7 +54,7 @@ export class StorageService {
      * @param value The value to save.
      */
     setItem(key: string, value: string): void {
-        if (this.hasConsented()) {
+        if (this.isBrowser && this.hasConsented()) {
             localStorage.setItem(key, value);
         }
     }
@@ -54,6 +64,7 @@ export class StorageService {
      * @param key The key to retrieve.
      */
     getItem(key: string): string | null {
+        if (!this.isBrowser) return null;
         return localStorage.getItem(key);
     }
 
@@ -62,7 +73,9 @@ export class StorageService {
      * @param key The key to remove.
      */
     removeItem(key: string): void {
-        localStorage.removeItem(key);
+        if (this.isBrowser) {
+            localStorage.removeItem(key);
+        }
     }
 
     /**
@@ -70,9 +83,7 @@ export class StorageService {
      * Keeps the consent decision itself.
      */
     private clearNonEssentialStorage(): void {
-        // We iterate and remove everything except the consent key
-        // In a real app, you'd might have a whitelist or specific keys to remove
-        // For now, we'll assume everything else is non-essential (like 'language')
+        if (!this.isBrowser) return;
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
