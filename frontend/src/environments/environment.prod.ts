@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
   apiUrl: '',
-  googleAnalyticsId: 'G-XXXXXXXXXX',
+  googleAnalyticsId: 'G-1QSMT6N045',
 };
