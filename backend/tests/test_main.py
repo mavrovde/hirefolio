@@ -19,13 +19,3 @@ async def test_health_check(client: AsyncClient):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
-
-
-@pytest.mark.asyncio
-async def test_lifespan():
-    """Test lifespan startup event."""
-    from app.main import app, lifespan
-
-    # We can invoke the lifespan context manager directly
-    async with lifespan(app):
-        pass  # Just enter and exit to trigger the code

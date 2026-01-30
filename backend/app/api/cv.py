@@ -32,6 +32,7 @@ async def request_cv(
         active_cv = result.scalar_one_or_none()
 
         if not active_cv:
+            logger.error("CV missing: No active DB entry found.")
             raise HTTPException(status_code=404, detail="CV_ERROR_UNAVAILABLE")
 
         # 1. Save request to DB
@@ -41,7 +42,7 @@ async def request_cv(
             company=payload.company,
             message=payload.message,
             consent_given=True,  # Default to true as per new policy
-            cv_version=active_cv.version if active_cv else "fallback",
+            cv_version=active_cv.version,
         )
         db.add(cv_request)
         await db.commit()

@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,13 +48,40 @@ async def lifespan(app: FastAPI):
             await session.commit()
             print("Default admin user 'master' created successfully.")
 
+        # Check and seed default CV if no CVs exist
+        from app.models.cv_document import CvDocument
+        import uuid
+
+        result = await session.execute(select(CvDocument))
+        cv_exists = result.scalars().first()
+
+        if not cv_exists:
+            static_cv_path = os.path.join(os.path.dirname(__file__), "static", "cv.pdf")
+            if os.path.exists(static_cv_path):
+                print(f"No CV found in database. Seeding from {static_cv_path}...")
+                with open(static_cv_path, "rb") as f:
+                    cv_data = f.read()
+
+                default_cv = CvDocument(
+                    id=uuid.uuid4(),
+                    filename="cv.pdf",
+                    data=cv_data,
+                    version="1.0.0-fallback",
+                    is_active=True,
+                )
+                session.add(default_cv)
+                await session.commit()
+                print("Default CV seeded successfully.")
+            else:
+                print(f"Warning: Fallback CV not found at {static_cv_path}")
+
     yield
 
 
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.0.143",
+    version="1.0.146",
     lifespan=lifespan,
 )
 
