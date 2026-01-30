@@ -71,10 +71,14 @@ echo "🌱 Seeding E2E data..."
 docker-compose exec -T backend python scripts/seed_e2e_user.py
 
 # Run Playwright
+echo "🛡️  Verifying Proxy Routes..."
+python3 -m pip install httpx --quiet --break-system-packages || true
+python3 verify_proxy_routes.py
+
 echo "Running Playwright..."
 cd frontend
 export BASE_URL=http://localhost:4200
-npx playwright test
+CI=true npx playwright test
 cd ..
 
 echo ""

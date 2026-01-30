@@ -92,6 +92,7 @@ services:
     build: ./proxy
     ports:
       - "4200:80"
+      - "443:443"
     volumes:
       - ./certs:/etc/nginx/ssl
     depends_on:
