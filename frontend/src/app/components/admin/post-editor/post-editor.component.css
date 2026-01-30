@@ -78,18 +78,31 @@
   padding-top: 30px;
 }
 
-.checkbox-group label {
+.checkbox-group label.status-badge {
   display: flex;
   align-items: center;
-  cursor: pointer;
-  margin: 0;
+  padding: 6px 12px;
+  background: rgba(102, 102, 102, 0.1);
+  border: 1px solid #333;
+  border-radius: 4px;
   color: #666;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: not-allowed;
+}
+
+.checkbox-group label.status-badge.published {
+  background: rgba(0, 255, 0, 0.05);
+  border-color: rgba(0, 255, 0, 0.3);
+  color: #0f0;
 }
 
 .checkbox-group input[type='checkbox'] {
-  width: auto;
-  margin-right: 10px;
-  cursor: pointer;
+  display: none;
+}
+
+.status-text {
+  letter-spacing: 1px;
 }
 
 .tag-input {
