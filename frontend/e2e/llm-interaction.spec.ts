@@ -43,14 +43,14 @@ test.describe('LLM Terminal', () => {
         // Send a message first
         await input.fill('temporary message');
         await input.press('Enter');
-        await expect(page.locator('text=temporary message')).toBeVisible();
+        await expect(page.locator('.message', { hasText: 'temporary message' })).toBeVisible();
 
         // Send clear
         await input.fill('clear');
         await input.press('Enter');
 
         // Verify history is cleared and shows "Console cleared"
-        await expect(page.locator('text=temporary message')).not.toBeVisible();
+        await expect(page.locator('.message', { hasText: 'temporary message' })).not.toBeVisible();
         await expect(page.locator('text=# Console cleared.')).toBeVisible();
     });
 

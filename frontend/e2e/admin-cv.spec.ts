@@ -44,6 +44,20 @@ test.describe('Admin CV Management', () => {
             });
         });
 
+        // Intercept versions list to include the new version
+        await page.route('**/api/admin/cv/versions', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([{
+                    version: testVersion,
+                    filename: 'test-cv.pdf',
+                    created_at: new Date().toISOString(),
+                    is_active: true
+                }])
+            });
+        });
+
         // Fill form
         await page.fill('input[formControlName="version"]', testVersion);
 
