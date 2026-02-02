@@ -15,6 +15,15 @@ test.describe('Admin CV Management', () => {
     });
 
     test('should display CV requests', async ({ page }) => {
+        // Intercept requests list before navigation
+        await page.route('**/api/admin/cv/requests', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([])
+            });
+        });
+
         await page.goto('/admin/cv-manager');
 
         // Check if we are on the CV management page
@@ -30,9 +39,6 @@ test.describe('Admin CV Management', () => {
     });
 
     test('should upload a new CV version', async ({ page }) => {
-        await page.goto('/admin/cv-manager');
-        await page.click('button:has-text("VERSION_CONTROL.sys")');
-
         const testVersion = `v2.0-${Date.now()}`;
 
         // Intercept upload request
@@ -57,6 +63,9 @@ test.describe('Admin CV Management', () => {
                 }])
             });
         });
+
+        await page.goto('/admin/cv-manager');
+        await page.click('button:has-text("VERSION_CONTROL.sys")');
 
         // Fill form
         await page.fill('input[formControlName="version"]', testVersion);
