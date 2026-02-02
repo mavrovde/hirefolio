@@ -24,18 +24,17 @@ test.describe('Admin CV Management', () => {
             });
         });
 
+        const responsePromise = page.waitForResponse('**/api/admin/cv/requests');
         await page.goto('/admin/cv-manager');
+        await responsePromise;
 
         // Check if we are on the CV management page
         await expect(page.locator('h1.page-title')).toContainText('CV Management');
 
-        // Wait for the requests table to load
-        await page.waitForSelector('table', { state: 'visible' });
-
-        const emptyRow = page.locator('.empty-row');
-        const tableRows = page.locator('tbody tr');
-
-        await expect(emptyRow.or(tableRows.first())).toBeVisible();
+        // Wait for the requests table to load and show empty row
+        const emptyRow = page.locator('td.empty-row');
+        await expect(emptyRow).toBeVisible({ timeout: 10000 });
+        await expect(emptyRow).toContainText('No records in database');
     });
 
     test('should upload a new CV version', async ({ page }) => {

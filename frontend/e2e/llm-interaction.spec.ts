@@ -39,18 +39,29 @@ test.describe('LLM Terminal', () => {
 
     test('should clear history when "clear" command is sent', async ({ page }) => {
         const input = page.locator('input[type="text"]');
+        const uniqueMessage = `FIXME_STABILITY_${Date.now()}`;
+
+        // Mock response to avoid real AI adding same text
+        await page.route('**/api/ai/chat', async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'text/event-stream',
+                body: 'Acknowledged.'
+            });
+        });
 
         // Send a message first
-        await input.fill('temporary message');
+        await input.fill(uniqueMessage);
         await input.press('Enter');
-        await expect(page.locator('.message', { hasText: 'temporary message' })).toBeVisible();
+        await expect(page.locator('.message', { hasText: uniqueMessage })).toBeVisible();
 
         // Send clear
         await input.fill('clear');
         await input.press('Enter');
 
         // Verify history is cleared and shows "Console cleared"
-        await expect(page.locator('.message', { hasText: 'temporary message' })).not.toBeVisible();
+        // Wait for the message to disappear (timeout should handle it)
+        await expect(page.locator('.message', { hasText: uniqueMessage })).not.toBeVisible();
         await expect(page.locator('text=# Console cleared.')).toBeVisible();
     });
 
