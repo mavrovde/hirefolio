@@ -21,7 +21,8 @@ test.describe('Admin CV Management', () => {
         await expect(page.locator('h1.page-title')).toContainText('CV Management');
 
         // Wait for the requests table to load
-        // If there are no requests, it should show "No records in database"
+        await page.waitForSelector('table', { state: 'visible' });
+
         const emptyRow = page.locator('.empty-row');
         const tableRows = page.locator('tbody tr');
 
@@ -53,7 +54,7 @@ test.describe('Admin CV Management', () => {
         await fileChooser.setFiles({
             name: 'test-cv.pdf',
             mimeType: 'application/pdf',
-            buffer: new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a]).buffer as any
+            buffer: Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a])
         });
 
         // Click upload
