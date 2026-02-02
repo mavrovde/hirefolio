@@ -146,3 +146,10 @@ async def test_cv_request_exception(client):
 
         assert response.status_code == 500
         assert response.json()["detail"] == "Failed to process request"
+
+
+@pytest.mark.asyncio
+async def test_download_cv_exception(client):
+    with patch("app.api.cv.select", side_effect=Exception("DB Error")):
+        response = await client.get("/api/cv/download")
+        assert response.status_code == 500

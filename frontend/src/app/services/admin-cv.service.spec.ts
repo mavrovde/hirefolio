@@ -32,7 +32,7 @@ describe('AdminCvService', () => {
             expect(response).toBeTruthy();
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/admin/cv/upload`);
+        const req = httpMock.expectOne(`${environment.apiUrl}/api/admin/cv/upload`);
         expect(req.request.method).toBe('POST');
         expect(req.request.body.get('version')).toBe(version);
         req.flush({ success: true });
@@ -46,7 +46,7 @@ describe('AdminCvService', () => {
             expect(requests[0].name).toBe('Test');
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/admin/cv/requests`);
+        const req = httpMock.expectOne(`${environment.apiUrl}/api/admin/cv/requests`);
         expect(req.request.method).toBe('GET');
         req.flush(mockRequests);
     });
@@ -59,7 +59,7 @@ describe('AdminCvService', () => {
             expect(versions[0].version).toBe('v1.0');
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/admin/cv/versions`);
+        const req = httpMock.expectOne(`${environment.apiUrl}/api/admin/cv/versions`);
         expect(req.request.method).toBe('GET');
         req.flush(mockVersions);
     });

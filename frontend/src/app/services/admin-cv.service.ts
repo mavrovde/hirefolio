@@ -26,7 +26,7 @@ export interface CvVersion {
     providedIn: 'root'
 })
 export class AdminCvService {
-    private apiUrl = `${environment.apiUrl}/admin/cv`;
+    private apiUrl = `${environment.apiUrl}/api/admin/cv`;
 
     constructor(private http: HttpClient) { }
 

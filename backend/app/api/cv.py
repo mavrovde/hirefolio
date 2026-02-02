@@ -65,20 +65,26 @@ async def request_cv(
 
 @router.get("/download")
 async def download_cv(db: AsyncSession = Depends(get_db)):
-    # 1. Get active CV from DB
-    result = await db.execute(select(CvDocument).where(CvDocument.is_active))
-    cv_doc = result.scalar_one_or_none()
+    try:
+        # 1. Get active CV from DB
+        result = await db.execute(select(CvDocument).where(CvDocument.is_active))
+        cv_doc = result.scalar_one_or_none()
 
-    if not cv_doc:
-        logger.warning("No active CV found in DB.")
-        raise HTTPException(status_code=404, detail="CV_ERROR_UNAVAILABLE")
+        if not cv_doc:
+            logger.warning("No active CV found in DB.")
+            raise HTTPException(status_code=404, detail="CV_ERROR_UNAVAILABLE")
 
-    # 2. Return DB content
-    return Response(
-        content=cv_doc.data,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{cv_doc.filename}"'},
-    )
+        # 2. Return DB content
+        return Response(
+            content=cv_doc.data,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{cv_doc.filename}"'},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading CV: {e}")
+        raise HTTPException(status_code=500, detail="Failed to download CV")
 
 
 async def process_email_notifications(request_id, payload):
