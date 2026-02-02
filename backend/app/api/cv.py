@@ -78,7 +78,9 @@ async def download_cv(db: AsyncSession = Depends(get_db)):
         return Response(
             content=cv_doc.data,
             media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{cv_doc.filename}"'},
+            headers={
+                "Content-Disposition": f'attachment; filename="{cv_doc.filename}"'
+            },
         )
     except HTTPException:
         raise

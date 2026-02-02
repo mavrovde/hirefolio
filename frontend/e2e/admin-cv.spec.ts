@@ -15,7 +15,7 @@ test.describe('Admin CV Management', () => {
     });
 
     test('should display CV requests', async ({ page }) => {
-        await page.goto('/admin/cv');
+        await page.goto('/admin/cv-manager');
 
         // Check if we are on the CV management page
         await expect(page.locator('h1.page-title')).toContainText('CV Management');
@@ -29,7 +29,7 @@ test.describe('Admin CV Management', () => {
     });
 
     test('should upload a new CV version', async ({ page }) => {
-        await page.goto('/admin/cv');
+        await page.goto('/admin/cv-manager');
         await page.click('button:has-text("VERSION_CONTROL.sys")');
 
         const testVersion = `v2.0-${Date.now()}`;
