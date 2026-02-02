@@ -115,6 +115,53 @@ async def test_download_cv_db_success(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_download_cv_with_tracking(client, db_session):
+    # Setup CV and Request
+    from app.models.cv_document import CvDocument
+    from app.models.cv_request import CvRequest
+    import uuid
+
+    doc = CvDocument(
+        id=uuid.uuid4(),
+        filename="track.pdf",
+        data=b"pdf data",
+        version="v1.3",
+        is_active=True,
+    )
+    db_session.add(doc)
+
+    req_id = uuid.uuid4()
+    req = CvRequest(
+        id=req_id,
+        name="Tracker",
+        email="track@example.com",
+        message="Tracking test",
+        cv_version="v1.3",
+        consent_given=True,
+    )
+    db_session.add(req)
+    await db_session.commit()
+
+    # Download with req_id
+    response = await client.get(f"/api/cv/download?req_id={str(req_id)}")
+    assert response.status_code == 200
+    assert response.content == b"pdf data"
+
+    # Verify tracking
+    # Start a new transaction/session to ensure we see the update
+    # Note: In pytest-asyncio with shared session, refresh should work if commit happened.
+    # We might need to handle session expiry or isolation depending on fixture.
+    # Assuming 'db_session' fixture commits or flushes correctly.
+
+    # Re-fetch from DB
+    result = await db_session.execute(select(CvRequest).where(CvRequest.id == req_id))
+    updated_req = result.scalar_one()
+
+    assert updated_req.download_count == 1
+    assert updated_req.downloaded_at is not None
+
+
+@pytest.mark.asyncio
 async def test_process_email_notifications_calls_both(db_session):
     from app.api.cv import process_email_notifications
     import uuid

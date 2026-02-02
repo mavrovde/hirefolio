@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AdminCvService, CvRequestSummary, CvVersion } from '../../../services/admin-cv.service';
@@ -43,6 +43,7 @@ import { AdminCvService, CvRequestSummary, CvVersion } from '../../../services/a
                 <th>Email</th>
                 <th>Company</th>
                 <th>Version</th>
+                <th>Downloaded</th>
                 <th>Message</th>
               </tr>
             </thead>
@@ -53,6 +54,16 @@ import { AdminCvService, CvRequestSummary, CvVersion } from '../../../services/a
                 <td class="slug-cell">{{ req.email }}</td>
                 <td class="lang-cell">{{ req.company || '-' }}</td>
                 <td class="id-cell">{{ req.cv_version || '-' }}</td>
+                <td class="status-cell">
+                  <div *ngIf="req.download_count && req.download_count > 0; else notDownloaded">
+                    <span class="status-published">✓ YES</span>
+                    <div class="text-[10px] text-[#666]">{{ req.downloaded_at | date: 'MM/dd HH:mm' }}</div>
+                    <div class="text-[10px] text-[#666]">Count: {{ req.download_count }}</div>
+                  </div>
+                  <ng-template #notDownloaded>
+                    <span class="status-draft">PENDING</span>
+                  </ng-template>
+                </td>
                 <td class="message-cell" [title]="req.message">{{ req.message || '-' }}</td>
               </tr>
               <tr *ngIf="requests.length === 0">
@@ -216,7 +227,8 @@ export class CvManagerComponent implements OnInit {
 
   constructor(
     private cvService: AdminCvService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private cdr: ChangeDetectorRef
   ) {
     this.uploadForm = this.fb.group({
       version: ['', Validators.required]
@@ -230,14 +242,20 @@ export class CvManagerComponent implements OnInit {
 
   loadRequests() {
     this.cvService.getRequests().subscribe({
-      next: (data) => this.requests = data,
+      next: (data) => {
+        this.requests = data;
+        this.cdr.detectChanges(); // Force view update
+      },
       error: (err) => console.error('Failed to load requests', err)
     });
   }
 
   loadVersions() {
     this.cvService.getVersions().subscribe({
-      next: (data) => this.versions = data,
+      next: (data) => {
+        this.versions = data;
+        this.cdr.detectChanges(); // Force view update
+      },
       error: (err) => console.error('Failed to load versions', err)
     });
   }

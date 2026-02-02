@@ -12,6 +12,8 @@ export interface CvRequestSummary {
     created_at: string;
     consent_given: boolean;
     cv_version: string;
+    downloaded_at?: string;
+    download_count?: number;
 }
 
 export interface CvVersion {

@@ -14,13 +14,24 @@ test.describe('Admin CV Management', () => {
         await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 15000 });
     });
 
-    test('should display CV requests', async ({ page }) => {
+    test('should display CV requests with download status', async ({ page }) => {
         // Intercept requests list before navigation
         await page.route('**/api/admin/cv/requests', async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify([])
+                body: JSON.stringify([{
+                    id: '123',
+                    name: 'Test Recruiter',
+                    email: 'test@example.com',
+                    company: 'Test Co',
+                    message: 'Hello',
+                    created_at: new Date().toISOString(),
+                    consent_given: true,
+                    cv_version: 'v1.0',
+                    download_count: 5,
+                    downloaded_at: new Date().toISOString()
+                }])
             });
         });
 
@@ -31,10 +42,16 @@ test.describe('Admin CV Management', () => {
         // Check if we are on the CV management page
         await expect(page.locator('h1.page-title')).toContainText('CV Management');
 
-        // Wait for the requests table to load and show empty row
-        const emptyRow = page.locator('td.empty-row');
-        await expect(emptyRow).toBeVisible({ timeout: 10000 });
-        await expect(emptyRow).toContainText('No records in database');
+        // Verify row content including download status
+        const row = page.locator('tbody tr').first();
+        await expect(row).toBeVisible();
+        await expect(row).toContainText('Test Recruiter');
+        await expect(row).toContainText('Test Co');
+
+        // Verify Download column
+        const downloadCell = row.locator('.status-cell');
+        await expect(downloadCell).toContainText('YES');
+        await expect(downloadCell).toContainText('Count: 5');
     });
 
     test('should upload a new CV version', async ({ page }) => {

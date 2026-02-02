@@ -54,7 +54,7 @@ async def request_cv(
         return {
             "success": True,
             "message": "Request received. You can now download the CV.",
-            "download_url": "/api/cv/download",
+            "download_url": f"/api/cv/download?req_id={cv_request.id}",
         }
     except HTTPException:
         raise
@@ -64,17 +64,34 @@ async def request_cv(
 
 
 @router.get("/download")
-async def download_cv(db: AsyncSession = Depends(get_db)):
+async def download_cv(req_id: str | None = None, db: AsyncSession = Depends(get_db)):
     try:
-        # 1. Get active CV from DB
-        result = await db.execute(select(CvDocument).where(CvDocument.is_active))
-        cv_doc = result.scalar_one_or_none()
+        # 1. Update tracking if req_id provided
+        if req_id:
+            try:
+                # Validate UUID format implicitly by querying
+                stmt = select(CvRequest).where(CvRequest.id == req_id)
+                result = await db.execute(stmt)
+                cv_request = result.scalar_one_or_none()
+
+                if cv_request:
+                    from datetime import datetime, timezone
+
+                    cv_request.downloaded_at = datetime.now(timezone.utc)
+                    cv_request.download_count += 1
+                    await db.commit()
+            except Exception as e:
+                logger.warning(f"Failed to track download for req_id {req_id}: {e}")
+
+        # 2. Get active CV from DB
+        cv_result = await db.execute(select(CvDocument).where(CvDocument.is_active))
+        cv_doc = cv_result.scalar_one_or_none()
 
         if not cv_doc:
             logger.warning("No active CV found in DB.")
             raise HTTPException(status_code=404, detail="CV_ERROR_UNAVAILABLE")
 
-        # 2. Return DB content
+        # 3. Return DB content
         return Response(
             content=cv_doc.data,
             media_type="application/pdf",
