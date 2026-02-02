@@ -24,6 +24,7 @@ export class SystemStatsComponent implements OnInit, OnDestroy {
 
   backendVersion: string = 'Unknown';
   frontendVersion: string = packageJson.version;
+  currentYear: number = new Date().getFullYear();
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,

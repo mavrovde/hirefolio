@@ -48,16 +48,11 @@ import { SeoService } from '../../services/seo.service';
         <app-blog [standalone]="false"></app-blog>
         <app-contact [profile]="profile"></app-contact>
       </main>
-
-      <footer class="bg-black py-8 text-center text-secondary text-sm border-t border-terminal">
-        <p>&copy; {{ currentYear }} Sergii Mavrov. All rights reserved.</p>
-      </footer>
     </div>
   `,
 })
 export class HomeComponent implements OnInit {
   profile$: Observable<Profile> | null = null;
-  currentYear = new Date().getFullYear();
 
   constructor(
     private profileService: ProfileService,

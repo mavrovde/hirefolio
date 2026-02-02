@@ -26,14 +26,53 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
 
+        # Run migrations for existing databases
+        # Check if cv_requests table has the new download tracking columns
+        try:
+            result = await conn.execute(
+                text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'cv_requests' 
+                AND column_name IN ('downloaded_at', 'download_count')
+            """)
+            )
+            existing_columns = {row[0] for row in result}
+
+            # Add downloaded_at if it doesn't exist
+            if "downloaded_at" not in existing_columns:
+                print("Adding downloaded_at column to cv_requests table...")
+                await conn.execute(
+                    text("""
+                    ALTER TABLE cv_requests 
+                    ADD COLUMN downloaded_at TIMESTAMP WITH TIME ZONE
+                """)
+                )
+                print("✓ downloaded_at column added")
+
+            # Add download_count if it doesn't exist
+            if "download_count" not in existing_columns:
+                print("Adding download_count column to cv_requests table...")
+                await conn.execute(
+                    text("""
+                    ALTER TABLE cv_requests 
+                    ADD COLUMN download_count INTEGER NOT NULL DEFAULT 0
+                """)
+                )
+                print("✓ download_count column added")
+
+        except Exception as e:
+            # Table might not exist yet (first run), which is fine
+            print(f"Migration check: {e}")
+
     # Check and create default admin user if no users exist
     async with async_session() as session:
         from sqlalchemy import select
         from app.models.user import User
         from app.services.auth import get_password_hash
 
-        result = await session.execute(select(User))
-        user = result.scalars().first()
+        user_result = await session.execute(select(User))
+        user = user_result.scalars().first()
 
         if not user:
             print("No users found. Creating default admin user 'master'...")
@@ -52,8 +91,8 @@ async def lifespan(app: FastAPI):
         from app.models.cv_document import CvDocument
         import uuid
 
-        result = await session.execute(select(CvDocument))
-        cv_exists = result.scalars().first()
+        cv_result = await session.execute(select(CvDocument))
+        cv_exists = cv_result.scalars().first()
 
         if not cv_exists:
             static_cv_path = os.path.join(os.path.dirname(__file__), "static", "cv.pdf")
@@ -81,7 +120,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.0.152",
+    version="1.0.154",
     lifespan=lifespan,
 )
 

@@ -10,6 +10,7 @@ import { map } from 'rxjs';
 
 import { ViewportScroller } from '@angular/common';
 
+
 @Component({
   selector: 'app-root',
   standalone: true,
