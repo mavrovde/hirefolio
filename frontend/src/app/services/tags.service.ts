@@ -8,13 +8,14 @@ export interface TagStat {
   count: number;
 }
 
+
 @Injectable({
   providedIn: 'root',
 })
 export class TagsService {
   private apiUrl = `${environment.apiUrl}/api/tags`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getAllTags(): Observable<TagStat[]> {
     return this.http.get<TagStat[]>(this.apiUrl);
