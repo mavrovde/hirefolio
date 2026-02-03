@@ -80,3 +80,17 @@ async def test_chat_with_llm_exception():
     with patch("httpx.AsyncClient", side_effect=lambda **kw: MockHttpxClient("error")):
         chunks = [c async for c in chat_with_llm([])]
     assert any("System Error" in c for c in chunks)
+
+
+@pytest.mark.asyncio
+async def test_chat_with_llm_with_stop_sequences():
+    with patch(
+        "httpx.AsyncClient", side_effect=lambda **kw: MockHttpxClient("success")
+    ):
+        chunks = [
+            c
+            async for c in chat_with_llm(
+                [{"role": "user", "content": "hi"}], stop_sequences=["\n"]
+            )
+        ]
+    assert chunks == ["Hello", "!"]

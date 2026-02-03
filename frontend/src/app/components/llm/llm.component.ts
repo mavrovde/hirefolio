@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewChecked, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID, Input } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewChecked, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID, Input, HostListener } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -12,6 +12,8 @@ export interface Agent {
   id: number;
   name: string;
   description: string;
+  role?: string;
+  goal?: string;
   avatar?: string;
 }
 
@@ -223,14 +225,7 @@ export class LlmComponent implements OnInit, AfterViewChecked {
     this.cdr.detectChanges();
 
     // Start timer
-    this.conversationTimer = setInterval(() => {
-      this.conversationTimeRemaining--;
-      if (this.conversationTimeRemaining <= 0) {
-        this.stopMultiConversation();
-        this.conversationStatus = 'Debate Time Limit Reached';
-      }
-      this.cdr.detectChanges();
-    }, 1000);
+    this.startTimer();
 
     this.conversationStatus = 'Connecting to Debate Stream...';
     this.abortController = new AbortController();
@@ -239,7 +234,9 @@ export class LlmComponent implements OnInit, AfterViewChecked {
       const agentConfigs = this.agents.map(a => ({
         id: a.id,
         description: a.description,
-        name: a.name || `Agent ${a.id}`
+        name: a.name || `Agent ${a.id}`,
+        role: a.role || '',
+        goal: a.goal || ''
       }));
 
       await this.llmService.multiChat(
@@ -327,6 +324,13 @@ export class LlmComponent implements OnInit, AfterViewChecked {
     }
   }
 
+  @HostListener('window:keydown.escape', ['$event'])
+  handleEsc(event: any) {
+    if (this.isConfigVisible) {
+      this.isConfigVisible = false;
+    }
+  }
+
   toggleConfig(): void {
     this.isConfigVisible = !this.isConfigVisible;
   }
@@ -365,10 +369,16 @@ export class LlmComponent implements OnInit, AfterViewChecked {
         return;
       }
 
-      this.agents = state.agents;
-      this.conversationTopic = state.conversationTopic;
-      this.multiMessages = state.multiMessages;
-      this.isMultiAgentMode = state.isMultiAgentMode !== undefined ? state.isMultiAgentMode : false;
+      if (state.agents && Array.isArray(state.agents)) {
+        this.agents = state.agents;
+      }
+      if (state.conversationTopic !== undefined) {
+        this.conversationTopic = state.conversationTopic;
+      }
+      if (state.multiMessages && Array.isArray(state.multiMessages)) {
+        this.multiMessages = state.multiMessages;
+      }
+      this.isMultiAgentMode = !!state.isMultiAgentMode;
     } catch (error) {
       console.error('Failed to load state:', error);
       this.clearState();
@@ -383,5 +393,18 @@ export class LlmComponent implements OnInit, AfterViewChecked {
     } catch (error) {
       console.error('Failed to clear state:', error);
     }
+  }
+  private startTimer(): void {
+    if (this.conversationTimer) clearInterval(this.conversationTimer);
+    this.conversationTimer = setInterval(() => {
+      if (this.isConversationActive) {
+        this.conversationTimeRemaining--;
+        if (this.conversationTimeRemaining <= 0) {
+          this.stopMultiConversation();
+          this.conversationStatus = 'Debate Time Limit Reached';
+        }
+        this.cdr.detectChanges();
+      }
+    }, 1000);
   }
 }

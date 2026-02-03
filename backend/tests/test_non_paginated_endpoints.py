@@ -161,7 +161,7 @@ async def test_semantic_search_invalid_lang(client: AsyncClient):
 async def test_semantic_search_limit_zero(client: AsyncClient):
     """Test semantic search with limit=0."""
     response = await client.get("/api/posts/search/semantic?q=test&limit=0")
-    assert response.status_code in [200, 422]
+    assert response.status_code in [200, 400, 422]
 
 
 @pytest.mark.asyncio

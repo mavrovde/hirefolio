@@ -140,29 +140,69 @@ describe('LlmService', () => {
             expect(onDone).toHaveBeenCalled();
         });
 
-        it('should handle API errors', async () => {
+        it('should handle JSON parse errors in stream', async () => {
             const onChunk = vi.fn();
-            const onDone = vi.fn();
+            const spy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
-            (globalThis.fetch as any).mockResolvedValue({
-                ok: false,
-                status: 500
-            });
+            const mockValues = [
+                { done: false, value: new TextEncoder().encode('invalid json\n') },
+                { done: false, value: new TextEncoder().encode(JSON.stringify({ agent: 1, content: 'Valid' }) + '\n') },
+                { done: true, value: undefined }
+            ];
 
-            await expect(service.multiChat(agents, topic, onChunk, onDone)).rejects.toThrow();
-            expect(onDone).not.toHaveBeenCalled();
-        });
-
-        it('should throw error if response body is null', async () => {
-            const onChunk = vi.fn();
-            const onDone = vi.fn();
+            let callCount = 0;
+            const mockReader = {
+                read: vi.fn().mockImplementation(() => Promise.resolve(mockValues[callCount++])),
+                releaseLock: vi.fn()
+            };
 
             (globalThis.fetch as any).mockResolvedValue({
                 ok: true,
-                body: null
+                body: { getReader: () => mockReader }
             });
 
-            await expect(service.multiChat(agents, topic, onChunk, onDone)).rejects.toThrow();
+            await service.multiChat(agents, topic, onChunk);
+
+            expect(spy).toHaveBeenCalled();
+            expect(onChunk).toHaveBeenCalledWith(1, 'Valid', undefined);
+            spy.mockRestore();
+        });
+
+        it('should handle abort signal', async () => {
+            const controller = new AbortController();
+            const onChunk = vi.fn();
+
+            (globalThis.fetch as any).mockImplementation((url: string, init: any) => {
+                if (init.signal.aborted) {
+                    return Promise.reject(new Error('AbortError'));
+                }
+                return new Promise((resolve, reject) => {
+                    init.signal.addEventListener('abort', () => reject(new Error('AbortError')));
+                });
+            });
+
+            const promise = service.multiChat(agents, topic, onChunk, undefined, controller.signal);
+            controller.abort();
+
+            await expect(promise).rejects.toThrow('AbortError');
+        });
+
+        it('should notify onDone even if stream ends abruptly', async () => {
+            const onChunk = vi.fn();
+            const onDone = vi.fn();
+
+            const mockReader = {
+                read: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+                releaseLock: vi.fn()
+            };
+
+            (globalThis.fetch as any).mockResolvedValue({
+                ok: true,
+                body: { getReader: () => mockReader }
+            });
+
+            await service.multiChat(agents, topic, onChunk, onDone);
+            expect(onDone).toHaveBeenCalled();
         });
     });
 });

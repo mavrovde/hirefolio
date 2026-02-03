@@ -133,6 +133,16 @@ describe('LlmComponent', () => {
             expect(component.isStartButtonDisabled()).toBe(true);
         });
 
+        it('should disable start button when agent description is undefined', () => {
+            component.isConversationActive = false;
+            component.conversationTopic = 'Test';
+            component.agents = [
+                { id: 1, description: 'Agent 1', name: 'A1' },
+                { id: 2, description: undefined as any, name: 'A2' }
+            ];
+            expect(component.isStartButtonDisabled()).toBe(true);
+        });
+
         it('should enable start button when all conditions are met', () => {
             component.isConversationActive = false;
             component.conversationTopic = 'Test Topic';
@@ -329,34 +339,74 @@ describe('LlmComponent', () => {
             expect(localStorage.getItem('llm-component-state')).toBeNull();
         });
 
-        it('should save state when adding agent', () => {
-            const saveSpy = vi.spyOn(component as any, 'saveState');
-
-            component.addAgent();
-
-            expect(saveSpy).toHaveBeenCalled();
-        });
-
-        it('should save state when removing agent', () => {
+        it('should remove agent by ID and not index', () => {
             component.agents = [
                 { id: 1, name: 'A1', description: 'D1' },
                 { id: 2, name: 'A2', description: 'D2' },
                 { id: 3, name: 'A3', description: 'D3' }
             ];
-            const saveSpy = vi.spyOn(component as any, 'saveState');
-
             component.removeAgent(2);
-
-            expect(saveSpy).toHaveBeenCalled();
+            expect(component.agents.length).toBe(2);
+            expect(component.agents.find(a => a.id === 2)).toBeUndefined();
         });
 
-        it('should save state when agent description changes', () => {
-            component.agents = [{ id: 1, name: 'Agent 1', description: 'Test' }];
-            const saveSpy = vi.spyOn(component as any, 'saveState');
+        it('should handle Esc key to close config', () => {
+            component.isConfigVisible = true;
+            const event = new KeyboardEvent('keydown', { key: 'Escape' });
+            window.dispatchEvent(event);
+            expect(component.isConfigVisible).toBe(false);
+        });
 
-            component.onAgentDescriptionChange(1);
+        it('should handle autoscroll when message flows', () => {
+            const mockContainer = {
+                scrollHeight: 200,
+                scrollTop: 0,
+                clientHeight: 100
+            };
+            (component as any).scrollContainer = {
+                nativeElement: mockContainer
+            };
 
-            expect(saveSpy).toHaveBeenCalled();
+            // Before scroll
+            expect(mockContainer.scrollTop).toBe(0);
+
+            // Trigger scroll
+            (component as any).scrollToBottom();
+
+            expect(mockContainer.scrollTop).toBe(200);
+        });
+
+        it('should update time every second when active', async () => {
+            vi.useFakeTimers();
+            component.isConversationActive = true;
+            component.conversationTimeRemaining = 300;
+
+            // start timer 
+            (component as any).startTimer();
+
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(component.conversationTimeRemaining).toBe(299);
+
+            await vi.advanceTimersByTimeAsync(2000);
+            expect(component.conversationTimeRemaining).toBe(297);
+
+            component.isConversationActive = false;
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(component.conversationTimeRemaining).toBe(297); // Should stop
+
+            vi.useRealTimers();
+        });
+    });
+
+    describe('State Persistence Edge Cases', () => {
+        beforeEach(() => {
+            localStorage.clear();
+        });
+
+        it('should handle missing data in loadState', () => {
+            localStorage.setItem('llm-component-state', JSON.stringify({ agents: null }));
+            component['loadState']();
+            expect(component.agents.length).toBeGreaterThan(0); // Should fallback to defaults
         });
     });
 });

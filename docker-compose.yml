@@ -49,6 +49,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/mavrov
       - OLLAMA_URL=http://ollama:11434
+      - OTEL_SDK_DISABLED=true
+      - CREWAI_TELEMETRY_OPT_OUT=true
     depends_on:
       db:
         condition: service_healthy

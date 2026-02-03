@@ -13,7 +13,31 @@ test.describe('Multi-Agent Conversation', () => {
 
         await page.goto('/llm');
         await page.waitForLoadState('networkidle');
+
+        // Accept cookies to avoid overlays
+        const acceptBtn = page.locator('button:has-text("Accept & Save")');
+        if (await acceptBtn.isVisible()) {
+            await acceptBtn.click();
+        }
     });
+
+    async function fillAgent(page: any, index: number, name: string, role: string, goal: string, backstory: string) {
+        console.log(`Filling agent ${index + 1}: ${name}`);
+        const nameInput = page.locator('input[placeholder="Agent Name"]').nth(index);
+        const roleInput = page.locator('input[placeholder*="Role"]').nth(index);
+        const goalInput = page.locator('input[placeholder*="Goal"]').nth(index);
+        const backstoryInput = page.locator('textarea[placeholder*="Backstory"]').nth(index);
+
+        await nameInput.fill(name);
+        await roleInput.fill(role);
+        await goalInput.fill(goal);
+        await backstoryInput.fill(backstory);
+    }
+
+    async function fillTopic(page: any, topic: string) {
+        console.log(`Filling topic: ${topic}`);
+        await page.locator('input[placeholder*="subject of the debate"]').fill(topic);
+    }
 
     test('should display mode toggle buttons', async ({ page }) => {
         const singleAgentBtn = page.locator('button:has-text("Single Agent")');
@@ -28,9 +52,9 @@ test.describe('Multi-Agent Conversation', () => {
         await multiAgentBtn.click();
 
         // Verify multi-agent UI is visible
-        await expect(page.locator('input[placeholder*="Agent 1"]')).toBeVisible();
-        await expect(page.locator('input[placeholder*="Agent 2"]')).toBeVisible();
-        await expect(page.locator('input[placeholder*="topic"]')).toBeVisible();
+        await expect(page.locator('input[placeholder="Agent Name"]').first()).toBeVisible();
+        await expect(page.locator('input[placeholder="Agent Name"]').nth(1)).toBeVisible();
+        await expect(page.locator('input[placeholder*="subject of the debate"]')).toBeVisible();
     });
 
 
@@ -42,14 +66,14 @@ test.describe('Multi-Agent Conversation', () => {
         await expect(startBtn).toBeDisabled();
 
         // Fill only agent 1
-        await page.locator('input[placeholder*="Agent 1"]').fill('Agent 1');
+        await fillAgent(page, 0, 'Agent 1', 'Scientist', 'Research', 'Backstory 1');
         await expect(startBtn).toBeDisabled();
 
         // Fill agent 2
-        await page.locator('input[placeholder*="Agent 2"]').fill('Agent 2');
+        await fillAgent(page, 1, 'Agent 2', 'Philosopher', 'Think', 'Backstory 2');
 
         // Fill topic
-        await page.locator('input[placeholder*="topic"]').fill('Test topic');
+        await fillTopic(page, 'Test topic');
 
         // Now button should be enabled
         await expect(startBtn).toBeEnabled({ timeout: 60000 });
@@ -61,11 +85,9 @@ test.describe('Multi-Agent Conversation', () => {
         await expect(page.locator('.multi-agent-container')).toBeVisible();
 
         // Fill in all fields
-        await page.locator('input[placeholder*="Agent 1"]').fill('A scientist');
-        await page.locator('input[placeholder*="Agent 2"]').fill('A philosopher');
-        await page.locator('input[placeholder*="topic"]').fill('The nature of reality');
-
-        // Wait for inputs to be ready
+        await fillAgent(page, 0, 'A scientist', 'Quantum Physicist', 'Explain reality', 'Senior researcher');
+        await fillAgent(page, 1, 'A philosopher', 'Ethicist', 'Probe morality', 'Modern thinker');
+        await fillTopic(page, 'The nature of reality');
 
         // Start conversation
         const startBtn = page.locator('button:has-text("START DEBATE")');
@@ -94,9 +116,9 @@ test.describe('Multi-Agent Conversation', () => {
         await expect(timer).toHaveText('5:00');
 
         // Fill fields and start
-        await page.locator('input[placeholder*="Agent 1"]').fill('Agent 1');
-        await page.locator('input[placeholder*="Agent 2"]').fill('Agent 2');
-        await page.locator('input[placeholder*="topic"]').fill('Topic');
+        await fillAgent(page, 0, 'Agent 1', 'Role 1', 'Goal 1', 'B1');
+        await fillAgent(page, 1, 'Agent 2', 'Role 2', 'Goal 2', 'B2');
+        await fillTopic(page, 'Topic');
         await page.waitForTimeout(2000);
 
         const startBtn = page.locator('button:has-text("START DEBATE")');
@@ -114,9 +136,9 @@ test.describe('Multi-Agent Conversation', () => {
         await page.locator('button:has-text("Multi-Agent Debate")').click();
 
         // Start conversation
-        await page.locator('input[placeholder*="Agent 1"]').fill('Agent 1');
-        await page.locator('input[placeholder*="Agent 2"]').fill('Agent 2');
-        await page.locator('input[placeholder*="topic"]').fill('Topic');
+        await fillAgent(page, 0, 'Agent 1', 'Role 1', 'Goal 1', 'B1');
+        await fillAgent(page, 1, 'Agent 2', 'Role 2', 'Goal 2', 'B2');
+        await fillTopic(page, 'Topic');
         await page.waitForTimeout(2000);
 
         const startBtn = page.locator('button:has-text("START DEBATE")');
@@ -138,9 +160,9 @@ test.describe('Multi-Agent Conversation', () => {
         await page.locator('button:has-text("Multi-Agent Debate")').click();
 
         // Start conversation
-        await page.locator('input[placeholder*="Agent 1"]').fill('Scientist');
-        await page.locator('input[placeholder*="Agent 2"]').fill('Philosopher');
-        await page.locator('input[placeholder*="topic"]').fill('AI Ethics');
+        await fillAgent(page, 0, 'Scientist', 'Expert', 'Facts', 'B1');
+        await fillAgent(page, 1, 'Philosopher', 'Critic', 'Questions', 'B2');
+        await fillTopic(page, 'AI Ethics');
 
 
         await page.locator('button:has-text("START DEBATE")').click();
@@ -158,14 +180,14 @@ test.describe('Multi-Agent Conversation', () => {
         // Hit the real backend (requires Ollama)
         await page.locator('button:has-text("Multi-Agent Debate")').click();
 
-        const agent1Input = page.locator('input[placeholder*="Agent 1"]');
-        const agent2Input = page.locator('input[placeholder*="Agent 2"]');
-        const topicInput = page.locator('input[placeholder*="topic"]');
+        const agent1Input = page.locator('input[placeholder="Agent Name"]').first();
+        const agent2Input = page.locator('input[placeholder="Agent Name"]').nth(1);
+        const topicInput = page.locator('input[placeholder*="subject of the debate"]');
 
-        // Fill and start with proper descriptions
-        await agent1Input.fill('A skeptical scientist');
-        await agent2Input.fill('An optimistic philosopher');
-        await topicInput.fill('The nature of consciousness');
+        // Fill and start with proper roles/goals
+        await fillAgent(page, 0, 'A skeptical scientist', 'Physicist', 'Debunk myths', 'B1');
+        await fillAgent(page, 1, 'An optimistic philosopher', 'Theologian', 'Find meaning', 'B2');
+        await fillTopic(page, 'The nature of consciousness');
 
         // Wait for START button to be enabled
         const startBtn = page.locator('button:has-text("START DEBATE")');
@@ -195,13 +217,13 @@ test.describe('Multi-Agent Conversation', () => {
         await page.locator('button:has-text("Multi-Agent Debate")').click();
 
         // Verify multi-agent UI
-        await expect(page.locator('input[placeholder*="Agent 1"]')).toBeVisible();
+        await expect(page.locator('input[placeholder="Agent Name"]').first()).toBeVisible();
 
         // Switch back
         await page.locator('button:has-text("Single Agent")').click();
 
         // Verify single-agent UI
         await expect(page.locator('.terminal-container')).toBeVisible();
-        await expect(page.locator('input[placeholder*="Agent 1"]')).not.toBeVisible();
+        await expect(page.locator('input[placeholder="Agent Name"]')).not.toBeVisible();
     });
 });

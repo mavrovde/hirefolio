@@ -84,48 +84,59 @@
         </div>
 
         <!-- Agent Setup -->
-        <div *ngIf="isConfigVisible" class="agent-setup mb-4 space-y-3">
+        <div *ngIf="isConfigVisible" class="agent-setup mb-6 space-y-6">
             <!-- Dynamic Agents List -->
-            <div *ngFor="let agent of agents; let i = index"
-                class="agent-config flex items-center gap-3 animate-fadeIn">
-                <div class="avatar-preview-container relative group">
-                    <img *ngIf="agent.avatar" [src]="'data:image/png;base64,' + agent.avatar"
-                        class="avatar-preview w-16 h-16 rounded-full border-2"
-                        [style.borderColor]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'" [alt]="agent.name">
-                    <div *ngIf="!agent.avatar"
-                        class="avatar-placeholder w-16 h-16 rounded-full border-2 border-dashed flex items-center justify-center text-xs font-bold"
-                        [style.borderColor]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'"
-                        [style.color]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'">
-                        A{{agent.id}}
-                    </div>
-                    <!-- Remove Button (Overlay) -->
-                    <button *ngIf="agents.length > 2" (click)="removeAgent(i)"
-                        class="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Remove Agent">×</button>
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div *ngFor="let agent of agents; let i = index"
+                    class="agent-card p-4 border border-terminal-dim bg-zinc-900/30 rounded-lg relative group transition-all hover:border-terminal-highlight">
+                    <!-- Remove Button -->
+                    <button *ngIf="agents.length > 2" (click)="removeAgent(agent.id)"
+                        class="absolute top-2 right-2 text-terminal-dim hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Remove Agent">
+                        <span class="text-lg">×</span>
+                    </button>
 
-                <input [(ngModel)]="agent.description" (blur)="generateAgentName(agent)"
-                    (input)="onAgentDescriptionChange(agent.id)" [disabled]="isConversationActive"
-                    [placeholder]="'Agent ' + agent.id + ' persona (e.g., A skeptical scientist)'"
-                    class="flex-grow bg-transparent border px-3 py-2 focus:outline-none disabled:opacity-50"
-                    [style.borderColor]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'"
-                    [style.color]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-2 h-2 rounded-full"
+                                [style.backgroundColor]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'"></div>
+                            <input [(ngModel)]="agent.name" [placeholder]="'Agent Name'"
+                                [disabled]="isConversationActive"
+                                class="bg-transparent border-none text-sm font-bold focus:outline-none w-full"
+                                [style.color]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'">
+                        </div>
+
+                        <input [(ngModel)]="agent.role" [placeholder]="'Role (e.g. Lead Researcher)'"
+                            [disabled]="isConversationActive"
+                            class="bg-transparent border-b border-terminal-dim/30 text-xs py-1 focus:outline-none focus:border-terminal-highlight transition-colors">
+
+                        <input [(ngModel)]="agent.goal" [placeholder]="'Goal (e.g. Find flaws in the theory)'"
+                            [disabled]="isConversationActive"
+                            class="bg-transparent border-b border-terminal-dim/30 text-xs py-1 focus:outline-none focus:border-terminal-highlight transition-colors">
+
+                        <textarea [(ngModel)]="agent.description" [placeholder]="'Backstory/Persona details...'"
+                            [disabled]="isConversationActive"
+                            class="bg-transparent border-none text-xs mt-2 focus:outline-none resize-none h-16 text-terminal-dim"
+                            (input)="onAgentDescriptionChange(agent.id)"></textarea>
+                    </div>
+                </div>
             </div>
 
-            <!-- Add Agent Button -->
-            <div class="flex justify-center" *ngIf="!isConversationActive && agents.length < 5">
+            <!-- Add Agent -->
+            <div class="flex justify-start px-2" *ngIf="!isConversationActive && agents.length < 5">
                 <button (click)="addAgent()"
-                    class="text-xs border border-dashed border-terminal-dim px-3 py-1 hover:border-white hover:text-white transition-colors">
-                    + Add Agent
+                    class="text-[10px] text-terminal-dim hover:text-terminal-highlight transition-colors flex items-center gap-1 uppercase tracking-widest">
+                    <span>[+] Add Participant</span>
                 </button>
             </div>
 
             <!-- Topic -->
-            <div class="flex items-center gap-3 mt-4 border-t border-terminal-dim pt-4">
-                <div class="w-16 text-center text-terminal-highlight text-xs">TOPIC</div>
+            <div class="topic-section px-2 mt-8">
+                <label class="block text-[10px] uppercase tracking-widest text-terminal-dim mb-2">Discussion
+                    Topic</label>
                 <input [(ngModel)]="conversationTopic" [disabled]="isConversationActive"
-                    placeholder="Conversation topic (e.g., 'The future of AI')"
-                    class="flex-grow bg-transparent border border-terminal-highlight px-3 py-2 text-white placeholder-terminal-dim focus:outline-none focus:border-white disabled:opacity-50">
+                    placeholder="Enter the core subject of the debate..."
+                    class="w-full bg-transparent border-b border-terminal-dim py-3 text-lg text-white placeholder-terminal-dim/50 focus:outline-none focus:border-terminal-highlight transition-colors">
             </div>
         </div>
 

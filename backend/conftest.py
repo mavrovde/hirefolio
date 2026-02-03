@@ -1,14 +1,34 @@
-from typing import AsyncGenerator
-import pytest
-from httpx import AsyncClient
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.pool import NullPool
-import os
+import sys
+from unittest.mock import MagicMock
 
-from app.database import Base, get_db
-from app.main import app
-from app.config import settings
+# Global mocks for dependencies that require Rust/tiktoken or other system deps
+# Must be before any 'app' imports which might trigger nested imports of these
+mock_crewai = MagicMock()
+sys.modules["crewai"] = mock_crewai
+mock_crewai.Agent = MagicMock
+mock_crewai.Task = MagicMock
+mock_crewai.Crew = MagicMock
+# Process needs .sequential attribute
+mock_process = MagicMock()
+mock_process.sequential = "sequential"
+mock_crewai.Process = mock_process
+
+mock_lc = MagicMock()
+sys.modules["langchain_community"] = mock_lc
+sys.modules["langchain_community.chat_models"] = mock_lc
+mock_lc.ChatOllama = MagicMock
+
+from typing import AsyncGenerator  # noqa: E402
+import pytest  # noqa: E402
+from httpx import AsyncClient  # noqa: E402
+from sqlalchemy import text  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker  # noqa: E402
+from sqlalchemy.pool import NullPool  # noqa: E402
+import os  # noqa: E402
+
+from app.database import Base, get_db  # noqa: E402
+from app.main import app  # noqa: E402
+from app.config import settings  # noqa: E402
 
 # Test database URL
 DATABASE_URL = (

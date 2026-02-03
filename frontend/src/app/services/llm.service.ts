@@ -10,6 +10,8 @@ export interface AgentConfig {
     id: number;
     name: string;
     description: string;
+    role?: string;
+    goal?: string;
 }
 
 @Injectable({
