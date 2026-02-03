@@ -1,8 +1,9 @@
 from typing import List, cast
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from math import ceil
 from pydantic import BaseModel
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,31 +20,68 @@ class TagStat(BaseModel):
     count: int
 
 
+class PaginatedTagStats(BaseModel):
+    items: List[TagStat]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class TagRename(BaseModel):
     new_name: str
 
 
-@router.get("", response_model=List[TagStat])
+@router.get("", response_model=PaginatedTagStats)
 async def list_tags(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    sort_by: str = Query("count", description="Field to sort by (name or count)"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sort order"),
+    search: str = Query(None, description="Search in tag names"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
-    """List all tags and their usage counts."""
-    # Since tags are in an ARRAY column, we need to unnest them to count.
-    # PostgreSQL specific query using unnest
-    query = (
-        select(
-            func.unnest(Post.tags).label("tag"),
-            func.count(Post.id).label("usage_count"),
-        )
-        .group_by("tag")
-        .order_by(text("usage_count DESC"))
-    )
+    """List all tags with pagination, sorting, and search."""
+    # PostgreSQL specific query using unnest to count tags
+    query = select(
+        func.unnest(Post.tags).label("tag"),
+        func.count(Post.id).label("usage_count"),
+    ).group_by("tag")
 
+    # Execute to get all tags with counts
     result = await db.execute(query)
-    tags = result.all()
+    all_tags = [TagStat(name=row.tag, count=row.usage_count) for row in result.all()]
 
-    return [TagStat(name=row.tag, count=row.usage_count) for row in tags]
+    # Apply search filter (client-side since tags are aggregated)
+    if search:
+        search_lower = search.lower()
+        all_tags = [tag for tag in all_tags if search_lower in tag.name.lower()]
+
+    # Apply sorting
+    if sort_by == "name":
+        all_tags.sort(key=lambda x: x.name, reverse=(sort_order == "desc"))
+    else:  # sort by count (default)
+        all_tags.sort(key=lambda x: x.count, reverse=(sort_order == "desc"))
+
+    # Get total count after filtering
+    total = len(all_tags)
+
+    # Apply pagination
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paginated_tags = all_tags[start_idx:end_idx]
+
+    # Calculate total pages
+    total_pages = ceil(total / page_size) if total > 0 else 1
+
+    return PaginatedTagStats(
+        items=paginated_tags,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
 
 
 @router.put("/{old_name}")

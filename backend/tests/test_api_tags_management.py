@@ -20,7 +20,8 @@ async def test_list_tags(client: AsyncClient):
     data = response.json()
 
     # Verify counts
-    tags = {t["name"]: t["count"] for t in data}
+    items = data["items"]
+    tags = {t["name"]: t["count"] for t in items}
     assert tags.get("python") == 2
     assert tags.get("api") == 1
     assert tags.get("web") == 1
@@ -49,7 +50,7 @@ async def test_rename_tag(client: AsyncClient, db_session):
 
     # Verify in list
     tags_resp = await client.get("/api/tags")
-    tags = [t["name"] for t in tags_resp.json()]
+    tags = [t["name"] for t in tags_resp.json()["items"]]
     assert "new-tag" in tags
     assert "old-tag" not in tags
 

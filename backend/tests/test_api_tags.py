@@ -77,15 +77,17 @@ async def test_filter_posts_by_tag(client: AsyncClient):
     response = await client.get("/api/posts?tag=python")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) >= 1
-    assert any(p["slug"] == "python-post" for p in data)
-    assert not any(p["slug"] == "rust-post" for p in data)
+    items = data["items"]
+    assert len(items) >= 1
+    assert any(p["slug"] == "python-post" for p in items)
+    assert not any(p["slug"] == "rust-post" for p in items)
 
     # Filter by 'coding' (both)
     response = await client.get("/api/posts?tag=coding")
     assert response.status_code == 200
     data = response.json()
-    slugs = [p["slug"] for p in data]
+    items = data["items"]
+    slugs = [p["slug"] for p in items]
     assert "python-post" in slugs
     assert "rust-post" in slugs
 

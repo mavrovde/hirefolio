@@ -24,6 +24,14 @@ export interface CvVersion {
     created_at: string;
 }
 
+export interface PaginatedResponse<T> {
+    items: T[];
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -39,11 +47,41 @@ export class AdminCvService {
         return this.http.post(`${this.apiUrl}/upload`, formData);
     }
 
-    getRequests(): Observable<CvRequestSummary[]> {
-        return this.http.get<CvRequestSummary[]>(`${this.apiUrl}/requests`);
+    getRequests(
+        page: number = 1,
+        pageSize: number = 10,
+        sortBy: string = 'created_at',
+        sortOrder: 'asc' | 'desc' = 'desc',
+        search: string | null = null
+    ): Observable<PaginatedResponse<CvRequestSummary>> {
+        const params: any = {
+            page: page.toString(),
+            page_size: pageSize.toString(),
+            sort_by: sortBy,
+            sort_order: sortOrder
+        };
+        if (search) {
+            params.search = search;
+        }
+        return this.http.get<PaginatedResponse<CvRequestSummary>>(`${this.apiUrl}/requests`, { params });
     }
 
-    getVersions(): Observable<CvVersion[]> {
-        return this.http.get<CvVersion[]>(`${this.apiUrl}/versions`);
+    getVersions(
+        page: number = 1,
+        pageSize: number = 10,
+        sortBy: string = 'created_at',
+        sortOrder: 'asc' | 'desc' = 'desc',
+        search: string | null = null
+    ): Observable<PaginatedResponse<CvVersion>> {
+        const params: any = {
+            page: page.toString(),
+            page_size: pageSize.toString(),
+            sort_by: sortBy,
+            sort_order: sortOrder
+        };
+        if (search) {
+            params.search = search;
+        }
+        return this.http.get<PaginatedResponse<CvVersion>>(`${this.apiUrl}/versions`, { params });
     }
 }

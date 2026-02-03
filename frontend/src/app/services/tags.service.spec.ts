@@ -26,18 +26,26 @@ describe('TagsService', () => {
     });
 
     it('should get all tags', () => {
-        const mockTags: TagStat[] = [
-            { name: 'Angular', count: 5 },
-            { name: 'Python', count: 3 },
-        ];
+        const mockResponse = {
+            items: [
+                { name: 'Angular', count: 5 },
+                { name: 'Python', count: 3 },
+            ],
+            total: 2,
+            page: 1,
+            page_size: 10,
+            total_pages: 1
+        };
 
-        service.getAllTags().subscribe((tags) => {
-            expect(tags).toEqual(mockTags);
+        service.getAllTags().subscribe((response) => {
+            expect(response).toEqual(mockResponse);
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/api/tags`);
+        const req = httpMock.expectOne((req) => req.url.includes('/api/tags'));
         expect(req.request.method).toBe('GET');
-        req.flush(mockTags);
+        expect(req.request.params.get('page')).toBe('1');
+        expect(req.request.params.get('page_size')).toBe('10');
+        req.flush(mockResponse);
     });
 
     it('should rename tag', () => {

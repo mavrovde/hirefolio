@@ -53,9 +53,10 @@ async def test_get_cv_requests(client, db_session):
     response = await client.get("/api/admin/cv/requests")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) >= 1
-    assert data[0]["name"] == "Test User"
-    assert data[0]["cv_version"] == "v1.0"
+    items = data["items"]
+    assert len(items) >= 1
+    assert items[0]["name"] == "Test User"
+    assert items[0]["cv_version"] == "v1.0"
 
 
 @pytest.mark.asyncio
@@ -68,9 +69,10 @@ async def test_get_cv_versions(client, db_session):
     response = await client.get("/api/admin/cv/versions")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) >= 1
+    items = data["items"]
+    assert len(items) >= 1
     # Check that one of them is our v0.9
-    found = any(d["version"] == "v0.9" for d in data)
+    found = any(d["version"] == "v0.9" for d in items)
     assert found is True
 
 

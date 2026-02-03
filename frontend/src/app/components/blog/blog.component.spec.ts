@@ -41,7 +41,13 @@ describe('BlogComponent', () => {
 
   beforeEach(async () => {
     blogServiceSpy = {
-      getPosts: vi.fn().mockReturnValue(of(mockPosts)),
+      getPosts: vi.fn().mockReturnValue(of({
+        items: mockPosts,
+        total: mockPosts.length,
+        page: 1,
+        page_size: 10,
+        total_pages: 1
+      })),
       searchPosts: vi.fn().mockReturnValue(of(mockSearchResults)),
     };
 

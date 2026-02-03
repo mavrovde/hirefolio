@@ -62,5 +62,11 @@
     "MESSAGE": "We use local storage to save your language preference and improve your experience. According to European laws, we need your consent to persist this data. Without consent, your preferences will reset on refresh.",
     "ACCEPT": "Accept & Save",
     "DECLINE": "Decline"
+  },
+  "ADMIN": {
+    "CV_MANAGER": "CV Management",
+    "CV_REQUESTS": "CV Requests",
+    "CV_VERSIONS": "CV Versions",
+    "CV_UPLOAD_COMPLETE": "CV upload successful"
   }
 }

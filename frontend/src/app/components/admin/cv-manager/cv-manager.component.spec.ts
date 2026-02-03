@@ -10,10 +10,18 @@ describe('CvManagerComponent', () => {
     let fixture: ComponentFixture<CvManagerComponent>;
     let mockCvService: any;
 
+    const mockPaginatedResponse = {
+        items: [],
+        total: 0,
+        page: 1,
+        page_size: 10,
+        total_pages: 1
+    };
+
     beforeEach(async () => {
         mockCvService = {
-            getRequests: vi.fn().mockReturnValue(of([])), // Use Vitest mock
-            getVersions: vi.fn().mockReturnValue(of([])),
+            getRequests: vi.fn().mockReturnValue(of(mockPaginatedResponse)),
+            getVersions: vi.fn().mockReturnValue(of(mockPaginatedResponse)),
             uploadCv: vi.fn().mockReturnValue(of({ success: true }))
         };
 
@@ -48,13 +56,13 @@ describe('CvManagerComponent', () => {
     it('should handle file selection', () => {
         const file = new File([''], 'test.pdf');
         const event = { target: { files: [file] } };
-        component.onFileSelected(event);
+        component.onFileSelected(event as any);
         expect(component.selectedFile).toBe(file);
     });
 
     it('should handle file selection cancellation', () => {
         const event = { target: { files: [] } };
-        component.onFileSelected(event);
+        component.onFileSelected(event as any);
         expect(component.selectedFile).toBeNull();
     });
 
@@ -66,7 +74,7 @@ describe('CvManagerComponent', () => {
         component.onUpload();
 
         expect(mockCvService.uploadCv).toHaveBeenCalledWith(file, 'v1.0');
-        expect(component.uploadSuccess).toBe(true);
+        expect(component.successMessage).toBe('ADMIN.CV_UPLOAD_COMPLETE');
         expect(component.uploading).toBe(false);
         expect(component.selectedFile).toBeNull(); // Should reset
         expect(mockCvService.getVersions).toHaveBeenCalledTimes(2); // Initial + after upload
@@ -80,8 +88,8 @@ describe('CvManagerComponent', () => {
 
         component.onUpload();
 
-        expect(component.uploadError).toBe('Error');
-        expect(component.uploadSuccess).toBe(false);
+        expect(component.errorMessage).toBe('Upload failed. Please try again.');
+        expect(component.successMessage).toBeNull();
         expect(component.uploading).toBe(false);
     });
 
@@ -93,7 +101,7 @@ describe('CvManagerComponent', () => {
 
         component.onUpload();
 
-        expect(component.uploadError).toBe('Upload failed');
+        expect(component.errorMessage).toBe('Upload failed. Please try again.');
     });
 
     it('should not upload if form invalid or no file', () => {
@@ -111,13 +119,13 @@ describe('CvManagerComponent', () => {
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
         mockCvService.getRequests.mockReturnValue(throwError(() => new Error('Load failed')));
         component.loadRequests();
-        expect(consoleSpy).toHaveBeenCalledWith('Failed to load requests', expect.anything());
+        expect(consoleSpy).toHaveBeenCalledWith('Error loading requests:', expect.anything());
     });
 
     it('should handle loadVersions error', () => {
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
         mockCvService.getVersions.mockReturnValue(throwError(() => new Error('Load failed')));
         component.loadVersions();
-        expect(consoleSpy).toHaveBeenCalledWith('Failed to load versions', expect.anything());
+        expect(consoleSpy).toHaveBeenCalledWith('Error loading versions:', expect.anything());
     });
 });

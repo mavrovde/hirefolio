@@ -43,7 +43,7 @@ describe('BlogService', () => {
           !req.params.has('lang'),
       );
       expect(req.request.method).toBe('GET');
-      req.flush([]);
+      req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
     });
 
     it('should fetch drafts when publishedOnly is false', () => {
@@ -52,7 +52,7 @@ describe('BlogService', () => {
       const req = httpMock.expectOne(
         (req) => req.url.endsWith('/api/posts') && req.params.get('published_only') === 'false',
       );
-      req.flush([]);
+      req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
     });
 
     it('should filter by tag when tag is provided', () => {
@@ -61,7 +61,7 @@ describe('BlogService', () => {
       const req = httpMock.expectOne(
         (req) => req.url.endsWith('/api/posts') && req.params.get('tag') === 'angular',
       );
-      req.flush([]);
+      req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
     });
 
     it('should combine language and tag filters', () => {
@@ -73,7 +73,7 @@ describe('BlogService', () => {
           req.params.get('lang') === 'de' &&
           req.params.get('tag') === 'tech',
       );
-      req.flush([]);
+      req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
     });
 
     it('should fallback to current language from service when lang is undefined', () => {
@@ -83,7 +83,7 @@ describe('BlogService', () => {
       const req = httpMock.expectOne(
         (req) => req.url.endsWith('/api/posts') && req.params.get('lang') === 'en',
       );
-      req.flush([]);
+      req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
     });
 
     it('should handle tag and publishedOnly correctly in fallback mode', () => {
@@ -97,7 +97,7 @@ describe('BlogService', () => {
           req.params.get('tag') === 'tech' &&
           req.params.get('published_only') === 'false',
       );
-      req.flush([]);
+      req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
     });
   });
 

@@ -1,5 +1,6 @@
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from math import ceil
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, field_validator, ConfigDict
@@ -74,6 +75,14 @@ class PostListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PaginatedPostListResponse(BaseModel):
+    items: List[PostListResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class SimilarPostResponse(BaseModel):
     id: int
     title: str
@@ -99,22 +108,27 @@ class PostDetailSuggestionResponse(BaseModel):
     tags: List[str]
 
 
-@router.get("", response_model=List[PostListResponse])
+@router.get("", response_model=PaginatedPostListResponse)
 async def list_posts(
     published_only: bool = True,
     lang: Optional[str] = None,
     tag: Optional[str] = None,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    sort_by: str = Query("created_at", description="Field to sort by"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sort order"),
+    search: Optional[str] = Query(None, description="Search in title and summary"),
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """List all posts."""
+    """List posts with pagination, sorting, and search."""
     # Restrict access to drafts
     if not published_only:
         if not current_user or not current_user.is_admin:
-            # Force published_only if not admin
             published_only = True
 
-    query = select(Post).order_by(Post.created_at.desc())
+    # Build base query
+    query = select(Post)
     if published_only:
         query = query.where(Post.published.is_(True))
     if lang:
@@ -122,21 +136,61 @@ async def list_posts(
     if tag:
         query = query.where(Post.tags.contains([tag]))
 
+    # Apply search filter
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(
+            (Post.title.ilike(search_term)) | (Post.summary.ilike(search_term))
+        )
+
+    # Get total count before pagination
+    from sqlalchemy import func
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total_raw = await db.scalar(count_query)
+    total = int(total_raw) if total_raw is not None else 0
+
+    # Apply sorting
+    if hasattr(Post, sort_by):
+        order_column = getattr(Post, sort_by)
+        if sort_order == "desc":
+            query = query.order_by(order_column.desc())
+        else:
+            query = query.order_by(order_column.asc())
+    else:
+        # Default to created_at desc if invalid sort field
+        query = query.order_by(Post.created_at.desc())
+
+    # Apply pagination
+    offset = (page - 1) * page_size
+    query = query.offset(offset).limit(page_size)
+
+    # Execute query
     result = await db.execute(query)
     posts = result.scalars().all()
-    return [
-        PostListResponse(
-            id=p.id,
-            title=p.title,
-            slug=p.slug,
-            summary=p.summary,
-            language=p.language,
-            published=p.published,
-            tags=p.tags,
-            created_at=p.created_at.isoformat(),
-        )
-        for p in posts
-    ]
+
+    # Calculate total pages
+    total_pages = ceil(total / page_size) if total > 0 else 1
+
+    return PaginatedPostListResponse(
+        items=[
+            PostListResponse(
+                id=p.id,
+                title=p.title,
+                slug=p.slug,
+                summary=p.summary,
+                language=p.language,
+                published=p.published,
+                tags=p.tags,
+                created_at=p.created_at.isoformat(),
+            )
+            for p in posts
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
 
 
 @router.get("/{id:int}", response_model=PostResponse)

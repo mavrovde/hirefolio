@@ -4,10 +4,14 @@ test.describe('Post Management', () => {
   test.setTimeout(60000);
 
   test.beforeEach(async ({ page }) => {
+    console.log(`[E2E] Starting test: ${test.info().title}`);
+    page.on('console', msg => console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`));
+
     await page.addInitScript(() => {
       window.localStorage.setItem('cookie_consent', 'true');
     });
     // Login before each test
+    console.log('[E2E] Logging in as admin...');
     await page.goto('/admin/login');
     await page.fill('input[name="username"]', 'admin');
     await page.fill('input[name="password"]', 'admin');
@@ -15,27 +19,30 @@ test.describe('Post Management', () => {
 
     // Auth redirect is to dashboard by default
     await expect(page).toHaveURL(/\/admin\/dashboard/);
+    console.log('[E2E] Login successful.');
 
     // Navigate to posts list
+    console.log('[E2E] Navigating to /admin/posts...');
     await page.goto('/admin/posts');
   });
 
   test('should create a new post', async ({ page }) => {
+    console.log('[E2E] Clicking button to create new post...');
     await page.click('.btn-new');
 
     // Fill form
     const timestamp = Date.now();
     const title = `E2E Test Post ${timestamp}`;
     const slug = `e2e-test-${timestamp}`;
+    console.log(`[E2E] Creating post with title: ${title}`);
 
     await page.fill('input[id="title"]', title);
     await page.fill('input[id="slug"]', slug);
     await page.selectOption('select[id="language"]', 'en');
-
     await page.fill('textarea[id="content"]', 'This is a test content created by Playwright.');
-
     await page.fill('textarea[id="summary"]', 'Test summary');
 
+    console.log('[E2E] Submitting post form...');
     await page.click('button[type="submit"]');
 
     // Verify redirect to list
@@ -44,6 +51,7 @@ test.describe('Post Management', () => {
 
     // Verify post is in the list
     await expect(page.locator('table')).toContainText(title);
+    console.log('[E2E] Post created successfully.');
   });
 
   test('should suggest tags', async ({ page }) => {

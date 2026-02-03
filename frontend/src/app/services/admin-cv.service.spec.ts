@@ -38,29 +38,47 @@ describe('AdminCvService', () => {
         req.flush({ success: true });
     });
 
-    it('should get requests', () => {
-        const mockRequests = [{ id: '1', name: 'Test', email: 'test@test.com' }];
+    it('should get requests with pagination params', () => {
+        const mockResponse = {
+            items: [{ id: '1', name: 'Test', email: 'test@test.com', company: '', message: '', created_at: '', consent_given: true, cv_version: '' }],
+            total: 1,
+            page: 1,
+            page_size: 10,
+            total_pages: 1
+        };
 
-        service.getRequests().subscribe(requests => {
-            expect(requests.length).toBe(1);
-            expect(requests[0].name).toBe('Test');
+        service.getRequests(1, 10, 'created_at', 'desc', null).subscribe(response => {
+            expect(response.items.length).toBe(1);
+            expect(response.items[0].name).toBe('Test');
+            expect(response.total).toBe(1);
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/api/admin/cv/requests`);
+        const req = httpMock.expectOne((request) => request.url === `${environment.apiUrl}/api/admin/cv/requests`);
         expect(req.request.method).toBe('GET');
-        req.flush(mockRequests);
+        expect(req.request.params.get('page')).toBe('1');
+        expect(req.request.params.get('page_size')).toBe('10');
+        req.flush(mockResponse);
     });
 
-    it('should get versions', () => {
-        const mockVersions = [{ id: '1', version: 'v1.0', is_active: true }];
+    it('should get versions with pagination params', () => {
+        const mockResponse = {
+            items: [{ id: '1', version: 'v1.0', is_active: true, filename: 'test.pdf', created_at: '' }],
+            total: 1,
+            page: 1,
+            page_size: 10,
+            total_pages: 1
+        };
 
-        service.getVersions().subscribe(versions => {
-            expect(versions.length).toBe(1);
-            expect(versions[0].version).toBe('v1.0');
+        service.getVersions(1, 10, 'created_at', 'desc', null).subscribe(response => {
+            expect(response.items.length).toBe(1);
+            expect(response.items[0].version).toBe('v1.0');
+            expect(response.total).toBe(1);
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/api/admin/cv/versions`);
+        const req = httpMock.expectOne((request) => request.url === `${environment.apiUrl}/api/admin/cv/versions`);
         expect(req.request.method).toBe('GET');
-        req.flush(mockVersions);
+        expect(req.request.params.get('page')).toBe('1');
+        expect(req.request.params.get('page_size')).toBe('10');
+        req.flush(mockResponse);
     });
 });

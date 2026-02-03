@@ -102,8 +102,8 @@ async def test_multilingual_posts(client: AsyncClient, mock_embedding):
         assert en_response.status_code == 200
         assert de_response.status_code == 200
 
-        en_posts = en_response.json()
-        de_posts = de_response.json()
+        en_posts = en_response.json()["items"]
+        de_posts = de_response.json()["items"]
 
         assert len(en_posts) == 1
         assert len(de_posts) == 1

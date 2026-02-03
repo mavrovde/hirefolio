@@ -59,10 +59,17 @@ describe('PostListComponent', () => {
   });
 
   it('should load posts on init', () => {
-    blogServiceSpy.getPosts.mockReturnValue(of(mockPosts));
+    const mockResponse = {
+      items: mockPosts,
+      total: 2,
+      page: 1,
+      page_size: 10,
+      total_pages: 1
+    };
+    blogServiceSpy.getPosts.mockReturnValue(of(mockResponse));
     fixture.detectChanges();
 
-    expect(component.posts).toEqual(mockPosts);
+    expect(component.table.items).toEqual(mockPosts);
     expect(component.loading).toBe(false);
     expect(component.error).toBeNull();
   });
@@ -71,43 +78,65 @@ describe('PostListComponent', () => {
     blogServiceSpy.getPosts.mockReturnValue(throwError(() => new Error('Network error')));
     fixture.detectChanges();
 
-    expect(component.posts).toEqual([]);
+    expect(component.table.items).toEqual([]);
     expect(component.loading).toBe(false);
     expect(component.error).toContain('Failed to load posts');
   });
 
   it('should delete post after confirmation', () => {
+    const mockResponse = {
+      items: mockPosts,
+      total: 2,
+      page: 1,
+      page_size: 10,
+      total_pages: 1
+    };
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    blogServiceSpy.getPosts.mockReturnValue(of(mockPosts));
-    blogServiceSpy.deletePostById.mockReturnValue(of(void 0));
+    blogServiceSpy.getPosts.mockReturnValue(of(mockResponse));
+    blogServiceSpy.deletePostById.mockReturnValue(of(null));
 
     fixture.detectChanges();
 
     component.deletePost(mockPosts[0]);
 
     expect(blogServiceSpy.deletePostById).toHaveBeenCalledWith(mockPosts[0].id);
-    expect(component.posts.length).toBe(1);
-    expect(component.posts.find((p) => p.id === mockPosts[0].id)).toBeUndefined();
+    // deletePost calls loadPosts() which will fetch data again - still returns mockPosts
+    expect(component.table.items.length).toBe(2);
   });
 
+
   it('should not delete post if confirmation cancelled', () => {
+    const mockResponse = {
+      items: mockPosts,
+      total: 2,
+      page: 1,
+      page_size: 10,
+      total_pages: 1
+    };
     vi.spyOn(window, 'confirm').mockReturnValue(false);
-    blogServiceSpy.getPosts.mockReturnValue(of(mockPosts));
+    blogServiceSpy.getPosts.mockReturnValue(of(mockResponse));
 
     fixture.detectChanges();
 
     component.deletePost(mockPosts[0]);
 
     expect(blogServiceSpy.deletePostById).not.toHaveBeenCalled();
-    expect(component.posts.length).toBe(2);
+    expect(component.table.items.length).toBe(2);
   });
 
   it('should handle error when deleting post', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const mockResponse = {
+      items: mockPosts,
+      total: 2,
+      page: 1,
+      page_size: 10,
+      total_pages: 1
+    };
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => { });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    blogServiceSpy.getPosts.mockReturnValue(of(mockPosts));
+    blogServiceSpy.getPosts.mockReturnValue(of(mockResponse));
     blogServiceSpy.deletePostById.mockReturnValue(throwError(() => new Error('Delete failed')));
 
     fixture.detectChanges();
@@ -116,7 +145,7 @@ describe('PostListComponent', () => {
 
     expect(consoleSpy).toHaveBeenCalledWith('Failed to delete post:', expect.any(Error));
     expect(alertSpy).toHaveBeenCalledWith('Failed to delete post. Please try again.');
-    expect(component.posts.length).toBe(2); // Post should remain
+    expect(component.table.items.length).toBe(2); // Post should remain
 
     consoleSpy.mockRestore();
   });

@@ -33,17 +33,19 @@ async def test_list_posts_with_data(client: AsyncClient, mock_embedding):
     response = await client.get("/api/posts")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["title"] == "Test Post 1"
-    assert "id" in data[0]
-    assert "created_at" in data[0]
+    items = data["items"]
+    assert len(items) == 1
+    assert items[0]["title"] == "Test Post 1"
+    assert "id" in items[0]
+    assert "created_at" in items[0]
 
     # Test with language filter
     response = await client.get("/api/posts?lang=de&published_only=false")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["language"] == "de"
+    items = data["items"]
+    assert len(items) == 1
+    assert items[0]["language"] == "de"
 
 
 @pytest.mark.asyncio

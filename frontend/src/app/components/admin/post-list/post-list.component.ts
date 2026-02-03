@@ -1,54 +1,70 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { BlogService, BlogPost } from '../../../services/blog.service';
+import { FormsModule } from '@angular/forms';
+import { BlogService } from '../../../services/blog.service';
+import { BlogPost } from '../../../services/blog.service';
+import { ServerTableHelper } from '../../../utils/table-helper-server';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-post-list',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './post-list.component.html',
   styleUrls: ['./post-list.component.css'],
 })
-export class PostListComponent implements OnInit {
-  posts: BlogPost[] = [];
+export class PostListComponent implements OnInit, OnDestroy {
+  table = new ServerTableHelper<BlogPost>('created_at', 'desc', 10);
   loading = true;
   error: string | null = null;
   deletingIds = new Set<number>();
 
+  private subscription?: Subscription;
+
   constructor(
     private blogService: BlogService,
     private cdr: ChangeDetectorRef,
-  ) {}
+  ) { }
 
-  ngOnInit(): void {
-    this.loadPosts();
+  ngOnInit() {
+    // Subscribe to parameter changes
+    this.subscription = this.table.params$.subscribe(params => {
+      this.loadPosts();
+    });
+  }
+
+  ngOnDestroy() {
+    this.subscription?.unsubscribe();
   }
 
   loadPosts(): void {
     this.loading = true;
     this.error = null;
-    this.blogService.getPosts(false, null).subscribe({
-      next: (posts) => {
-        this.posts = posts;
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-      error: (error) => {
-        console.error('Failed to load posts:', error);
-        this.error = 'Failed to load posts. Please try again later.';
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-    });
-  }
 
-  formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    const params = this.table.getParams();
+
+    this.blogService.getPosts(
+      false, // published_only
+      null, // lang
+      null, // tag
+      params.page,
+      params.pageSize,
+      params.sortBy || 'created_at',
+      params.sortOrder,
+      params.search
+    ).subscribe({
+      next: (response) => {
+        this.table.setData(response);
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error loading posts:', err);
+        this.error = 'Failed to load posts';
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
     });
   }
 
@@ -58,11 +74,11 @@ export class PostListComponent implements OnInit {
     }
 
     this.deletingIds.add(post.id);
-    this.cdr.detectChanges();
-
     this.blogService.deletePostById(post.id).subscribe({
       next: () => {
-        this.posts = this.posts.filter((p) => p.id !== post.id);
+        // Refresh grid after deletion
+        this.loadPosts();
+
         this.deletingIds.delete(post.id);
         this.cdr.detectChanges();
       },

@@ -26,6 +26,14 @@ export interface BlogSearchResult {
   relevance: number;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -35,43 +43,65 @@ export class BlogService {
   constructor(
     private http: HttpClient,
     private languageService: LanguageService,
-  ) {}
+  ) { }
 
   getPosts(
     publishedOnly: boolean = true,
     lang: string | null | undefined = undefined,
     tag: string | null = null,
-  ): Observable<BlogPost[]> {
+    page: number = 1,
+    pageSize: number = 10,
+    sortBy: string = 'created_at',
+    sortOrder: 'asc' | 'desc' = 'desc',
+    search: string | null = null,
+  ): Observable<PaginatedResponse<BlogPost>> {
     // If lang is explicitly provided (string) or null (no filter), use it directly
     if (lang !== undefined) {
-      const params: any = {};
+      const params: any = {
+        page: page.toString(),
+        page_size: pageSize.toString(),
+        sort_by: sortBy,
+        sort_order: sortOrder,
+      };
       if (lang !== null) {
         params.lang = lang;
       }
       if (tag) {
         params.tag = tag;
       }
+      if (search) {
+        params.search = search;
+      }
       if (publishedOnly) {
         params.published_only = 'true';
       } else {
         params.published_only = 'false';
       }
-      return this.http.get<BlogPost[]>(this.apiUrl, { params }).pipe(shareReplay(1));
+      return this.http.get<PaginatedResponse<BlogPost>>(this.apiUrl, { params }).pipe(shareReplay(1));
     }
 
     // Otherwise fallback to current language from service
     return this.languageService.currentLang$.pipe(
       switchMap((currentLang) => {
-        const params: any = { lang: currentLang };
+        const params: any = {
+          lang: currentLang,
+          page: page.toString(),
+          page_size: pageSize.toString(),
+          sort_by: sortBy,
+          sort_order: sortOrder,
+        };
         if (tag) {
           params.tag = tag;
+        }
+        if (search) {
+          params.search = search;
         }
         if (publishedOnly) {
           params.published_only = 'true';
         } else {
           params.published_only = 'false';
         }
-        return this.http.get<BlogPost[]>(this.apiUrl, { params });
+        return this.http.get<PaginatedResponse<BlogPost>>(this.apiUrl, { params });
       }),
       shareReplay(1),
     );

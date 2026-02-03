@@ -8,7 +8,11 @@ async def test_list_posts_empty(client: AsyncClient):
     """Test listing posts when database is empty."""
     response = await client.get("/api/posts")
     assert response.status_code == 200
-    assert response.json() == []
+    data = response.json()
+    assert data["items"] == []
+    assert data["total"] == 0
+    assert data["page"] == 1
+    assert data["total_pages"] == 1
 
 
 @pytest.mark.asyncio
@@ -158,15 +162,17 @@ async def test_list_posts_with_filters(client: AsyncClient, mock_embedding):
     response = await client.get("/api/posts?published_only=true")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 2
-    assert all(p["published"] for p in data)
+    assert data["total"] == 2
+    assert len(data["items"]) == 2
+    assert all(p["published"] for p in data["items"])
 
     # Test language filter
     response = await client.get("/api/posts?lang=de&published_only=true")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["language"] == "de"
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["language"] == "de"
 
 
 @pytest.mark.asyncio

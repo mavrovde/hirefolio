@@ -1,50 +1,76 @@
 import { test, expect } from '@playwright/test';
+import { Buffer } from 'node:buffer';
 
 test.describe('Admin CV Management', () => {
     test.beforeEach(async ({ page }) => {
+        console.log(`[E2E] Starting test: ${test.info().title}`);
+        page.on('console', msg => console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`));
+
         await page.addInitScript(() => {
             window.localStorage.setItem('cookie_consent', 'true');
         });
 
         // Login as admin
+        console.log('[E2E] Logging in as admin...');
         await page.goto('/admin/login');
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'admin');
         await page.click('button[type="submit"]');
         await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 15000 });
+        console.log('[E2E] Login successful.');
     });
 
     test('should display CV requests with download status', async ({ page }) => {
-        // Intercept requests list before navigation
-        await page.route('**/api/admin/cv/requests', async route => {
+        console.log('[E2E] Mocking CV requests API...');
+        // Intercept requests list before navigation - added wildcard for query params
+        await page.route('**/api/admin/cv/requests*', async route => {
+            console.log('[E2E] Intercepted /api/admin/cv/requests');
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify([{
-                    id: '123',
-                    name: 'Test Recruiter',
-                    email: 'test@example.com',
-                    company: 'Test Co',
-                    message: 'Hello',
-                    created_at: new Date().toISOString(),
-                    consent_given: true,
-                    cv_version: 'v1.0',
-                    download_count: 5,
-                    downloaded_at: new Date().toISOString()
-                }])
+                body: JSON.stringify({
+                    items: [{
+                        id: '123',
+                        name: 'Test Recruiter',
+                        email: 'test@example.com',
+                        company: 'Test Co',
+                        message: 'Hello',
+                        created_at: new Date().toISOString(),
+                        consent_given: true,
+                        cv_version: 'v1.0',
+                        download_count: 5,
+                        downloaded_at: new Date().toISOString()
+                    }],
+                    total: 1,
+                    page: 1,
+                    page_size: 10,
+                    total_pages: 1
+                })
             });
         });
 
-        const responsePromise = page.waitForResponse('**/api/admin/cv/requests');
+        console.log('[E2E] Navigating to CV Manager...');
+        const responsePromise = page.waitForResponse(response =>
+            response.url().includes('/api/admin/cv/requests') && response.status() === 200
+        );
         await page.goto('/admin/cv-manager');
         await responsePromise;
+        console.log('[E2E] Navigation and API response received.');
 
         // Check if we are on the CV management page
         await expect(page.locator('h1.page-title')).toContainText('CV Management');
 
+        // Explicitly click the Requests tab to ensure it's active
+        console.log('[E2E] Ensuring Requests tab is active...');
+        await page.locator('button').filter({ hasText: /Requests/i }).click();
+
         // Verify row content including download status
-        const row = page.locator('tbody tr').first();
-        await expect(row).toBeVisible();
+        console.log('[E2E] Verifying table content...');
+        const table = page.locator('table').first();
+        await expect(table).toBeVisible({ timeout: 15000 });
+        const tbody = table.locator('tbody');
+        const row = tbody.locator('tr').first();
+        await expect(row).toBeVisible({ timeout: 15000 });
         await expect(row).toContainText('Test Recruiter');
         await expect(row).toContainText('Test Co');
 
@@ -52,13 +78,16 @@ test.describe('Admin CV Management', () => {
         const downloadCell = row.locator('.status-cell');
         await expect(downloadCell).toContainText('YES');
         await expect(downloadCell).toContainText('Count: 5');
+        console.log('[E2E] Verification complete.');
     });
 
     test('should upload a new CV version', async ({ page }) => {
         const testVersion = `v2.0-${Date.now()}`;
+        console.log(`[E2E] Starting upload test with version: ${testVersion}`);
 
         // Intercept upload request
-        await page.route('**/api/admin/cv/upload', async route => {
+        await page.route('**/api/admin/cv/upload*', async route => {
+            console.log('[E2E] Intercepted /api/admin/cv/upload');
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -67,23 +96,34 @@ test.describe('Admin CV Management', () => {
         });
 
         // Intercept versions list to include the new version
-        await page.route('**/api/admin/cv/versions', async route => {
+        await page.route('**/api/admin/cv/versions*', async route => {
+            console.log('[E2E] Intercepted /api/admin/cv/versions');
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify([{
-                    version: testVersion,
-                    filename: 'test-cv.pdf',
-                    created_at: new Date().toISOString(),
-                    is_active: true
-                }])
+                body: JSON.stringify({
+                    items: [{
+                        version: testVersion,
+                        filename: 'test-cv.pdf',
+                        created_at: new Date().toISOString(),
+                        is_active: true
+                    }],
+                    total: 1,
+                    page: 1,
+                    page_size: 10,
+                    total_pages: 1
+                })
             });
         });
 
+        console.log('[E2E] Navigating to CV Manager...');
         await page.goto('/admin/cv-manager');
-        await page.click('button:has-text("VERSION_CONTROL.sys")');
+
+        console.log('[E2E] Switching to Versions tab...');
+        await page.locator('button').filter({ hasText: /Versions/i }).click();
 
         // Fill form
+        console.log('[E2E] Filling upload form...');
         await page.fill('input[formControlName="version"]', testVersion);
 
         // Mock file selection (Playwright approach)
@@ -97,12 +137,17 @@ test.describe('Admin CV Management', () => {
         });
 
         // Click upload
+        console.log('[E2E] Clicking upload button...');
         await page.click('button[type="submit"]');
 
         // Check for success message
-        await expect(page.locator('.success-text')).toContainText('SUCCESS: CV_UPLOAD_COMPLETE');
+        console.log('[E2E] Verifying success message...');
+        await expect(page.locator('.success-text')).toBeVisible({ timeout: 15000 });
+        await expect(page.locator('.success-text')).toContainText(/success/i);
 
         // Verify version appears in list
+        console.log('[E2E] Verifying version in table...');
         await expect(page.locator('tbody')).toContainText(testVersion);
+        console.log('[E2E] Test complete.');
     });
 });

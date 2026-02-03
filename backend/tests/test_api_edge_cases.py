@@ -27,7 +27,8 @@ async def test_list_posts_include_drafts(client: AsyncClient, mock_embedding):
 
     assert response.status_code == 200
     data = response.json()
-    assert any(p["slug"] == "draft-1" for p in data)
+    items = data["items"]
+    assert any(p["slug"] == "draft-1" for p in items)
 
 
 @pytest.mark.asyncio
@@ -265,7 +266,8 @@ async def test_list_posts_drafts_as_anon_force_published(
         response = await client.get("/api/posts?published_only=false")
         assert response.status_code == 200
         data = response.json()
-        assert not any(p["slug"] == "d1" for p in data)
+        items = data["items"]
+        assert not any(p["slug"] == "d1" for p in items)
     finally:
         pass
 

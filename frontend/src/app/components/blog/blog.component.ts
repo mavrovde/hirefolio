@@ -44,7 +44,9 @@ export class BlogComponent implements OnInit {
 
   loadPosts() {
     // Fetch all published posts regardless of language, optional tag filter
-    this.posts$ = this.blogService.getPosts(true, null, this.activeTag);
+    this.posts$ = this.blogService.getPosts(true, null, this.activeTag).pipe(
+      map(response => response.items)
+    );
   }
 
   filterByTag(tag: string) {
