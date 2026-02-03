@@ -29,26 +29,56 @@ input {
     animation: blink 1s step-end infinite;
 }
 
-/* Mode Toggle */
-.mode-toggle-container {
-    background: #000;
-}
-
-.mode-btn {
+/* Terminal Buttons */
+.terminal-btn {
     background: transparent;
     border: 1px solid #444;
     color: #888;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
 }
 
-.mode-btn.active {
+.terminal-btn:hover:not(:disabled) {
+    border-color: #00ff00;
+    color: #00ff00;
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+}
+
+.terminal-btn.active {
     background: #00ff00;
     color: #000;
     border-color: #00ff00;
 }
 
-.mode-btn:hover:not(.active) {
+.terminal-btn.btn-primary {
     border-color: #00ff00;
     color: #00ff00;
+}
+
+.terminal-btn.btn-primary:hover:not(:disabled) {
+    background: #00ff00;
+    color: #000;
+}
+
+.terminal-btn.btn-danger {
+    border-color: #ff4444;
+    color: #ff4444;
+}
+
+.terminal-btn.btn-danger:hover:not(:disabled) {
+    background: #ff4444;
+    color: #fff;
+}
+
+.terminal-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    border-color: #333;
 }
 
 /* Avatar Styles */

@@ -3,6 +3,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { LlmService, ChatMessage } from '../../services/llm.service';
+import { VERSION } from '../../version';
 
 import { HeaderComponent } from '../header/header.component';
 import { SeoService } from '../../services/seo.service';
@@ -61,6 +62,8 @@ export class LlmComponent implements OnInit, AfterViewChecked {
   private conversationTimer: any;
   multiMessages: Array<{ agent: number, content: string }> = [];
   public currentAgentMessage: { agent: number, content: string } | null = null;
+  public appVersion = VERSION;
+  private abortController: AbortController | null = null;
 
   constructor(
     private llmService: LlmService,
@@ -127,22 +130,38 @@ export class LlmComponent implements OnInit, AfterViewChecked {
     this.saveState();
 
     // Call LLM Service
-    this.llmService.chat(this.messages.map(m => ({ role: m.role, content: m.content })), (chunk) => {
-      // Update assistant message (stream)
-      const lastMsg = this.messages[this.messages.length - 1];
-      if (lastMsg && lastMsg.role === 'assistant') {
-        lastMsg.content += chunk;
-      } else {
-        this.isThinking = false; // Stop throbber on first chunk
-        this.messages.push({ role: 'assistant', content: chunk });
-      }
+    this.abortController = new AbortController();
+
+    this.llmService.chat(
+      this.messages.map(m => ({ role: m.role, content: m.content })),
+      (chunk) => {
+        // Update assistant message (stream)
+        const lastMsg = this.messages[this.messages.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant') {
+          lastMsg.content += chunk;
+        } else {
+          this.isThinking = false; // Stop throbber on first chunk
+          this.messages.push({ role: 'assistant', content: chunk });
+        }
+        this.cdr.detectChanges();
+        this.scrollToBottom();
+        this.saveState();
+      },
+      this.abortController.signal
+    ).then(() => {
+      this.isThinking = false;
+      this.abortController = null;
       this.cdr.detectChanges();
-      this.scrollToBottom();
       this.saveState();
     }).catch(err => {
-      console.error('Chat error:', err);
+      if ((err as Error).name === 'AbortError') {
+        console.log('Single agent chat aborted');
+      } else {
+        console.error('Chat error:', err);
+        this.messages.push({ role: 'system', content: 'Connection error. Please ensure Ollama is running.' });
+      }
       this.isThinking = false;
-      this.messages.push({ role: 'system', content: 'Connection error. Please ensure Ollama is running.' });
+      this.abortController = null;
       this.cdr.detectChanges();
       this.saveState();
     });
@@ -214,6 +233,7 @@ export class LlmComponent implements OnInit, AfterViewChecked {
     }, 1000);
 
     this.conversationStatus = 'Connecting to Debate Stream...';
+    this.abortController = new AbortController();
 
     try {
       const agentConfigs = this.agents.map(a => ({
@@ -248,13 +268,20 @@ export class LlmComponent implements OnInit, AfterViewChecked {
           }
           this.cdr.detectChanges();
           this.scrollToBottom();
-        }
+        },
+        undefined,
+        this.abortController.signal
       );
     } catch (error) {
-      console.error('Multi chat error:', error);
-      this.conversationStatus = 'Connection Error';
+      if ((error as Error).name === 'AbortError') {
+        console.log('Multi-agent debate aborted');
+      } else {
+        console.error('Multi chat error:', error);
+        this.conversationStatus = 'Connection Error';
+      }
     } finally {
       this.isConversationActive = false;
+      this.abortController = null;
       clearInterval(this.conversationTimer);
       if (this.conversationStatus !== 'Debate Time Limit Reached' && this.conversationStatus !== 'Connection Error') {
         this.conversationStatus = 'Debate Concluded';
@@ -264,9 +291,20 @@ export class LlmComponent implements OnInit, AfterViewChecked {
   }
 
   stopMultiConversation(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+    }
     this.isConversationActive = false;
     clearInterval(this.conversationTimer);
     this.conversationStatus = 'Debate Stopped';
+  }
+
+  clearMultiDebate(): void {
+    if (this.isConversationActive) return;
+    this.multiMessages = [];
+    this.currentAgentMessage = null;
+    this.conversationStatus = '';
+    this.saveState();
   }
 
   formatTime(seconds: number): string {

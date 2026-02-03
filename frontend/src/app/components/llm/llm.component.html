@@ -5,11 +5,11 @@
     <div class="mode-toggle-container p-4 bg-black border-b border-terminal-dim" *ngIf="standalone">
         <div class="flex gap-2 justify-center">
             <button (click)="isMultiAgentMode = false" [class.active]="!isMultiAgentMode"
-                class="mode-btn px-4 py-2 text-sm font-mono transition-colors">
+                class="terminal-btn px-4 py-2 text-sm font-mono transition-colors">
                 Single Agent
             </button>
             <button (click)="isMultiAgentMode = true" [class.active]="isMultiAgentMode"
-                class="mode-btn px-4 py-2 text-sm font-mono transition-colors">
+                class="terminal-btn px-4 py-2 text-sm font-mono transition-colors">
                 Multi-Agent Debate
             </button>
         </div>
@@ -132,12 +132,16 @@
         <!-- Controls -->
         <div class="controls mb-4 flex items-center gap-4 border-y border-terminal-dim py-3">
             <button (click)="startMultiConversation()" [disabled]="isStartButtonDisabled()"
-                class="px-4 py-2 bg-primary text-black font-bold hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                class="terminal-btn btn-primary px-4 py-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed">
                 START DEBATE
             </button>
             <button (click)="stopMultiConversation()" [disabled]="!isConversationActive"
-                class="px-4 py-2 bg-red-600 text-white font-bold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                class="terminal-btn btn-danger px-4 py-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed">
                 STOP
+            </button>
+            <button (click)="clearMultiDebate()" [disabled]="isConversationActive || multiMessages.length === 0"
+                class="terminal-btn px-4 py-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed">
+                CLEAR
             </button>
             <div class="timer text-terminal-highlight font-bold ml-auto flex flex-col items-end">
                 <span>{{ formatTime(conversationTimeRemaining) }}</span>
@@ -222,8 +226,10 @@
         </div>
 
         <!-- Footer Info -->
-        <div class="text-[10px] text-terminal-dim border-t border-dashed border-terminal-dim pt-2 mt-4">
-            Multi-Agent System. Maximum 5 minutes.
+        <div
+            class="text-[10px] text-terminal-dim border-t border-dashed border-terminal-dim pt-2 mt-4 flex justify-between">
+            <span>Multi-Agent System. Maximum 5 minutes.</span>
+            <span>v{{ appVersion }}</span>
         </div>
     </div>
 </div>

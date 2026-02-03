@@ -75,7 +75,9 @@ async def multi_agent_conversation(
             system_prompt = (
                 f"You are {agent_name}. Your persona: {current_agent.description}\n"
                 f"You are in a group discussion with {others_str} about: {topic}\n"
-                "Respond naturally from your perspective. Keep responses concise (2-3 sentences).\n"
+                "CRITICAL: Respond ONLY as yourself. Do not generate dialog for others.\n"
+                "CRITICAL: Do NOT start your response with your name or 'Agent X:'. Just speak directly.\n"
+                "Keep responses concise (2-3 sentences).\n"
                 "Be engaging and stay in character. React to what others have said."
             )
 
@@ -110,13 +112,96 @@ async def multi_agent_conversation(
                 # Should not happen typically unless context is empty
                 pass
 
-            # 4. Stream Response
+            # 4. Stream Response with stop sequences to prevent turn leakage
             response_content = ""
-            async for chunk in chat_with_llm(llm_messages):
+            stop_sq = [f"\n{a.name}:" for a in agents if a.id != current_agent.id]
+            stop_sq.extend(
+                [f"\n[{a.name}]:" for a in agents if a.id != current_agent.id]
+            )
+            stop_sq.append("\n[")
+            stop_sq.append("\nAgent")
+
+            # Buffer small amount at start to strip self-naming prefixes
+            buffer = ""
+            prefix_stripped = False
+
+            async for chunk in chat_with_llm(llm_messages, stop_sequences=stop_sq):
                 response_content += chunk
+
+                if not prefix_stripped:
+                    buffer += chunk
+                    # If we have enough to check for a prefix (or it's the end)
+                    if len(buffer) > 40:
+                        trimmed_buffer = buffer.lstrip()
+                        prefixes_to_strip = [
+                            f"{agent_name}:",
+                            f"[{agent_name}]:",
+                            f"{agent_name} -",
+                            f"Agent {current_agent.id}:",
+                            f"[Agent {current_agent.id}]:",
+                            f"Agent {current_agent.id} -",
+                            f"[{agent_name}]",
+                        ]
+
+                        modified = True
+                        while modified:
+                            modified = False
+                            for p in prefixes_to_strip:
+                                if trimmed_buffer.startswith(p):
+                                    trimmed_buffer = trimmed_buffer[len(p) :].lstrip()
+                                    modified = True
+                                    break
+
+                        # Yield the cleaned buffer
+                        yield (
+                            json.dumps(
+                                {
+                                    "agent": current_agent.id,
+                                    "content": trimmed_buffer,
+                                    "done": False,
+                                }
+                            )
+                            + "\n"
+                        )
+                        prefix_stripped = True
+                    continue
+
                 yield (
                     json.dumps(
                         {"agent": current_agent.id, "content": chunk, "done": False}
+                    )
+                    + "\n"
+                )
+
+            # If response was very short and never triggered stripping
+            if not prefix_stripped and buffer:
+                trimmed_buffer = buffer.lstrip()
+                prefixes_to_strip = [
+                    f"{agent_name}:",
+                    f"[{agent_name}]:",
+                    f"{agent_name} -",
+                    f"Agent {current_agent.id}:",
+                    f"[Agent {current_agent.id}]:",
+                    f"Agent {current_agent.id} -",
+                    f"[{agent_name}]",
+                ]
+
+                modified = True
+                while modified:
+                    modified = False
+                    for p in prefixes_to_strip:
+                        if trimmed_buffer.startswith(p):
+                            trimmed_buffer = trimmed_buffer[len(p) :].lstrip()
+                            modified = True
+                            break
+
+                yield (
+                    json.dumps(
+                        {
+                            "agent": current_agent.id,
+                            "content": trimmed_buffer,
+                            "done": False,
+                        }
                     )
                     + "\n"
                 )

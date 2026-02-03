@@ -89,7 +89,9 @@ describe('LlmComponent', () => {
             expect(llmService.multiChat).toHaveBeenCalledWith(
                 expect.any(Array),
                 'Test Topic',
-                expect.any(Function)
+                expect.any(Function),
+                undefined,
+                expect.any(AbortSignal)
             );
             expect(component.isConversationActive).toBe(false);
         });
@@ -173,6 +175,79 @@ describe('LlmComponent', () => {
             expect(component.formatTime(125)).toBe('2:05');
             expect(component.formatTime(59)).toBe('0:59');
             expect(component.formatTime(0)).toBe('0:00');
+        });
+
+        it('should clear multi-agent debate history', () => {
+            component.multiMessages = [{ agent: 1, content: 'Test' }];
+            component.currentAgentMessage = { agent: 2, content: 'Streaming' };
+            component.conversationStatus = 'Debate Concluded';
+
+            component.clearMultiDebate();
+
+            expect(component.multiMessages.length).toBe(0);
+            expect(component.currentAgentMessage).toBeNull();
+            expect(component.conversationStatus).toBe('');
+        });
+
+        it('should not clear history if conversation is active', () => {
+            component.isConversationActive = true;
+            component.multiMessages = [{ agent: 1, content: 'Test' }];
+
+            component.clearMultiDebate();
+
+            expect(component.multiMessages.length).toBe(1);
+        });
+
+        it('should have CLEAR button in the template with terminal-btn class', () => {
+            component.isMultiAgentMode = true;
+            component.multiMessages = [{ agent: 1, content: 'Test' }];
+            component.isConversationActive = false;
+            fixture.detectChanges();
+
+            const compiled = fixture.nativeElement as HTMLElement;
+            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('CLEAR'));
+
+            expect(clearBtn).toBeTruthy();
+            expect(clearBtn?.classList.contains('terminal-btn')).toBe(true);
+            expect(clearBtn?.hasAttribute('disabled')).toBe(false);
+        });
+
+        it('should disable CLEAR button if conversation is active', () => {
+            component.isMultiAgentMode = true;
+            component.multiMessages = [{ agent: 1, content: 'Test' }];
+            component.isConversationActive = true;
+            fixture.detectChanges();
+
+            const compiled = fixture.nativeElement as HTMLElement;
+            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('CLEAR'));
+
+            expect(clearBtn?.hasAttribute('disabled')).toBe(true);
+        });
+
+        it('should call clearMultiDebate when CLEAR button is clicked', () => {
+            const spy = vi.spyOn(component, 'clearMultiDebate');
+            component.isMultiAgentMode = true;
+            component.multiMessages = [{ agent: 1, content: 'Test' }];
+            component.isConversationActive = false;
+            fixture.detectChanges();
+
+            const compiled = fixture.nativeElement as HTMLElement;
+            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('CLEAR'));
+
+            clearBtn?.click();
+            expect(spy).toHaveBeenCalled();
+        });
+
+        it('should abort conversation when stopped', () => {
+            component.isConversationActive = true;
+            // Mock AbortController
+            const abortSpy = vi.fn();
+            (component as any).abortController = { abort: abortSpy };
+
+            component.stopMultiConversation();
+
+            expect(abortSpy).toHaveBeenCalled();
+            expect(component.isConversationActive).toBe(false);
         });
     });
 

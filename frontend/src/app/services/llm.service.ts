@@ -20,11 +20,12 @@ export class LlmService {
 
     constructor() { }
 
-    async chat(messages: ChatMessage[], onChunk: (chunk: string) => void): Promise<void> {
+    async chat(messages: ChatMessage[], onChunk: (chunk: string) => void, signal?: AbortSignal): Promise<void> {
         const response = await fetch(`${this.apiUrl}/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages })
+            body: JSON.stringify({ messages }),
+            signal
         });
 
         if (!response.ok || !response.body) {
@@ -63,12 +64,14 @@ export class LlmService {
         agents: AgentConfig[],
         topic: string,
         onChunk: (agentId: number, chunk: string, turnComplete?: boolean) => void,
-        onDone?: () => void
+        onDone?: () => void,
+        signal?: AbortSignal
     ): Promise<void> {
         const response = await fetch(`${this.apiUrl}/multi-chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ agents, topic })
+            body: JSON.stringify({ agents, topic }),
+            signal
         });
 
         if (!response.ok || !response.body) {

@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, List, Dict
+from typing import AsyncGenerator, List, Dict, Optional
 import httpx
 import json
 from app.config import settings
@@ -7,21 +7,27 @@ from app.logger import get_logger
 logger = get_logger(__name__)
 
 
-async def chat_with_llm(messages: List[Dict[str, str]]) -> AsyncGenerator[str, None]:
+async def chat_with_llm(
+    messages: List[Dict[str, str]], stop_sequences: Optional[List[str]] = None
+) -> AsyncGenerator[str, None]:
     """
     Stream chat responses from Ollama.
     Yields chunks of generated text.
     """
     try:
+        payload = {
+            "model": settings.generation_model,
+            "messages": messages,
+            "stream": True,
+        }
+        if stop_sequences:
+            payload["options"] = {"stop": stop_sequences}
+
         async with httpx.AsyncClient(timeout=300.0) as client:
             async with client.stream(
                 "POST",
                 f"{settings.ollama_url}/api/chat",
-                json={
-                    "model": settings.generation_model,
-                    "messages": messages,
-                    "stream": True,
-                },
+                json=payload,
             ) as response:
                 response.raise_for_status()
                 async for line in response.aiter_lines():

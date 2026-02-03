@@ -39,7 +39,7 @@ async def test_multi_agent_conversation_success():
         assert len(chunks) > 0
         first_chunk = chunks[0]
         assert first_chunk["agent"] == 1
-        assert first_chunk["content"] == "Hello "
+        assert first_chunk["content"] == "Hello World"
 
         # Verify round robin
         # chunks will contain:

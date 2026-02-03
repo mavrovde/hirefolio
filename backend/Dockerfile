@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Pre-install build tools for Rust-based extensions
-RUN pip install --no-cache-dir maturin
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir maturin
 
 # Copy requirements and install
 COPY requirements.txt requirements-dev.txt ./
