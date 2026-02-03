@@ -3,6 +3,8 @@ name: Prod Deployment
 on:
   push:
     branches: [main]
+    tags:
+      - "v*.*.*"
     paths-ignore:
       - "**.md"
 
