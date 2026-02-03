@@ -59,13 +59,42 @@ else
     exit 1
 fi
 
-if echo "$LOGS" | grep -q "Starting Nginx..."; then
-    echo "✅ Proxy Log Check: Nginx started"
-else
-    echo "❌ Proxy Log Check: Nginx start log missing"
-    echo "$LOGS"
-    exit 1
-fi
+# 5. Active Endpoint Verification (Smoke Test)
+echo "[5/5] Verifying endpoints with curl..."
+
+# Helper function to check status code
+check_status() {
+    local url=$1
+    local method=$2
+    local expected=$3
+    local response=$(curl -s -k -o /dev/null -w "%{http_code}" -X "$method" "$url")
+    
+    if [ "$response" -eq "$expected" ]; then
+        echo "✅ Endpoint Check: $method $url returned $response (Expected $expected)"
+    else
+        echo "❌ Endpoint Check: $method $url returned $response (Expected $expected)"
+        exit 1
+    fi
+}
+
+echo "Waiting for backend to be ready (10s)..."
+until curl -s -k -o /dev/null "http://localhost/api/stats/public"; do
+    echo "  - Backend not ready yet..."
+    sleep 2
+done
+
+# Check 1: Public Stats (Existing)
+check_status "http://localhost/api/stats/public" "GET" "200"
+
+# Check 2: Multi-Chat (New Endpoint) - Expect 405 Method Not Allowed for GET (proving existence)
+# or 422 for POST with empty body. Using GET is simpler for existence check.
+check_status "http://localhost/api/ai/multi-chat" "GET" "405"
+
+# Check 3: Check Posts (Public Endpoint, replaces Tags which is 401)
+check_status "http://localhost/api/posts" "GET" "200"
+
+# Check 4: Generate Name (Another AI public endpoint, expect 405 Method Not Allowed on GET)
+check_status "http://localhost/api/ai/generate-name" "GET" "405"
 
 # No network connectivity check requested ("do not test something, just successfully start")
 # Just confirming that it didn't crash and started up nicely in the prod env topology.
