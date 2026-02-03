@@ -1,6 +1,23 @@
 <div [class.bg-black]="standalone" [class.min-h-screen]="standalone">
     <app-header *ngIf="standalone"></app-header>
-    <div class="terminal-container font-mono text-sm md:text-base p-4 bg-black text-terminal-dim flex flex-col"
+
+    <!-- Mode Toggle -->
+    <div class="mode-toggle-container p-4 bg-black border-b border-terminal-dim" *ngIf="standalone">
+        <div class="flex gap-2 justify-center">
+            <button (click)="isMultiAgentMode = false" [class.active]="!isMultiAgentMode"
+                class="mode-btn px-4 py-2 text-sm font-mono transition-colors">
+                Single Agent
+            </button>
+            <button (click)="isMultiAgentMode = true" [class.active]="isMultiAgentMode"
+                class="mode-btn px-4 py-2 text-sm font-mono transition-colors">
+                Multi-Agent Debate
+            </button>
+        </div>
+    </div>
+
+    <!-- Single Agent Mode (Original) -->
+    <div *ngIf="!isMultiAgentMode"
+        class="terminal-container font-mono text-sm md:text-base p-4 bg-black text-terminal-dim flex flex-col"
         (click)="focusInput()">
         <!-- Header -->
         <div
@@ -45,6 +62,168 @@
         <!-- Footer Info -->
         <div class="text-[10px] text-terminal-dim border-t border-dashed border-terminal-dim pt-2 mt-auto">
             Type 'clear' to reset or 'exit' to return. Connects to local Ollama.
+        </div>
+    </div>
+
+    <!-- Multi-Agent Mode -->
+    <div *ngIf="isMultiAgentMode"
+        class="multi-agent-container font-mono text-sm md:text-base p-4 bg-black text-terminal-dim flex flex-col min-h-[80vh]">
+        <!-- Header with Toggle -->
+        <div
+            class="mb-4 text-secondary border-b border-dashed border-terminal-dim pb-2 flex justify-between items-center">
+            <div>
+                <a routerLink="/" class="text-primary hover:text-white transition-colors mr-2">&gt;_ SM</a>
+                <h1 class="text-terminal-highlight inline-block text-sm md:text-base font-normal">Multi-Agent Debate
+                </h1>
+            </div>
+            <button (click)="isConfigVisible = !isConfigVisible"
+                class="config-toggle text-xs text-terminal-dim hover:text-white transition-colors flex items-center gap-1">
+                <span *ngIf="isConfigVisible">Hide Config [-]</span>
+                <span *ngIf="!isConfigVisible">Show Config [+]</span>
+            </button>
+        </div>
+
+        <!-- Agent Setup -->
+        <div *ngIf="isConfigVisible" class="agent-setup mb-4 space-y-3">
+            <!-- Dynamic Agents List -->
+            <div *ngFor="let agent of agents; let i = index"
+                class="agent-config flex items-center gap-3 animate-fadeIn">
+                <div class="avatar-preview-container relative group">
+                    <img *ngIf="agent.avatar" [src]="'data:image/png;base64,' + agent.avatar"
+                        class="avatar-preview w-16 h-16 rounded-full border-2"
+                        [style.borderColor]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'" [alt]="agent.name">
+                    <div *ngIf="!agent.avatar"
+                        class="avatar-placeholder w-16 h-16 rounded-full border-2 border-dashed flex items-center justify-center text-xs font-bold"
+                        [style.borderColor]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'"
+                        [style.color]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'">
+                        A{{agent.id}}
+                    </div>
+                    <!-- Remove Button (Overlay) -->
+                    <button *ngIf="agents.length > 2" (click)="removeAgent(i)"
+                        class="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove Agent">×</button>
+                </div>
+
+                <input [(ngModel)]="agent.description" (blur)="generateAgentName(agent)"
+                    (input)="onAgentDescriptionChange(agent.id)" [disabled]="isConversationActive"
+                    [placeholder]="'Agent ' + agent.id + ' persona (e.g., A skeptical scientist)'"
+                    class="flex-grow bg-transparent border px-3 py-2 focus:outline-none disabled:opacity-50"
+                    [style.borderColor]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'"
+                    [style.color]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'">
+            </div>
+
+            <!-- Add Agent Button -->
+            <div class="flex justify-center" *ngIf="!isConversationActive && agents.length < 5">
+                <button (click)="addAgent()"
+                    class="text-xs border border-dashed border-terminal-dim px-3 py-1 hover:border-white hover:text-white transition-colors">
+                    + Add Agent
+                </button>
+            </div>
+
+            <!-- Topic -->
+            <div class="flex items-center gap-3 mt-4 border-t border-terminal-dim pt-4">
+                <div class="w-16 text-center text-terminal-highlight text-xs">TOPIC</div>
+                <input [(ngModel)]="conversationTopic" [disabled]="isConversationActive"
+                    placeholder="Conversation topic (e.g., 'The future of AI')"
+                    class="flex-grow bg-transparent border border-terminal-highlight px-3 py-2 text-white placeholder-terminal-dim focus:outline-none focus:border-white disabled:opacity-50">
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls mb-4 flex items-center gap-4 border-y border-terminal-dim py-3">
+            <button (click)="startMultiConversation()" [disabled]="isStartButtonDisabled()"
+                class="px-4 py-2 bg-primary text-black font-bold hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                START DEBATE
+            </button>
+            <button (click)="stopMultiConversation()" [disabled]="!isConversationActive"
+                class="px-4 py-2 bg-red-600 text-white font-bold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                STOP
+            </button>
+            <div class="timer text-terminal-highlight font-bold ml-auto flex flex-col items-end">
+                <span>{{ formatTime(conversationTimeRemaining) }}</span>
+                <span *ngIf="conversationStatus" class="text-[10px] text-terminal-dim font-normal animate-pulse">
+                    {{ conversationStatus }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Conversation Display -->
+        <div class="conversation-display flex-grow overflow-y-auto space-y-6 pb-4" #scrollContainer>
+            <!-- Historical Messages -->
+            <div *ngFor="let msg of multiMessages" class="agent-message">
+
+                <!-- Dynamic Alignment: Alternating based on ID odd/even -->
+                <div class="flex gap-4 items-start" [class.flex-row-reverse]="msg.agent % 2 === 0">
+                    <div class="avatar-container flex-shrink-0">
+                        <!-- Agent Identity (Name instead of Avatar) -->
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs p-1 text-center select-none"
+                            [ngClass]="{
+                   'bg-blue-900/50 text-blue-100': msg.agent % 2 !== 0,
+                   'bg-purple-900/50 text-purple-100': msg.agent % 2 === 0
+                 }" [title]="getAgentName(msg.agent)">
+                            {{ getAgentName(msg.agent).slice(0, 2).toUpperCase() }}
+                        </div>
+                    </div>
+                    <div class="message-bubble flex-grow max-w-[85%]">
+                        <div class="agent-header mb-2" [class.text-right]="msg.agent % 2 === 0">
+                            <div class="agent-label text-sm font-bold mb-1"
+                                [style.color]="'hsl(' + (msg.agent * 137 % 360) + ', 70%, 50%)'">
+                                {{ getAgentName(msg.agent) }}
+                            </div>
+                        </div>
+                        <div class="message-content bg-opacity-20 p-4 rounded-lg text-secondary whitespace-pre-wrap border-opacity-50"
+                            [class.bg-gray-800]="msg.agent % 2 !== 0" [class.bg-zinc-800]="msg.agent % 2 === 0"
+                            [class.rounded-tl-none]="msg.agent % 2 !== 0" [class.rounded-tr-none]="msg.agent % 2 === 0"
+                            [style.borderColor]="'hsl(' + (msg.agent * 137 % 360) + ', 70%, 50%)'"
+                            style="border-width: 1px;">
+                            {{ msg.content }}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Current Streaming Message -->
+            <div *ngIf="currentAgentMessage" class="agent-message">
+                <div class="flex gap-4 items-start" [class.flex-row-reverse]="currentAgentMessage.agent % 2 === 0">
+                    <div class="avatar-container flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs p-1 text-center select-none"
+                            [ngClass]="{
+                               'bg-blue-900/50 text-blue-100': currentAgentMessage.agent % 2 !== 0,
+                               'bg-purple-900/50 text-purple-100': currentAgentMessage.agent % 2 === 0
+                             }" [title]="getAgentName(currentAgentMessage.agent)">
+                            {{ getAgentName(currentAgentMessage.agent).slice(0, 2).toUpperCase() }}
+                        </div>
+                    </div>
+                    <div class="message-bubble flex-grow max-w-[85%]">
+                        <div class="agent-header mb-2" [class.text-right]="currentAgentMessage.agent % 2 === 0">
+                            <div class="agent-label text-sm font-bold mb-1"
+                                [style.color]="'hsl(' + (currentAgentMessage.agent * 137 % 360) + ', 70%, 50%)'">
+                                {{ getAgentName(currentAgentMessage.agent) }}
+                            </div>
+                        </div>
+                        <div class="message-content bg-opacity-20 p-4 rounded-lg text-secondary whitespace-pre-wrap border-opacity-50 border-terminal-highlight"
+                            [class.bg-gray-800]="currentAgentMessage.agent % 2 !== 0"
+                            [class.bg-zinc-800]="currentAgentMessage.agent % 2 === 0"
+                            [class.rounded-tl-none]="currentAgentMessage.agent % 2 !== 0"
+                            [class.rounded-tr-none]="currentAgentMessage.agent % 2 === 0"
+                            [style.borderColor]="'hsl(' + (currentAgentMessage.agent * 137 % 360) + ', 70%, 50%)'"
+                            style="border-width: 1px;">
+                            {{ currentAgentMessage.content }}<span class="animate-pulse">_</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div *ngIf="multiMessages.length === 0 && !isConversationActive"
+                class="text-terminal-dim text-center py-8 italic">
+                Configure agents and click START to begin the debate...
+            </div>
+        </div>
+
+        <!-- Footer Info -->
+        <div class="text-[10px] text-terminal-dim border-t border-dashed border-terminal-dim pt-2 mt-4">
+            Multi-Agent System. Maximum 5 minutes.
         </div>
     </div>
 </div>

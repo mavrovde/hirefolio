@@ -4,7 +4,8 @@
     background: black;
 }
 
-.terminal-container {
+.terminal-container,
+.dual-agent-container {
     height: 100%;
 }
 
@@ -26,4 +27,93 @@ input {
 
 .terminal-cursor {
     animation: blink 1s step-end infinite;
+}
+
+/* Mode Toggle */
+.mode-toggle-container {
+    background: #000;
+}
+
+.mode-btn {
+    background: transparent;
+    border: 1px solid #444;
+    color: #888;
+}
+
+.mode-btn.active {
+    background: #00ff00;
+    color: #000;
+    border-color: #00ff00;
+}
+
+.mode-btn:hover:not(.active) {
+    border-color: #00ff00;
+    color: #00ff00;
+}
+
+/* Avatar Styles */
+.avatar-preview,
+.agent-avatar {
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+/* Agent Message Styles */
+.agent-message {
+    animation: slideIn 0.4s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Agent 1 - Left aligned, cyan theme */
+.agent1-msg .message-content {
+    background: rgba(6, 182, 212, 0.08);
+    border-left: 4px solid #06b6d4;
+    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.1);
+}
+
+.agent1-msg .agent-avatar {
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+}
+
+/* Agent 2 - Right aligned, green theme */
+.agent2-msg .message-content {
+    background: rgba(34, 197, 94, 0.08);
+    border-right: 4px solid #22c55e;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
+}
+
+.agent2-msg .agent-avatar {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+}
+
+/* Conversation scrollbar */
+.conversation-display::-webkit-scrollbar {
+    width: 8px;
+}
+
+.conversation-display::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.conversation-display::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 0, 0.3);
+    border-radius: 4px;
+}
+
+.conversation-display::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 0, 0.5);
 }

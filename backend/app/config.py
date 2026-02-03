@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov"
+    database_url: str = "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/mavrov"
     ollama_url: str = "http://localhost:11434"
     embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = 768  # nomic-embed-text uses 768 dimensions

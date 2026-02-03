@@ -13,7 +13,7 @@ from app.config import settings
 # Test database URL
 DATABASE_URL = (
     os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL") or settings.database_url
-)
+).replace("localhost", "127.0.0.1")
 
 # Create test engine
 test_engine = create_async_engine(

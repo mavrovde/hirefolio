@@ -6,12 +6,15 @@ test.describe('LLM Terminal', () => {
             window.localStorage.setItem('cookie_consent', 'true');
         });
         await page.goto('/llm');
+
+        // Switch to Single Agent mode
+        await page.click('button:has-text("Single Agent")');
+        await page.waitForSelector('.terminal-container');
     });
 
-    test('should display terminal with initial system message', async ({ page }) => {
+    test('should display terminal with initial state', async ({ page }) => {
         await expect(page.locator('.terminal-container')).toBeVisible();
-        await expect(page.getByText('user@mavrov:~/llm$', { exact: true })).toBeVisible();
-        await expect(page.locator('text=# Connected to local AI agent.')).toBeVisible();
+        await expect(page.getByText('user@mavrov:~/llm$', { exact: true }).first()).toBeVisible();
     });
 
     test('should handle multi-chunk streaming response', async ({ page }) => {
@@ -59,10 +62,8 @@ test.describe('LLM Terminal', () => {
         await input.fill('clear');
         await input.press('Enter');
 
-        // Verify history is cleared and shows "Console cleared"
-        // Wait for the message to disappear (timeout should handle it)
-        await expect(page.locator('.message', { hasText: uniqueMessage })).not.toBeVisible();
-        await expect(page.locator('text=# Console cleared.')).toBeVisible();
+        // Wait for messages to be cleared
+        await expect(page.locator('.message')).toHaveCount(0);
     });
 
     test('should handle API errors gracefully', async ({ page }) => {
@@ -76,7 +77,7 @@ test.describe('LLM Terminal', () => {
         await input.press('Enter');
 
         // Error message should appear
-        await expect(page.locator('text=Error: Failed to communicate with AI agent.')).toBeVisible();
+        await expect(page.locator('text=Connection error. Please ensure Ollama is running.')).toBeVisible();
     });
 
     test('should have terminal-inspired aesthetics', async ({ page }) => {
@@ -102,7 +103,8 @@ test.describe('LLM Terminal', () => {
 
         const input = page.locator('input[type="text"]');
 
-        // Initial focus
+        // Initial focus - ensure we click to focus as button click might have stolen it
+        await page.locator('.terminal-container').click();
         await expect(input).toBeFocused();
 
         // Focus after sending message

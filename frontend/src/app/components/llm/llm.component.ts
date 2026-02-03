@@ -7,6 +7,21 @@ import { LlmService, ChatMessage } from '../../services/llm.service';
 import { HeaderComponent } from '../header/header.component';
 import { SeoService } from '../../services/seo.service';
 
+export interface Agent {
+  id: number;
+  name: string;
+  description: string;
+  avatar?: string;
+}
+
+interface LlmState {
+  agents: Agent[];
+  conversationTopic: string;
+  multiMessages: Array<{ agent: number, content: string }>;
+  isMultiAgentMode: boolean;
+  timestamp: number;
+}
+
 @Component({
   selector: 'app-llm',
   standalone: true,
@@ -30,6 +45,23 @@ export class LlmComponent implements OnInit, AfterViewChecked {
   userInput = '';
   isThinking = false;
 
+  // Multi-agent mode
+  isMultiAgentMode = false;
+
+  agents: Agent[] = [
+    { id: 1, name: 'Agent 1', description: '' },
+    { id: 2, name: 'Agent 2', description: '' }
+  ];
+
+  conversationTopic = '';
+  isConversationActive = false;
+  isConfigVisible = true;
+  conversationStatus: string = '';
+  conversationTimeRemaining = 300; // 5 minutes
+  private conversationTimer: any;
+  multiMessages: Array<{ agent: number, content: string }> = [];
+  public currentAgentMessage: { agent: number, content: string } | null = null;
+
   constructor(
     private llmService: LlmService,
     private cdr: ChangeDetectorRef,
@@ -39,86 +71,279 @@ export class LlmComponent implements OnInit, AfterViewChecked {
   ) { }
 
   ngOnInit() {
+    this.isMultiAgentMode = false; // Force default
     if (this.standalone) {
       this.seoService.updateSeo({
-        title: 'Local AI Terminal',
-        description: 'Interactive terminal interface for communicating with a local AI assistant. Developed by Sergii Mavrov.',
-        url: '/llm',
-        keywords: 'AI, LLM, Ollama, Terminal, Local AI, Chatbot, Sergii Mavrov'
+        title: 'Mavrov.de | Intelligent Multi-Agent Debate',
+        description: 'Watch AI agents with distinct personas debate any topic in real-time.',
+        keywords: 'AI Debate, Multi-Agent, LLM, Mavrov'
       });
     }
-    this.messages.push({ role: 'system', content: 'Connected to local AI agent. Ready for input.' });
+    this.loadState();
   }
 
   ngAfterViewChecked() {
-    if (isPlatformBrowser(this.platformId)) {
-      this.scrollToBottom();
-      this.focusInput();
-    }
+    this.scrollToBottom();
   }
 
   scrollToBottom(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
-    try {
-      if (this.scrollContainer) {
+    if (this.scrollContainer) {
+      try {
         this.scrollContainer.nativeElement.scrollTop = this.scrollContainer.nativeElement.scrollHeight;
-      }
-    } catch (err) { }
+      } catch (err) { }
+    }
   }
 
-  focusInput() {
-    if (!isPlatformBrowser(this.platformId)) return;
-    if (this.terminalInputRef && !this.isThinking) {
+  focusInput(): void {
+    if (this.terminalInputRef) {
       this.terminalInputRef.nativeElement.focus();
     }
   }
 
-  async sendMessage() {
+  sendMessage(): void {
     if (!this.userInput.trim() || this.isThinking) return;
 
-    const content = this.userInput.trim();
-    this.userInput = '';
-
-    if (content.toLowerCase() === 'clear') {
-      this.messages = [{ role: 'system', content: 'Console cleared.' }];
+    const prompt = this.userInput.trim();
+    if (prompt.toLowerCase() === 'clear') {
+      this.messages = [];
+      this.userInput = '';
+      this.isThinking = false;
+      this.saveState();
       return;
     }
-
-    if (content.toLowerCase() === 'exit' || content.toLowerCase() === 'quit') {
+    if (prompt.toLowerCase() === 'exit' || prompt.toLowerCase() === 'quit') {
       this.router.navigate(['/']);
       return;
     }
 
-    // Add user message
-    this.messages.push({ role: 'user', content });
-
-    // Prepare for response
+    // Add user message to history
+    this.messages.push({ role: 'user', content: prompt });
+    this.userInput = '';
     this.isThinking = true;
-    const assistantMsg: ChatMessage = { role: 'assistant', content: '' };
-    this.messages.push(assistantMsg);
+
+    // Scroll to bottom
+    this.cdr.detectChanges();
+    this.scrollToBottom();
+    this.saveState();
+
+    // Call LLM Service
+    this.llmService.chat(this.messages.map(m => ({ role: m.role, content: m.content })), (chunk) => {
+      // Update assistant message (stream)
+      const lastMsg = this.messages[this.messages.length - 1];
+      if (lastMsg && lastMsg.role === 'assistant') {
+        lastMsg.content += chunk;
+      } else {
+        this.isThinking = false; // Stop throbber on first chunk
+        this.messages.push({ role: 'assistant', content: chunk });
+      }
+      this.cdr.detectChanges();
+      this.scrollToBottom();
+      this.saveState();
+    }).catch(err => {
+      console.error('Chat error:', err);
+      this.isThinking = false;
+      this.messages.push({ role: 'system', content: 'Connection error. Please ensure Ollama is running.' });
+      this.cdr.detectChanges();
+      this.saveState();
+    });
+  }
+
+  // Multi-Agent Methods
+
+  addAgent(): void {
+    const newId = this.agents.length > 0 ? Math.max(...this.agents.map(a => a.id)) + 1 : 1;
+    this.agents.push({
+      id: newId,
+      name: `Agent ${newId}`,
+      description: ''
+    });
+    this.saveState();
+  }
+
+  removeAgent(id: number): void {
+    if (this.agents.length > 2) {
+      this.agents = this.agents.filter(a => a.id !== id);
+      this.saveState();
+    }
+  }
+
+
+  async generateAgentName(agent: Agent): Promise<void> {
+    if (!agent.description || agent.name) return;
+
+    // Only generate if name is empty or default
+    if (!agent.name || agent.name.startsWith('Agent ')) {
+      try {
+        const name = await this.llmService.generateName(agent.description);
+        if (name) agent.name = name;
+      } catch (error) {
+        console.error('Failed to generate name', error);
+      }
+    }
+  }
+
+  isStartButtonDisabled(): boolean {
+    return this.isConversationActive ||
+      !this.conversationTopic ||
+      this.agents.length < 2 ||
+      this.agents.some(a => !a.description);
+  }
+
+  async startMultiConversation(): Promise<void> {
+    // Validate inputs
+    if (!this.conversationTopic || this.agents.length < 2) return;
+    if (this.agents.some(a => !a.description)) return;
+    if (this.isConversationActive) return;
+
+    // Auto-hide config on start
+    this.isConfigVisible = false;
+
+    this.isConversationActive = true;
+    this.conversationTimeRemaining = 300;
+    this.currentAgentMessage = null;
     this.cdr.detectChanges();
 
-    try {
-      const apiMessages = this.messages
-        .filter(m => m.role !== 'system')
-        .slice(0, -1);
-
-      await this.llmService.chat(apiMessages, (chunk) => {
-        if (this.isThinking) {
-          this.isThinking = false;
-          this.cdr.detectChanges();
-        }
-        assistantMsg.content += chunk;
-        this.cdr.detectChanges();
-        this.scrollToBottom();
-      });
-
-    } catch (error) {
-      this.isThinking = false;
-      this.messages.push({ role: 'system', content: 'Error: Failed to communicate with AI agent.' });
-    } finally {
-      this.isThinking = false;
+    // Start timer
+    this.conversationTimer = setInterval(() => {
+      this.conversationTimeRemaining--;
+      if (this.conversationTimeRemaining <= 0) {
+        this.stopMultiConversation();
+        this.conversationStatus = 'Debate Time Limit Reached';
+      }
       this.cdr.detectChanges();
+    }, 1000);
+
+    this.conversationStatus = 'Connecting to Debate Stream...';
+
+    try {
+      const agentConfigs = this.agents.map(a => ({
+        id: a.id,
+        description: a.description,
+        name: a.name || `Agent ${a.id}`
+      }));
+
+      await this.llmService.multiChat(
+        agentConfigs,
+        this.conversationTopic,
+        (agentId: number, chunk: string, turnComplete?: boolean) => {
+          if (turnComplete) {
+            if (this.currentAgentMessage) {
+              // Finalize the current message and push it
+              this.multiMessages.push(this.currentAgentMessage);
+              this.currentAgentMessage = null;
+              this.saveState();
+            }
+          } else {
+            // Update status
+            const agent = this.agents.find(a => a.id === agentId);
+            const name = agent ? (agent.name || (agent.description ? 'Identifying...' : `Agent ${agent.id}`)) : `Agent ${agentId}`;
+
+            this.conversationStatus = `${name.includes('Ident') ? 'Agent ' + agentId : name} is speaking...`;
+
+            if (!this.currentAgentMessage || this.currentAgentMessage.agent !== agentId) {
+              this.currentAgentMessage = { agent: agentId, content: chunk };
+            } else {
+              this.currentAgentMessage.content += chunk;
+            }
+          }
+          this.cdr.detectChanges();
+          this.scrollToBottom();
+        }
+      );
+    } catch (error) {
+      console.error('Multi chat error:', error);
+      this.conversationStatus = 'Connection Error';
+    } finally {
+      this.isConversationActive = false;
+      clearInterval(this.conversationTimer);
+      if (this.conversationStatus !== 'Debate Time Limit Reached' && this.conversationStatus !== 'Connection Error') {
+        this.conversationStatus = 'Debate Concluded';
+      }
+      this.cdr.detectChanges();
+    }
+  }
+
+  stopMultiConversation(): void {
+    this.isConversationActive = false;
+    clearInterval(this.conversationTimer);
+    this.conversationStatus = 'Debate Stopped';
+  }
+
+  formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  getAgentName(agentId: number): string {
+    const agent = this.agents.find(a => a.id === agentId);
+    if (!agent) return `Agent ${agentId}`;
+    return agent.name || (agent.description ? 'Identifying...' : `Agent ${agent.id}`);
+  }
+
+  onAgentDescriptionChange(agentId: number): void {
+    const agent = this.agents.find(a => a.id === agentId);
+    if (agent) {
+      agent.name = `Agent ${agent.id}`;
+      this.saveState();
+    }
+  }
+
+  toggleConfig(): void {
+    this.isConfigVisible = !this.isConfigVisible;
+  }
+
+  private saveState(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    const state: LlmState = {
+      agents: this.agents,
+      conversationTopic: this.conversationTopic,
+      multiMessages: this.multiMessages,
+      isMultiAgentMode: this.isMultiAgentMode,
+      timestamp: Date.now()
+    };
+
+    try {
+      localStorage.setItem('llm-component-state', JSON.stringify(state));
+    } catch (error) {
+      console.error('Failed to save state:', error);
+    }
+  }
+
+  private loadState(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    try {
+      const stored = localStorage.getItem('llm-component-state');
+      if (!stored) return;
+
+      const state: LlmState = JSON.parse(stored);
+      const age = Date.now() - state.timestamp;
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+      if (age > maxAge) {
+        this.clearState();
+        return;
+      }
+
+      this.agents = state.agents;
+      this.conversationTopic = state.conversationTopic;
+      this.multiMessages = state.multiMessages;
+      this.isMultiAgentMode = state.isMultiAgentMode !== undefined ? state.isMultiAgentMode : false;
+    } catch (error) {
+      console.error('Failed to load state:', error);
+      this.clearState();
+    }
+  }
+
+  clearState(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    try {
+      localStorage.removeItem('llm-component-state');
+    } catch (error) {
+      console.error('Failed to clear state:', error);
     }
   }
 }
