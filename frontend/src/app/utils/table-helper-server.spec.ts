@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ServerTableHelper } from './table-helper-server';
-import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
 describe('ServerTableHelper', () => {
@@ -34,6 +33,8 @@ describe('ServerTableHelper', () => {
             expect(params.page).toBe(1);
             expect(params.pageSize).toBe(10);
             expect(params.sortBy).toBeNull();
+            // Default sort order is 'desc' if not provided? 
+            // Constructor: initialSortOrder: 'asc' | 'desc' = 'desc'
             expect(params.sortOrder).toBe('desc');
             expect(params.search).toBeNull();
         });
@@ -105,6 +106,14 @@ describe('ServerTableHelper', () => {
             helper.toggleSort('name');
             expect(helper.sortBy).toBe('name');
             expect(helper.sortOrder).toBe('desc');
+        });
+
+        it('should toggle back to asc when already desc on same field', () => {
+            helper.sortBy = 'name';
+            helper.sortOrder = 'desc';
+            helper.toggleSort('name');
+            expect(helper.sortBy).toBe('name');
+            expect(helper.sortOrder).toBe('asc');
         });
 
         it('should set new field with asc direction', () => {

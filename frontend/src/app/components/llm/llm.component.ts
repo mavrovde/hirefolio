@@ -301,6 +301,7 @@ export class LlmComponent implements OnInit, AfterViewChecked {
     this.multiMessages = [];
     this.currentAgentMessage = null;
     this.conversationStatus = '';
+    this.conversationTimeRemaining = 300;
     this.saveState();
   }
 

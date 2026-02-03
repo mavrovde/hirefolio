@@ -48,6 +48,21 @@ describe('TagsService', () => {
         req.flush(mockResponse);
     });
 
+    it('should get tags with search param', () => {
+        const mockResponse = { items: [], total: 0, page: 1, page_size: 10, total_pages: 0 };
+        const query = 'test';
+
+        service.getAllTags(1, 10, 'count', 'desc', query).subscribe(response => {
+            expect(response).toEqual(mockResponse);
+        });
+
+        const req = httpMock.expectOne(req =>
+            req.url.includes('/api/tags') && req.params.get('search') === query
+        );
+        expect(req.request.method).toBe('GET');
+        req.flush(mockResponse);
+    });
+
     it('should rename tag', () => {
         const oldName = 'Angular';
         const newName = 'AngularJS';

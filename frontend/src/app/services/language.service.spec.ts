@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { LanguageService } from './language.service';
 import { StorageService } from './storage.service';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('LanguageService', () => {
@@ -58,7 +58,6 @@ describe('LanguageService', () => {
     const initReq = httpMock.expectOne('/assets/i18n/en.json');
     initReq.flush({ A: { B: 'C' } });
 
-    // Path that exists then stops
     const t1 = await firstValueFrom(service.translate('A.B.D'));
     expect(t1).toBe('A.B.D');
   });
@@ -80,9 +79,6 @@ describe('LanguageService', () => {
 
     service.setLanguage('en');
     httpMock.expectNone('/assets/i18n/en.json');
-    // It should NOT try to set storage if logic prevents redundant setLanguage
-    // But implementation says: if (current != lang)
-    // So if current is 'en', setLanguage('en') does nothing.
   });
 
   it('should persist language on setLanguage', () => {
@@ -96,14 +92,16 @@ describe('LanguageService', () => {
     expect(storageServiceMock.setItem).toHaveBeenCalledWith('language', 'de');
   });
 
-  it('should handle http error gracefully', async () => {
+  it('should handle http error and return fallback', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     const initReq = httpMock.expectOne('/assets/i18n/en.json');
-    initReq.error(new ProgressEvent('Network Error'));
 
-    // Should still emit empty object (fallback)
-    const translation = await firstValueFrom(service.translate('ANY'));
-    expect(translation).toBe('ANY');
+    // Simulate network error
+    initReq.flush('Error', { status: 500, statusText: 'Server Error' });
+
+    const translation = await firstValueFrom(service.translate('ANY_KEY'));
+
+    expect(translation).toBe('ANY_KEY');
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
@@ -117,7 +115,6 @@ describe('LanguageService', () => {
 
     expect(results[0]).toBe('Initial');
 
-    // Trigger second change
     service.setLanguage('de');
     const deReq = httpMock.expectOne('/assets/i18n/de.json');
     deReq.flush({ KEY: 'Deutsch' });

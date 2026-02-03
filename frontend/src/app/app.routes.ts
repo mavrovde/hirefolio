@@ -78,6 +78,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'tag-manager',
+        loadComponent: () =>
+          import('./components/admin/tag-manager/tag-manager.component').then(
+            (m) => m.TagManagerComponent,
+          ),
+      },
+      {
         path: 'profile',
         loadComponent: () =>
           import('./components/admin/profile/profile').then(

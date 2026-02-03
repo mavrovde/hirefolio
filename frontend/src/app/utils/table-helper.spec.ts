@@ -45,6 +45,22 @@ describe('TableHelper', () => {
             expect(helper.filteredItems).toEqual([]);
             expect(helper.paginatedItems).toEqual([]);
         });
+
+        it('should fix current page if data shrinks', () => {
+            // Create scenario where page becomes invalid
+            helper.pageSize = 2;
+            helper.setData(mockData); // 5 items, 3 pages
+            helper.setPage(3);
+            expect(helper.currentPage).toBe(3);
+
+            // Now update with fewer items
+            const smallData = [{ id: 1, name: 'A', value: 1 }];
+            helper.setData(smallData);
+
+            expect(helper.totalPages).toBe(1);
+            expect(helper.currentPage).toBe(1); // Should have reset to 1
+            expect(helper.paginatedItems.length).toBe(1);
+        });
     });
 
     describe('setSearch', () => {
@@ -128,6 +144,15 @@ describe('TableHelper', () => {
             expect(helper.filteredItems[4].name).toBe('Alpha');
         });
 
+        it('should toggle back to ascending on third click', () => {
+            helper.toggleSort('name'); // asc
+            helper.toggleSort('name'); // desc
+            helper.toggleSort('name'); // asc
+
+            expect(helper.sortDirection).toBe('asc');
+            expect(helper.filteredItems[0].name).toBe('Alpha');
+        });
+
         it('should reset to ascending when changing field', () => {
             helper.toggleSort('name');
             helper.toggleSort('name'); // Now desc
@@ -144,6 +169,14 @@ describe('TableHelper', () => {
             expect(helper.filteredItems[0].value).toBe(50);
             expect(helper.filteredItems[1].value).toBe(100);
             expect(helper.filteredItems[4].value).toBe(200);
+        });
+
+        it('should sort numbers correctly descending', () => {
+            helper.toggleSort('value');
+            helper.toggleSort('value');
+
+            expect(helper.filteredItems[0].value).toBe(200);
+            expect(helper.filteredItems[4].value).toBe(50);
         });
 
         it('should handle equal values', () => {

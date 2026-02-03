@@ -73,9 +73,7 @@ export class TableHelper<T> {
 
                 if (valA === valB) return 0;
 
-                let comparison = 0;
-                if (valA > valB) comparison = 1;
-                else if (valA < valB) comparison = -1;
+                const comparison = valA > valB ? 1 : -1;
 
                 return this.sortDirection === 'asc' ? comparison : -comparison;
             });

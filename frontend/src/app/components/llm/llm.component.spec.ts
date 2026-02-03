@@ -208,33 +208,33 @@ describe('LlmComponent', () => {
             expect(component.multiMessages.length).toBe(1);
         });
 
-        it('should have CLEAR button in the template with terminal-btn class', () => {
+        it('should have RESET button in the template with terminal-btn class', () => {
             component.isMultiAgentMode = true;
             component.multiMessages = [{ agent: 1, content: 'Test' }];
             component.isConversationActive = false;
             fixture.detectChanges();
 
             const compiled = fixture.nativeElement as HTMLElement;
-            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('CLEAR'));
+            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET'));
 
             expect(clearBtn).toBeTruthy();
             expect(clearBtn?.classList.contains('terminal-btn')).toBe(true);
             expect(clearBtn?.hasAttribute('disabled')).toBe(false);
         });
 
-        it('should disable CLEAR button if conversation is active', () => {
+        it('should disable RESET button if conversation is active', () => {
             component.isMultiAgentMode = true;
             component.multiMessages = [{ agent: 1, content: 'Test' }];
             component.isConversationActive = true;
             fixture.detectChanges();
 
             const compiled = fixture.nativeElement as HTMLElement;
-            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('CLEAR'));
+            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET'));
 
             expect(clearBtn?.hasAttribute('disabled')).toBe(true);
         });
 
-        it('should call clearMultiDebate when CLEAR button is clicked', () => {
+        it('should call clearMultiDebate when RESET button is clicked', () => {
             const spy = vi.spyOn(component, 'clearMultiDebate');
             component.isMultiAgentMode = true;
             component.multiMessages = [{ agent: 1, content: 'Test' }];
@@ -242,7 +242,7 @@ describe('LlmComponent', () => {
             fixture.detectChanges();
 
             const compiled = fixture.nativeElement as HTMLElement;
-            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('CLEAR'));
+            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET'));
 
             clearBtn?.click();
             expect(spy).toHaveBeenCalled();

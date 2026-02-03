@@ -1,1 +1,205 @@
-/* Tag Manager styles */
+:host {
+    --text-primary: var(--color-primary);
+    --accent-secondary: var(--color-secondary);
+    --border-color: rgba(0, 255, 0, 0.3);
+    --text-muted: var(--color-muted);
+    --status-error: #ef4444;
+}
+
+.tag-manager {
+    color: var(--text-primary);
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.header {
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.page-title {
+    color: var(--accent-secondary);
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.controls-bar {
+    margin-bottom: 1.5rem;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.prompt {
+    color: var(--accent-secondary);
+    font-weight: bold;
+}
+
+.terminal-input {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.5rem;
+    font-family: inherit;
+    width: 100%;
+    max-width: 300px;
+}
+
+.terminal-input.small {
+    padding: 0.25rem 0.5rem;
+    max-width: 150px;
+}
+
+.terminal-input:focus {
+    outline: none;
+    border-color: var(--accent-secondary);
+    box-shadow: 0 0 5px var(--accent-secondary);
+}
+
+.table-container {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.2);
+    position: relative;
+    min-height: 200px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    background: rgba(0, 0, 0, 0.4);
+    color: var(--accent-secondary);
+    font-weight: bold;
+}
+
+th.sortable {
+    cursor: pointer;
+}
+
+th.sortable:hover {
+    background: rgba(0, 255, 65, 0.1);
+}
+
+tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tag-name {
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.tag-name:hover {
+    color: var(--accent-secondary);
+    text-decoration: underline;
+}
+
+.edit-mode {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.2rem;
+    line-height: 1;
+}
+
+.btn-icon:hover {
+    color: var(--accent-secondary);
+}
+
+.actions-cell {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-action {
+    background: transparent;
+    border: 1px solid var(--accent-secondary);
+    color: var(--accent-secondary);
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.btn-action:hover {
+    background: rgba(0, 255, 65, 0.1);
+}
+
+.btn-action.delete {
+    border-color: var(--status-error);
+    color: var(--status-error);
+}
+
+.btn-action.delete:hover {
+    background: rgba(255, 0, 0, 0.1);
+}
+
+.no-data {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-secondary);
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-page {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-page:not(:disabled):hover {
+    background: var(--accent-secondary);
+    color: #000;
+}
+
+.btn-page:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

@@ -1,3 +1,11 @@
+:host {
+    --text-primary: var(--color-primary);
+    --accent-secondary: var(--color-secondary);
+    --border-color: rgba(0, 255, 0, 0.3);
+    --text-muted: var(--color-muted);
+    --status-error: #ef4444;
+}
+
 .cv-manager {
     color: var(--text-primary);
     font-family: 'Courier New', Courier, monospace;
