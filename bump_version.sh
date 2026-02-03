@@ -41,6 +41,13 @@ else
   sed -i "s/\"version\": \"[0-9.]*\"/\"version\": \"$new_version\"/" frontend/package.json
 fi
 
+# Update frontend/src/app/version.ts
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  sed -i '' "s/VERSION = '.*';/VERSION = '$new_version';/" frontend/src/app/version.ts
+else
+  sed -i "s/VERSION = '.*';/VERSION = '$new_version';/" frontend/src/app/version.ts
+fi
+
 # Update .env IMAGE_TAG
 if [ -f .env ]; then
   if grep -q "^IMAGE_TAG=" .env; then
@@ -65,4 +72,5 @@ if [ -d .git ]; then
 fi
 
 echo "Version updated to $new_version"
-echo "To finish release, commit changes and run: git tag -a v$new_version -m \"Release v$new_version\" && git push origin v$new_version"
+echo "Version updated to $new_version"
+echo "Ready for verification and tagging."

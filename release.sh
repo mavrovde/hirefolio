@@ -57,7 +57,9 @@ fi
 echo ""
 echo "Step 3: Committing version updates..."
 git add .
-git commit -m "$DESC"
+# Prepend version to commit message for clarity
+FINAL_MSG="v$VERSION: $DESC"
+git commit -m "$FINAL_MSG"
 
 # 4. Git Tagging
 echo ""
