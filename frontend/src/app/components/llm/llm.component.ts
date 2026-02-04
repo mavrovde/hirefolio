@@ -297,11 +297,20 @@ export class LlmComponent implements OnInit, AfterViewChecked {
   }
 
   clearMultiDebate(): void {
-    if (this.isConversationActive) return;
+    // If active, stop it first
+    if (this.isConversationActive) {
+      this.stopMultiConversation();
+    }
+
     this.multiMessages = [];
     this.currentAgentMessage = null;
     this.conversationStatus = '';
     this.conversationTimeRemaining = 300;
+
+    // Also clear agents if desired, or keep them? 
+    // "Reset backend also" implies clearing context. Backend is stateless so clearing messages is enough.
+    // User might want to restart with same agents.
+
     this.saveState();
   }
 

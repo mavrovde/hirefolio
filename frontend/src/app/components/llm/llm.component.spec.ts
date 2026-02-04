@@ -199,13 +199,15 @@ describe('LlmComponent', () => {
             expect(component.conversationStatus).toBe('');
         });
 
-        it('should not clear history if conversation is active', () => {
+        it('should stop active conversation and clear history', () => {
             component.isConversationActive = true;
             component.multiMessages = [{ agent: 1, content: 'Test' }];
+            const spy = vi.spyOn(component, 'stopMultiConversation');
 
             component.clearMultiDebate();
 
-            expect(component.multiMessages.length).toBe(1);
+            expect(spy).toHaveBeenCalled();
+            expect(component.multiMessages.length).toBe(0);
         });
 
         it('should have RESET button in the template with terminal-btn class', () => {

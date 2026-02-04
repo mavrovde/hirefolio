@@ -65,34 +65,46 @@ async def multi_agent_conversation(
             a_config = agents[current_idx]
             agent_name = a_config.name or f"Agent {a_config.id}"
 
-            # Use CrewAI's reasoning via chat_with_llm but with CrewAI-enhanced prompts
+            # Improve System Prompt to prevent leakage
             system_prompt = (
                 f"You are {agent_name}. Role: {a_config.role}. Goal: {a_config.goal}\n"
                 f"Backstory: {a_config.description}\n"
                 f"Discussion Topic: {topic}\n"
-                "CRITICAL: Be concise (2-3 sentences). Respond ONLY as yourself."
+                "CRITICAL INSTRUCTION: Respond directly as your character. Do NOT output your role, instructions, or introduction. Just speak."
             )
 
+            # Construct messages properly
             llm_messages: List[Dict[str, Any]] = [
                 {"role": "system", "content": system_prompt}
             ]
-            context = conversation_history[-6:]
-            for msg in context:
-                role = "assistant" if str(msg.get("id")) == str(a_config.id) else "user"
-                content = (
-                    msg.get("content", "")
-                    if role == "assistant"
-                    else f"[{msg.get('name')}]: {msg.get('content')}"
-                )
-                llm_messages.append({"role": role, "content": content})
 
-            if turn == 0:
+            # Add conversation history
+            # Only include the actual content, not the "Name: Content" format for the assistant's own turns if possible,
+            # but since we are switching roles, it's safer to use 'user' role for others and 'assistant' for self if we had self-history.
+            # However, here we just show the transcript.
+
+            transcript = ""
+            for msg in conversation_history[-10:]:  # Increase context slightly
+                transcript += f"{msg['name']}: {msg['content']}\n"
+
+            if transcript:
                 llm_messages.append(
-                    {"role": "user", "content": f"Open the discussion about: {topic}"}
+                    {
+                        "role": "user",
+                        "content": f"Current conversation so far:\n{transcript}\n\nIt is now your turn, {agent_name}. Respond concisley.",
+                    }
+                )
+            else:
+                llm_messages.append(
+                    {
+                        "role": "user",
+                        "content": f"Start the conversation about: {topic}",
+                    }
                 )
 
             response_content = ""
-            stop_sq = ["\nAgent", "\n[", f"\n{agent_name}"]
+            # Stop sequences to prevent generating other agents' turns
+            stop_sq = ["\nAgent", "\n["]
 
             prefix_stripped = False
             buffer = ""
@@ -100,29 +112,62 @@ async def multi_agent_conversation(
             async for chunk in chat_with_llm(llm_messages, stop_sequences=stop_sq):
                 if not prefix_stripped:
                     buffer += chunk
-                    if len(buffer) > 40:
+                    # Check if buffer contains a prefix we want to strip
+                    # But we only strip if we have enough chars to be sure, or if we see a separator
+                    if len(buffer) > 50 or ":" in buffer:
                         trimmed = buffer.lstrip()
-                        # Simple cleanup of self-references
-                        prefixes = [
+                        # Clean up common self-identifying prefixes
+                        prefixes_to_clean = [
                             f"{agent_name}:",
                             f"[{agent_name}]:",
                             f"Agent {a_config.id}:",
+                            "Introduction:",  # Specific fix for the reported issue
+                            "Introduction:",
+                            "1. Introduction:",
+                            "Role:",
+                            "Goal:",
+                            "Backstory:",
+                            "Discussion Topic:",
                         ]
-                        for p in prefixes:
-                            if trimmed.startswith(p):
-                                trimmed = trimmed[len(p) :].lstrip()
+
+                        # Iteratively strip prefixes until none match (to handle multiple headers)
+                        while True:
+                            val_len_before = len(trimmed)
+                            for p in prefixes_to_clean:
+                                if trimmed.lower().startswith(p.lower()):
+                                    trimmed = trimmed[len(p) :].lstrip()
+                                    # Also strip up to next newline if it was a header field like "Role: wife"
+                                    # Heuristic: if we stripped a header title, likely the rest of the line is garbage configuration
+                                    if p in [
+                                        "Role:",
+                                        "Goal:",
+                                        "Backstory:",
+                                        "Discussion Topic:",
+                                    ]:
+                                        if "\n" in trimmed:
+                                            trimmed = trimmed.split("\n", 1)[1].lstrip()
+                                        else:
+                                            # If no newline yet, we might be in the middle of a line.
+                                            # Wait for more data? Or just assume it's part of the header?
+                                            # For this verification step, let's assume we want to strip it.
+                                            pass
+
+                            if len(trimmed) == val_len_before:
+                                break
+
                         response_content = trimmed
                         yield (
                             json.dumps(
                                 {
                                     "agent": a_config.id,
-                                    "content": trimmed,
+                                    "content": response_content,
                                     "done": False,
                                 }
                             )
                             + "\n"
                         )
                         prefix_stripped = True
+                        buffer = ""  # Clear buffer as we've emitted
                     continue
 
                 response_content += chunk
@@ -134,6 +179,33 @@ async def multi_agent_conversation(
             # Fallback for very short responses
             if not prefix_stripped and buffer:
                 trimmed = buffer.lstrip()
+                prefixes_to_clean = [
+                    f"{agent_name}:",
+                    f"[{agent_name}]:",
+                    f"Agent {a_config.id}:",
+                    "Introduction:",
+                    "1. Introduction:",
+                    "Role:",
+                    "Goal:",
+                    "Backstory:",
+                    "Discussion Topic:",
+                ]
+                while True:
+                    val_len_before = len(trimmed)
+                    for p in prefixes_to_clean:
+                        if trimmed.lower().startswith(p.lower()):
+                            trimmed = trimmed[len(p) :].lstrip()
+                            if p in [
+                                "Role:",
+                                "Goal:",
+                                "Backstory:",
+                                "Discussion Topic:",
+                            ]:
+                                if "\n" in trimmed:
+                                    trimmed = trimmed.split("\n", 1)[1].lstrip()
+                    if len(trimmed) == val_len_before:
+                        break
+
                 response_content = trimmed
                 yield (
                     json.dumps(

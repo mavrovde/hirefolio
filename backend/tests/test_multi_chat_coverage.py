@@ -109,3 +109,29 @@ async def test_multi_agent_conversation_no_agents():
     async for chunk in gen:
         chunks.append(chunk)
     assert len(chunks) == 0
+
+
+@pytest.mark.asyncio
+async def test_multi_agent_prompt_leakage():
+    """Test that system prompt leakage (Introduction/Role) is stripped."""
+    agents = [AgentConfig(id=1, description="D1", name="Agent1")]
+    topic = "Testing Leakage"
+
+    async def mock_leak_gen(messages, stop_sequences=None):
+        # Simulate LLM repeating the prompt
+        yield "Introduction:\nRole: Agent1\nGoal: Win\n\nActual response content starts here."
+
+    with patch("app.services.multi_chat.chat_with_llm", side_effect=mock_leak_gen):
+        with patch("app.services.multi_chat.MAX_TURNS", 1):
+            gen = multi_agent_conversation(agents, topic)
+            chunks = []
+            async for chunk in gen:
+                chunks.append(json.loads(chunk))
+
+            # Combine content
+            content = "".join([c["content"] for c in chunks if "content" in c])
+
+            # Verify leakage is stripped
+            assert "Introduction" not in content
+            assert "Role:" not in content
+            assert "Actual response content starts here" in content
