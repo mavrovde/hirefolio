@@ -190,7 +190,7 @@ async def test_multi_agent_consumer_exception():
     ):
         gen = multi_agent_conversation(agents_config, "Topic")
         chunks = []
-        
+
         # Expect RuntimeError to propagate
         with pytest.raises(RuntimeError, match="Queue Error"):
             async for chunk in gen:

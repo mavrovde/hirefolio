@@ -25,13 +25,15 @@ async def test_main_migrations_trigger():
     # connect is not used in the snippet I saw, but if it is, mock it too safely
     mock_engine.connect.return_value = mock_cm
 
-    with patch("app.main.engine", mock_engine), \
-            patch("app.main.async_session") as mock_session_factory:
+    with (
+        patch("app.main.engine", mock_engine),
+        patch("app.main.async_session") as mock_session_factory,
+    ):
         mock_session = AsyncMock()
-        mock_execute_result = MagicMock() 
+        mock_execute_result = MagicMock()
         mock_session.execute.return_value = mock_execute_result
         mock_session_factory.return_value.__aenter__.return_value = mock_session
-        
+
         # Mock user and CV queries to avoid errors
         mock_execute_result.scalars.return_value.first.return_value = MagicMock()
 

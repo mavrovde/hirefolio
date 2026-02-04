@@ -37,7 +37,6 @@ async def multi_agent_conversation(
     agents_config: List[AgentConfig],
     topic: str,
 ) -> AsyncGenerator[str, None]:
-
     if not agents_config:
         return
 
@@ -131,16 +130,18 @@ async def multi_agent_conversation(
             name_label = item["agent_name"]
             agent_id = agent_id_map.get(name_label, 0)
 
-            yield json.dumps(
-                {"agent": agent_id, "content": content, "done": False}
-            ) + "\n"
+            yield (
+                json.dumps({"agent": agent_id, "content": content, "done": False})
+                + "\n"
+            )
 
             queue.task_done()
 
     finally:
-        yield json.dumps(
-            {"agent": 0, "content": "[Conversation Finished]", "done": True}
-        ) + "\n"
+        yield (
+            json.dumps({"agent": 0, "content": "[Conversation Finished]", "done": True})
+            + "\n"
+        )
 
         if worker_task and not worker_task.done():
             worker_task.cancel()
