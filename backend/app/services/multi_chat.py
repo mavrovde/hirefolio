@@ -1,20 +1,20 @@
-"""Multi-agent conversation orchestration service.
-
-Manages conversations between N AI agents with distinct personas.
-"""
+"""Multi-agent conversation orchestration service using CrewAI."""
 
 import asyncio
 import json
-import time
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, List, Optional
+
 from pydantic import BaseModel
-from app.services.chat import chat_with_llm
+from app.config import settings
 from app.logger import get_logger
 
-logger = get_logger(__name__)
+# CrewAI imports
+from crewai import Agent, Task, Crew, Process
+from langchain_openai import ChatOpenAI
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.outputs import LLMResult
 
-MAX_CONVERSATION_DURATION = 300  # 5 minutes
-MAX_TURNS = 15  # Increased turns for multi-agent
+logger = get_logger(__name__)
 
 
 class AgentConfig(BaseModel):
@@ -25,219 +25,152 @@ class AgentConfig(BaseModel):
     goal: Optional[str] = None
 
 
+class StreamingCallbackHandler(BaseCallbackHandler):
+    """Callback handler for streaming LLM output to an asyncio queue."""
+
+    def __init__(self, queue: asyncio.Queue):
+        self.queue = queue
+        self.current_agent_name = "Unknown"
+
+    def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
+        """Run on new LLM token. Only available when streaming is enabled."""
+        if token:
+            self.queue.put_nowait(
+                {"content": token, "agent_name": self.current_agent_name}
+            )
+
+    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+        """Run when LLM ends running."""
+        # Signal end of turn? We might rely on the main loop.
+        pass
+
+
 async def multi_agent_conversation(
-    agents: List[AgentConfig],
+    agents_config: List[AgentConfig],
     topic: str,
 ) -> AsyncGenerator[str, None]:
     """
     Orchestrate a conversation between N AI agents using CrewAI.
-
-    Args:
-        agents: List of agent configurations (id, description, name, role, goal)
-        topic: The conversation topic
-
-    Yields:
-        JSON strings with format: {"agent": id, "content": "...", "done": false}
     """
-    if not agents:
+    if not agents_config:
         return
 
-    try:
-        start_time = time.time()
+    queue: asyncio.Queue = asyncio.Queue()
 
-        # 5. Kickoff and Stream (Simulated streaming for turn-based interaction)
-        # Note: CrewAI kickoff is typically blocking. To maintain the streaming UX
-        # while using CrewAI's planning/reasoning, we use a loop where each agent
-        # contributes a 'thought' or 'response'.
+    # Map for agent IDs
+    agent_id_map = {}
 
-        conversation_history: List[Dict[str, Any]] = []
+    # 1. Create Agents
+    crew_agents = []
 
-        for turn in range(MAX_TURNS):
-            elapsed = time.time() - start_time
-            if elapsed >= MAX_CONVERSATION_DURATION:
-                yield (
-                    json.dumps({"agent": 0, "content": "[Limit reached]", "done": True})
-                    + "\n"
-                )
-                break
+    for cfg in agents_config:
+        agent_name = cfg.name or f"Agent {cfg.id}"
+        agent_id_map[agent_name] = cfg.id
 
-            current_idx = turn % len(agents)
-            a_config = agents[current_idx]
-            agent_name = a_config.name or f"Agent {a_config.id}"
+        # Create unique LLM instance per agent with a unique callback instance
+        agent_queue_callback = StreamingCallbackHandler(queue)
+        agent_queue_callback.current_agent_name = agent_name
 
-            # Improve System Prompt to prevent leakage
-            system_prompt = (
-                f"You are {agent_name}. Role: {a_config.role}. Goal: {a_config.goal}\n"
-                f"Backstory: {a_config.description}\n"
-                f"Discussion Topic: {topic}\n"
-                "CRITICAL INSTRUCTION: Respond directly as your character. Do NOT output your role, instructions, or introduction. Just speak."
-            )
-
-            # Construct messages properly
-            llm_messages: List[Dict[str, Any]] = [
-                {"role": "system", "content": system_prompt}
-            ]
-
-            # Add conversation history
-            # Only include the actual content, not the "Name: Content" format for the assistant's own turns if possible,
-            # but since we are switching roles, it's safer to use 'user' role for others and 'assistant' for self if we had self-history.
-            # However, here we just show the transcript.
-
-            transcript = ""
-            for msg in conversation_history[-10:]:  # Increase context slightly
-                transcript += f"{msg['name']}: {msg['content']}\n"
-
-            if transcript:
-                llm_messages.append(
-                    {
-                        "role": "user",
-                        "content": f"Current conversation so far:\n{transcript}\n\nIt is now your turn, {agent_name}. Respond concisley.",
-                    }
-                )
-            else:
-                llm_messages.append(
-                    {
-                        "role": "user",
-                        "content": f"Start the conversation about: {topic}",
-                    }
-                )
-
-            response_content = ""
-            # Stop sequences to prevent generating other agents' turns
-            stop_sq = ["\nAgent", "\n["]
-
-            prefix_stripped = False
-            buffer = ""
-
-            async for chunk in chat_with_llm(llm_messages, stop_sequences=stop_sq):
-                if not prefix_stripped:
-                    buffer += chunk
-                    # Check if buffer contains a prefix we want to strip
-                    # But we only strip if we have enough chars to be sure, or if we see a separator
-                    if len(buffer) > 50 or ":" in buffer:
-                        trimmed = buffer.lstrip()
-                        # Clean up common self-identifying prefixes
-                        prefixes_to_clean = [
-                            f"{agent_name}:",
-                            f"[{agent_name}]:",
-                            f"Agent {a_config.id}:",
-                            "Introduction:",  # Specific fix for the reported issue
-                            "Introduction:",
-                            "1. Introduction:",
-                            "Role:",
-                            "Goal:",
-                            "Backstory:",
-                            "Discussion Topic:",
-                        ]
-
-                        # Iteratively strip prefixes until none match (to handle multiple headers)
-                        while True:
-                            val_len_before = len(trimmed)
-                            for p in prefixes_to_clean:
-                                if trimmed.lower().startswith(p.lower()):
-                                    trimmed = trimmed[len(p) :].lstrip()
-                                    # Also strip up to next newline if it was a header field like "Role: wife"
-                                    # Heuristic: if we stripped a header title, likely the rest of the line is garbage configuration
-                                    if p in [
-                                        "Role:",
-                                        "Goal:",
-                                        "Backstory:",
-                                        "Discussion Topic:",
-                                    ]:
-                                        if "\n" in trimmed:
-                                            trimmed = trimmed.split("\n", 1)[1].lstrip()
-                                        else:
-                                            # If no newline yet, we might be in the middle of a line.
-                                            # Wait for more data? Or just assume it's part of the header?
-                                            # For this verification step, let's assume we want to strip it.
-                                            pass
-
-                            if len(trimmed) == val_len_before:
-                                break
-
-                        response_content = trimmed
-                        yield (
-                            json.dumps(
-                                {
-                                    "agent": a_config.id,
-                                    "content": response_content,
-                                    "done": False,
-                                }
-                            )
-                            + "\n"
-                        )
-                        prefix_stripped = True
-                        buffer = ""  # Clear buffer as we've emitted
-                    continue
-
-                response_content += chunk
-                yield (
-                    json.dumps({"agent": a_config.id, "content": chunk, "done": False})
-                    + "\n"
-                )
-
-            # Fallback for very short responses
-            if not prefix_stripped and buffer:
-                trimmed = buffer.lstrip()
-                prefixes_to_clean = [
-                    f"{agent_name}:",
-                    f"[{agent_name}]:",
-                    f"Agent {a_config.id}:",
-                    "Introduction:",
-                    "1. Introduction:",
-                    "Role:",
-                    "Goal:",
-                    "Backstory:",
-                    "Discussion Topic:",
-                ]
-                while True:
-                    val_len_before = len(trimmed)
-                    for p in prefixes_to_clean:
-                        if trimmed.lower().startswith(p.lower()):
-                            trimmed = trimmed[len(p) :].lstrip()
-                            if p in [
-                                "Role:",
-                                "Goal:",
-                                "Backstory:",
-                                "Discussion Topic:",
-                            ]:
-                                if "\n" in trimmed:
-                                    trimmed = trimmed.split("\n", 1)[1].lstrip()
-                    if len(trimmed) == val_len_before:
-                        break
-
-                response_content = trimmed
-                yield (
-                    json.dumps(
-                        {"agent": a_config.id, "content": trimmed, "done": False}
-                    )
-                    + "\n"
-                )
-
-            conversation_history.append(
-                {"id": a_config.id, "name": agent_name, "content": response_content}
-            )
-            yield (
-                json.dumps(
-                    {
-                        "agent": a_config.id,
-                        "content": "",
-                        "done": False,
-                        "turn_complete": True,
-                    }
-                )
-                + "\n"
-            )
-            await asyncio.sleep(0.5)
-
-        yield (
-            json.dumps({"agent": 0, "content": "[Debate Concluded]", "done": True})
-            + "\n"
+        agent_llm = ChatOpenAI(
+            model=settings.generation_model,
+            base_url=f"{settings.ollama_url}/v1",
+            api_key="NA",
+            streaming=True,
+            callbacks=[agent_queue_callback],
+            temperature=0.7,
         )
 
+        # Create CrewAI Agent
+        agent = Agent(
+            role=cfg.role or "Participant",
+            name=agent_name,
+            goal=cfg.goal or "Participate in the discussion.",
+            backstory=cfg.description or f"You are {agent_name}.",
+            llm=agent_llm,
+            verbose=True,
+            allow_delegation=False,
+        )
+
+        crew_agents.append(agent)
+
+    # 2. Define Tasks (Unrolled for Sequential Debate)
+    # The user wanted "equal agents" and "max_rounds".
+    # In CrewAI Sequential process, we must explicitly define the sequence of tasks.
+    # To simulate a debate where they listen and answer, we create a task for each agent in each turn.
+
+    tasks = []
+    MAX_ROUNDS = 3
+
+    for round_i in range(MAX_ROUNDS):
+        for agent in crew_agents:
+            # Task: Listen and Respond
+            # We combine "hear" and "answer" into one comprehensive task for the agent to permit flow.
+            task = Task(
+                description=f"Round {round_i + 1}: {topic}. Consider previous arguments. State your view clearly. Do NOT use tools. Just speak.",
+                expected_output="A concise response contributing to the debate.",
+                agent=agent,
+                async_execution=False,
+            )
+            tasks.append(task)
+
+    # 3. Create Crew
+    crew = Crew(
+        agents=crew_agents,
+        tasks=tasks,
+        process=Process.sequential,
+        verbose=True,
+    )
+
+    # 4. Kickoff in Thread
+    worker_task = None
+
+    async def run_crew():
+        try:
+            # kickoff() is sync/blocking
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, lambda: crew.kickoff())
+        except Exception as e:
+            logger.error(f"Crew kickoff failed: {e}", exc_info=True)
+            queue.put_nowait({"content": f"[Error: {e}]", "agent_name": "System"})
+        finally:
+            # Signal end
+            queue.put_nowait(None)
+
+    worker_task = asyncio.create_task(run_crew())
+
+    # 5. Stream from Queue
+    try:
+        while True:
+            # Wait for next token
+            item = await queue.get()
+
+            if item is None:
+                # Sentinel
+                break
+
+            content = item["content"]  # type: ignore
+            name_label = item["agent_name"]  # type: ignore
+
+            # Map back to ID
+            agent_id = agent_id_map.get(name_label, 0)
+
+            yield (
+                json.dumps({"agent": agent_id, "content": content, "done": False})
+                + "\n"
+            )
+
+            queue.task_done()
     except Exception as e:
-        logger.error(f"CrewAI conversation error: {e}", exc_info=True)
+        logger.error(f"Streaming error: {e}", exc_info=True)
         yield (
             json.dumps({"agent": 0, "content": f"[Error: {str(e)}]", "done": True})
             + "\n"
         )
+    finally:
+        # Check normal finish
+        yield (
+            json.dumps({"agent": 0, "content": "[Debate Concluded]", "done": True})
+            + "\n"
+        )
+        if worker_task and not worker_task.done():
+            worker_task.cancel()

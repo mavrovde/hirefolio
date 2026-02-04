@@ -1,137 +1,183 @@
 import pytest
 import json
-from unittest.mock import patch
+import asyncio
+from unittest.mock import MagicMock, patch
 from app.services.multi_chat import multi_agent_conversation, AgentConfig
 
 
 @pytest.mark.asyncio
-async def test_multi_agent_conversation_success_path():
-    """Test full success path of multi-agent conversation with prefix stripping."""
-    agents = [
-        AgentConfig(id=1, description="D1", name="Agent1", role="R1", goal="G1"),
-        AgentConfig(id=2, description="D2", name="Agent2", role="R2", goal="G2"),
+async def test_multi_agent_conversation_success():
+    """Test full success path of multi-agent conversation with mocked CrewAI."""
+    agents_config = [
+        AgentConfig(id=1, name="Scientist", role="R1", goal="G1", description="D1"),
+        AgentConfig(id=2, name="Philosopher", role="R2", goal="G2", description="D2"),
     ]
-    topic = "AI Ethics"
+    topic = "Test Topic"
 
-    # Mock chat_with_llm to yield specific responses > 40 chars
-    async def mock_chat_gen(messages, stop_sequences=None):
-        is_agent1 = any(
-            msg["role"] == "system" and "Agent1" in msg["content"] for msg in messages
-        )
-        if is_agent1:
-            yield "Agent1: "
-            # Yield lot of text to exceed 40 char buffer
-            yield "This is a very long response that will definitely exceed the forty character buffer threshold for prefix stripping logic coverage."
-            yield " Extra chunk to cover post-stripping lines."
-        else:
-            yield "Agent2: I actually agree with the previous statement completely and utterly."
+    # Capture queue via callback mock
+    mock_queue_ref = []
 
-    with patch("app.services.multi_chat.chat_with_llm", side_effect=mock_chat_gen):
-        with patch("app.services.multi_chat.MAX_TURNS", 2):
-            gen = multi_agent_conversation(agents, topic)
-            chunks = []
-            async for chunk in gen:
-                data = json.loads(chunk)
-                chunks.append(data)
+    class MockCallbackHandler:
+        def __init__(self, queue):
+            mock_queue_ref.append(queue)
+            self.queue = queue
 
-            # Check content
-            contents = "".join([c["content"] for c in chunks if "content" in c])
-            assert "threshold" in contents or "Ethical AI" in contents
-            assert "agree" in contents
-
-            # Check markers
-            assert any(c.get("turn_complete") for c in chunks)
-            assert chunks[-1]["done"] is True
-            assert "[Debate Concluded]" in chunks[-1]["content"]
-
-
-@pytest.mark.asyncio
-async def test_multi_agent_conversation_time_limit():
-    """Test time limit reached."""
-    agents = [AgentConfig(id=1, description="D1")]
-
-    # Needs more values to satisfy the loop if it doesn't break immediately
-    with patch(
-        "app.services.multi_chat.time.time", side_effect=[100, 1000, 2000, 3000, 4000]
+    # Create valid mocks for CrewAI components
+    with (
+        patch("app.services.multi_chat.ChatOpenAI"),
+        patch("app.services.multi_chat.Agent") as MockAgent,
+        patch("app.services.multi_chat.Task"),
+        patch("app.services.multi_chat.Crew") as MockCrew,
+        patch(
+            "app.services.multi_chat.StreamingCallbackHandler",
+            side_effect=MockCallbackHandler,
+        ),
     ):
-        with patch("app.services.multi_chat.MAX_CONVERSATION_DURATION", 10):
-            gen = multi_agent_conversation(agents, "Topic")
-            chunks = []
-            async for chunk in gen:
-                chunks.append(json.loads(chunk))
+        # Setup Crew Mock
+        mock_crew_instance = MockCrew.return_value
 
-            assert any(
-                "[Limit reached]" in c["content"] for c in chunks if "content" in c
-            )
-            assert chunks[-1]["done"] is True
+        # When kickoff is called, we want to simulate tokens being pushed to the queue.
+        # Since kickoff runs in an executor, we can't easily access the queue instantly inside the test
+        # unless we capture it first.
+        # But kickoff is called inside a background task.
 
+        # Let's use a side effect for kickoff that pushes to the captured queue
+        def kickoff_side_effect():
+            # Only push if we successfully captured queue
+            if mock_queue_ref:
+                q = mock_queue_ref[0]
+                # Simulate tokens
+                q.put_nowait({"content": "Hello", "agent_name": "Scientist"})
+                q.put_nowait({"content": "World", "agent_name": "Philosopher"})
 
-@pytest.mark.asyncio
-async def test_multi_agent_conversation_short_response():
-    """Test path where prefix is never stripped because response is too short."""
-    agents = [AgentConfig(id=1, description="D1", name="S")]
+        mock_crew_instance.kickoff.side_effect = kickoff_side_effect
 
-    async def mock_short_gen(messages, stop_sequences=None):
-        yield "Hi."
+        # Run the generator
+        gen = multi_agent_conversation(agents_config, topic)
 
-    with patch("app.services.multi_chat.chat_with_llm", side_effect=mock_short_gen):
-        with patch("app.services.multi_chat.MAX_TURNS", 1):
-            gen = multi_agent_conversation(agents, "T")
-            chunks = []
-            async for chunk in gen:
-                chunks.append(json.loads(chunk))
-            assert "Hi." in chunks[0]["content"]
-
-
-@pytest.mark.asyncio
-async def test_multi_agent_conversation_exception():
-    """Test exception handling."""
-    agents = [AgentConfig(id=1, description="D1")]
-
-    with patch(
-        "app.services.multi_chat.chat_with_llm",
-        side_effect=RuntimeError("Runtime Error"),
-    ):
-        gen = multi_agent_conversation(agents, "Topic")
         chunks = []
         async for chunk in gen:
             chunks.append(json.loads(chunk))
 
+        # Verify Agent creation - we check specific calls or count
+        # We expect 2 agents created
+        assert MockAgent.call_count == 2
+
+        # Verify call args for first agent
+        # We need to verify that 'role', 'name', 'goal', 'backstory' were passed correctly
+        call_args = MockAgent.call_args_list[0]
+        _, kwargs = call_args
+        assert kwargs["name"] == "Scientist"
+        assert kwargs["role"] == "R1"
+        assert kwargs["goal"] == "G1"
+        assert kwargs["backstory"] == "D1"
+        # Ensure LLM passed is NOT the generic one, but one created for this agent.
+        # We can't strict check the instance easily without more mocking, but we can check it's passed.
+        assert "llm" in kwargs
+
+        # Verify Output Content
+        # We expect parsed messages. Agent IDs mapped from names.
+        # Scientist ID=1, Philosopher ID=2
+
+        # Chunk 1: Hello from Scientist (1)
+        # Chunk 2: World from Philosopher (2)
+        # Last Chunk: Done
+
+        content_chunks = [c for c in chunks if not c.get("done")]
+        done_chunk = chunks[-1]
+
+        assert len(content_chunks) >= 2
+
+        assert content_chunks[0]["agent"] == 1
+        assert content_chunks[0]["content"] == "Hello"
+
+        assert content_chunks[1]["agent"] == 2
+        assert content_chunks[1]["content"] == "World"
+
+        assert done_chunk["done"] is True
+        assert "[Debate Concluded]" in done_chunk["content"]
+
+
+@pytest.mark.asyncio
+async def test_multi_agent_conversation_error():
+    """Test error handling during kickoff."""
+    agents_config = [AgentConfig(id=1, description="D1", name="A1")]
+
+    with (
+        patch("app.services.multi_chat.ChatOpenAI"),
+        patch("app.services.multi_chat.Agent"),
+        patch("app.services.multi_chat.Task"),
+        patch("app.services.multi_chat.Crew") as MockCrew,
+    ):
+        mock_crew = MockCrew.return_value
+        mock_crew.kickoff.side_effect = Exception("Crew Crash")
+
+        gen = multi_agent_conversation(agents_config, "Topic")
+        chunks = []
+        async for chunk in gen:
+            chunks.append(json.loads(chunk))
+
+        # Error chunk should be present before [Debate Concluded]
+        error_chunks = [
+            c for c in chunks if "Error: Crew Crash" in c.get("content", "")
+        ]
+        assert len(error_chunks) > 0
+
+        last = chunks[-1]
+        assert last["done"] is True
+        assert "[Debate Concluded]" in last["content"]
+
+
+@pytest.mark.asyncio
+async def test_streaming_callback_handler():
+    """Test the callback handler directly for coverage."""
+    from app.services.multi_chat import StreamingCallbackHandler
+
+    queue = asyncio.Queue()
+    handler = StreamingCallbackHandler(queue)
+    handler.current_agent_name = "TestAgent"
+
+    # Test new token
+    handler.on_llm_new_token("token")
+    item = await queue.get()
+    assert item["content"] == "token"
+    assert item["agent_name"] == "TestAgent"
+
+    # Test empty token (should not push)
+    handler.on_llm_new_token("")
+    assert queue.empty()
+
+    # Test on_llm_end (should pass)
+    handler.on_llm_end(response=MagicMock())
+
+
+@pytest.mark.asyncio
+async def test_multi_agent_consumer_exception():
+    """Test exception raised during queue consumption."""
+    agents_config = [AgentConfig(id=1, description="D1", name="A1")]
+
+    # We mock asyncio.wait_for to raise an exception when pulling from queue
+    # No, we mock queue.get.
+    # But queue is created inside the function.
+    # We must patch asyncio.Queue to return a mock queue.
+
+    mock_queue = MagicMock()
+    mock_queue.get.side_effect = RuntimeError("Queue Error")
+    mock_queue.put_nowait = MagicMock()
+
+    with (
+        patch("asyncio.Queue", return_value=mock_queue),
+        patch("app.services.multi_chat.ChatOpenAI"),
+        patch("app.services.multi_chat.Agent"),
+        patch("app.services.multi_chat.Task"),
+        patch("app.services.multi_chat.Crew"),
+    ):
+        gen = multi_agent_conversation(agents_config, "Topic")
+        chunks = []
+        async for chunk in gen:
+            chunks.append(json.loads(chunk))
+
+        # Should yield error chunk due to RuntimeError
+        error_chunks = [c for c in chunks if "Queue Error" in c.get("content", "")]
+        assert len(error_chunks) > 0
         assert chunks[-1]["done"] is True
-        assert "Runtime Error" in chunks[-1]["content"]
-
-
-@pytest.mark.asyncio
-async def test_multi_agent_conversation_no_agents():
-    """Test with empty agents list."""
-    gen = multi_agent_conversation([], "Topic")
-    chunks = []
-    async for chunk in gen:
-        chunks.append(chunk)
-    assert len(chunks) == 0
-
-
-@pytest.mark.asyncio
-async def test_multi_agent_prompt_leakage():
-    """Test that system prompt leakage (Introduction/Role) is stripped."""
-    agents = [AgentConfig(id=1, description="D1", name="Agent1")]
-    topic = "Testing Leakage"
-
-    async def mock_leak_gen(messages, stop_sequences=None):
-        # Simulate LLM repeating the prompt
-        yield "Introduction:\nRole: Agent1\nGoal: Win\n\nActual response content starts here."
-
-    with patch("app.services.multi_chat.chat_with_llm", side_effect=mock_leak_gen):
-        with patch("app.services.multi_chat.MAX_TURNS", 1):
-            gen = multi_agent_conversation(agents, topic)
-            chunks = []
-            async for chunk in gen:
-                chunks.append(json.loads(chunk))
-
-            # Combine content
-            content = "".join([c["content"] for c in chunks if "content" in c])
-
-            # Verify leakage is stripped
-            assert "Introduction" not in content
-            assert "Role:" not in content
-            assert "Actual response content starts here" in content

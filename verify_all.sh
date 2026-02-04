@@ -42,7 +42,7 @@ docker-compose up -d --build backend frontend proxy
 echo "Waiting for Backend to be ready..."
 # Portable wait function
 count=0
-until curl -s http://localhost:8000/api/health > /dev/null || [ $count -eq 30 ]; do
+until curl -s -f http://localhost:8000/api/health > /dev/null || [ $count -eq 30 ]; do
     sleep 1
     count=$((count + 1))
 done
@@ -57,7 +57,7 @@ docker-compose restart frontend proxy
 
 echo "Waiting for Frontend to be ready..."
 count=0
-until curl -s http://localhost:4200 > /dev/null || [ $count -eq 60 ]; do
+until curl -s -f http://localhost:4200 > /dev/null || [ $count -eq 60 ]; do
     sleep 1
     count=$((count + 1))
 done
