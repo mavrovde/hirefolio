@@ -150,7 +150,18 @@ async def test_main_migrations_exception():
     mock_cm.__aexit__ = AsyncMock(return_value=None)
     mock_engine.begin.return_value = mock_cm
 
-    with patch("app.main.engine", mock_engine):
+    with (
+        patch("app.main.engine", mock_engine),
+        patch("app.main.async_session") as mock_session_factory,
+    ):
+        mock_session = AsyncMock()
+        mock_execute_result = MagicMock()
+        mock_session.execute.return_value = mock_execute_result
+        mock_session_factory.return_value.__aenter__.return_value = mock_session
+
+        # Mock user and CV queries to avoid errors
+        mock_execute_result.scalars.return_value.first.return_value = MagicMock()
+
         with patch("os.path.exists", return_value=False):
             # Lifecycle should catch the exception and log it (lines 64-66)
             async with lifespan(app):
