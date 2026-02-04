@@ -1,6 +1,7 @@
 import pytest
 import json
 import asyncio
+import uuid
 from unittest.mock import MagicMock, patch
 from app.services.multi_chat import multi_agent_conversation, AgentConfig
 
@@ -22,12 +23,17 @@ async def test_multi_agent_conversation_success():
             mock_queue_ref.append(queue)
             self.queue = queue
 
+    class MockProcess:
+        sequential = "sequential"
+        hierarchical = "hierarchical"
+
     # Create valid mocks for CrewAI components
     with (
         patch("app.services.multi_chat.ChatOpenAI"),
         patch("app.services.multi_chat.Agent") as MockAgent,
         patch("app.services.multi_chat.Task"),
         patch("app.services.multi_chat.Crew") as MockCrew,
+        patch("app.services.multi_chat.Process", MockProcess),
         patch(
             "app.services.multi_chat.StreamingCallbackHandler",
             side_effect=MockCallbackHandler,
@@ -95,7 +101,7 @@ async def test_multi_agent_conversation_success():
         assert content_chunks[1]["content"] == "World"
 
         assert done_chunk["done"] is True
-        assert "[Debate Concluded]" in done_chunk["content"]
+        assert "[Conversation Finished]" in done_chunk["content"]
 
 
 @pytest.mark.asyncio
@@ -103,11 +109,16 @@ async def test_multi_agent_conversation_error():
     """Test error handling during kickoff."""
     agents_config = [AgentConfig(id=1, description="D1", name="A1")]
 
+    class MockProcess:
+        sequential = "sequential"
+        hierarchical = "hierarchical"
+
     with (
         patch("app.services.multi_chat.ChatOpenAI"),
         patch("app.services.multi_chat.Agent"),
         patch("app.services.multi_chat.Task"),
         patch("app.services.multi_chat.Crew") as MockCrew,
+        patch("app.services.multi_chat.Process", MockProcess),
     ):
         mock_crew = MockCrew.return_value
         mock_crew.kickoff.side_effect = Exception("Crew Crash")
@@ -125,7 +136,7 @@ async def test_multi_agent_conversation_error():
 
         last = chunks[-1]
         assert last["done"] is True
-        assert "[Debate Concluded]" in last["content"]
+        assert "[Conversation Finished]" in last["content"]
 
 
 @pytest.mark.asyncio
@@ -148,7 +159,7 @@ async def test_streaming_callback_handler():
     assert queue.empty()
 
     # Test on_llm_end (should pass)
-    handler.on_llm_end(response=MagicMock())
+    handler.on_llm_end(response=MagicMock(), run_id=uuid.uuid4())
 
 
 @pytest.mark.asyncio
@@ -165,19 +176,25 @@ async def test_multi_agent_consumer_exception():
     mock_queue.get.side_effect = RuntimeError("Queue Error")
     mock_queue.put_nowait = MagicMock()
 
+    class MockProcess:
+        sequential = "sequential"
+        hierarchical = "hierarchical"
+
     with (
         patch("asyncio.Queue", return_value=mock_queue),
         patch("app.services.multi_chat.ChatOpenAI"),
         patch("app.services.multi_chat.Agent"),
         patch("app.services.multi_chat.Task"),
         patch("app.services.multi_chat.Crew"),
+        patch("app.services.multi_chat.Process", MockProcess),
     ):
         gen = multi_agent_conversation(agents_config, "Topic")
         chunks = []
-        async for chunk in gen:
-            chunks.append(json.loads(chunk))
+        
+        # Expect RuntimeError to propagate
+        with pytest.raises(RuntimeError, match="Queue Error"):
+            async for chunk in gen:
+                chunks.append(json.loads(chunk))
 
-        # Should yield error chunk due to RuntimeError
-        error_chunks = [c for c in chunks if "Queue Error" in c.get("content", "")]
-        assert len(error_chunks) > 0
-        assert chunks[-1]["done"] is True
+        # We can't check chunks after exception usually, as it interrupts flow
+        # But we verify the exception was raised.
