@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Post Management', () => {
-  test.setTimeout(60000);
+  test.setTimeout(300000); // 5 minutes for AI on CPU runners
 
   test.beforeEach(async ({ page }) => {
     console.log(`[E2E] Starting test: ${test.info().title}`);
