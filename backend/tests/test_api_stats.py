@@ -163,3 +163,24 @@ async def test_stats_with_tags_and_languages(client: AsyncClient):
     assert data["posts"]["total"] >= 4
     assert data["posts"]["published"] >= 3
     assert data["posts"]["drafts"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_get_public_stats(client: AsyncClient):
+    """Test public stats endpoint."""
+    response = await client.get("/api/stats/public")
+    assert response.status_code == 200
+    data = response.json()
+    assert "visitor_ip" in data
+    assert "backend_version" in data
+    assert "uptime" in data
+
+
+@pytest.mark.asyncio
+async def test_get_public_stats_with_forwarded_for(client: AsyncClient):
+    """Test public stats with X-Forwarded-For header."""
+    response = await client.get(
+        "/api/stats/public", headers={"X-Forwarded-For": "1.2.3.4, 5.6.7.8"}
+    )
+    assert response.status_code == 200
+    assert response.json()["visitor_ip"] == "1.2.3.4"

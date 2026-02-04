@@ -22,6 +22,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = ["app"]
+branch = true
 omit = [
     "*/tests/*",
     "*/__pycache__/*",

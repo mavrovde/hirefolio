@@ -81,3 +81,47 @@ async def test_delete_tag(client: AsyncClient, db_session):
     tags = resp.json()["tags"]
     assert "to-delete" not in tags
     assert "keep" in tags
+
+
+@pytest.mark.asyncio
+async def test_tags_search_and_sort(client: AsyncClient):
+    """Test searching and sorting tags in the list endpoint."""
+    # Create posts with various tags
+    await client.post(
+        "/api/posts",
+        json={
+            "title": "P1",
+            "slug": "p1-tag",
+            "content": "c",
+            "tags": ["apple", "banana"],
+        },
+    )
+    await client.post(
+        "/api/posts",
+        json={
+            "title": "P2",
+            "slug": "p2-tag",
+            "content": "c",
+            "tags": ["apple", "cherry"],
+        },
+    )
+
+    # Search
+    response = await client.get("/api/tags?search=apple")
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert len(items) == 1
+    assert items[0]["name"] == "apple"
+    assert items[0]["count"] == 2
+
+    # Sort by name asc
+    response = await client.get("/api/tags?sort_by=name&sort_order=asc")
+    names = [t["name"] for t in response.json()["items"]]
+    assert "apple" in names
+    assert names.index("apple") < names.index("banana")
+
+    # Sort by count desc
+    response = await client.get("/api/tags?sort_by=count&sort_order=desc")
+    items = response.json()["items"]
+    assert items[0]["name"] == "apple"
+    assert items[0]["count"] == 2

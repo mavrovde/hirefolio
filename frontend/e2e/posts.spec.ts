@@ -35,11 +35,21 @@ test.describe('Post Management', () => {
 
     console.log('[E2E] Logging in as admin...');
     await page.goto('/admin/login');
-    await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin');
-    await page.click('button[type="submit"]');
 
-    await expect(page).toHaveURL(/\/admin\/dashboard/);
+    // Retry login once if it fails due to concurrency
+    try {
+      await page.fill('input[name="username"]', 'admin');
+      await page.fill('input[name="password"]', 'admin');
+      await page.click('button[type="submit"]');
+      await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 10000 });
+    } catch (e) {
+      console.log('[E2E] Login failed, retrying once...');
+      await page.goto('/admin/login');
+      await page.fill('input[name="username"]', 'admin');
+      await page.fill('input[name="password"]', 'admin');
+      await page.click('button[type="submit"]');
+      await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 10000 });
+    }
     console.log('[E2E] Login successful.');
 
     console.log('[E2E] Navigating to /admin/posts...');

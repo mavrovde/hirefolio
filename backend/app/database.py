@@ -8,8 +8,8 @@ engine = create_async_engine(
     echo=True,
     pool_pre_ping=True,
     pool_recycle=3600,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=20,
+    max_overflow=40,
 )
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
