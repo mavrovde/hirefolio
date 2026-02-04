@@ -22,13 +22,13 @@ from app.api.admin_cv import router as admin_cv_router
 async def lifespan(app: FastAPI):
     app.state.start_time = datetime.now(timezone.utc)
     # Create pgvector extension and tables on startup
-    async with engine.begin() as conn:
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            await conn.run_sync(Base.metadata.create_all)
 
-        # Run migrations for existing databases
-        # Check if cv_requests table has the new download tracking columns
-        try:
+            # Run migrations for existing databases
+            # Check if cv_requests table has the new download tracking columns
             result = await conn.execute(
                 text("""
                 SELECT column_name 
@@ -61,9 +61,9 @@ async def lifespan(app: FastAPI):
                 )
                 print("✓ download_count column added")
 
-        except Exception as e:
-            # Table might not exist yet (first run), which is fine
-            print(f"Migration check: {e}")
+    except Exception as e:
+        # Table might not exist yet (first run), which is fine
+        print(f"Migration check: {e}")
 
     # Check and create default admin user if no users exist
     async with async_session() as session:

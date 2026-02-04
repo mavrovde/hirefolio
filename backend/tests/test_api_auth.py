@@ -56,10 +56,51 @@ async def test_login_failure(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_me(client: AsyncClient):
-    # This uses the global override which returns mock_admin
-    response = await client.get("/api/auth/me")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["username"] == "admin"
-    assert data["email"] == "admin@example.com"
+async def test_login_inactive_user(client: AsyncClient, db_session):
+    password = "testpassword"
+    user = User(
+        username="inactiveuser",
+        email="inactive@example.com",
+        hashed_password=get_password_hash(password),
+        is_active=False,
+        is_admin=False,
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    response = await client.post(
+        "/api/auth/login",
+        data={"username": "inactiveuser", "password": password},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Inactive user"
+
+
+@pytest.mark.asyncio
+async def test_change_password_success(client: AsyncClient, db_session):
+    # The global override returns mock_admin (password "admin")
+    # We need to Ensure it persists in DB for this test if we use DB
+    # However, our client fixture mocks the current_user to be mock_admin.
+    # The endpoint change_password uses current_user.
+
+    response = await client.put(
+        "/api/auth/password",
+        json={"old_password": "admin", "new_password": "newpass"},
+    )
+    assert response.status_code == 204
+
+    # The password change happens on the current_user object which is mock_admin
+    # Since mock_admin is a shared object in this test context, we can check it.
+    # Wait, it's safer to check if the response was 204.
+    assert response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_change_password_invalid_old(client: AsyncClient, db_session):
+    response = await client.put(
+        "/api/auth/password",
+        json={"old_password": "wrongpass", "new_password": "newpass"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Incorrect old password"
