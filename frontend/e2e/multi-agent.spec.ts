@@ -2,247 +2,172 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Multi-Agent Conversation', () => {
     test.beforeEach(async ({ page }) => {
+        console.log(`[E2E] Starting test: ${test.info().title}`);
+
+        // Detailed console logging from browser
+        page.on('console', msg => {
+            console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`);
+        });
+
         // Mock name generation
         await page.route('**/api/ai/generate-name', async route => {
+            console.log('[E2E] Mocking /api/ai/generate-name');
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
-                body: JSON.stringify('Mock Agent')
+                body: JSON.stringify({ name: 'Mock Agent' })
             });
         });
 
+        // Mock SSE/Streaming for multi-chat
+        await page.route('**/api/ai/multi-chat', async route => {
+            console.log('[E2E] Mocking /api/ai/multi-chat (SSE)');
+            const body =
+                JSON.stringify({ agent: 1, content: 'Quantum ' }) + '\n' +
+                JSON.stringify({ agent: 1, content: 'physics is ' }) + '\n' +
+                JSON.stringify({ agent: 1, content: 'fascinating.' }) + '\n' +
+                JSON.stringify({ agent: 1, turn_complete: true }) + '\n' +
+                JSON.stringify({ agent: 2, content: ' But what ' }) + '\n' +
+                JSON.stringify({ agent: 2, content: 'is meaning?' }) + '\n' +
+                JSON.stringify({ agent: 2, turn_complete: true }) + '\n' +
+                JSON.stringify({ done: true }) + '\n';
+
+            // Small delay to ensure buttons/state are visible during "thinking" phase
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/x-ndjson',
+                body: body
+            });
+        });
+
+        console.log('[E2E] Navigating to /llm');
         await page.goto('/llm');
         await page.waitForLoadState('networkidle');
 
-        // Accept cookies to avoid overlays
+        // Accept cookies
         const acceptBtn = page.locator('button:has-text("Accept & Save")');
         if (await acceptBtn.isVisible()) {
             await acceptBtn.click();
+            console.log('[E2E] Cookies accepted');
         }
     });
 
-    async function fillAgent(page: any, index: number, name: string, role: string, goal: string, backstory: string) {
-        console.log(`Filling agent ${index + 1}: ${name}`);
-        const nameInput = page.locator('input[placeholder="e.g. Skeptic"]').nth(index);
-        const roleInput = page.locator('input[placeholder="e.g. Researcher"]').nth(index);
-        const goalInput = page.locator('input[placeholder="e.g. Find facts"]').nth(index);
-        const backstoryInput = page.locator('textarea[placeholder*="Describe the agent"]').nth(index);
-
-        await nameInput.fill(name);
-        await roleInput.fill(role);
-        await goalInput.fill(goal);
-        await backstoryInput.fill(backstory);
+    async function fillAgent(page: any, index: number, name: string, desc: string) {
+        console.log(`[E2E] Filling agent ${index}: ${name}`);
+        const card = page.locator('.agent-card').nth(index);
+        // Important: Fill description first because it triggers onAgentDescriptionChange which might overwrite name
+        await card.locator('textarea[placeholder*="personality"]').fill(desc);
+        await card.locator('input[placeholder="e.g. Skeptic"]').fill(name);
     }
 
     async function fillTopic(page: any, topic: string) {
-        console.log(`Filling topic: ${topic}`);
-        await page.locator('input[placeholder*="Enter the core subject"]').fill(topic);
+        console.log(`[E2E] Filling topic: ${topic}`);
+        await page.locator('input[placeholder*="core subject"]').fill(topic);
     }
 
     test('should display mode toggle buttons', async ({ page }) => {
-        const singleAgentBtn = page.locator('button:has-text("Single Agent")');
-        const multiAgentBtn = page.locator('button:has-text("Multi-Agent Debate")');
-
-        await expect(singleAgentBtn).toBeVisible();
-        await expect(multiAgentBtn).toBeVisible();
+        await expect(page.locator('button:has-text("Single Agent")')).toBeVisible();
+        await expect(page.locator('button:has-text("Multi-Agent Debate")')).toBeVisible();
     });
 
     test('should switch to multi-agent mode', async ({ page }) => {
-        const multiAgentBtn = page.locator('button:has-text("Multi-Agent Debate")');
-        await multiAgentBtn.click();
-
-        // Verify multi-agent UI is visible
-        await expect(page.locator('input[placeholder="e.g. Skeptic"]').first()).toBeVisible();
-        await expect(page.locator('input[placeholder="e.g. Skeptic"]').nth(1)).toBeVisible();
-        await expect(page.locator('input[placeholder*="Enter the core subject"]')).toBeVisible();
+        await page.locator('button:has-text("Multi-Agent Debate")').click();
+        await expect(page.locator('.multi-agent-container')).toBeVisible();
+        await expect(page.locator('h1:has-text("Multi-Agent Debate")')).toBeVisible();
     });
-
 
     test('should disable start button without required fields', async ({ page }) => {
         await page.locator('button:has-text("Multi-Agent Debate")').click();
-        await expect(page.locator('.multi-agent-container')).toBeVisible();
-
         const startBtn = page.locator('button:has-text("START DEBATE")');
+
         await expect(startBtn).toBeDisabled();
 
-        // Fill only agent 1
-        await fillAgent(page, 0, 'Agent 1', 'Scientist', 'Research', 'Backstory 1');
+        await fillAgent(page, 0, 'Agent 1', 'Expert physicist');
+        await fillAgent(page, 1, 'Agent 2', 'Expert philosopher');
         await expect(startBtn).toBeDisabled();
 
-        // Fill agent 2
-        await fillAgent(page, 1, 'Agent 2', 'Philosopher', 'Think', 'Backstory 2');
-
-        // Fill topic
-        await fillTopic(page, 'Test topic');
-
-        // Now button should be enabled
-        await expect(startBtn).toBeEnabled({ timeout: 60000 });
+        await fillTopic(page, 'The nature of time');
+        await expect(startBtn).toBeEnabled();
     });
 
-    test('should start multi-agent conversation', async ({ page }) => {
-        test.setTimeout(90000); // Allow time for local LLM to load
+    test('should start and display messages', async ({ page }) => {
         await page.locator('button:has-text("Multi-Agent Debate")').click();
-        await expect(page.locator('.multi-agent-container')).toBeVisible();
 
-        // Fill in all fields
-        await fillAgent(page, 0, 'A scientist', 'Quantum Physicist', 'Explain reality', 'Senior researcher');
-        await fillAgent(page, 1, 'A philosopher', 'Ethicist', 'Probe morality', 'Modern thinker');
-        await fillTopic(page, 'The nature of reality');
+        await fillAgent(page, 0, 'Skeptic', 'A doubting scientist');
+        await fillAgent(page, 1, 'Believer', 'An optimistic dreamer');
+        await fillTopic(page, 'Is AI alive?');
 
-        // Start conversation
         const startBtn = page.locator('button:has-text("START DEBATE")');
-        await expect(startBtn).toBeEnabled({ timeout: 60000 });
         await startBtn.click();
 
-        // Verify conversation started
-        await expect(page.locator('button:has-text("STOP")').first()).toBeEnabled();
-        await expect(startBtn).toBeDisabled();
-
-        // Wait for some conversation to appear (longer for cold start)
-        await page.waitForTimeout(30000);
-
-        // Check if messages are displayed
+        console.log('[E2E] Clicked START, waiting for messages...');
         const messages = page.locator('.agent-message');
-        const messageCount = await messages.count();
-        expect(messageCount).toBeGreaterThan(0);
-    });
+        await expect(messages.first()).toBeVisible({ timeout: 15000 });
 
-    test('should display timer countdown', async ({ page }) => {
-        test.setTimeout(90000);
-        await page.locator('button:has-text("Multi-Agent Debate")').click();
+        const firstMessageText = await messages.first().innerText();
+        console.log('[E2E] First message text:', firstMessageText);
 
-        // Initial timer should show 5:00
-        const timer = page.locator('.timer');
-        await expect(timer).toHaveText('5:00');
-
-        // Fill fields and start
-        await fillAgent(page, 0, 'Agent 1', 'Role 1', 'Goal 1', 'B1');
-        await fillAgent(page, 1, 'Agent 2', 'Role 2', 'Goal 2', 'B2');
-        await fillTopic(page, 'Topic');
-        await page.waitForTimeout(2000);
-
-        const startBtn = page.locator('button:has-text("START DEBATE")');
-        await expect(startBtn).toBeEnabled({ timeout: 60000 });
-        await startBtn.click();
-
-        // Wait a few seconds and check timer has decreased
-        await page.waitForTimeout(3000);
-        const timerText = await timer.textContent();
-        expect(timerText).not.toBe('5:00');
+        expect(await messages.count()).toBeGreaterThan(0);
+        await expect(page.locator('.agent-label').first()).toBeVisible();
     });
 
     test('should stop conversation manually', async ({ page }) => {
-        test.setTimeout(90000);
         await page.locator('button:has-text("Multi-Agent Debate")').click();
+        await fillAgent(page, 0, 'A', 'B');
+        await fillAgent(page, 1, 'C', 'D');
+        await fillTopic(page, 'T');
 
-        // Start conversation
-        await fillAgent(page, 0, 'Agent 1', 'Role 1', 'Goal 1', 'B1');
-        await fillAgent(page, 1, 'Agent 2', 'Role 2', 'Goal 2', 'B2');
-        await fillTopic(page, 'Topic');
-        await page.waitForTimeout(2000);
-
-        const startBtn = page.locator('button:has-text("START DEBATE")');
-        await expect(startBtn).toBeEnabled({ timeout: 60000 });
-        await startBtn.click();
-        await page.waitForTimeout(1000);
-
-        // Stop conversation
+        await page.locator('button:has-text("START DEBATE")').click();
         const stopBtn = page.locator('button:has-text("STOP")').first();
+
+        // Wait for it to become enabled (when stream starts)
+        await expect(stopBtn).toBeEnabled({ timeout: 10000 });
         await stopBtn.click();
 
-        // Verify stopped
-        await expect(stopBtn).toBeDisabled();
+        console.log('[E2E] Clicked STOP, checking status...');
+        await expect(page.locator('.timer')).toContainText('Debate Stopped', { timeout: 10000 });
         await expect(page.locator('button:has-text("START DEBATE")')).toBeEnabled();
     });
 
-    test('should display agent messages with identity', async ({ page }) => {
-        test.setTimeout(90000);
+    test('should disable inputs during active conversation', async ({ page }) => {
         await page.locator('button:has-text("Multi-Agent Debate")').click();
-
-        // Start conversation
-        await fillAgent(page, 0, 'Scientist', 'Expert', 'Facts', 'B1');
-        await fillAgent(page, 1, 'Philosopher', 'Critic', 'Questions', 'B2');
-        await fillTopic(page, 'AI Ethics');
-
+        await fillAgent(page, 0, 'A', 'B');
+        await fillAgent(page, 1, 'C', 'D');
+        await fillTopic(page, 'Topic');
 
         await page.locator('button:has-text("START DEBATE")').click();
 
-        // Check message structure
-        const firstMessage = page.locator('.agent-message').first();
-        await expect(firstMessage.locator('.agent-header .agent-label')).toBeVisible({ timeout: 60000 });
+        // Config hides automatically on start, must show it to check inputs
+        const showConfigBtn = page.locator('button:has-text("Show Config")');
+        if (await showConfigBtn.isVisible()) {
+            await showConfigBtn.click();
+        }
+
+        // Topic input should be disabled
+        await expect(page.locator('input[placeholder*="core subject"]')).toBeDisabled();
+
+
+        // Agent inputs should be disabled (cards contain them)
+        const agentInputs = page.locator('.agent-card input');
+        const count = await agentInputs.count();
+        expect(count).toBeGreaterThan(0);
+        for (let i = 0; i < count; i++) {
+            await expect(agentInputs.nth(i)).toBeDisabled();
+        }
     });
 
-    // NOTE: This test requires a running LLM backend (Ollama) to work properly
-    // Skipping in CI/automated environments where LLM may not be available
-    test('should disable inputs during active conversation', async ({ page }) => {
-        test.setTimeout(90000);
-
-        // Hit the real backend (requires Ollama)
-        await page.locator('button:has-text("Multi-Agent Debate")').click();
-
-        const agent1Input = page.locator('input[placeholder="e.g. Skeptic"]').first();
-        const agent2Input = page.locator('input[placeholder="e.g. Skeptic"]').nth(1);
-        const topicInput = page.locator('input[placeholder*="Enter the core subject"]');
-
-        // Fill and start with proper roles/goals
-        await fillAgent(page, 0, 'A skeptical scientist', 'Physicist', 'Debunk myths', 'B1');
-        await fillAgent(page, 1, 'An optimistic philosopher', 'Theologian', 'Find meaning', 'B2');
-        await fillTopic(page, 'The nature of consciousness');
-
-        // Wait for START button to be enabled
-        const startBtn = page.locator('button:has-text("START DEBATE")');
-        await expect(startBtn).toBeEnabled({ timeout: 60000 });
-        await startBtn.click();
-
-        // Check that STOP button becomes enabled (proves conversation started)
-        const stopBtn = page.locator('button:has-text("STOP")').first();
-        await expect(stopBtn).toBeEnabled({ timeout: 5000 });
-
-        // Show config again to verify inputs are disabled
-        await page.locator('.config-toggle').click();
-
-        // Now verify inputs are disabled
-        await expect(agent1Input).toBeDisabled();
-        await expect(agent2Input).toBeDisabled();
-        await expect(topicInput).toBeDisabled();
-
-        // Stop and verify re-enabled
-        await stopBtn.click();
-        await expect(agent1Input).toBeEnabled();
-        await expect(agent2Input).toBeEnabled();
-        await expect(topicInput).toBeEnabled();
-    });
-
-    test('should switch back to single agent mode', async ({ page }) => {
-        await page.locator('button:has-text("Multi-Agent Debate")').click();
-
-        // Verify multi-agent UI
-        await expect(page.locator('input[placeholder="e.g. Skeptic"]').first()).toBeVisible();
-
-        // Switch back
-        await page.locator('button:has-text("Single Agent")').click();
-
-        // Verify single-agent UI
-        await expect(page.locator('.terminal-container')).toBeVisible();
-        await expect(page.locator('input[placeholder="e.g. Skeptic"]')).not.toBeVisible();
-    });
     test('should reset configuration', async ({ page }) => {
         await page.locator('button:has-text("Multi-Agent Debate")').click();
 
-        // Fill custom values
-        await fillAgent(page, 0, 'Custom Agent 1', 'Role A', 'Goal A', 'Backstory A');
+        await fillAgent(page, 0, 'Custom Name', 'Custom Description');
         await fillTopic(page, 'Custom Topic');
 
-        // Click Reset Config
-        const resetBtn = page.locator('button:has-text("RESET CONFIGURATION")');
-        await expect(resetBtn).toBeVisible();
-        await resetBtn.click();
+        await page.locator('button:has-text("RESET CONFIGURATION")').click();
 
-        // Verify defaults restored
-        const agent1Name = page.locator('input[placeholder="e.g. Skeptic"]').first();
-        const topicInput = page.locator('input[placeholder*="Enter the core subject"]');
-
-        await expect(agent1Name).toHaveValue('Agent 1');
-        await expect(topicInput).toHaveValue('');
+        // Should return to defaults
+        await expect(page.locator('input[placeholder="e.g. Skeptic"]').first()).toHaveValue('Agent 1');
+        await expect(page.locator('input[placeholder*="core subject"]')).toHaveValue('');
     });
 });

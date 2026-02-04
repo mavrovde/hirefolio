@@ -280,7 +280,9 @@ export class LlmComponent implements OnInit, AfterViewChecked {
       this.isConversationActive = false;
       this.abortController = null;
       clearInterval(this.conversationTimer);
-      if (this.conversationStatus !== 'Debate Time Limit Reached' && this.conversationStatus !== 'Connection Error') {
+      if (this.conversationStatus !== 'Debate Time Limit Reached' &&
+        this.conversationStatus !== 'Connection Error' &&
+        this.conversationStatus !== 'Debate Stopped') {
         this.conversationStatus = 'Debate Concluded';
       }
       this.cdr.detectChanges();
@@ -346,7 +348,7 @@ export class LlmComponent implements OnInit, AfterViewChecked {
 
   onAgentDescriptionChange(agentId: number): void {
     const agent = this.agents.find(a => a.id === agentId);
-    if (agent) {
+    if (agent && (!agent.name || agent.name === `Agent ${agent.id}`)) {
       agent.name = `Agent ${agent.id}`;
       this.saveState();
     }
