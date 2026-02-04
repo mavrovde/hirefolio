@@ -40,6 +40,8 @@ if ./verify_all.sh; then
     echo "✅ Verification PASSED."
 else
     echo "❌ Verification FAILED. Release aborted."
+    echo "Reverting version bump..."
+    git checkout VERSION backend/app/main.py frontend/package.json frontend/src/app/version.ts .env
     echo "Fix the issues and try again."
     exit 1
 fi
@@ -50,6 +52,8 @@ if ./verify_proxy_startup.sh; then
     echo "✅ Proxy Smoke Test PASSED."
 else
     echo "❌ Proxy Smoke Test FAILED. Release aborted."
+    echo "Reverting version bump..."
+    git checkout VERSION backend/app/main.py frontend/package.json frontend/src/app/version.ts .env
     exit 1
 fi
 

@@ -226,4 +226,23 @@ test.describe('Multi-Agent Conversation', () => {
         await expect(page.locator('.terminal-container')).toBeVisible();
         await expect(page.locator('input[placeholder="e.g. Skeptic"]')).not.toBeVisible();
     });
+    test('should reset configuration', async ({ page }) => {
+        await page.locator('button:has-text("Multi-Agent Debate")').click();
+
+        // Fill custom values
+        await fillAgent(page, 0, 'Custom Agent 1', 'Role A', 'Goal A', 'Backstory A');
+        await fillTopic(page, 'Custom Topic');
+
+        // Click Reset Config
+        const resetBtn = page.locator('button:has-text("RESET CONFIGURATION")');
+        await expect(resetBtn).toBeVisible();
+        await resetBtn.click();
+
+        // Verify defaults restored
+        const agent1Name = page.locator('input[placeholder="e.g. Skeptic"]').first();
+        const topicInput = page.locator('input[placeholder*="Enter the core subject"]');
+
+        await expect(agent1Name).toHaveValue('Agent 1');
+        await expect(topicInput).toHaveValue('');
+    });
 });

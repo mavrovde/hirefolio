@@ -172,7 +172,11 @@
             </button>
             <button (click)="clearMultiDebate()" [disabled]="isConversationActive || multiMessages.length === 0"
                 class="terminal-btn px-4 py-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed">
-                RESET
+                RESET DEBATES
+            </button>
+            <button (click)="resetConfiguration()" [disabled]="isConversationActive"
+                class="terminal-btn px-4 py-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed">
+                RESET CONFIGURATION
             </button>
             <div class="timer text-terminal-highlight font-bold ml-auto flex flex-col items-end">
                 <span>{{ formatTime(conversationTimeRemaining) }}</span>

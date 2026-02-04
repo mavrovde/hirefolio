@@ -210,33 +210,45 @@ describe('LlmComponent', () => {
             expect(component.multiMessages.length).toBe(0);
         });
 
-        it('should have RESET button in the template with terminal-btn class', () => {
+        it('should have RESET DEBATES button in the template with terminal-btn class', () => {
             component.isMultiAgentMode = true;
             component.multiMessages = [{ agent: 1, content: 'Test' }];
             component.isConversationActive = false;
             fixture.detectChanges();
 
             const compiled = fixture.nativeElement as HTMLElement;
-            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET'));
+            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET DEBATES'));
 
             expect(clearBtn).toBeTruthy();
             expect(clearBtn?.classList.contains('terminal-btn')).toBe(true);
             expect(clearBtn?.hasAttribute('disabled')).toBe(false);
         });
 
-        it('should disable RESET button if conversation is active', () => {
+        it('should have RESET CONFIGURATION button', () => {
+            component.isMultiAgentMode = true;
+            component.isConversationActive = false;
+            fixture.detectChanges();
+
+            const compiled = fixture.nativeElement as HTMLElement;
+            const resetConfigBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET CONFIGURATION'));
+
+            expect(resetConfigBtn).toBeTruthy();
+            expect(resetConfigBtn?.hasAttribute('disabled')).toBe(false);
+        });
+
+        it('should disable RESET DEBATES button if conversation is active', () => {
             component.isMultiAgentMode = true;
             component.multiMessages = [{ agent: 1, content: 'Test' }];
             component.isConversationActive = true;
             fixture.detectChanges();
 
             const compiled = fixture.nativeElement as HTMLElement;
-            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET'));
+            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET DEBATES'));
 
             expect(clearBtn?.hasAttribute('disabled')).toBe(true);
         });
 
-        it('should call clearMultiDebate when RESET button is clicked', () => {
+        it('should call clearMultiDebate when RESET DEBATES button is clicked', () => {
             const spy = vi.spyOn(component, 'clearMultiDebate');
             component.isMultiAgentMode = true;
             component.multiMessages = [{ agent: 1, content: 'Test' }];
@@ -244,10 +256,46 @@ describe('LlmComponent', () => {
             fixture.detectChanges();
 
             const compiled = fixture.nativeElement as HTMLElement;
-            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET'));
+            const clearBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET DEBATES'));
 
             clearBtn?.click();
             expect(spy).toHaveBeenCalled();
+        });
+
+        it('should call resetConfiguration when RESET CONFIGURATION button is clicked', () => {
+            const spy = vi.spyOn(component, 'resetConfiguration');
+            component.isMultiAgentMode = true;
+            component.isConversationActive = false;
+            fixture.detectChanges();
+
+            const compiled = fixture.nativeElement as HTMLElement;
+            const resetConfigBtn = Array.from(compiled.querySelectorAll('button')).find(b => b.textContent?.includes('RESET CONFIGURATION'));
+
+            resetConfigBtn?.click();
+            expect(spy).toHaveBeenCalled();
+        });
+
+        it('should reset configuration correctly', () => {
+            component.conversationTopic = 'Old Topic';
+            component.agents = [{ id: 1, name: 'Old', description: 'desc' }];
+            component.multiMessages = [{ agent: 1, content: 'Old Msg' }];
+
+            component.resetConfiguration();
+
+            expect(component.conversationTopic).toBe('');
+            expect(component.agents.length).toBe(2);
+            expect(component.agents[0].name).toBe('Agent 1');
+            expect(component.agents[0].description).toBe('');
+            expect(component.multiMessages.length).toBe(0);
+        });
+
+        it('should not reset configuration if conversation is active', () => {
+            component.isConversationActive = true;
+            component.conversationTopic = 'Active Topic';
+
+            component.resetConfiguration();
+
+            expect(component.conversationTopic).toBe('Active Topic');
         });
 
         it('should abort conversation when stopped', () => {

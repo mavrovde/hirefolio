@@ -314,6 +314,24 @@ export class LlmComponent implements OnInit, AfterViewChecked {
     this.saveState();
   }
 
+  resetConfiguration(): void {
+    if (this.isConversationActive) {
+      return;
+    }
+
+    // Clear debate history first
+    this.clearMultiDebate();
+
+    // Reset agents to default 2 empty agents
+    this.agents = [
+      { id: 1, name: 'Agent 1', description: '' },
+      { id: 2, name: 'Agent 2', description: '' }
+    ];
+    this.conversationTopic = '';
+    this.isConfigVisible = true;
+    this.saveState();
+  }
+
   formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
