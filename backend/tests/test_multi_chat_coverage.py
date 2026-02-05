@@ -33,7 +33,7 @@ async def test_multi_agent_conversation_success():
         patch("app.services.multi_chat.Agent") as MockAgent,
         patch("app.services.multi_chat.Task"),
         patch("app.services.multi_chat.Crew") as MockCrew,
-        patch("app.services.multi_chat.Process", MockProcess),
+        patch("app.services.multi_chat.Process", MockProcess),  # No longer used
         patch(
             "app.services.multi_chat.StreamingCallbackHandler",
             side_effect=MockCallbackHandler,
@@ -65,9 +65,9 @@ async def test_multi_agent_conversation_success():
         async for chunk in gen:
             chunks.append(json.loads(chunk))
 
-        # Verify Agent creation - we check specific calls or count
-        # We expect 2 agents created
-        assert MockAgent.call_count == 2
+        # Verify Agent creation
+        # We expect 2 participants + 1 moderator = 3 agents
+        assert MockAgent.call_count == 3
 
         # Verify call args for first agent
         # We need to verify that 'role', 'name', 'goal', 'backstory' were passed correctly

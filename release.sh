@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# Ensure docker is in PATH
+export PATH=/usr/local/bin:/opt/homebrew/bin:$PATH
+
+# Ensure npm is in PATH via NVM
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
 # release.sh - Orchestrate a verified release process
 
 echo "========================================"
