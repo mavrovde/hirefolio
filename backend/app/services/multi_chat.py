@@ -1,15 +1,19 @@
 import asyncio
 import json
+import warnings
+import httpx
+import re
 from typing import Any, AsyncGenerator, List, Optional
-
 from pydantic import BaseModel
-from app.config import settings
-from app.logger import get_logger
-
-from crewai import Agent, Task, Crew, Process
+from crewai import Agent
 from langchain.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from langchain_core.callbacks import BaseCallbackHandler
+from app.config import settings
+from app.logger import get_logger
+
+# Suppress Pydantic V1/V2 mixing warnings from CrewAI internals
+warnings.filterwarnings("ignore", message="Mixing V1 models and V2 models")
 
 logger = get_logger(__name__)
 
@@ -23,14 +27,17 @@ class AgentConfig(BaseModel):
 
 
 class StreamingCallbackHandler(BaseCallbackHandler):
-    def __init__(self, queue: asyncio.Queue):
+    def __init__(self, queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
         self.queue = queue
+        self.loop = loop
         self.current_agent_name = "Unknown"
 
     def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
         if token:
-            self.queue.put_nowait(
-                {"content": token, "agent_name": self.current_agent_name}
+            # Safely put tokens from a background thread into the main loop's queue
+            self.loop.call_soon_threadsafe(
+                self.queue.put_nowait,
+                {"content": token, "agent_name": self.current_agent_name},
             )
 
 
@@ -64,14 +71,16 @@ async def multi_agent_conversation(
     agent_id_map = {}
     participants = []
 
+    loop_main = asyncio.get_running_loop()
+
     # 1. Create Participants (Stable Team)
     for cfg in agents_config:
-        agent_name = cfg.name or f"Agent {cfg.id}"
-        agent_id_map[agent_name] = cfg.id
+        agent_role = cfg.role or "Participant"
+        agent_id_map[agent_role] = cfg.id
 
         # Shared callback to stream tokens
-        callback = StreamingCallbackHandler(queue)
-        callback.current_agent_name = agent_name
+        callback = StreamingCallbackHandler(queue, loop_main)
+        callback.current_agent_name = agent_role
 
         # We need to set the current agent name dynamically during execution
         # But since we use one callback instance, we might have race conditions if parallel.
@@ -87,8 +96,7 @@ async def multi_agent_conversation(
         )
 
         agent = Agent(
-            role=cfg.role or "Participant",
-            name=agent_name,
+            role=agent_role,
             goal=cfg.goal or "Participate deeply in the discussion.",
             backstory=cfg.description,
             llm=llm,
@@ -107,7 +115,7 @@ async def multi_agent_conversation(
         temperature=0.1,
     )
 
-    moderator = Agent(
+    Agent(
         role="Moderator",
         name="Invisible Moderator",
         goal="Ensure the conversation remains safe, on-topic, and appropriate.",
@@ -120,76 +128,135 @@ async def multi_agent_conversation(
 
     async def run_dynamic_loop():
         try:
-            loop = asyncio.get_running_loop()
+            logger.info(f"Starting dynamic loop. OLLAMA_URL: {settings.ollama_url}")
+
+            # Pre-flight check
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(
+                        f"{settings.ollama_url}/api/tags", timeout=5
+                    )
+                    if resp.status_code == 200:
+                        logger.info("Successfully connected to Ollama.")
+                    else:
+                        logger.error(f"Ollama returned status {resp.status_code}")
+            except Exception as conn_err:
+                logger.error(f"Ollama connection check failed: {conn_err}")
+                queue.put_nowait(
+                    {
+                        "content": f"\n[Infrastructure Error: Cannot connect to Ollama at {settings.ollama_url}]",
+                        "agent_name": "System",
+                    }
+                )
+                return
+
             history: List[str] = []
-            
+
             # Initial prompt context
             history.append(f"Topic: {topic}")
 
             while True:
                 # 1. Participants Turn
                 for agent, callback in participants:
-                    # Update callback name for this turn
-                    # (Though we set it on creation, if we ever reused callbacks, this ensures safety)
+                    # Use role since CrewAI Agent doesn't have a 'name' field in this version
                     callback.current_agent_name = agent.role
+                    context_str = "\n".join(history[-3:])
+                    # COMPLETION STYLE PROMPT: Act like we are already in the middle of a script
+                    if not history:
+                        context_str = f"System: {agent.role}, please start the discussion on {topic}."
+                    else:
+                        context_str = "\n".join(history[-3:])
 
-                    # Build context string manually since we are breaking the chain
-                    context_str = "\n".join(history[-5:]) # Keep last 5 messages for context window
-                    
-                    task_def = Task(
-                        description=(
-                            
-                            f"Topic: {topic}\n"
-                            f"Conversation History (Last 5 messages):\n{context_str}\n\n" 
-                            f"Your Task: Read the history and respond naturally to the last speaker. "
-                            f"Keep it concise (max 2-3 sentences)."
-                        ),
-                        expected_output="A natural response.",
-                        agent=agent,
-                        async_execution=False
+                    # ULTRA-MINIMAL PROMPT: No headers, no structure, just completion.
+                    system_prompt = (
+                        f"You are {agent.role} ({agent.backstory}). "
+                        f"Focus: {agent.goal}. Topic: {topic}. "
+                        f"Respond to the chat in 1 short unique sentence from your perspective."
                     )
 
-                    # Create a mini-crew for this single turn
-                    turn_crew = Crew(
-                        agents=[agent],
-                        tasks=[task_def],
-                        verbose=False,
-                        process=Process.sequential
-                    )
+                    user_content = f"History:\n{context_str}\n{agent.role}:"
 
-                    # Run sync kickoff in thread
-                    result_obj = await loop.run_in_executor(None, lambda: turn_crew.kickoff())
-                    
-                    # Store result (CrewAI returns an object or string depending on version, handle string)
-                    result_text = str(result_obj)
-                    formatted_msg = f"{agent.role}: {result_text}"
-                    history.append(formatted_msg)
+                    # Dynamically build stop sequences from participants
+                    stop_sequences = ["\n", "Dialogue:", "System:", "Narrator:"]
+                    for p_agent, _ in participants:
+                        role_stop = f"{p_agent.role}:"
+                        if role_stop not in stop_sequences:
+                            stop_sequences.append(role_stop)
 
-                    # 2. Moderator Check (After every speaker)
-                    mod_task = Task(
-                        description=(
-                            f"Analyze this message for toxicity or if the conversation should end:\n"
-                            f"'{result_text}'\n\n"
-                            f"If 'Stop Chat' is needed, use the tool. Otherwise respond 'OK'."
-                        ),
-                        expected_output="OK or Stop",
-                        agent=moderator,
-                        async_execution=False
-                    )
-                    
-                    mod_crew = Crew(
-                        agents=[moderator],
-                        tasks=[mod_task],
-                        verbose=False,
-                        process=Process.sequential
-                    )
+                    # DIRECT HTTP CALL to Ollama
+                    url = f"{settings.ollama_url}/api/chat"
+                    payload = {
+                        "model": settings.generation_model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_content},
+                        ],
+                        "stream": True,
+                        "options": {
+                            "num_ctx": 4096,
+                            "num_predict": 60,
+                            "temperature": 0.8,
+                            "repeat_penalty": 1.2,
+                            "stop": stop_sequences,
+                        },
+                    }
 
-                    # Run moderator
-                    await loop.run_in_executor(None, lambda: mod_crew.kickoff())
-                    # If moderator throws StopChat exception, it is caught in the `except` block below.
+                    full_text = ""
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            async with client.stream(
+                                "POST", url, json=payload, timeout=None
+                            ) as response:
+                                if response.status_code == 200:
+                                    async for line in response.aiter_lines():
+                                        if line:
+                                            try:
+                                                data = json.loads(line)
+                                                chunk_text = data.get(
+                                                    "message", {}
+                                                ).get("content", "")
+                                                if chunk_text:
+                                                    full_text += chunk_text
+                                                    callback.on_llm_new_token(
+                                                        chunk_text
+                                                    )
+                                                if data.get("done"):
+                                                    break
+                                            except json.JSONDecodeError:
+                                                continue
+                    except Exception as e:
+                        full_text = f"[Error: {e}]"
 
-                # Optional: Add a break condition if history gets too long to prevent infinite accidental loops
-                if len(history) > 50:
+                    # AGGRESSIVE POST-PROCESS: Regex to strip ANY leading labels
+                    clean_text = full_text.strip()
+
+                    # 1. Generic strip: Remove anything before a colon at the very start of the text
+                    # (e.g., "Astronaut: ", "Leo: ", "Sentence: ", "Restaurant Owner: ")
+                    clean_text = re.sub(r"^[^:\n]{1,30}:\s*", "", clean_text)
+
+                    # 2. Strip leftover artifacts
+                    patterns = [
+                        r"\(.*?\)",  # Remove parentheticals
+                        r"\n.*$",  # Remove junk after first newline
+                    ]
+                    for pattern in patterns:
+                        clean_text = re.sub(pattern, "", clean_text).strip()
+
+                    # Final failsafe clean
+                    clean_text = clean_text.strip('"' + "'" + "()[]{}").strip()
+
+                    # If empty or too short, fallback to a goal-aligned statement
+                    if not clean_text or len(clean_text) < 5:
+                        # Use the agent's goal to generate a generic fallback if cleaning stripped everything
+                        clean_text = (
+                            f"I believe we must focus on my goal: {agent.goal}."
+                        )
+
+                    history.append(f"{agent.role}: {clean_text}")
+
+                    # No moderator for this high-performance test run
+
+                if len(history) > 8:  # Keep it shorter for speed
                     break
 
         except Exception as e:

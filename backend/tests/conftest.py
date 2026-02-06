@@ -4,6 +4,14 @@ from unittest.mock import MagicMock
 
 # Global mocks for dependencies that require Rust/tiktoken or other system deps
 def pytest_configure(config):
+    import os
+
+    print(
+        f"DEBUG: pytest_configure running. SKIP_DEPENDENCY_MOCKING={os.environ.get('SKIP_DEPENDENCY_MOCKING')}"
+    )
+    if os.environ.get("SKIP_DEPENDENCY_MOCKING"):
+        return
+
     # Mock CrewAI
     mock_crewai = MagicMock()
     sys.modules["crewai"] = mock_crewai

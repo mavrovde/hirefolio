@@ -1,27 +1,77 @@
-
 import asyncio
+import json
 import os
 import sys
+import warnings
 
-# Ensure backend path is in sys.path
-sys.path.append(os.path.join(os.getcwd(), 'backend'))
+# Suppress Pydantic warnings
+warnings.filterwarnings("ignore", message="Mixing V1 models and V2 models")
+
+# Move to the root directory to ensure imports work
+sys.path.append("/app")
 
 from app.services.multi_chat import multi_agent_conversation, AgentConfig
 
-async def test_chat():
-    print("Starting Multi-Chat Debug...")
-    
+async def run_clean_transcript():
     agents = [
-        AgentConfig(id=1, name="Alice", role="Skeptic", goal="Question everything", description="A skeptical thinker"),
-        AgentConfig(id=2, name="Bob", role="Believer", goal="Believe everything", description="An optimistic believer")
+        AgentConfig(
+            id=1, 
+            name="Leo", 
+            role="Leo", 
+            goal="Risotto is about tradition and heart.", 
+            description="Loud old-school Italian chef."
+        ),
+        AgentConfig(
+            id=2, 
+            name="Mia", 
+            role="Mia", 
+            goal="Risotto is about precision and science.", 
+            description="Cool analytical scientist."
+        )
     ]
-    topic = "Is the earth flat?"
+    topic = "What is the secret to a perfect risotto?"
+
+    print("\n" + "="*50)
+    print("AGENT CONFIGURATIONS:")
+    for agent in agents:
+        print(f"Agent {agent.id}: {agent.name}")
+        print(f" - Role: {agent.role}")
+        print(f" - Goal: {agent.goal}")
+        print(f" - Description: {agent.description}")
+        print("-" * 20)
+    print("="*50 + "\n")
+
+    print(f"TOPIC: {topic}\n")
+    print("--- CONVERSATION START ---\n")
+    current_agent_id = None
 
     try:
         async for chunk in multi_agent_conversation(agents, topic):
-            print(f"CHUNK: {chunk}")
+            try:
+                data = json.loads(chunk)
+                if data.get("done"):
+                    break
+                
+                agent_id = data.get("agent", 0)
+                content = data.get("content", "")
+                
+                if not content:
+                    continue
+
+                if agent_id != current_agent_id:
+                    name = next((a.name for a in agents if a.id == agent_id), "System")
+                    if current_agent_id is not None:
+                        print("\n", end="", flush=True)
+                    print(f"[{name}]: ", end="", flush=True)
+                    current_agent_id = agent_id
+                
+                print(content, end="", flush=True)
+            except:
+                pass
     except Exception as e:
-        print(f"ERROR: {e}")
+        print(f"\nERROR: {e}")
+    
+    print(f"\nTRANSCRIPT_END")
 
 if __name__ == "__main__":
-    asyncio.run(test_chat())
+    asyncio.run(run_clean_transcript())

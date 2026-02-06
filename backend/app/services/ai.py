@@ -28,7 +28,7 @@ async def suggest_tags(title: str, content: str) -> list[str]:
             response = await client.post(
                 f"{settings.ollama_url}/api/generate",
                 json={
-                    "model": settings.generation_model,
+                    "model": settings.fast_generation_model,
                     "prompt": prompt,
                     "stream": False,
                     "format": "json",  # Force JSON mode if model supports it (Ollama does)
@@ -119,7 +119,7 @@ async def suggest_post_details(content: str) -> dict[str, Union[str, List[str]]]
             response = await client.post(
                 f"{settings.ollama_url}/api/generate",
                 json={
-                    "model": settings.generation_model,
+                    "model": settings.fast_generation_model,
                     "prompt": prompt,
                     "stream": False,
                     "format": "json",
@@ -217,7 +217,7 @@ async def suggest_field(content: str, field: str) -> dict[str, str]:
             response = await client.post(
                 f"{settings.ollama_url}/api/generate",
                 json={
-                    "model": settings.generation_model,
+                    "model": settings.fast_generation_model,
                     "prompt": prompts[field],
                     "stream": False,
                 },
