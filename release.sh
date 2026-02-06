@@ -2,7 +2,7 @@
 set -e
 
 # Ensure docker is in PATH
-export PATH=/usr/local/bin:/opt/homebrew/bin:$PATH
+export PATH=/usr/local/bin:/opt/homebrew/bin:/opt/podman/bin:$PATH
 
 # Ensure npm is in PATH via NVM
 export NVM_DIR="$HOME/.nvm"
@@ -74,10 +74,15 @@ git commit -m "$FINAL_MSG"
 
 # 4. Git Tagging
 echo ""
-echo "Step 4: Tagging and pushing..."
+echo "Step 4: Tagging and pushing code..."
 git tag -a "v$VERSION" -m "$DESC"
 git push origin main
 git push origin "v$VERSION"
+
+# 5. Build and Push AMD64 images
+echo ""
+echo "Step 5: Building and pushing AMD64 images..."
+./build_amd64_and_push.sh
 
 echo ""
 echo "========================================"
