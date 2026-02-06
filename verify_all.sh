@@ -12,7 +12,6 @@ echo "backend: 🐍 Running Static Analysis & Tests..."
 docker-compose up -d db
 # Run checks
 docker-compose run --rm --build -e PIP_ROOT_USER_ACTION=ignore backend bash -c "
-    echo 'Installing Dev Dependencies...' && pip install -r requirements-dev.txt && \
     echo 'Running Lint...' && ruff check . && \
     echo 'Running Format Check...' && ruff format . --check && \
     echo 'Running Type Check...' && mypy app --ignore-missing-imports --no-error-summary && \

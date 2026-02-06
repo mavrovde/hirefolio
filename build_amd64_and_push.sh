@@ -14,12 +14,15 @@ export PLATFORM="linux/amd64"
 
 echo "1. Building Proxy (AMD64)..."
 docker build --platform $PLATFORM -t "ghcr.io/mavrovde/mavrov.de-proxy:$VERSION" -t "ghcr.io/mavrovde/mavrov.de-proxy:latest" ./proxy
+docker system prune -f
 
 echo "2. Building Backend (AMD64)..."
 docker build --platform $PLATFORM -t "ghcr.io/mavrovde/mavrov.de-backend:$VERSION" -t "ghcr.io/mavrovde/mavrov.de-backend:latest" ./backend
+docker system prune -f
 
 echo "3. Building Frontend (AMD64)..."
 docker build --platform $PLATFORM -t "ghcr.io/mavrovde/mavrov.de-frontend:$VERSION" -t "ghcr.io/mavrovde/mavrov.de-frontend:latest" ./frontend
+docker system prune -f
 
 echo ""
 echo "========================================"
