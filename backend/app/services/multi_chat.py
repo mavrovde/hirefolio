@@ -71,6 +71,7 @@ async def multi_agent_conversation(
 
         # Shared callback to stream tokens
         callback = StreamingCallbackHandler(queue)
+        callback.current_agent_name = agent_name
 
         # We need to set the current agent name dynamically during execution
         # But since we use one callback instance, we might have race conditions if parallel.
@@ -117,79 +118,88 @@ async def multi_agent_conversation(
         tools=[stop_tool],
     )
 
-    # 3. Task Generation (Upfront)
-    # We generate the entire script of tasks (10 rounds * N agents) upfront.
-    # The 'Dynamic' content comes from the `context` parameter, which passes
-    # the output of previous tasks to the current one at runtime.
-    tasks: List[Task] = []
-    # Keep track of ALL speaker tasks to build cumulative context (so agents remember the whole chat)
-    speaker_tasks_so_far: List[Task] = []
-
-    MAX_ROUNDS = 10
-
-    for round_i in range(MAX_ROUNDS):
-        for agent, callback in participants:
-            # Note: In a Single Crew run, we can't easily change the callback's state
-            # *between* tasks because the Crew takes over control.
-            # However, since we created a UNIQUE callback for each agent in the `participants` list
-            # (see step 1 above), we can just set the name here once.
-            callback.current_agent_name = agent.name
-
-            # Task 1: Speak
-            # We rely on CrewAI's `context` feature.
-            # `context=speaker_tasks_so_far` means: "Read the outputs of all these previous tasks before running."
-            t_speak = Task(
-                description=(
-                    f"Topic: {topic}\n"
-                    f"Current Round: {round_i + 1} of {MAX_ROUNDS}\n"
-                    f"Your Task:\n"
-                    f"1. REVIEW the conversation so far (provided as Context).\n"
-                    f"2. RESPOND naturally to the last speaker.\n"
-                    f"IMPORTANT: Keep it SHORT (max 3 sentences). NO headers."
-                ),
-                expected_output="A natural, concise response.",
-                agent=agent,
-                # Context includes all previous speakers to give full history
-                context=list(speaker_tasks_so_far),
-                async_execution=False,
-            )
-            tasks.append(t_speak)
-            speaker_tasks_so_far.append(t_speak)
-
-            # Task 2: Moderate
-            # The moderator acts as a checker after every single turn.
-            t_mod = Task(
-                description=(
-                    "Analyze the previous task output for safety. "
-                    "If it contains hate speech, toxicity, violations, OR if the conversation has reached a natural conclusion, use the 'Stop Chat' tool. "
-                    "Otherwise, reply 'OK'."
-                ),
-                expected_output="OK",
-                agent=moderator,
-                context=[t_speak],  # Strict check of just the latest message
-                async_execution=False,
-            )
-            tasks.append(t_mod)
-
-    # 4. Single Crew Execution
-    # One Crew, One Kickoff.
-    # The 'Observer' is the callback handlers attached to the agents.
-    crew = Crew(
-        agents=[p[0] for p in participants] + [moderator],
-        tasks=tasks,
-        verbose=False,
-        process=Process.sequential,
-    )
-
-    async def run_crew():
+    async def run_dynamic_loop():
         try:
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, lambda: crew.kickoff())
+            history: List[str] = []
+            
+            # Initial prompt context
+            history.append(f"Topic: {topic}")
+
+            while True:
+                # 1. Participants Turn
+                for agent, callback in participants:
+                    # Update callback name for this turn
+                    # (Though we set it on creation, if we ever reused callbacks, this ensures safety)
+                    callback.current_agent_name = agent.role
+
+                    # Build context string manually since we are breaking the chain
+                    context_str = "\n".join(history[-5:]) # Keep last 5 messages for context window
+                    
+                    task_def = Task(
+                        description=(
+                            
+                            f"Topic: {topic}\n"
+                            f"Conversation History (Last 5 messages):\n{context_str}\n\n" 
+                            f"Your Task: Read the history and respond naturally to the last speaker. "
+                            f"Keep it concise (max 2-3 sentences)."
+                        ),
+                        expected_output="A natural response.",
+                        agent=agent,
+                        async_execution=False
+                    )
+
+                    # Create a mini-crew for this single turn
+                    turn_crew = Crew(
+                        agents=[agent],
+                        tasks=[task_def],
+                        verbose=False,
+                        process=Process.sequential
+                    )
+
+                    # Run sync kickoff in thread
+                    result_obj = await loop.run_in_executor(None, lambda: turn_crew.kickoff())
+                    
+                    # Store result (CrewAI returns an object or string depending on version, handle string)
+                    result_text = str(result_obj)
+                    formatted_msg = f"{agent.role}: {result_text}"
+                    history.append(formatted_msg)
+
+                    # 2. Moderator Check (After every speaker)
+                    mod_task = Task(
+                        description=(
+                            f"Analyze this message for toxicity or if the conversation should end:\n"
+                            f"'{result_text}'\n\n"
+                            f"If 'Stop Chat' is needed, use the tool. Otherwise respond 'OK'."
+                        ),
+                        expected_output="OK or Stop",
+                        agent=moderator,
+                        async_execution=False
+                    )
+                    
+                    mod_crew = Crew(
+                        agents=[moderator],
+                        tasks=[mod_task],
+                        verbose=False,
+                        process=Process.sequential
+                    )
+
+                    # Run moderator
+                    await loop.run_in_executor(None, lambda: mod_crew.kickoff())
+                    # If moderator throws StopChat exception, it is caught in the `except` block below.
+
+                # Optional: Add a break condition if history gets too long to prevent infinite accidental loops
+                if len(history) > 50:
+                    break
+
         except Exception as e:
             # Check for moderator stop
             error_str = str(e)
             if "STOPPED_BY_MODERATOR" in error_str:
+                # Extract reason
                 clean_reason = error_str.split("STOPPED_BY_MODERATOR:")[-1].strip()
+                # Remove quotes if present
+                clean_reason = clean_reason.strip("'").strip('"')
                 sys_msg = f"\n[System] Conversation Terminated: {clean_reason}"
                 queue.put_nowait({"content": sys_msg, "agent_name": "System"})
             else:
@@ -198,7 +208,7 @@ async def multi_agent_conversation(
         finally:
             queue.put_nowait(None)
 
-    worker_task = asyncio.create_task(run_crew())
+    worker_task = asyncio.create_task(run_dynamic_loop())
 
     # Stream tokens
     try:
