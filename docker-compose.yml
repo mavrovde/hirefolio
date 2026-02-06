@@ -24,10 +24,10 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep nomic-embed-text || exit 1"]
+      test: ["CMD-SHELL", "ollama list | grep nomic-embed-text && ollama list | grep llama3.1 || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 60
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
