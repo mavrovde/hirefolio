@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = 768  # nomic-embed-text uses 768 dimensions
-    generation_model: str = "llama3.1"
+    generation_model: str = "llama3.2"
     fast_generation_model: str = "tinyllama"
 
     # Authentication

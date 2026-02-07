@@ -24,7 +24,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep nomic-embed-text && ollama list | grep llama3.1 || exit 1"]
+      test: ["CMD-SHELL", "ollama list | grep nomic-embed-text && ollama list | grep llama3.2 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 60
@@ -34,7 +34,7 @@ services:
         /bin/ollama serve &
         sleep 5
         ollama pull nomic-embed-text
-        ollama pull llama3.1
+        ollama pull llama3.2
         ollama pull tinyllama
         wait
     networks:
@@ -50,7 +50,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/mavrov
       - OLLAMA_URL=http://ollama:11434
-      - GENERATION_MODEL=llama3.1
+      - GENERATION_MODEL=llama3.2
       - FAST_GENERATION_MODEL=tinyllama
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true

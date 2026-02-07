@@ -22,7 +22,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep nomic-embed-text && ollama list | grep llama3.1 && ollama list | grep tinyllama || exit 1"]
+      test: ["CMD-SHELL", "ollama list | grep nomic-embed-text && ollama list | grep llama3.2 && ollama list | grep tinyllama || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 60
@@ -32,7 +32,7 @@ services:
         /bin/ollama serve &
         sleep 5
         ollama pull nomic-embed-text
-        ollama pull llama3.1
+        ollama pull llama3.2
         ollama pull tinyllama
         wait
     networks:
@@ -45,7 +45,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mavrov}
       - OLLAMA_URL=http://ollama:11434
-      - GENERATION_MODEL=llama3.1
+      - GENERATION_MODEL=llama3.2
     depends_on:
       db:
         condition: service_healthy

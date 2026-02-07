@@ -84,6 +84,14 @@ echo ""
 echo "Step 5: Building and pushing AMD64 images..."
 ./build_amd64_and_push.sh
 
+# 6. Final Happy Path E2E Verification
+echo ""
+echo "Step 6: Final Happy Path E2E Verification..."
+echo "Running mission-critical tests (Auth & AI Suggestions)..."
+cd frontend
+CI=true npx playwright test auth.spec.ts ai-suggestions.spec.ts
+cd ..
+
 echo ""
 echo "========================================"
 echo "🎊 RELEASE v$VERSION SUCCESSFUL! 🎊"

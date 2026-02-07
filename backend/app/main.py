@@ -20,8 +20,31 @@ from app.api.admin_cv import router as admin_cv_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print(f"[{datetime.now(timezone.utc)}] LIFESPAN START: Mavrov.de API")
     app.state.start_time = datetime.now(timezone.utc)
+
+    # Check Ollama connection
+    from app.config import settings
+    import httpx
+
+    print(
+        f"[{datetime.now(timezone.utc)}] INFRA CHECK: Checking Ollama at {settings.ollama_url}..."
+    )
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{settings.ollama_url}/api/tags", timeout=10)
+            print(
+                f"[{datetime.now(timezone.utc)}] INFRA CHECK: Ollama status: {resp.status_code}"
+            )
+    except Exception as e:
+        print(
+            f"[{datetime.now(timezone.utc)}] INFRA CHECK WARNING: Ollama connectivity check failed: {e}"
+        )
+
     # Create pgvector extension and tables on startup
+    print(
+        f"[{datetime.now(timezone.utc)}] DB START: Running migrations and extension checks..."
+    )
     try:
         async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -41,31 +64,42 @@ async def lifespan(app: FastAPI):
 
             # Add downloaded_at if it doesn't exist
             if "downloaded_at" not in existing_columns:
-                print("Adding downloaded_at column to cv_requests table...")
+                print(
+                    f"[{datetime.now(timezone.utc)}] DB MIGRATION: Adding downloaded_at column to cv_requests table..."
+                )
                 await conn.execute(
                     text("""
                     ALTER TABLE cv_requests 
                     ADD COLUMN downloaded_at TIMESTAMP WITH TIME ZONE
                 """)
                 )
-                print("✓ downloaded_at column added")
+                print(
+                    f"[{datetime.now(timezone.utc)}] DB MIGRATION: ✓ downloaded_at column added"
+                )
 
             # Add download_count if it doesn't exist
             if "download_count" not in existing_columns:
-                print("Adding download_count column to cv_requests table...")
+                print(
+                    f"[{datetime.now(timezone.utc)}] DB MIGRATION: Adding download_count column to cv_requests table..."
+                )
                 await conn.execute(
                     text("""
                     ALTER TABLE cv_requests 
                     ADD COLUMN download_count INTEGER NOT NULL DEFAULT 0
                 """)
                 )
-                print("✓ download_count column added")
+                print(
+                    f"[{datetime.now(timezone.utc)}] DB MIGRATION: ✓ download_count column added"
+                )
 
     except Exception as e:
         # Table might not exist yet (first run), which is fine
-        print(f"Migration check: {e}")
+        print(
+            f"[{datetime.now(timezone.utc)}] DB MIGRATION ERROR: Migration check: {e}"
+        )
 
     # Check and create default admin user if no users exist
+    print(f"[{datetime.now(timezone.utc)}] DB SEED: Checking default admin user...")
     async with async_session() as session:
         from sqlalchemy import select
         from app.models.user import User
@@ -75,7 +109,9 @@ async def lifespan(app: FastAPI):
         user = user_result.scalars().first()
 
         if not user:
-            print("No users found. Creating default admin user 'master'...")
+            print(
+                f"[{datetime.now(timezone.utc)}] DB SEED: No users found. Creating default admin user 'master'..."
+            )
             master_admin = User(
                 username="master",
                 email="admin@mavrov.de",
@@ -85,7 +121,9 @@ async def lifespan(app: FastAPI):
             )
             session.add(master_admin)
             await session.commit()
-            print("Default admin user 'master' created successfully.")
+            print(
+                f"[{datetime.now(timezone.utc)}] DB SEED: Default admin user 'master' created successfully."
+            )
 
         # Check and seed default CV if no CVs exist
         from app.models.cv_document import CvDocument
@@ -97,7 +135,9 @@ async def lifespan(app: FastAPI):
         if not cv_exists:
             static_cv_path = os.path.join(os.path.dirname(__file__), "static", "cv.pdf")
             if os.path.exists(static_cv_path):
-                print(f"No CV found in database. Seeding from {static_cv_path}...")
+                print(
+                    f"[{datetime.now(timezone.utc)}] DB SEED: No CV found in database. Seeding from {static_cv_path}..."
+                )
                 with open(static_cv_path, "rb") as f:
                     cv_data = f.read()
 
@@ -110,17 +150,25 @@ async def lifespan(app: FastAPI):
                 )
                 session.add(default_cv)
                 await session.commit()
-                print("Default CV seeded successfully.")
+                print(
+                    f"[{datetime.now(timezone.utc)}] DB SEED: Default CV seeded successfully."
+                )
             else:
-                print(f"Warning: Fallback CV not found at {static_cv_path}")
+                print(
+                    f"[{datetime.now(timezone.utc)}] DB SEED WARNING: Fallback CV not found at {static_cv_path}"
+                )
 
+    print(f"[{datetime.now(timezone.utc)}] LIFESPAN READY: Backend is operational.")
     yield
+    print(
+        f"[{datetime.now(timezone.utc)}] LIFESPAN SHUTDOWN: Mavrov.de API shutting down."
+    )
 
 
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.0.233",
+    version="1.0.234",
     lifespan=lifespan,
 )
 
