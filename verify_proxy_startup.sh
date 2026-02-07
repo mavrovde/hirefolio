@@ -16,7 +16,7 @@ FRONTEND_IMAGE="ghcr.io/mavrovde/mavrov.de-frontend:$IMAGE_TAG"
 cleanup() {
     echo "🧹 Cleaning up..."
     # Stop proxy and the dependencies we might have started
-    docker-compose -f docker-compose.prod.yml down
+    docker compose -f docker-compose.prod.yml down || docker-compose -f docker-compose.prod.yml down || true
 }
 trap cleanup EXIT
 
@@ -41,7 +41,7 @@ docker build -t "$FRONTEND_IMAGE" ./frontend >/dev/null
 # 2. Start Proxy (and dependencies) using Prod Compose
 echo "[2/4] Starting Proxy stack (Prod Env)..."
 # We start proxy (which triggers deps)
-docker-compose -f docker-compose.prod.yml up -d proxy
+docker compose -f docker-compose.prod.yml up -d proxy || docker-compose -f docker-compose.prod.yml up -d proxy
 
 # 3. Wait for Startup
 echo "[3/4] Waiting for startup (5s)..."
@@ -49,7 +49,7 @@ sleep 5
 
 # 4. Verify Logs
 echo "[4/4] Verifying logs..."
-LOGS=$(docker-compose -f docker-compose.prod.yml logs proxy 2>&1)
+LOGS=$(docker compose -f docker-compose.prod.yml logs proxy 2>&1 || docker-compose -f docker-compose.prod.yml logs proxy 2>&1)
 
 if echo "$LOGS" | grep -q "Starting Nginx in static SSL mode..."; then
     echo "✅ Proxy Log Check: Static SSL mode initialized"
@@ -77,10 +77,12 @@ check_status() {
     fi
 }
 
-echo "Waiting for backend to be ready (10s)..."
-until curl -s -k -o /dev/null "http://localhost/api/stats/public"; do
-    echo "  - Backend not ready yet..."
+echo "Waiting for backend to be ready (up to 30s)..."
+count=0
+until curl -s -k -f -o /dev/null "http://localhost/api/stats/public" || [ $count -eq 15 ]; do
+    echo "  - Backend not ready yet... (Attempt $((count+1))/15)"
     sleep 2
+    count=$((count + 1))
 done
 
 # Check 1: Public Stats (Existing)

@@ -88,6 +88,8 @@ echo "Step 5: Building and pushing AMD64 images..."
 echo ""
 echo "Step 6: Final Happy Path E2E Verification..."
 echo "Running mission-critical tests (Auth & AI Suggestions)..."
+# Ensure we wait an extra bit for frontend as well
+sleep 5
 cd frontend
 export BASE_URL=http://localhost:4200
 CI=true npx playwright test auth.spec.ts ai-suggestions.spec.ts

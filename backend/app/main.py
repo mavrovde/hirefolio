@@ -110,19 +110,19 @@ async def lifespan(app: FastAPI):
 
         if not user:
             print(
-                f"[{datetime.now(timezone.utc)}] DB SEED: No users found. Creating default admin user 'master'..."
+                f"[{datetime.now(timezone.utc)}] DB SEED: No users found. Creating default admin user 'admin'..."
             )
-            master_admin = User(
-                username="master",
+            default_admin = User(
+                username="admin",
                 email="admin@mavrov.de",
-                hashed_password=get_password_hash("master"),
+                hashed_password=get_password_hash("admin"),
                 is_admin=True,
                 is_active=True,
             )
-            session.add(master_admin)
+            session.add(default_admin)
             await session.commit()
             print(
-                f"[{datetime.now(timezone.utc)}] DB SEED: Default admin user 'master' created successfully."
+                f"[{datetime.now(timezone.utc)}] DB SEED: Default admin user 'admin' created successfully."
             )
 
         # Check and seed default CV if no CVs exist
@@ -168,7 +168,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.0.236",
+    version="1.0.238",
     lifespan=lifespan,
 )
 
