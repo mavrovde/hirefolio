@@ -251,18 +251,25 @@ export class LlmComponent implements OnInit, AfterViewChecked {
               this.saveState();
             }
           } else {
-            // Update status
-            const agent = this.agents.find(a => a.id === agentId);
-            const name = agent ? (agent.name || (agent.description ? 'Identifying...' : `Agent ${agent.id}`)) : `Agent ${agentId}`;
-
-            this.conversationStatus = `${name.includes('Ident') ? 'Agent ' + agentId : name} is speaking...`;
-
-            if (!this.currentAgentMessage || this.currentAgentMessage.agent !== agentId) {
+            // Defensive check: if we switched agents without a turnComplete signal
+            if (this.currentAgentMessage && this.currentAgentMessage.agent !== agentId) {
+              this.multiMessages.push(this.currentAgentMessage);
               this.currentAgentMessage = { agent: agentId, content: chunk };
             } else {
-              this.currentAgentMessage.content += chunk;
+              // Update status
+              const agent = this.agents.find(a => a.id === agentId);
+              const name = agent ? (agent.name || (agent.description ? 'Identifying...' : `Agent ${agent.id}`)) : `Agent ${agentId}`;
+
+              this.conversationStatus = `${name.includes('Ident') ? 'Agent ' + agentId : name} is speaking...`;
+
+              if (!this.currentAgentMessage || this.currentAgentMessage.agent !== agentId) {
+                this.currentAgentMessage = { agent: agentId, content: chunk };
+              } else {
+                this.currentAgentMessage.content += chunk;
+              }
             }
           }
+          this.saveState();
           this.cdr.detectChanges();
           this.scrollToBottom();
         },

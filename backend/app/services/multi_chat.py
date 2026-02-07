@@ -254,6 +254,11 @@ async def multi_agent_conversation(
 
                     history.append(f"{agent.role}: {clean_text}")
 
+                    # Signal end of turn for this agent
+                    queue.put_nowait(
+                        {"content": "", "agent_name": agent.role, "turn_complete": True}
+                    )
+
                     # No moderator for this high-performance test run
 
                 if len(history) > 8:  # Keep it shorter for speed
@@ -284,12 +289,20 @@ async def multi_agent_conversation(
             if item is None:
                 break
 
-            content = item["content"]
-            name_label = item["agent_name"]
+            content = item.get("content", "")
+            name_label = item.get("agent_name", "Unknown")
             agent_id = agent_id_map.get(name_label, 0)
+            turn_complete = item.get("turn_complete", False)
 
             yield (
-                json.dumps({"agent": agent_id, "content": content, "done": False})
+                json.dumps(
+                    {
+                        "agent": agent_id,
+                        "content": content,
+                        "done": False,
+                        "turn_complete": turn_complete,
+                    }
+                )
                 + "\n"
             )
 

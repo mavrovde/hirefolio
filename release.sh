@@ -89,6 +89,7 @@ echo ""
 echo "Step 6: Final Happy Path E2E Verification..."
 echo "Running mission-critical tests (Auth & AI Suggestions)..."
 cd frontend
+export BASE_URL=http://localhost:4200
 CI=true npx playwright test auth.spec.ts ai-suggestions.spec.ts
 cd ..
 
