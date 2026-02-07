@@ -14,6 +14,16 @@ echo "========================================"
 echo "🚀 STARTING AUTOMATED RELEASE PROCESS 🚀"
 echo "========================================"
 
+# Ensure DOCKER_HOST is set for Podman
+if [ -z "$DOCKER_HOST" ]; then
+    PODMAN_SOCKET=$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' 2>/dev/null || true)
+    if [ -n "$PODMAN_SOCKET" ]; then
+        export DOCKER_HOST="unix://$PODMAN_SOCKET"
+        echo "✅ Set DOCKER_HOST to Podman socket: $DOCKER_HOST"
+    fi
+fi
+
+
 # 1. Version Bump Type
 BUMP_TYPE=$1
 if [[ "$BUMP_TYPE" != "--patch" && "$BUMP_TYPE" != "--minor" && "$BUMP_TYPE" != "--major" ]]; then
