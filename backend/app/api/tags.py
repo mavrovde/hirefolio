@@ -37,7 +37,7 @@ async def list_tags(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     sort_by: str = Query("count", description="Field to sort by (name or count)"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sort order"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
     search: str = Query(None, description="Search in tag names"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),

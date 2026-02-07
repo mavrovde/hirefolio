@@ -3,15 +3,12 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-
-# Upgrade npm to latest
-RUN npm install -g npm@latest
-
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --legacy-peer-deps
+# Install dependencies using cache mount for npm
+RUN --mount=type=cache,target=/root/.npm \
+    npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -22,8 +19,9 @@ RUN npm run build
 # Production stage with nginx
 FROM nginx:alpine
 
-# Install latest npm (requires nodejs)
-RUN apk add --no-cache nodejs npm && npm install -g npm@latest
+# Install nodejs for SSR runtime with cache mount
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add nodejs
 
 # Clear default nginx assets
 RUN rm -rf /usr/share/nginx/html/*

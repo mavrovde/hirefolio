@@ -1,6 +1,7 @@
 FROM nginx:alpine
 
-RUN apk add --no-cache openssl curl
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add openssl curl
 
 COPY default.conf /etc/nginx/conf.d/default.conf
 COPY entrypoint.sh /entrypoint.sh

@@ -128,24 +128,20 @@ async def multi_agent_conversation(
     )
 
     async def run_dynamic_loop():
-        print(f"DEBUG: run_dynamic_loop started. OLLAMA_URL: {settings.ollama_url}")
         try:
             logger.info(f"Starting dynamic loop. OLLAMA_URL: {settings.ollama_url}")
 
             # Pre-flight check
             try:
                 async with httpx.AsyncClient() as client:
-                    print("DEBUG: Sending pre-flight request to Ollama tags")
                     resp = await client.get(
                         f"{settings.ollama_url}/api/tags", timeout=5
                     )
-                    print(f"DEBUG: Pre-flight response: {resp.status_code}")
                     if resp.status_code == 200:
                         logger.info("Successfully connected to Ollama.")
                     else:
                         logger.error(f"Ollama returned status {resp.status_code}")
             except Exception as conn_err:
-                print(f"DEBUG: Ollama connection check failed: {conn_err}")
                 logger.error(f"Ollama connection check failed: {conn_err}")
                 await queue.put(
                     {
@@ -162,10 +158,8 @@ async def multi_agent_conversation(
             turns = 0
             while turns < max_turns:
                 turns += 1
-                print(f"DEBUG: Entering participants loop (Turn {turns}/{max_turns})")
                 # 1. Participants Turn
                 for agent, callback in participants:
-                    print(f"DEBUG: Processing agent: {agent.role}")
                     # Use role since CrewAI Agent doesn't have a 'name' field in this version
                     callback.current_agent_name = agent.role
                     context_str = "\n".join(history[-3:])
@@ -210,13 +204,12 @@ async def multi_agent_conversation(
                     }
 
                     full_text = ""
-                    print(f"DEBUG: Starting Ollama stream request to {url}")
+                    streamed_any_content = False
                     try:
                         async with httpx.AsyncClient() as client:
                             async with client.stream(
                                 "POST", url, json=payload, timeout=30
                             ) as response:
-                                print(f"DEBUG: Ollama stream response status: {response.status_code}")
                                 if response.status_code == 200:
                                     async for line in response.aiter_lines():
                                         if line:
@@ -227,8 +220,9 @@ async def multi_agent_conversation(
                                                 ).get("content", "")
                                                 if chunk_text:
                                                     full_text += chunk_text
-                                                    callback.on_llm_new_token(
-                                                        chunk_text
+                                                    streamed_any_content = True
+                                                    queue.put_nowait(
+                                                        {"content": chunk_text, "agent_name": agent.role}
                                                     )
                                                 if data.get("done"):
                                                     break
@@ -267,6 +261,9 @@ async def multi_agent_conversation(
                     clean_text = re.sub(r'^["\'](.*)["\']$', r'\1', clean_text.strip())
                     clean_text = clean_text.strip('"' + "'" + "()[]{}").strip()
 
+                    if not streamed_any_content and clean_text:
+                        queue.put_nowait({"content": clean_text, "agent_name": agent.role})
+
                     history.append(f"{agent.role}: {clean_text}")
 
                     # Signal end of turn for this agent
@@ -295,17 +292,16 @@ async def multi_agent_conversation(
                 logger.error(f"Crew execution failed: {e}", exc_info=True)
                 queue.put_nowait({"content": f"\n[Error: {e}]", "agent_name": "System"})
         finally:
+            log_msg = "Finishing dynamic loop."
+            logger.info(log_msg)
             queue.put_nowait(None)
 
     worker_task = asyncio.create_task(run_dynamic_loop())
 
     # Stream tokens
-    print("DEBUG: Starting queue consumption loop")
     try:
         while True:
-            print("DEBUG: Waiting for item from queue...")
             item = await queue.get()
-            print(f"DEBUG: Got item from queue: {item}")
             if item is None:
                 break
 

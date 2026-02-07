@@ -21,7 +21,9 @@ echo "backend: 🐍 Running Static Analysis & Tests..."
 # Start DB if not running
 docker-compose up -d db
 # Run checks
-/Users/sergii.mavrov/miniconda3/envs/workspace/bin/python3 -m pytest backend/tests/test_multi_chat_coverage.py backend/tests/integration/test_multi_chat_real.py
+cd backend
+/Users/sergii.mavrov/miniconda3/envs/workspace/bin/python3 -m pytest tests
+cd ..
 
 # 2. Frontend Checks
 echo ""
