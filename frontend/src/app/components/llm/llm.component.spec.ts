@@ -4,6 +4,7 @@ import { LlmService } from '../../services/llm.service';
 import { FormsModule } from '@angular/forms';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { provideRouter, Router } from '@angular/router';
+import { PLATFORM_ID } from '@angular/core';
 
 class MockLlmService {
     chat = vi.fn().mockResolvedValue(undefined);
@@ -23,6 +24,7 @@ describe('LlmComponent', () => {
             imports: [LlmComponent, FormsModule],
             providers: [
                 { provide: LlmService, useValue: llmService },
+                { provide: PLATFORM_ID, useValue: 'browser' },
                 provideRouter([])
             ]
         })
@@ -31,7 +33,12 @@ describe('LlmComponent', () => {
         fixture = TestBed.createComponent(LlmComponent);
         component = fixture.componentInstance;
         router = TestBed.inject(Router);
+        localStorage.clear(); // Ensure clean state for every test
         fixture.detectChanges();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     it('should create', () => {
@@ -54,6 +61,35 @@ describe('LlmComponent', () => {
         expect(component.isThinking).toBe(false);
     });
 
+    it('should clear messages when "clear" is typed', () => {
+        component.messages = [{ role: 'user', content: 'test' }];
+        component.userInput = 'clear';
+        component.sendMessage();
+        expect(component.messages.length).toBe(0);
+        expect(component.userInput).toBe('');
+    });
+
+    it('should navigate to home on exit or quit', async () => {
+        const navigateSpy = vi.spyOn(router, 'navigate');
+        component.userInput = 'exit';
+        component.sendMessage();
+        expect(navigateSpy).toHaveBeenCalledWith(['/']);
+
+        component.userInput = 'quit';
+        component.sendMessage();
+        expect(navigateSpy).toHaveBeenCalledWith(['/']);
+    });
+
+    it('should log when single agent chat is aborted', async () => {
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
+        component.userInput = 'hello';
+        llmService.chat.mockRejectedValue({ name: 'AbortError' });
+
+        await component.sendMessage();
+        expect(consoleSpy).toHaveBeenCalledWith('Single agent chat aborted');
+        consoleSpy.mockRestore();
+    });
+
     it('should handle errors during chat', async () => {
         component.userInput = 'fail';
         llmService.chat.mockRejectedValue(new Error('API Error'));
@@ -66,8 +102,23 @@ describe('LlmComponent', () => {
 
     describe('Multi-Agent Mode', () => {
         beforeEach(() => {
-            llmService.generateName = vi.fn().mockResolvedValue('Mock Agent');
-            llmService.multiChat = vi.fn();
+            llmService.generateName = vi.spyOn(llmService, 'generateName').mockResolvedValue('Mock Agent');
+            llmService.multiChat = vi.spyOn(llmService, 'multiChat');
+        });
+
+        it('should switch to multi-agent mode', () => {
+            component.isMultiAgentMode = false;
+            component.isMultiAgentMode = true;
+            expect(component.isMultiAgentMode).toBe(true);
+        });
+
+        it('should add an agent', async () => {
+            vi.useFakeTimers();
+            const initialCount = component.agents.length;
+            component.addAgent();
+            expect(component.agents.length).toBe(initialCount + 1);
+            vi.advanceTimersByTime(100); // For the setTimeout in addAgent
+            vi.useRealTimers();
         });
 
         it('should start multi conversaion with correct params', async () => {
@@ -309,6 +360,155 @@ describe('LlmComponent', () => {
             expect(abortSpy).toHaveBeenCalled();
             expect(component.isConversationActive).toBe(false);
         });
+
+        it('should log when debate is aborted', async () => {
+            const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
+            component.conversationTopic = 'Test';
+            component.agents = [{ id: 1, name: 'A1', description: 'D1' }, { id: 2, name: 'A2', description: 'D2' }];
+
+            llmService.multiChat.mockRejectedValue({ name: 'AbortError' });
+
+            await component.startMultiConversation();
+            expect(consoleSpy).toHaveBeenCalledWith('Multi-agent debate aborted');
+            consoleSpy.mockRestore();
+        });
+
+        it('should handle turnComplete signal in multiChat callback', async () => {
+            component.conversationTopic = 'Test';
+            component.agents = [{ id: 1, name: 'A1', description: 'D1' }, { id: 2, name: 'A2', description: 'D2' }];
+
+            llmService.multiChat.mockImplementation((agents, topic, onChunk) => {
+                onChunk(1, 'Part 1', false);
+                onChunk(1, 'Part 2', false);
+                onChunk(1, '', true);
+                return Promise.resolve();
+            });
+
+            await component.startMultiConversation();
+
+            expect(component.multiMessages.length).toBe(1);
+            expect(component.multiMessages[0]).toEqual({ agent: 1, content: 'Part 1Part 2' });
+            expect(component.currentAgentMessage).toBeNull();
+        });
+
+        it('should handle defensive agent switch in multiChat callback', async () => {
+            component.conversationTopic = 'Test';
+            component.agents = [{ id: 1, name: 'A1', description: 'D1' }, { id: 2, name: 'A2', description: 'D2' }];
+
+            llmService.multiChat.mockImplementation((agents, topic, onChunk) => {
+                onChunk(1, 'Msg 1', false);
+                onChunk(2, 'Msg 2', false);
+                return Promise.resolve();
+            });
+
+            await component.startMultiConversation();
+
+            expect(component.multiMessages.length).toBe(1);
+            expect(component.multiMessages[0]).toEqual({ agent: 1, content: 'Msg 1' });
+            expect(component.currentAgentMessage).toEqual({ agent: 2, content: 'Msg 2' });
+        });
+
+        it('should handle connection error during multiChat', async () => {
+            component.conversationTopic = 'Test';
+            component.agents = [{ id: 1, name: 'A1', description: 'D1' }, { id: 2, name: 'A2', description: 'D2' }];
+            llmService.multiChat.mockRejectedValue(new Error('Network Fail'));
+            await component.startMultiConversation();
+            expect(component.conversationStatus).toBe('Connection Error');
+        });
+
+        it('should format agent name with role', () => {
+            component.agents = [
+                { id: 1, name: 'Alice', description: 'Desc', role: 'Wife' },
+                { id: 2, name: 'Bob', description: 'Desc' }
+            ];
+            expect(component.getAgentName(1)).toBe('Wife (Alice)');
+            expect(component.getAgentName(2)).toBe('Bob');
+            expect(component.getAgentName(99)).toBe('Agent 99');
+        });
+
+        it('should download logs when saveLogs is called', () => {
+            const mockUrl = 'blob:test';
+            vi.spyOn(window.URL, 'createObjectURL').mockReturnValue(mockUrl);
+            const revokeObjectURLSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => { });
+
+            // Targeted mock for document.createElement just for 'a'
+            const originalCreateElement = document.createElement.bind(document);
+            const mockAnchor = {
+                href: '',
+                download: '',
+                click: vi.fn(),
+                remove: vi.fn(),
+                style: {}
+            };
+            vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+                if (tagName === 'a') return mockAnchor as any;
+                return originalCreateElement(tagName);
+            });
+
+            component.conversationTopic = 'Test Topic';
+            component.agents = [{ id: 1, name: 'A1', role: 'R1', description: 'D1' }];
+            component.multiMessages = [{ agent: 1, content: 'Msg 1' }];
+
+            component.saveLogs();
+
+            expect(mockAnchor.download).toContain('debate-log-');
+            expect(mockAnchor.click).toHaveBeenCalled();
+            expect(revokeObjectURLSpy).toHaveBeenCalledWith(mockUrl);
+
+            // Cleanup
+            vi.restoreAllMocks();
+        });
+
+        it('should include currentAgentMessage in logs if present', () => {
+            const mockUrl = 'blob:test';
+            vi.spyOn(window.URL, 'createObjectURL').mockReturnValue(mockUrl);
+            vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => { });
+            const originalCreateElement = document.createElement.bind(document);
+            const mockAnchor = { href: '', download: '', click: vi.fn(), remove: vi.fn(), style: {} };
+            vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+                if (tagName === 'a') return mockAnchor as any;
+                return originalCreateElement(tagName);
+            });
+
+            component.conversationTopic = 'Test Topic';
+            component.agents = [{ id: 1, name: 'A1', role: 'R1', description: 'D1' }];
+            component.multiMessages = [{ agent: 1, content: 'Msg 1' }];
+            component.currentAgentMessage = { agent: 1, content: 'Msg 2' };
+
+            component.saveLogs();
+
+            expect(mockAnchor.click).toHaveBeenCalled();
+            vi.restoreAllMocks();
+        });
+
+        it('should handle agent description change', () => {
+            component.agents = [{ id: 1, name: 'Agent 1', description: '' }];
+            component.onAgentDescriptionChange(1);
+            expect(component.agents[0].name).toBe('Agent 1');
+
+            component.agents[0].name = '';
+            component.onAgentDescriptionChange(1);
+            expect(component.agents[0].name).toBe('Agent 1');
+        });
+
+        it('should start timer when conversation starts', () => {
+            vi.useFakeTimers();
+            component.isConversationActive = false;
+            component.conversationTopic = 'Test';
+            component.agents = [
+                { id: 1, description: 'D1', name: 'N1' },
+                { id: 2, description: 'D2', name: 'N2' }
+            ];
+
+            llmService.multiChat.mockReturnValue(new Promise(() => { })); // Never resolves
+
+            component.startMultiConversation();
+
+            vi.advanceTimersByTime(1000);
+            expect(component.conversationTimeRemaining).toBe(299);
+
+            vi.useRealTimers();
+        });
     });
 
     it('should toggle config visibility', () => {
@@ -389,6 +589,28 @@ describe('LlmComponent', () => {
             expect(localStorage.getItem('llm-component-state')).toBeNull();
         });
 
+        it('should handle localStorage error during saveState', () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+            const storageSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('Quota!'); });
+
+            component['saveState']();
+
+            expect(consoleSpy).toHaveBeenCalledWith('Failed to save state:', expect.any(Error));
+            storageSpy.mockRestore();
+            consoleSpy.mockRestore();
+        });
+
+        it('should handle localStorage error during clearState', () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+            const storageSpy = vi.spyOn(localStorage, 'removeItem').mockImplementation(() => { throw new Error('Locked!'); });
+
+            component.clearState();
+
+            expect(consoleSpy).toHaveBeenCalledWith('Failed to clear state:', expect.any(Error));
+            storageSpy.mockRestore();
+            consoleSpy.mockRestore();
+        });
+
         it('should remove agent by ID and not index', () => {
             component.agents = [
                 { id: 1, name: 'A1', description: 'D1' },
@@ -443,6 +665,30 @@ describe('LlmComponent', () => {
             component.isConversationActive = false;
             await vi.advanceTimersByTimeAsync(1000);
             expect(component.conversationTimeRemaining).toBe(297); // Should stop
+
+            vi.useRealTimers();
+        });
+
+        it('should stop and set status when time limit reached', async () => {
+            vi.useFakeTimers();
+            component.conversationTopic = 'Test';
+            component.agents = [{ id: 1, name: 'A1', description: 'D1' }, { id: 2, name: 'A2', description: 'D2' }];
+
+            // Mock that resolves on abort
+            llmService.multiChat.mockImplementation((agents, topic, onChunk, onComplete, signal) => {
+                return new Promise<void>((resolve) => {
+                    signal?.addEventListener('abort', () => resolve());
+                });
+            });
+
+            const p = component.startMultiConversation();
+            component.conversationTimeRemaining = 1; // Overwrite the reset to 300
+
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(component.conversationTimeRemaining).toBe(0);
+            expect(component.conversationStatus).toBe('Debate Time Limit Reached');
+
+            await p; // Should resolve now due to abort in startTimer
 
             vi.useRealTimers();
         });

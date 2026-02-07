@@ -95,68 +95,70 @@
                     class="w-full bg-transparent border-b border-terminal-dim py-3 text-lg text-white placeholder-terminal-dim/50 focus:outline-none focus:border-terminal-highlight transition-colors">
             </div>
 
-            <!-- Dynamic Agents List -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div *ngFor="let agent of agents; let i = index"
-                    class="agent-card p-5 border border-terminal-dim bg-zinc-900/40 rounded-sm relative group transition-all hover:border-terminal-highlight">
-                    <!-- Remove Button -->
-                    <button *ngIf="agents.length > 2" (click)="removeAgent(agent.id)"
-                        class="absolute top-2 right-2 text-terminal-dim hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-1"
-                        title="Remove Agent">
-                        <span class="text-lg leading-none">×</span>
-                    </button>
+            <!-- Dynamic Agents List (Scrollable Area) -->
+            <div class="agents-scroll-area overflow-y-auto pr-2 max-h-[60vh] custom-scrollbar">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+                    <div *ngFor="let agent of agents; let i = index"
+                        class="agent-card p-5 border border-terminal-dim bg-zinc-900/40 rounded-sm relative group transition-all hover:border-terminal-highlight">
+                        <!-- Remove Button -->
+                        <button *ngIf="agents.length > 2" (click)="removeAgent(agent.id)"
+                            class="absolute top-2 right-2 text-terminal-dim hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-1"
+                            title="Remove Agent">
+                            <span class="text-lg leading-none">×</span>
+                        </button>
 
-                    <div class="flex flex-col gap-4">
-                        <!-- Header: Name & Color -->
-                        <div class="flex items-center gap-3 border-b border-white/10 pb-3">
-                            <div class="w-3 h-3 rounded-full shadow-[0_0_10px_currentColor]"
-                                [style.backgroundColor]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'"
-                                [style.color]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'"></div>
+                        <div class="flex flex-col gap-4">
+                            <!-- Header: Name & Color -->
+                            <div class="flex items-center gap-3 border-b border-white/10 pb-3">
+                                <div class="w-3 h-3 rounded-full shadow-[0_0_10px_currentColor]"
+                                    [style.backgroundColor]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'"
+                                    [style.color]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'"></div>
 
-                            <div class="flex-grow">
-                                <label class="block text-[10px] uppercase text-terminal-dim mb-1">Agent Name</label>
-                                <input [(ngModel)]="agent.name" [placeholder]="'e.g. Skeptic'"
-                                    [disabled]="isConversationActive"
-                                    class="bg-transparent border-none text-base font-bold focus:outline-none w-full text-white placeholder-white/20"
-                                    [style.color]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'">
+                                <div class="flex-grow">
+                                    <label class="block text-[10px] uppercase text-terminal-dim mb-1">Agent Name</label>
+                                    <input [(ngModel)]="agent.name" [placeholder]="'e.g. Skeptic'"
+                                        [disabled]="isConversationActive"
+                                        class="bg-transparent border-none text-base font-bold focus:outline-none w-full text-white placeholder-white/20"
+                                        [style.color]="'hsl(' + (agent.id * 137 % 360) + ', 70%, 50%)'">
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Role & Goal -->
-                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Role & Goal -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] uppercase text-terminal-dim mb-1">Role</label>
+                                    <input [(ngModel)]="agent.role" placeholder="e.g. Researcher"
+                                        [disabled]="isConversationActive"
+                                        class="w-full bg-black/20 border-b border-white/10 text-sm py-1 px-2 focus:outline-none focus:border-terminal-highlight transition-colors text-zinc-300">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] uppercase text-terminal-dim mb-1">Goal</label>
+                                    <input [(ngModel)]="agent.goal" placeholder="e.g. Find facts"
+                                        [disabled]="isConversationActive"
+                                        class="w-full bg-black/20 border-b border-white/10 text-sm py-1 px-2 focus:outline-none focus:border-terminal-highlight transition-colors text-zinc-300">
+                                </div>
+                            </div>
+
+                            <!-- Description -->
                             <div>
-                                <label class="block text-[10px] uppercase text-terminal-dim mb-1">Role</label>
-                                <input [(ngModel)]="agent.role" placeholder="e.g. Researcher"
+                                <label class="block text-[10px] uppercase text-terminal-dim mb-1">Backstory /
+                                    Persona</label>
+                                <textarea [(ngModel)]="agent.description"
+                                    placeholder="Describe the agent's personality, beliefs, and background..."
                                     [disabled]="isConversationActive"
-                                    class="w-full bg-black/20 border-b border-white/10 text-sm py-1 px-2 focus:outline-none focus:border-terminal-highlight transition-colors text-zinc-300">
+                                    class="w-full bg-black/20 border border-white/10 rounded-sm text-sm p-3 focus:outline-none focus:border-terminal-highlight resize-none h-24 text-zinc-300 placeholder-white/20 scrollbar-thin"
+                                    (input)="onAgentDescriptionChange(agent.id)"></textarea>
                             </div>
-                            <div>
-                                <label class="block text-[10px] uppercase text-terminal-dim mb-1">Goal</label>
-                                <input [(ngModel)]="agent.goal" placeholder="e.g. Find facts"
-                                    [disabled]="isConversationActive"
-                                    class="w-full bg-black/20 border-b border-white/10 text-sm py-1 px-2 focus:outline-none focus:border-terminal-highlight transition-colors text-zinc-300">
-                            </div>
-                        </div>
-
-                        <!-- Description -->
-                        <div>
-                            <label class="block text-[10px] uppercase text-terminal-dim mb-1">Backstory /
-                                Persona</label>
-                            <textarea [(ngModel)]="agent.description"
-                                placeholder="Describe the agent's personality, beliefs, and background..."
-                                [disabled]="isConversationActive"
-                                class="w-full bg-black/20 border border-white/10 rounded-sm text-sm p-3 focus:outline-none focus:border-terminal-highlight resize-none h-24 text-zinc-300 placeholder-white/20 scrollbar-thin"
-                                (input)="onAgentDescriptionChange(agent.id)"></textarea>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Add Agent -->
-            <div class="flex justify-center mt-4" *ngIf="!isConversationActive && agents.length < 5">
-                <button (click)="addAgent()" class="terminal-btn flex items-center gap-2 hover:bg-white/10">
-                    <span>+ Add Participant</span>
-                </button>
+                <!-- Add Agent -->
+                <div class="flex justify-center mt-2 mb-4" *ngIf="!isConversationActive && agents.length < 5">
+                    <button (click)="addAgent()" class="terminal-btn flex items-center gap-2 hover:bg-white/10 px-8">
+                        <span>+ Add Participant</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -177,6 +179,10 @@
             <button (click)="resetConfiguration()" [disabled]="isConversationActive"
                 class="terminal-btn px-4 py-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed">
                 RESET CONFIGURATION
+            </button>
+            <button (click)="saveLogs()" [disabled]="multiMessages.length === 0"
+                class="terminal-btn px-4 py-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed border-terminal-highlight/30">
+                SAVE LOGS
             </button>
             <div class="timer text-terminal-highlight font-bold ml-auto flex flex-col items-end">
                 <span>{{ formatTime(conversationTimeRemaining) }}</span>

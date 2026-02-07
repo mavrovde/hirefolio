@@ -16,30 +16,30 @@ export PLATFORM="linux/amd64"
 echo "1. Building Backend (AMD64)..."
 docker build --platform $PLATFORM -t "ghcr.io/mavrovde/mavrov.de-backend:$VERSION" -t "ghcr.io/mavrovde/mavrov.de-backend:latest" ./backend
 echo "   Pushing Backend..."
-docker push "ghcr.io/mavrovde/mavrov.de-backend:$VERSION"
-docker push "ghcr.io/mavrovde/mavrov.de-backend:latest"
+podman push "ghcr.io/mavrovde/mavrov.de-backend:$VERSION"
+podman push "ghcr.io/mavrovde/mavrov.de-backend:latest"
 echo "   Cleaning up local Backend images..."
-docker rmi "ghcr.io/mavrovde/mavrov.de-backend:$VERSION" "ghcr.io/mavrovde/mavrov.de-backend:latest"
-docker system prune -f
+docker rmi "ghcr.io/mavrovde/mavrov.de-backend:$VERSION" "ghcr.io/mavrovde/mavrov.de-backend:latest" || true
+docker system prune -f || true
 
 # 2. Frontend
 echo "2. Building Frontend (AMD64)..."
 docker build --platform $PLATFORM -t "ghcr.io/mavrovde/mavrov.de-frontend:$VERSION" -t "ghcr.io/mavrovde/mavrov.de-frontend:latest" ./frontend
 echo "   Pushing Frontend..."
-docker push "ghcr.io/mavrovde/mavrov.de-frontend:$VERSION"
-docker push "ghcr.io/mavrovde/mavrov.de-frontend:latest"
+podman push "ghcr.io/mavrovde/mavrov.de-frontend:$VERSION"
+podman push "ghcr.io/mavrovde/mavrov.de-frontend:latest"
 echo "   Cleaning up local Frontend images..."
-docker rmi "ghcr.io/mavrovde/mavrov.de-frontend:$VERSION" "ghcr.io/mavrovde/mavrov.de-frontend:latest"
-docker system prune -f
+docker rmi "ghcr.io/mavrovde/mavrov.de-frontend:$VERSION" "ghcr.io/mavrovde/mavrov.de-frontend:latest" || true
+docker system prune -f || true
 
 # 3. Proxy
 echo "3. Building Proxy (AMD64)..."
 docker build --platform $PLATFORM -t "ghcr.io/mavrovde/mavrov.de-proxy:$VERSION" -t "ghcr.io/mavrovde/mavrov.de-proxy:latest" ./proxy
 echo "   Pushing Proxy..."
-docker push "ghcr.io/mavrovde/mavrov.de-proxy:$VERSION"
-docker push "ghcr.io/mavrovde/mavrov.de-proxy:latest"
+podman push "ghcr.io/mavrovde/mavrov.de-proxy:$VERSION"
+podman push "ghcr.io/mavrovde/mavrov.de-proxy:latest"
 echo "   Cleaning up local Proxy images..."
-docker rmi "ghcr.io/mavrovde/mavrov.de-proxy:$VERSION" "ghcr.io/mavrovde/mavrov.de-proxy:latest"
-docker system prune -f
+docker rmi "ghcr.io/mavrovde/mavrov.de-proxy:$VERSION" "ghcr.io/mavrovde/mavrov.de-proxy:latest" || true
+docker system prune -f || true
 
 echo "✅ AMD64 Images built, pushed, and cleaned up successfully!"

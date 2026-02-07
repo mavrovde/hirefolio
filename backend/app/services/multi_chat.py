@@ -63,6 +63,7 @@ class StopChatTool(BaseTool):
 async def multi_agent_conversation(
     agents_config: List[AgentConfig],
     topic: str,
+    max_turns: int = 20,  # Failsafe turn limit
 ) -> AsyncGenerator[str, None]:
     if not agents_config:
         return
@@ -127,22 +128,26 @@ async def multi_agent_conversation(
     )
 
     async def run_dynamic_loop():
+        print(f"DEBUG: run_dynamic_loop started. OLLAMA_URL: {settings.ollama_url}")
         try:
             logger.info(f"Starting dynamic loop. OLLAMA_URL: {settings.ollama_url}")
 
             # Pre-flight check
             try:
                 async with httpx.AsyncClient() as client:
+                    print("DEBUG: Sending pre-flight request to Ollama tags")
                     resp = await client.get(
                         f"{settings.ollama_url}/api/tags", timeout=5
                     )
+                    print(f"DEBUG: Pre-flight response: {resp.status_code}")
                     if resp.status_code == 200:
                         logger.info("Successfully connected to Ollama.")
                     else:
                         logger.error(f"Ollama returned status {resp.status_code}")
             except Exception as conn_err:
+                print(f"DEBUG: Ollama connection check failed: {conn_err}")
                 logger.error(f"Ollama connection check failed: {conn_err}")
-                queue.put_nowait(
+                await queue.put(
                     {
                         "content": f"\n[Infrastructure Error: Cannot connect to Ollama at {settings.ollama_url}]",
                         "agent_name": "System",
@@ -154,10 +159,13 @@ async def multi_agent_conversation(
 
             # Initial prompt context
             history.append(f"Topic: {topic}")
-
-            while True:
+            turns = 0
+            while turns < max_turns:
+                turns += 1
+                print(f"DEBUG: Entering participants loop (Turn {turns}/{max_turns})")
                 # 1. Participants Turn
                 for agent, callback in participants:
+                    print(f"DEBUG: Processing agent: {agent.role}")
                     # Use role since CrewAI Agent doesn't have a 'name' field in this version
                     callback.current_agent_name = agent.role
                     context_str = "\n".join(history[-3:])
@@ -202,11 +210,13 @@ async def multi_agent_conversation(
                     }
 
                     full_text = ""
+                    print(f"DEBUG: Starting Ollama stream request to {url}")
                     try:
                         async with httpx.AsyncClient() as client:
                             async with client.stream(
-                                "POST", url, json=payload, timeout=None
+                                "POST", url, json=payload, timeout=30
                             ) as response:
+                                print(f"DEBUG: Ollama stream response status: {response.status_code}")
                                 if response.status_code == 200:
                                     async for line in response.aiter_lines():
                                         if line:
@@ -252,6 +262,11 @@ async def multi_agent_conversation(
                             f"I believe we must focus on my goal: {agent.goal}."
                         )
 
+                    # Final aggressive quote stripping for the history/storage
+                    # Matches starting quote, content, and ending quote if they surround the whole text
+                    clean_text = re.sub(r'^["\'](.*)["\']$', r'\1', clean_text.strip())
+                    clean_text = clean_text.strip('"' + "'" + "()[]{}").strip()
+
                     history.append(f"{agent.role}: {clean_text}")
 
                     # Signal end of turn for this agent
@@ -261,8 +276,10 @@ async def multi_agent_conversation(
 
                     # No moderator for this high-performance test run
 
-                if len(history) > 8:  # Keep it shorter for speed
-                    break
+                # The debate continues until stopped by the user or the moderator tool.
+                # History is managed by keeping the last 8 messages for context.
+                if len(history) > 20:
+                    history = history[-10:]
 
         except Exception as e:
             # Check for moderator stop
@@ -283,9 +300,12 @@ async def multi_agent_conversation(
     worker_task = asyncio.create_task(run_dynamic_loop())
 
     # Stream tokens
+    print("DEBUG: Starting queue consumption loop")
     try:
         while True:
+            print("DEBUG: Waiting for item from queue...")
             item = await queue.get()
+            print(f"DEBUG: Got item from queue: {item}")
             if item is None:
                 break
 

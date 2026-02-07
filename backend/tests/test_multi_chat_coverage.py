@@ -52,20 +52,12 @@ async def test_multi_agent_conversation_success():
         mock_client_instance.get = AsyncMock(return_value=mock_tags_resp)
         mock_client_instance.stream.return_value = MockAsyncContextManager()
 
-        # Run the generator
-        gen = multi_agent_conversation(agents_config, topic)
+        # Run the generator with a small max_turns for testing
+        gen = multi_agent_conversation(agents_config, topic, max_turns=2)
 
         chunks = []
-        # We need to limit the loop because it's a while True
-        # But for test purposes, if we get enough chunks we can stop
-        # In multi_agent_conversation, it goes Agent 1 -> Agent 2 ...
-        # If we want it to stop, we need to ensure the logic hits a break
-        # We'll just collect a few and break manually or rely on history length break
-
         async for chunk in gen:
             chunks.append(json.loads(chunk))
-            if len(chunks) > 10:
-                break
 
         assert len(chunks) > 0
         # The first chunk should be from Scientist (Agent ID 1)

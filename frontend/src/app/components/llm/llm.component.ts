@@ -178,6 +178,8 @@ export class LlmComponent implements OnInit, AfterViewChecked {
       name: `Agent ${newId}`,
       description: ''
     });
+    this.cdr.detectChanges(); // Ensure UI updates before scrolling
+    setTimeout(() => this.scrollToBottom(), 100);
     this.saveState();
   }
 
@@ -305,6 +307,42 @@ export class LlmComponent implements OnInit, AfterViewChecked {
     this.conversationStatus = 'Debate Stopped';
   }
 
+  saveLogs(): void {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `debate-log-${timestamp}.txt`;
+
+    let logContent = `MAVROV.DE MULTI-AGENT DEBATE LOG\n`;
+    logContent += `===============================\n`;
+    logContent += `Date: ${new Date().toLocaleString()}\n`;
+    logContent += `Topic: ${this.conversationTopic}\n\n`;
+
+    logContent += `CONFIGURED AGENTS:\n`;
+    this.agents.forEach(agent => {
+      logContent += `- ${this.getAgentName(agent.id)}\n`;
+      logContent += `  Role: ${agent.role || 'N/A'}\n`;
+      logContent += `  Goal: ${agent.goal || 'N/A'}\n`;
+      logContent += `  Description: ${agent.description}\n\n`;
+    });
+
+    logContent += `CONVERSATION:\n`;
+    logContent += `-------------\n`;
+    this.multiMessages.forEach(msg => {
+      logContent += `[${this.getAgentName(msg.agent)}]: ${msg.content}\n\n`;
+    });
+
+    if (this.currentAgentMessage) {
+      logContent += `[${this.getAgentName(this.currentAgentMessage.agent)} (INCOMPLETE)]: ${this.currentAgentMessage.content}\n\n`;
+    }
+
+    const blob = new Blob([logContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
+
   clearMultiDebate(): void {
     // If active, stop it first
     if (this.isConversationActive) {
@@ -350,7 +388,8 @@ export class LlmComponent implements OnInit, AfterViewChecked {
   getAgentName(agentId: number): string {
     const agent = this.agents.find(a => a.id === agentId);
     if (!agent) return `Agent ${agentId}`;
-    return agent.name || (agent.description ? 'Identifying...' : `Agent ${agent.id}`);
+    const name = agent.name || (agent.description ? 'Identifying...' : `Agent ${agent.id}`);
+    return agent.role ? `${agent.role} (${name})` : name;
   }
 
   onAgentDescriptionChange(agentId: number): void {

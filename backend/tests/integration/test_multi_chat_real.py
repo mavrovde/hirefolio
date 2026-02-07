@@ -28,7 +28,7 @@ async def test_real_multi_chat_ollama_connection():
             description="Another friendly bot",
         ),
     ]
-    topic = "Just say hello to each other once."
+    topic = "Just say hello and then STOP. Do not continue."
 
     # Run conversation
     chunks = []
