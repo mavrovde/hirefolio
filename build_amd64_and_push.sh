@@ -19,8 +19,8 @@ echo "   Pushing Backend..."
 podman push "maverickde/mavrov.de-backend:v$VERSION"
 podman push "maverickde/mavrov.de-backend:latest"
 echo "   Cleaning up local Backend images..."
-# docker rmi "maverickde/mavrov.de-backend:v$VERSION" "maverickde/mavrov.de-backend:latest" || true
-# docker system prune -f || true
+# # docker rmi "maverickde/mavrov.de-backend:v$VERSION" "maverickde/mavrov.de-backend:latest" || true
+# # docker system prune -f || true
 
 # 2. Frontend
 echo "2. Building Frontend (AMD64)..."
@@ -29,8 +29,8 @@ echo "   Pushing Frontend..."
 podman push "maverickde/mavrov.de-frontend:v$VERSION"
 podman push "maverickde/mavrov.de-frontend:latest"
 echo "   Cleaning up local Frontend images..."
-# docker rmi "maverickde/mavrov.de-frontend:v$VERSION" "maverickde/mavrov.de-frontend:latest" || true
-# docker system prune -f || true
+## docker rmi "maverickde/mavrov.de-frontend:v$VERSION" "maverickde/mavrov.de-frontend:latest" || true
+## docker system prune -f || true
 
 # 3. Proxy
 echo "3. Building Proxy (AMD64)..."
@@ -39,7 +39,7 @@ echo "   Pushing Proxy..."
 podman push "maverickde/mavrov.de-proxy:v$VERSION"
 podman push "maverickde/mavrov.de-proxy:latest"
 echo "   Cleaning up local Proxy images..."
-# docker rmi "maverickde/mavrov.de-proxy:v$VERSION" "maverickde/mavrov.de-proxy:latest" || true
-# docker system prune -f || true
+# # docker rmi "maverickde/mavrov.de-proxy:v$VERSION" "maverickde/mavrov.de-proxy:latest" || true
+# # docker system prune -f || true
 
 echo "✅ AMD64 Images built, pushed, and cleaned up successfully!"
