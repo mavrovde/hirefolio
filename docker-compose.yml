@@ -37,6 +37,9 @@ services:
         ollama pull llama3.2
         ollama pull tinyllama
         wait
+    environment:
+      - OLLAMA_NUM_PARALLEL=16
+      - OLLAMA_MAX_LOADED_MODELS=4
     networks:
       - app-network
 
