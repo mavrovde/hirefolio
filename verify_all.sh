@@ -19,7 +19,8 @@ fi
 echo ""
 echo "backend: 🐍 Running Static Analysis & Tests..."
 # Start DB if not running
-docker-compose up -d db
+# Start DB with DEV config to ensure ports are exposed
+docker-compose -f docker-compose.yml up -d --force-recreate db
 # Run checks
 cd backend
 /Users/sergii.mavrov/miniconda3/envs/workspace/bin/python3 -m pytest tests
@@ -42,7 +43,7 @@ echo ""
 echo "e2e: 🎭 Running E2E Tests..."
 # Ensure full stack is running
 echo "Starting full stack..."
-docker-compose up -d --build backend frontend proxy
+docker-compose up -d --build backend frontend proxy open-webui
 # Waiting for Health with timeouts instead of fixed sleeps
 echo "Waiting for Backend to be ready..."
 # Portable wait function
@@ -70,6 +71,26 @@ until curl -s -f http://localhost:4200 > /dev/null || [ $count -eq 60 ]; do
         docker-compose logs --tail=10 proxy frontend
     fi
 done
+
+echo "Waiting for Open WebUI to be ready..."
+count=0
+# Wait longer for Open WebUI (can be slow)
+until curl -s -f http://localhost:4200/open/health > /dev/null || [ $count -eq 90 ]; do
+    sleep 2
+    count=$((count + 1))
+    if [ $((count % 5)) -eq 0 ]; then
+        echo "Still waiting for Open WebUI... ($((count * 2))/180s)"
+    fi
+done
+
+if [ $count -eq 90 ]; then
+    echo "❌ Open WebUI failed to start on http://localhost:4200/open/health"
+    docker-compose ps
+    docker-compose logs --tail=20 open-webui
+    # We don't exit here, we let the python script fail with more details if needed, or exit?
+    # Better to exit to save time.
+    exit 1
+fi
 
 if [ $count -eq 60 ]; then
     echo "❌ Frontend failed to start on http://localhost:4200"

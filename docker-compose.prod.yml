@@ -42,7 +42,7 @@ services:
       - app-network
 
   backend:
-    image: ghcr.io/mavrovde/mavrov.de-backend:v1.1.0
+    image: ghcr.io/mavrovde/mavrov.de-backend:v1.1.1
     build: ./backend
     restart: always
     environment:
@@ -61,7 +61,7 @@ services:
       - app-network
 
   frontend:
-    image: ghcr.io/mavrovde/mavrov.de-frontend:v1.1.0
+    image: ghcr.io/mavrovde/mavrov.de-frontend:v1.1.1
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -82,6 +82,7 @@ services:
     restart: always
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
+
     volumes:
       - open-webui_data:/app/backend/data
     depends_on:
@@ -90,7 +91,7 @@ services:
       - app-network
 
   proxy:
-    image: ghcr.io/mavrovde/mavrov.de-proxy:v1.1.0
+    image: ghcr.io/mavrovde/mavrov.de-proxy:v1.1.1
     build: ./proxy
     container_name: global_proxy
     restart: always

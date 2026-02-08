@@ -24,46 +24,38 @@ export class ProfileComponent {
 
   onSubmit() {
     console.log('DEBUG: onSubmit started');
+    if (!this.oldPassword || !this.newPassword) {
+      return;
+    }
+
     this.loading = true;
     this.message = '';
     this.error = '';
     this.statusMessage = 'Requesting password change...';
 
-    // Phase 1: Verification feedback
-    setTimeout(() => {
-      console.log('DEBUG: Phase 1 timeout reached');
-      this.statusMessage = 'Verifying credentials...';
+    // Direct call without artificial delays
+    this.authService.changePassword(this.oldPassword, this.newPassword).subscribe({
+      next: () => {
+        console.log('DEBUG: changePassword success');
+        this.message = 'Password changed successfully.';
+        this.statusMessage = '';
+        this.oldPassword = '';
+        this.newPassword = '';
+        this.loading = false;
 
-      // Phase 2: Actual request
-      console.log('DEBUG: Calling changePassword');
-      this.authService.changePassword(this.oldPassword, this.newPassword).subscribe({
-        next: () => {
-          console.log('DEBUG: changePassword next callback');
-          this.statusMessage = 'Password updated successfully.';
-
-          // Phase 3: Success feedback
-          setTimeout(() => {
-            console.log('DEBUG: Phase 3 timeout reached');
-            this.message = 'Password changed successfully.';
-            this.statusMessage = '';
-            this.oldPassword = '';
-            this.newPassword = '';
-            this.loading = false;
-
-            // Phase 4: Auto-clear success message
-            setTimeout(() => {
-              if (this.message === 'Password changed successfully.') {
-                this.message = '';
-              }
-            }, 5000);
-          }, 500);
-        },
-        error: (err) => {
-          this.error = err.error?.detail || 'Failed to change password.';
-          this.statusMessage = '';
-          this.loading = false;
-        },
-      });
-    }, 500);
+        // Auto-clear success message after 5 seconds
+        setTimeout(() => {
+          if (this.message === 'Password changed successfully.') {
+            this.message = '';
+          }
+        }, 5000);
+      },
+      error: (err) => {
+        console.error('DEBUG: changePassword error', err);
+        this.error = err.error?.detail || 'Failed to change password.';
+        this.statusMessage = '';
+        this.loading = false;
+      },
+    });
   }
 }

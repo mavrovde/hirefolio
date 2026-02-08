@@ -41,7 +41,8 @@ async def verify_proxy_routes():
                 "url": f"{ssl_base_url}{api_prefix}/health",
                 "headers": {"Host": "mavrov.de"},
                 "expected_status": 200,
-                "label": "HTTPS API Health (mavrov.de)"
+                "label": "HTTPS API Health (mavrov.de)",
+                "expected_text": "healthy"
             },
             # 5. Domain HTTPS (Standard)
             {
@@ -56,6 +57,39 @@ async def verify_proxy_routes():
                 "headers": {"Host": "mavrov.de"},
                 "expected_status": [200, 502], # 502 is acceptable if open-webui is still starting
                 "label": "Open WebUI Subpath"
+            },
+             # 6b. Open WebUI Health (via subpath)
+            {
+                "url": f"{ssl_base_url}/open/health",
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": 200,
+                "label": "Open WebUI Health (via /open/)",
+                "expected_text": "true" # Open WebUI returns {"status": true} usually
+            },
+            # 6c. Root Health -> Should be Backend
+            {
+                "url": f"{ssl_base_url}/health",
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": 200,
+                "label": "Root Health -> Backend",
+                "expected_text": "healthy"
+            },
+            # 6d. Manifest.json -> Open WebUI (via subpath)
+            {
+                "url": f"{ssl_base_url}/open/manifest.json",
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": 200,
+                "label": "Open WebUI Manifest (via /open/)",
+                # Open WebUI manifest usually contains "name": "Open WebUI" or similar
+                "expected_text": "Open WebUI" 
+            },
+            # 6e. /static/ -> Open WebUI
+            {
+                "url": f"{ssl_base_url}/static/favicon.png", # Example static file? Or just check 404 from O-WUI but handled by it
+                # Actually, requesting /static/ might give 403 or 404 from O-WUI, but NOT index.html from Frontend
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": [200, 404], 
+                "label": "Root Static -> Open WebUI (Not Frontend)"
             },
             # 6. /open trailing slash redirect
             {
@@ -87,10 +121,16 @@ async def verify_proxy_routes():
                 else:
                     passed = (status == expected)
                 
+                if passed and "expected_text" in test:
+                   if test["expected_text"] not in response.text:
+                       print(f"❌ {test['label']}: FAIL (Content mismatch. Expected '{test['expected_text']}', got '{response.text[:50]}...')")
+                       passed = False
+
                 if passed:
                     print(f"✅ {test['label']}: PASS ({status})")
                 else:
-                    print(f"❌ {test['label']}: FAIL (Got {status}, expected {expected})")
+                    if "expected_text" not in test or (status not in expected if isinstance(expected, list) else status != expected):
+                        print(f"❌ {test['label']}: FAIL (Got {status}, expected {expected})")
                     failed = True
             except (httpx.ConnectError, httpx.RemoteProtocolError, httpx.ReadError):
                 # Nginx returns 444 by closing the connection abruptly, 

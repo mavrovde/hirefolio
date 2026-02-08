@@ -56,6 +56,11 @@ sed -i '' "s|ghcr.io/mavrovde/mavrov.de-backend:v[0-9.]*|ghcr.io/mavrovde/mavrov
 sed -i '' "s|ghcr.io/mavrovde/mavrov.de-frontend:v[0-9.]*|ghcr.io/mavrovde/mavrov.de-frontend:v$VERSION|g" docker-compose.prod.yml
 sed -i '' "s|ghcr.io/mavrovde/mavrov.de-proxy:v[0-9.]*|ghcr.io/mavrovde/mavrov.de-proxy:v$VERSION|g" docker-compose.prod.yml
 
+# 3c. Generate 1Panel Configuration
+echo "Step 1c: Generating docker-compose.1panel.yml..."
+chmod +x generate_1panel_config.sh
+./generate_1panel_config.sh
+
 # 4. Run Full Verification Suite
 echo ""
 echo "Step 2: Running mandatory verification suite..."

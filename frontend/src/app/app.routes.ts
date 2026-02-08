@@ -84,6 +84,7 @@ export const routes: Routes = [
             (m) => m.TagManagerComponent,
           ),
       },
+
       {
         path: 'profile',
         loadComponent: () =>

@@ -6,8 +6,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-mavrov}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
@@ -19,10 +17,8 @@ services:
       - app-network
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.5.7
     restart: always
-    ports:
-      - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
@@ -40,19 +36,14 @@ services:
         ollama pull tinyllama
         wait
     environment:
-      - OLLAMA_NUM_PARALLEL=16
-      - OLLAMA_MAX_LOADED_MODELS=4
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_MAX_LOADED_MODELS=2
     networks:
       - app-network
 
   backend:
-    image: mavrovde-backend:${IMAGE_TAG:-latest}
-    build: ./backend
+    image: ghcr.io/mavrovde/mavrov.de-backend:v1.1.1
     restart: always
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mavrov}
       - OLLAMA_URL=http://ollama:11434
@@ -69,10 +60,7 @@ services:
       - app-network
 
   frontend:
-    image: mavrovde-frontend:${IMAGE_TAG:-latest}
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/mavrovde/mavrov.de-frontend:v1.1.1
     restart: always
     expose:
       - "80"
@@ -85,7 +73,7 @@ services:
       - app-network
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:latest
+    image: ghcr.io/open-webui/open-webui:v0.5.10
     container_name: open-webui
     restart: always
     environment:
@@ -99,15 +87,12 @@ services:
       - app-network
 
   proxy:
-    build: ./proxy
-    image: mavrovde-proxy:${IMAGE_TAG:-latest}
+    image: ghcr.io/mavrovde/mavrov.de-proxy:v1.1.1
     container_name: global_proxy
     restart: always
     ports:
-      - "4200:80"
+      - "80:80"
       - "443:443"
-    volumes:
-      - ./certs:/etc/nginx/ssl
     depends_on:
       - frontend
       - backend

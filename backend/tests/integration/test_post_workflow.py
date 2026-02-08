@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 from httpx import AsyncClient
 from app.models.user import User
 
@@ -8,9 +8,19 @@ mock_admin_user = User(
     id=1, username="admin", email="admin@example.com", is_admin=True, is_active=True
 )
 
+@pytest.fixture(autouse=True)
+def mock_embedding_service(mock_embedding):
+    """Automatically mock get_embedding for all tests in this module."""
+@pytest.fixture(autouse=True)
+def mock_embedding_service(mock_embedding):
+    """Automatically mock get_embedding for all tests in this module."""
+    # Use AsyncMock logic
+    with patch("app.api.posts.get_embedding", new_callable=AsyncMock) as mock_emb:
+        mock_emb.return_value = mock_embedding
+        yield mock_emb
 
 @pytest.mark.asyncio
-async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
+async def test_complete_post_workflow(client: AsyncClient):
     """Test complete post lifecycle: create -> retrieve -> update -> search -> delete."""
 
     # 1. Create a post
@@ -23,54 +33,53 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        create_response = await client.post("/api/app/posts", json=post_data)
+    create_response = await client.post("/api/app/posts", json=post_data)
 
-        assert create_response.status_code == 200
-        created_post = create_response.json()
-        assert created_post["title"] == post_data["title"]
-        post_id = created_post["id"]
+    assert create_response.status_code == 200
+    created_post = create_response.json()
+    assert created_post["title"] == post_data["title"]
+    post_id = created_post["id"]
 
-        # 2. Retrieve the post
-        get_response = await client.get(f"/api/app/posts/{post_data['slug']}")
-        assert get_response.status_code == 200
-        retrieved_post = get_response.json()
-        assert retrieved_post["id"] == post_id
-        assert retrieved_post["content"] == post_data["content"]
+    # 2. Retrieve the post
+    get_response = await client.get(f"/api/app/posts/{post_data['slug']}")
+    assert get_response.status_code == 200
+    retrieved_post = get_response.json()
+    assert retrieved_post["id"] == post_id
+    assert retrieved_post["content"] == post_data["content"]
 
-        # 3. Update the post
-        update_data = {
-            "title": "Updated: Complete Guide to Ollama",
-            "summary": "Updated summary",
-        }
+    # 3. Update the post
+    update_data = {
+        "title": "Updated: Complete Guide to Ollama",
+        "summary": "Updated summary",
+    }
 
-        update_response = await client.put(f"/api/app/posts/{post_id}", json=update_data)
+    update_response = await client.put(f"/api/app/posts/{post_id}", json=update_data)
 
-        assert update_response.status_code == 200
-        updated_post = update_response.json()
-        assert updated_post["title"] == update_data["title"]
-        assert updated_post["summary"] == update_data["summary"]
+    assert update_response.status_code == 200
+    updated_post = update_response.json()
+    assert updated_post["title"] == update_data["title"]
+    assert updated_post["summary"] == update_data["summary"]
 
-        # 4. Search for the post
-        search_response = await client.get(
-            "/api/app/posts/search/semantic?q=ollama+guide&lang=en"
-        )
+    # 4. Search for the post
+    search_response = await client.get(
+        "/api/app/posts/search/semantic?q=ollama+guide&lang=en"
+    )
 
-        assert search_response.status_code == 200
-        search_results = search_response.json()
-        assert isinstance(search_results, list)
+    assert search_response.status_code == 200
+    search_results = search_response.json()
+    assert isinstance(search_results, list)
 
-        # 5. Delete the post
-        delete_response = await client.delete(f"/api/app/posts/{post_id}")
-        assert delete_response.status_code == 200
+    # 5. Delete the post
+    delete_response = await client.delete(f"/api/app/posts/{post_id}")
+    assert delete_response.status_code == 200
 
-        # 6. Verify deletion
-        verify_response = await client.get(f"/api/app/posts/{post_data['slug']}")
-        assert verify_response.status_code == 404
+    # 6. Verify deletion
+    verify_response = await client.get(f"/api/app/posts/{post_data['slug']}")
+    assert verify_response.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_multilingual_posts(client: AsyncClient, mock_embedding):
+async def test_multilingual_posts(client: AsyncClient):
     """Test creating and managing posts in multiple languages."""
 
     posts = [
@@ -90,29 +99,28 @@ async def test_multilingual_posts(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for post in posts:
-            response = await client.post("/api/app/posts", json=post)
-            assert response.status_code == 200
+    for post in posts:
+        response = await client.post("/api/app/posts", json=post)
+        assert response.status_code == 200
 
-        # Verify both posts exist with same slug but different languages
-        en_response = await client.get("/api/app/posts?lang=en")
-        de_response = await client.get("/api/app/posts?lang=de")
+    # Verify both posts exist with same slug but different languages
+    en_response = await client.get("/api/app/posts?lang=en")
+    de_response = await client.get("/api/app/posts?lang=de")
 
-        assert en_response.status_code == 200
-        assert de_response.status_code == 200
+    assert en_response.status_code == 200
+    assert de_response.status_code == 200
 
-        en_posts = en_response.json()["items"]
-        de_posts = de_response.json()["items"]
+    en_posts = en_response.json()["items"]
+    de_posts = de_response.json()["items"]
 
-        assert len(en_posts) == 1
-        assert len(de_posts) == 1
-        assert en_posts[0]["language"] == "en"
-        assert de_posts[0]["language"] == "de"
+    assert len(en_posts) == 1
+    assert len(de_posts) == 1
+    assert en_posts[0]["language"] == "en"
+    assert de_posts[0]["language"] == "de"
 
 
 @pytest.mark.asyncio
-async def test_similar_posts_workflow(client: AsyncClient, mock_embedding):
+async def test_similar_posts_workflow(client: AsyncClient):
     """Test finding similar posts based on content."""
 
     posts = [
@@ -139,13 +147,11 @@ async def test_similar_posts_workflow(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for post in posts:
-            await client.post("/api/app/posts", json=post)
+    for post in posts:
+        await client.post("/api/app/posts", json=post)
 
     # Get similar posts for Ollama Installation
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.get("/api/app/posts/ollama-installation/similar?limit=2")
+    response = await client.get("/api/app/posts/ollama-installation/similar?limit=2")
 
     assert response.status_code == 200
 

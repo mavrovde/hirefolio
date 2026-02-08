@@ -8,15 +8,15 @@ test.describe('AI Suggestions Flow', () => {
       window.localStorage.setItem('cookie_consent', 'true');
     });
     // Login first
-    await page.goto('http://localhost:4200/admin/login');
+    await page.goto('/admin/login');
     await page.fill('input[name="username"]', 'admin');
     await page.fill('input[name="password"]', 'admin');
     await page.click('button[type="submit"]');
-    await expect(page).toHaveURL('http://localhost:4200/admin/dashboard');
+    await expect(page).toHaveURL('/admin/dashboard');
   });
 
   test('should suggest all fields from content', async ({ page }) => {
-    await page.goto('http://localhost:4200/admin/posts/new');
+    await page.goto('/admin/posts/new');
 
     const content =
       'This is a test post about Artificial Intelligence and how it is changing the software development world in 2026.';
@@ -34,7 +34,7 @@ test.describe('AI Suggestions Flow', () => {
   });
 
   test('should suggest title individually', async ({ page }) => {
-    await page.goto('http://localhost:4200/admin/posts/new');
+    await page.goto('/admin/posts/new');
     await page.fill('textarea[id="content"]', 'AI and Future');
 
     await page.click('button[title="Suggest title from content"]');
@@ -43,7 +43,7 @@ test.describe('AI Suggestions Flow', () => {
   });
 
   test('should suggest summary individually', async ({ page }) => {
-    await page.goto('http://localhost:4200/admin/posts/new');
+    await page.goto('/admin/posts/new');
     await page.fill('textarea[id="content"]', 'AI and Future');
 
     await page.click('button[title="Suggest summary from content"]');
@@ -52,7 +52,7 @@ test.describe('AI Suggestions Flow', () => {
   });
 
   test('should suggest tags from title and content', async ({ page }) => {
-    await page.goto('http://localhost:4200/admin/posts/new');
+    await page.goto('/admin/posts/new');
 
     await page.fill('input[id="title"]', 'Future of AI');
     await page.fill('textarea[id="content"]', 'AI is evolving rapidly.');

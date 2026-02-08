@@ -90,19 +90,22 @@ def get_test_async_session():
 
 
 @pytest.fixture(scope="function")
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create a fresh database session for each test using a clean slate strategy."""
+async def init_db():
+    """Initialize the database schema for each test."""
     from app.database import Base
-
     engine = get_test_engine()
 
-    # 1. Reset Database State (Brute force stability to avoid DBAPIError)
+    # Reset Database State
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+    return engine
 
-    # 2. Provide a new session
+
+@pytest.fixture(scope="function")
+async def db_session(init_db) -> AsyncGenerator[AsyncSession, None]:
+    """Create a fresh database session for each test using a clean slate strategy."""
     sessionmaker = get_test_async_session()
     async with sessionmaker() as session:
         yield session

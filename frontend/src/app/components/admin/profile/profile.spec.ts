@@ -42,7 +42,7 @@ describe('ProfileComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  // LOGIC TESTS: Verify internal state ONLY. Do NOT call fixture.detectChanges().
+  // LOGIC TESTS: Verify internal state ONLY.
   it('should handle successful password change (logic)', () => {
     vi.useFakeTimers();
 
@@ -51,28 +51,21 @@ describe('ProfileComponent', () => {
 
     component.onSubmit();
 
-    expect(component.loading).toBe(true);
-    expect(component.statusMessage).toBe('Requesting password change...');
+    expect(component.loading).toBe(false);
+    // No more "Requesting..." phase wait, service is called immediately
 
-    vi.advanceTimersByTime(500);
-    // Phase 1 + Request success
-    expect(component.statusMessage).toBe('Password updated successfully.');
-
-    vi.advanceTimersByTime(500);
-    // Phase 3
+    // Simulate service response
     expect(authServiceMock.changePassword).toHaveBeenCalledWith('old', 'new');
     expect(component.message).toBe('Password changed successfully.');
-    expect(component.loading).toBe(false);
 
+    // Test auto-clear
     vi.advanceTimersByTime(5000);
-    // Phase 4
     expect(component.message).toBe('');
 
     vi.useRealTimers();
   });
 
   it('should handle incorrect old password (logic)', () => {
-    vi.useFakeTimers();
     component.oldPassword = 'wrong';
     component.newPassword = 'new';
 
@@ -84,16 +77,12 @@ describe('ProfileComponent', () => {
     );
 
     component.onSubmit();
-    vi.advanceTimersByTime(500);
 
     expect(component.error).toBe('Incorrect old password');
     expect(component.loading).toBe(false);
-
-    vi.useRealTimers();
   });
 
   it('should handle server error (logic)', () => {
-    vi.useFakeTimers();
     component.oldPassword = 'old';
     component.newPassword = 'new';
 
@@ -105,12 +94,9 @@ describe('ProfileComponent', () => {
     );
 
     component.onSubmit();
-    vi.advanceTimersByTime(500);
 
     expect(component.error).toBe('Internal Server Error');
     expect(component.loading).toBe(false);
-
-    vi.useRealTimers();
   });
 
 

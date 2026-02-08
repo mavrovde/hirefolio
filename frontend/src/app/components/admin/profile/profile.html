@@ -39,7 +39,7 @@
                 </div>
 
                 @if (statusMessage) {
-                <div class="status-message"><span class="status-icon">⚙</span> {{ statusMessage }}</div>
+                <div class="status-messageinfo"><span class="status-icon">ℹ️</span> {{ statusMessage }}</div>
                 }
 
                 @if (message) {
@@ -51,9 +51,13 @@
                 }
 
                 <div class="button-group">
-                    <button type="submit" [disabled]="!passwordForm.valid || loading" class="btn-primary"
+                    <button type="submit" [disabled]="!passwordForm.form.valid || loading" class="btn-primary"
                         [class.is-loading]="loading">
-                        {{ loading ? '[ Processing... ]' : '[ Change Password ]' }}
+                        @if (loading) {
+                        <span class="spinner-small"></span> Processing...
+                        } @else {
+                        [ Change Password ]
+                        }
                     </button>
                 </div>
             </form>

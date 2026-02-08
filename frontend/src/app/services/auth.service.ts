@@ -50,8 +50,9 @@ export class AuthService {
 
   login(username: string, password: string): Observable<User> {
     const body = new HttpParams().set('username', username).set('password', password);
+    const headers = new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded');
 
-    return this.http.post<LoginResponse>(`${this.apiUrl}${environment.apiPrefix}/auth/login`, body).pipe(
+    return this.http.post<LoginResponse>(`${this.apiUrl}${environment.apiPrefix}/auth/login`, body.toString(), { headers }).pipe(
       // Wait for the user to be loaded before completing the login observable
       switchMap((response) => {
         this.setToken(response.access_token);
