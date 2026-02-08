@@ -4,6 +4,8 @@ import { ProfileComponent } from './profile';
 import { AuthService } from '../../../services/auth.service';
 import { BehaviorSubject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
+import { MockTranslatePipe } from '../../../testing/mock-translate.pipe';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 describe('ProfileComponent', () => {
   let component: ProfileComponent;
@@ -25,12 +27,16 @@ describe('ProfileComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [ProfileComponent],
+      imports: [ProfileComponent, MockTranslatePipe],
       providers: [
         provideZonelessChangeDetection(),
         { provide: AuthService, useValue: authServiceMock }
       ]
     })
+      .overrideComponent(ProfileComponent, {
+        remove: { imports: [TranslatePipe] },
+        add: { imports: [MockTranslatePipe] }
+      })
       .compileComponents();
 
     fixture = TestBed.createComponent(ProfileComponent);
@@ -56,7 +62,7 @@ describe('ProfileComponent', () => {
 
     // Simulate service response
     expect(authServiceMock.changePassword).toHaveBeenCalledWith('old', 'new');
-    expect(component.message).toBe('Password changed successfully.');
+    expect(component.message).toBe('ADMIN.PASSWORD_CHANGED_SUCCESS');
 
     // Test auto-clear
     vi.advanceTimersByTime(5000);

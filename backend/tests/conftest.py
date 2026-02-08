@@ -1,28 +1,22 @@
-import sys
-from unittest.mock import MagicMock
 
+import pytest
+from typing import AsyncGenerator
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.main import app
+from app.database import get_db
+from httpx import ASGITransport
 
-# Global mocks for dependencies that require Rust/tiktoken or other system deps
-def pytest_configure(config):
-    import os
+@pytest.fixture(scope="function")
+async def clean_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Create a test client WITHOUT auth overrides."""
+    async def override_get_db():
+        yield db_session
 
-    print(
-        f"DEBUG: pytest_configure running. SKIP_DEPENDENCY_MOCKING={os.environ.get('SKIP_DEPENDENCY_MOCKING')}"
-    )
-    if os.environ.get("SKIP_DEPENDENCY_MOCKING"):
-        return
+    app.dependency_overrides[get_db] = override_get_db
 
-    # Mock CrewAI
-    mock_crewai = MagicMock()
-    sys.modules["crewai"] = mock_crewai
-    # Ensure nested modules and classes are available as mocks
-    mock_crewai.Agent = MagicMock
-    mock_crewai.Task = MagicMock
-    mock_crewai.Crew = MagicMock
-    mock_crewai.Process = MagicMock
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
 
-    # Mock LangChain
-    mock_lc = MagicMock()
-    sys.modules["langchain_community"] = mock_lc
-    sys.modules["langchain_community.chat_models"] = mock_lc
-    mock_lc.ChatOllama = MagicMock
+    app.dependency_overrides.clear()

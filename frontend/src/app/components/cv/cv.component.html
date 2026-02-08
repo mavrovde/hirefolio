@@ -71,6 +71,10 @@
                     </label>
                 </div>
 
+                <div class="form-group">
+                    <p class="text-xs text-secondary mt-2">{{ 'CV.AGREEMENT' | translate }}</p>
+                </div>
+
 
                 <button type="submit" class="btn-primary" [disabled]="cvForm.invalid || isLoading">
                     <span *ngIf="isLoading" class="spinner"></span>

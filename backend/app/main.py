@@ -16,6 +16,7 @@ from app.api.ai import router as ai_router
 
 from app.api.cv import router as cv_router
 from app.api.admin_cv import router as admin_cv_router
+from app.api.admin_sql import router as admin_sql_router
 from app.config import settings
 
 
@@ -194,6 +195,7 @@ app.include_router(tags_router, prefix=settings.api_prefix)
 app.include_router(ai_router, prefix=settings.api_prefix)
 app.include_router(cv_router, prefix=settings.api_prefix)
 app.include_router(admin_cv_router, prefix=settings.api_prefix)
+app.include_router(admin_sql_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

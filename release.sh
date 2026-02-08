@@ -52,9 +52,9 @@ echo "Target Version: v$VERSION"
 
 # 3b. Update production docker-compose with new version
 echo "Step 1b: Updating docker-compose.prod.yml with v$VERSION..."
-sed -i '' "s|ghcr.io/mavrovde/mavrov.de-backend:v[0-9.]*|ghcr.io/mavrovde/mavrov.de-backend:v$VERSION|g" docker-compose.prod.yml
-sed -i '' "s|ghcr.io/mavrovde/mavrov.de-frontend:v[0-9.]*|ghcr.io/mavrovde/mavrov.de-frontend:v$VERSION|g" docker-compose.prod.yml
-sed -i '' "s|ghcr.io/mavrovde/mavrov.de-proxy:v[0-9.]*|ghcr.io/mavrovde/mavrov.de-proxy:v$VERSION|g" docker-compose.prod.yml
+sed -i '' "s|maverickde/mavrov.de-backend:v[0-9.]*|maverickde/mavrov.de-backend:v$VERSION|g" docker-compose.prod.yml
+sed -i '' "s|maverickde/mavrov.de-frontend:v[0-9.]*|maverickde/mavrov.de-frontend:v$VERSION|g" docker-compose.prod.yml
+sed -i '' "s|maverickde/mavrov.de-proxy:v[0-9.]*|maverickde/mavrov.de-proxy:v$VERSION|g" docker-compose.prod.yml
 
 # 3c. Generate 1Panel Configuration
 echo "Step 1c: Generating docker-compose.1panel.yml..."

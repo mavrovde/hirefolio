@@ -73,6 +73,23 @@
     "CV_VERSIONS": "CV Versionen",
     "CV_UPLOAD_COMPLETE": "CV Upload erfolgreich",
     "YES": "Ja",
-    "NO": "Nein"
+    "NO": "Nein",
+    "PROFILE": "Benutzerprofil",
+    "USERNAME": "Benutzername",
+    "ROLE": "Rolle",
+    "CHANGE_PASSWORD": "Passwort ändern",
+    "CURRENT_PASSWORD": "Aktuelles Passwort",
+    "NEW_PASSWORD": "Neues Passwort",
+    "PROCESSING": "Verarbeitung...",
+    "SQL_PANEL": "SQL Panel",
+    "EXECUTE": "Ausführen",
+    "QUERY_PLACEHOLDER": "SQL-Abfrage eingeben...",
+    "QUERY_EXECUTED": "Abfrage erfolgreich ausgeführt.",
+    "NO_RESULTS": "Keine Ergebnisse gefunden.",
+    "PASSWORD_CHANGED_SUCCESS": "Passwort erfolgreich geändert.",
+    "PASSWORD_CHANGE_FAILED": "Passwortänderung fehlgeschlagen.",
+    "REQUESTING_PASSWORD_CHANGE": "Passwortänderung wird angefordert...",
+    "SQL_ERROR": "Ein Fehler ist bei der Ausführung der Abfrage aufgetreten.",
+    "EXECUTING": "Ausführen..."
   }
 }

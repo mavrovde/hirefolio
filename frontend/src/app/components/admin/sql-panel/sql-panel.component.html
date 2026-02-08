@@ -1,0 +1,43 @@
+<div class="container mx-auto p-4">
+    <h2 class="text-2xl font-bold mb-4">{{ 'ADMIN.SQL_PANEL' | translate }}</h2>
+
+    <div class="mb-4">
+        <label for="query" class="block text-sm font-medium text-gray-700">{{ 'ADMIN.QUERY_PLACEHOLDER' | translate
+            }}</label>
+        <textarea id="query" [(ngModel)]="query" rows="5"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="SELECT * FROM users;"></textarea>
+    </div>
+
+    <button (click)="executeQuery()" [disabled]="loading || !query"
+        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+        {{ loading ? ('ADMIN.PROCESSING' | translate) : ('ADMIN.EXECUTE' | translate) }}
+    </button>
+
+    <div *ngIf="error" class="mt-4 p-4 bg-red-100 text-red-700 rounded-md">
+        {{ error | translate }}
+    </div>
+
+    <div *ngIf="result" class="mt-4">
+        <h3 class="text-lg font-medium mb-2">{{ 'ADMIN.QUERY_EXECUTED' | translate }} ({{ result.length }} rows)</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th *ngFor="let col of columns"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {{ col }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr *ngFor="let row of result">
+                        <td *ngFor="let col of columns" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ row[col] }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

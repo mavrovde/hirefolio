@@ -92,6 +92,13 @@ export const routes: Routes = [
             (m) => m.ProfileComponent,
           ),
       },
+      {
+        path: 'sql',
+        loadComponent: () =>
+          import('./components/admin/sql-panel/sql-panel.component').then(
+            (m) => m.SqlPanelComponent,
+          ),
+      },
     ],
   },
 ];
