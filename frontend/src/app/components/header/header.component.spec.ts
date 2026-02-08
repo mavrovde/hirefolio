@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HeaderComponent } from './header.component';
 import { By } from '@angular/platform-browser';
 import { vi, afterEach } from 'vitest';
-import { Router } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
@@ -16,21 +16,21 @@ describe('HeaderComponent', () => {
   let router: any;
 
   beforeEach(async () => {
-    router = {
-      navigate: vi.fn(),
-    };
+
 
     await TestBed.configureTestingModule({
       imports: [HeaderComponent],
       providers: [
+        provideRouter([]),
         { provide: LanguageService, useClass: MockLanguageService },
-        { provide: Router, useValue: router },
       ],
     })
       .compileComponents();
 
     fixture = TestBed.createComponent(HeaderComponent);
     component = fixture.componentInstance;
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate');
     fixture.detectChanges();
   });
 

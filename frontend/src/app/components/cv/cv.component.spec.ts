@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CvComponent } from './cv.component';
 import { CvService } from '../../services/cv.service';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ReactiveFormsModule } from '@angular/forms';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
@@ -30,6 +31,7 @@ describe('CvComponent', () => {
         await TestBed.configureTestingModule({
             imports: [ReactiveFormsModule, HttpClientTestingModule, CvComponent],
             providers: [
+                provideRouter([]),
                 { provide: CvService, useValue: cvService }
             ]
         })

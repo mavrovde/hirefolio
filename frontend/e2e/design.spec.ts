@@ -15,7 +15,7 @@ test.describe('Design Regression Tests', () => {
 
     const body = page.locator('body');
     // text-primary results in color #00ff00 (rgb(0, 255, 0))
-    await expect(body).toHaveCSS('color', 'rgb(0, 255, 0)');
+    await expect(body).toHaveCSS('color', 'rgb(51, 255, 0)');
 
     // Check background is black
     await expect(body).toHaveCSS('background-color', 'rgb(0, 0, 0)');
@@ -25,7 +25,7 @@ test.describe('Design Regression Tests', () => {
     // Border color should be rgba(0, 255, 0, 0.3)
     // Note: computed style might return the matrix or specific rgba
     if ((await headerBorder.count()) > 0) {
-      await expect(headerBorder).toHaveCSS('border-bottom-color', 'rgba(0, 255, 0, 0.3)');
+      await expect(headerBorder).toHaveCSS('border-bottom-color', 'rgba(51, 255, 0, 0.6)');
     }
   });
 

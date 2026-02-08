@@ -59,7 +59,7 @@ test.describe('Admin SQL Panel', () => {
         await page.click('button:has-text("Execute")');
 
         // Expect error message
-        await expect(page.locator('.text-red-700')).toBeVisible();
-        await expect(page.locator('.text-red-700')).toContainText('SQL Execution Error');
+        await expect(page.locator('.border-terminal.text-primary')).toBeVisible();
+        await expect(page.locator('.border-terminal.text-primary')).toContainText('SQL Execution Error');
     });
 });

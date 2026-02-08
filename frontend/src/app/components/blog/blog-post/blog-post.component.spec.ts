@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BlogPostComponent } from './blog-post.component';
 import { BlogService } from '../../../services/blog.service';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { of, throwError, BehaviorSubject } from 'rxjs';
 import { MockTranslatePipe } from '../../../testing/mock-translate.pipe';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -29,17 +29,15 @@ describe('BlogPostComponent', () => {
             getPost: vi.fn(),
         };
 
-        routerSpy = {
-            navigate: vi.fn(),
-        };
+
 
         paramMapSubject = new BehaviorSubject({ get: (key: string) => (key === 'slug' ? 'test-post' : null) });
 
         await TestBed.configureTestingModule({
             imports: [BlogPostComponent, MockTranslatePipe],
             providers: [
+                provideRouter([]),
                 { provide: BlogService, useValue: blogServiceSpy },
-                { provide: Router, useValue: routerSpy },
                 {
                     provide: ActivatedRoute,
                     useValue: { paramMap: paramMapSubject.asObservable() }
@@ -49,6 +47,10 @@ describe('BlogPostComponent', () => {
 
         fixture = TestBed.createComponent(BlogPostComponent);
         component = fixture.componentInstance;
+
+        // Inject router and spy on it
+        routerSpy = TestBed.inject(Router);
+        vi.spyOn(routerSpy, 'navigate');
     });
 
     it('should create', () => {

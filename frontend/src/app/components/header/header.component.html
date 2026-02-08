@@ -6,10 +6,18 @@
 
     <!-- Desktop Menu -->
     <nav class="hidden md:flex items-center gap-8">
-      <a *ngFor="let item of navItems" [href]="item.href" (click)="scrollTo(item.href, $event)"
-        class="text-sm font-bold text-secondary hover:text-white transition-colors font-mono">
-        {{ item.labelKey | translate }}
-      </a>
+      <ng-container *ngFor="let item of navItems">
+        <!-- Internal Route -->
+        <a *ngIf="item.href.startsWith('/')" [routerLink]="item.href" routerLinkActive="text-white bg-primary/20"
+          class="text-sm font-bold text-secondary hover:text-white transition-colors font-mono px-3 py-1 rounded cursor-pointer">
+          {{ item.labelKey | translate }}
+        </a>
+        <!-- Anchor Link -->
+        <a *ngIf="!item.href.startsWith('/')" [href]="item.href" (click)="scrollTo(item.href, $event)"
+          class="text-sm font-bold text-secondary hover:text-white transition-colors font-mono px-3 py-1 rounded cursor-pointer">
+          {{ item.labelKey | translate }}
+        </a>
+      </ng-container>
 
       <!-- Language Switcher -->
       <div class="text-sm font-mono text-secondary flex items-center border-none outline-none ring-0 p-0 m-0"
