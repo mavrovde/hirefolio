@@ -79,24 +79,24 @@ check_status() {
 
 echo "Waiting for backend to be ready (up to 30s)..."
 count=0
-until curl -s -k -f -o /dev/null "http://localhost/api/stats/public" || [ $count -eq 15 ]; do
+until curl -s -k -f -o /dev/null "http://localhost/api/app/stats/public" || [ $count -eq 15 ]; do
     echo "  - Backend not ready yet... (Attempt $((count+1))/15)"
     sleep 2
     count=$((count + 1))
 done
 
 # Check 1: Public Stats (Existing)
-check_status "http://localhost/api/stats/public" "GET" "200"
+check_status "http://localhost/api/app/stats/public" "GET" "200"
 
 # Check 2: Multi-Chat (New Endpoint) - Expect 405 Method Not Allowed for GET (proving existence)
 # or 422 for POST with empty body. Using GET is simpler for existence check.
-check_status "http://localhost/api/ai/multi-chat" "GET" "405"
+check_status "http://localhost/api/app/ai/multi-chat" "GET" "405"
 
 # Check 3: Check Posts (Public Endpoint, replaces Tags which is 401)
-check_status "http://localhost/api/posts" "GET" "200"
+check_status "http://localhost/api/app/posts" "GET" "200"
 
 # Check 4: Generate Name (Another AI public endpoint, expect 405 Method Not Allowed on GET)
-check_status "http://localhost/api/ai/generate-name" "GET" "405"
+check_status "http://localhost/api/app/ai/generate-name" "GET" "405"
 
 # No network connectivity check requested ("do not test something, just successfully start")
 # Just confirming that it didn't crash and started up nicely in the prod env topology.

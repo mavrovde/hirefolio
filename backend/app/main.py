@@ -16,6 +16,7 @@ from app.api.ai import router as ai_router
 
 from app.api.cv import router as cv_router
 from app.api.admin_cv import router as admin_cv_router
+from app.config import settings
 
 
 @asynccontextmanager
@@ -186,13 +187,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router)
-app.include_router(posts_router)
-app.include_router(stats_router)
-app.include_router(tags_router)
-app.include_router(ai_router)
-app.include_router(cv_router)
-app.include_router(admin_cv_router)
+app.include_router(auth_router, prefix=settings.api_prefix)
+app.include_router(posts_router, prefix=settings.api_prefix)
+app.include_router(stats_router, prefix=settings.api_prefix)
+app.include_router(tags_router, prefix=settings.api_prefix)
+app.include_router(ai_router, prefix=settings.api_prefix)
+app.include_router(cv_router, prefix=settings.api_prefix)
+app.include_router(admin_cv_router, prefix=settings.api_prefix)
 
 
 @app.get("/")
@@ -200,6 +201,6 @@ async def root():
     return {"message": "Welcome to Mavrov.de API", "version": app.version}
 
 
-@app.get("/api/health")
+@app.get(f"{settings.api_prefix}/health")
 async def health_check():
     return {"status": "healthy"}
