@@ -39,7 +39,7 @@ test.describe('Admin SQL Panel', () => {
         // Let's rely on actual execution for "SELECT 1" type queries.
 
         // intercept for stability verification
-        const responsePromise = page.waitForResponse(resp => resp.url().includes('/sql/execute') && resp.status() === 200);
+        const responsePromise = page.waitForResponse(resp => resp.url().includes('/sql/execute') && resp.status() === 200 && resp.request().method() === 'POST');
 
         // Click execute
         await page.click('button:has-text("Execute")');
