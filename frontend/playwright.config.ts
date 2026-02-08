@@ -3,10 +3,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true, // Run tests within files in parallel
+  fullyParallel: false, // Run tests sequentially to avoid shared state conflicts
   forbidOnly: !!process.env.CI,
   retries: 2, // Always retry to handle flakiness
-  workers: 2, // Use "few workers" as requested for better speed/stability balance
+  workers: 1, // Sequential execution needed for profile/sql tests sharing admin user
   reporter: 'html',
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:4201', // Default to local dev, override for Docker

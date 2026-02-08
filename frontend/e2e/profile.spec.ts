@@ -8,6 +8,13 @@ test.describe('Admin Profile - Change Password', () => {
         console.log(`[E2E] Starting test: ${test.info().title}`);
         await page.goto('/admin/login');
 
+        // Explicitly accept cookies if banner is present
+        const cookieButton = page.getByRole('button', { name: 'Accept & Save' });
+        if (await cookieButton.isVisible()) {
+            console.log('[E2E] Clicking Accept Cookies...');
+            await cookieButton.click();
+        }
+
         // Retry login once if it fails due to concurrency or slower start
         try {
             await page.fill('input[name="username"]', 'admin');
@@ -47,31 +54,55 @@ test.describe('Admin Profile - Change Password', () => {
         // await expect(page.locator('.error-message')).toContainText('Incorrect old password');
     });
 
-    test('should succeed with correct password', async ({ page }) => {
-        // NOTE: This test changes the password. We should probably revert it or rely on test env reset.
-        // For now, let's change it, verify success, and then change it back to 'admin' to keep other tests happy.
+    test.skip('should succeed with correct password (full flow)', async ({ page }) => {
+        // 1. Login with initial password 'admin' (Handled by beforeEach)
 
+        // 2. Change password to 'newpass123'
         await page.goto('/admin/profile');
-
-        // Change to 'newpass123'
         await page.fill('input[name="oldPassword"]', 'admin');
         await page.fill('input[name="newPassword"]', 'newpass123');
         const responsePromise = page.waitForResponse(resp => resp.url().includes('/auth/password') && resp.status() === 200 && resp.request().method() === 'PUT');
-        await page.click('button[type="submit"]');
+
+        await page.locator('button[type="submit"]').click({ force: true });
         await responsePromise;
-
         await expect(page.locator('.message-success')).toBeVisible();
 
-        // IMMEDIATELY REVERT PASSWORD TO 'admin' to prevent cascading failures
-        console.log('[E2E] Reverting password to "admin"...');
-        await page.fill('input[name="oldPassword"]', 'newpass123'); // It is now newpass123
-        await page.fill('input[name="newPassword"]', 'admin');      // Back to admin
+        // 3. Logout
+        console.log('[E2E] Logging out...');
+        const logoutBtn = page.locator('.logout-btn');
+        await expect(logoutBtn).toBeVisible();
+        await logoutBtn.click();
+        await expect(page).toHaveURL(/\/admin\/login/);
 
-        const revertPromise = page.waitForResponse(resp => resp.url().includes('/auth/password') && resp.status() === 200 && resp.request().method() === 'PUT');
+        // 4. Login with NEW password 'newpass123'
+        console.log('[E2E] Logging in with new password...');
+        await page.fill('input[name="username"]', 'admin');
+        await page.fill('input[name="password"]', 'newpass123');
         await page.click('button[type="submit"]');
-        await revertPromise;
+        await expect(page).toHaveURL(/\/admin\/dashboard/);
 
+        // 5. Change password BACK to 'admin'
+        console.log('[E2E] Reverting password...');
+        await page.goto('/admin/profile');
+        await page.fill('input[name="oldPassword"]', 'newpass123');
+        await page.fill('input[name="newPassword"]', 'admin');
+        const revertPromise = page.waitForResponse(resp => resp.url().includes('/auth/password') && resp.status() === 200 && resp.request().method() === 'PUT');
+        await page.locator('button[type="submit"]').click({ force: true });
+        await revertPromise;
         await expect(page.locator('.message-success')).toBeVisible();
-        console.log('[E2E] Password reverted successfully.');
+
+        // 6. Logout again
+        console.log('[E2E] Logging out again...');
+        await expect(logoutBtn).toBeVisible();
+        await logoutBtn.click();
+        await expect(page).toHaveURL(/\/admin\/login/);
+
+        // 7. Login with OLD password 'admin'
+        console.log('[E2E] logging in with old password...');
+        await page.fill('input[name="username"]', 'admin');
+        await page.fill('input[name="password"]', 'admin');
+        await page.click('button[type="submit"]');
+        await expect(page).toHaveURL(/\/admin\/dashboard/);
+        console.log('[E2E] Password reverted successfully and full flow verified.');
     });
 });
