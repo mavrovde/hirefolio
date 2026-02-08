@@ -36,8 +36,8 @@ services:
         ollama pull tinyllama
         wait
     environment:
-      - OLLAMA_NUM_PARALLEL=16
-      - OLLAMA_MAX_LOADED_MODELS=4
+      - OLLAMA_NUM_PARALLEL=1
+      - OLLAMA_MAX_LOADED_MODELS=1
     networks:
       - app-network
 
