@@ -17,7 +17,7 @@ services:
       - app-network
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.5.7
     restart: always
     volumes:
       - ollama_data:/root/.ollama
@@ -35,17 +35,23 @@ services:
         ollama pull llama3.2
         ollama pull tinyllama
         wait
+    environment:
+      - OLLAMA_NUM_PARALLEL=16
+      - OLLAMA_MAX_LOADED_MODELS=4
     networks:
       - app-network
 
   backend:
-    image: ghcr.io/mavrovde/mavrov.de-backend:${IMAGE_TAG:-latest}
+    image: ghcr.io/mavrovde/mavrov.de-backend:v1.1.0
+    build: ./backend
     restart: always
-
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mavrov}
       - OLLAMA_URL=http://ollama:11434
       - GENERATION_MODEL=llama3.2
+      - FAST_GENERATION_MODEL=tinyllama
+      - OTEL_SDK_DISABLED=true
+      - CREWAI_TELEMETRY_OPT_OUT=true
     depends_on:
       db:
         condition: service_healthy
@@ -55,34 +61,23 @@ services:
       - app-network
 
   frontend:
-    image: ghcr.io/mavrovde/mavrov.de-frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/mavrovde/mavrov.de-frontend:v1.1.0
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     restart: always
+    expose:
+      - "80"
+      - "4000"
     environment:
       - NODE_ENV=production
-    ports:
-      - "4200:80"
     depends_on:
       - backend
     networks:
       - app-network
 
-
-  proxy:
-    image: ghcr.io/mavrovde/mavrov.de-proxy:${IMAGE_TAG:-latest}
-    container_name: global_proxy
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - frontend
-      - open-webui
-    networks:
-      - app-network
-
-
   open-webui:
-    image: ghcr.io/open-webui/open-webui:latest
+    image: ghcr.io/open-webui/open-webui:v0.5.10
     container_name: open-webui
     restart: always
     environment:
@@ -94,6 +89,21 @@ services:
     networks:
       - app-network
 
+  proxy:
+    image: ghcr.io/mavrovde/mavrov.de-proxy:v1.1.0
+    build: ./proxy
+    container_name: global_proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - frontend
+      - backend
+      - open-webui
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
@@ -102,4 +112,3 @@ volumes:
   postgres_data:
   ollama_data:
   open-webui_data:
-

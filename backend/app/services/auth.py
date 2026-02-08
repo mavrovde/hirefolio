@@ -16,9 +16,9 @@ from app.logger import get_logger
 logger = get_logger(__name__)
 
 # OAuth2 scheme for token extraction
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.api_prefix}/auth/login")
 oauth2_scheme_optional = OAuth2PasswordBearer(
-    tokenUrl="/api/auth/login", auto_error=False
+    tokenUrl=f"{settings.api_prefix}/auth/login", auto_error=False
 )
 
 

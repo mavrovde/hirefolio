@@ -18,7 +18,7 @@ export interface AgentConfig {
     providedIn: 'root'
 })
 export class LlmService {
-    private apiUrl = `${environment.apiUrl}/api/ai`;
+    private apiUrl = `${environment.apiUrl}${environment.apiPrefix}/ai`;
 
     constructor() { }
 

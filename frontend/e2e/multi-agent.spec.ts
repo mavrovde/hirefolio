@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { API_PREFIX } from './config';
 
 test.describe('Multi-Agent Conversation', () => {
     test.beforeEach(async ({ page }) => {
@@ -10,8 +11,8 @@ test.describe('Multi-Agent Conversation', () => {
         });
 
         // Mock name generation
-        await page.route('**/api/ai/generate-name', async route => {
-            console.log('[E2E] Mocking /api/ai/generate-name');
+        await page.route(`**${API_PREFIX}/ai/generate-name`, async route => {
+            console.log(`[E2E] Mocking ${API_PREFIX}/ai/generate-name`);
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -20,8 +21,8 @@ test.describe('Multi-Agent Conversation', () => {
         });
 
         // Mock SSE/Streaming for multi-chat
-        await page.route('**/api/ai/multi-chat', async route => {
-            console.log('[E2E] Mocking /api/ai/multi-chat (SSE)');
+        await page.route(`**${API_PREFIX}/ai/multi-chat`, async route => {
+            console.log(`[E2E] Mocking ${API_PREFIX}/ai/multi-chat (SSE)`);
             const body =
                 JSON.stringify({ agent: 1, content: 'Quantum ' }) + '\n' +
                 JSON.stringify({ agent: 1, content: 'physics is ' }) + '\n' +

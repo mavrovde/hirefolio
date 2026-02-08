@@ -35,14 +35,14 @@ describe('CvService', () => {
         const mockResponse = {
             success: true,
             message: 'Sent',
-            download_url: '/api/static/cv.pdf'
+            download_url: `${environment.apiPrefix}/static/cv.pdf`
         };
 
         service.requestCv(mockRequest).subscribe(response => {
             expect(response).toEqual(mockResponse);
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/api/cv/request`);
+        const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/cv/request`);
         expect(req.request.method).toBe('POST');
         expect(req.request.body).toEqual(mockRequest);
         req.flush(mockResponse);
@@ -52,7 +52,7 @@ describe('CvService', () => {
         const originalApiUrl = environment.apiUrl;
         (environment as any).apiUrl = 'http://localhost:8000';
 
-        const relative = '/api/download/cv.pdf';
+        const relative = `${environment.apiPrefix}/download/cv.pdf`;
         const expected = `http://localhost:8000${relative}`;
         expect(service.getDownloadUrl(relative)).toBe(expected);
 
@@ -64,7 +64,7 @@ describe('CvService', () => {
         const originalApiUrl = environment.apiUrl;
         (environment as any).apiUrl = '';
 
-        const relative = '/api/download/cv.pdf';
+        const relative = `${environment.apiPrefix}/download/cv.pdf`;
         expect(service.getDownloadUrl(relative)).toBe(relative);
 
         // Restore

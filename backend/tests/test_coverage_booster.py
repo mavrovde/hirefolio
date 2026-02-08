@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 import json
 import asyncio
@@ -86,24 +87,24 @@ async def test_admin_cv_all_sort_branches(client: AsyncClient):
     # Hit EVERY branch in admin_cv.py
     for sort_by in ["name", "email", "company", "status", "created_at", "invalid"]:
         for sort_order in ["asc", "desc"]:
-            await client.get(f"/api/admin/cv/requests?sort_by={sort_by}&sort_order={sort_order}&search=test")
+            await client.get(f"{settings.api_prefix}/admin/cv/requests?sort_by={sort_by}&sort_order={sort_order}&search=test")
 
     for sort_by in ["version", "filename", "created_at", "invalid"]:
         for sort_order in ["asc", "desc"]:
-            await client.get(f"/api/admin/cv/versions?sort_by={sort_by}&sort_order={sort_order}&search=v1")
+            await client.get(f"{settings.api_prefix}/admin/cv/versions?sort_by={sort_by}&sort_order={sort_order}&search=v1")
 
 @pytest.mark.asyncio
 async def test_posts_all_sort_branches(client: AsyncClient, mock_embedding):
     log("test_posts_sorting")
     for sort_by in ["title", "created_at", "views", "invalid"]:
         for sort_order in ["asc", "desc"]:
-            await client.get(f"/api/posts?sort_by={sort_by}&sort_order={sort_order}&published_only=false")
+            await client.get(f"{settings.api_prefix}/posts?sort_by={sort_by}&sort_order={sort_order}&published_only=false")
 
 @pytest.mark.asyncio
 async def test_cv_extended(client: AsyncClient):
     log("test_cv_extended")
     # Hit line 75->84, 86-100 in admin_cv via different status filters if any
     # Actually cv.py (public) also needs coverage
-    await client.get("/api/cv")
-    await client.post("/api/cv/request", json={"name": "Name", "email": "e@t.com", "company": "C", "message": "Message Content"})
-    await client.get("/api/cv/status/e@t.com")
+    await client.get(f"{settings.api_prefix}/cv")
+    await client.post(f"{settings.api_prefix}/cv/request", json={"name": "Name", "email": "e@t.com", "company": "C", "message": "Message Content"})
+    await client.get(f"{settings.api_prefix}/cv/status/e@t.com")

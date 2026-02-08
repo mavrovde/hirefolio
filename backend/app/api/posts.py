@@ -11,7 +11,7 @@ from app.services.embeddings import get_embedding
 from app.services.auth import get_current_admin_user, get_current_user_optional
 from app.models.user import User
 
-router = APIRouter(prefix="/api/posts", tags=["posts"])
+router = APIRouter(prefix="/posts", tags=["posts"])
 
 
 class PostCreate(BaseModel):

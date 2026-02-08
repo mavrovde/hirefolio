@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,7 +39,7 @@ async def test_change_password_success(db_session: AsyncSession):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.put(
-            "/api/auth/password",
+            f"{settings.api_prefix}/auth/password",
             json={"old_password": user_password, "new_password": "newpassword"},
             headers={"Authorization": f"Bearer {token}"},
         )
@@ -80,7 +81,7 @@ async def test_change_password_incorrect_old(db_session: AsyncSession):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         response = await ac.put(
-            "/api/auth/password",
+            f"{settings.api_prefix}/auth/password",
             json={"old_password": "wrongpassword", "new_password": "newpassword"},
             headers={"Authorization": f"Bearer {token}"},
         )

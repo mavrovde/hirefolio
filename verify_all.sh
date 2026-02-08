@@ -43,11 +43,11 @@ echo "e2e: 🎭 Running E2E Tests..."
 # Ensure full stack is running
 echo "Starting full stack..."
 docker-compose up -d --build backend frontend proxy
-# Wait for health with timeouts instead of fixed sleeps
+# Waiting for Health with timeouts instead of fixed sleeps
 echo "Waiting for Backend to be ready..."
 # Portable wait function
 count=0
-until curl -s -f http://localhost:8000/api/health > /dev/null || [ $count -eq 30 ]; do
+until curl -s -f http://localhost:8000/api/app/health > /dev/null || [ $count -eq 30 ]; do
     sleep 1
     count=$((count + 1))
 done

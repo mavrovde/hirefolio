@@ -4,6 +4,7 @@ from sqlalchemy import select
 from app.models.cv_request import CvRequest
 from app.models.cv_document import CvDocument
 from unittest.mock import patch, MagicMock
+from app.config import settings
 
 @pytest.mark.asyncio
 async def test_cv_request_with_position_description(client: AsyncClient, db_session):
@@ -29,7 +30,7 @@ async def test_cv_request_with_position_description(client: AsyncClient, db_sess
     with patch("app.services.email.email_service.send_cv_request_notification") as mock_notify, \
          patch("app.services.email.email_service.send_requester_confirmation") as mock_confirm:
         
-        response = await client.post("/api/cv/request", json=payload)
+        response = await client.post(f"{settings.api_prefix}/cv/request", json=payload)
         assert response.status_code == 200
         
         # Verify database
@@ -58,7 +59,7 @@ async def test_cv_request_description_max_length(client: AsyncClient, db_session
         "message": "Hello",
         "position_description": long_desc
     }
-    response = await client.post("/api/cv/request", json=payload)
+    response = await client.post(f"{settings.api_prefix}/cv/request", json=payload)
     assert response.status_code == 422 # Pydantic validation error
 
 @pytest.mark.asyncio
@@ -76,7 +77,7 @@ async def test_admin_get_requests_with_description_search(client: AsyncClient, d
     await db_session.commit()
 
     # Search for it
-    response = await client.get("/api/admin/cv/requests?search=Unique")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?search=Unique")
     assert response.status_code == 200
     data = response.json()
 @pytest.mark.asyncio
@@ -88,7 +89,7 @@ async def test_cv_download_tracking(client: AsyncClient, db_session):
     await db_session.commit()
     await db_session.refresh(req)
 
-    response = await client.get(f"/api/cv/download?req_id={req.id}")
+    response = await client.get(f"{settings.api_prefix}/cv/download?req_id={req.id}")
     assert response.status_code == 200
     assert response.content == b"data"
     
@@ -99,7 +100,7 @@ async def test_cv_download_tracking(client: AsyncClient, db_session):
 
 @pytest.mark.asyncio
 async def test_cv_download_no_active(client: AsyncClient, db_session):
-    response = await client.get("/api/cv/download")
+    response = await client.get(f"{settings.api_prefix}/cv/download")
     assert response.status_code == 404
 
 @pytest.mark.asyncio
@@ -125,5 +126,5 @@ async def test_email_service_logic(db_session):
 @pytest.mark.asyncio
 async def test_cv_request_no_active_cv(client: AsyncClient, db_session):
     payload = {"name": "Name", "email": "e@e.com", "message": "message"}
-    response = await client.post("/api/cv/request", json=payload)
+    response = await client.post(f"{settings.api_prefix}/cv/request", json=payload)
     assert response.status_code == 404

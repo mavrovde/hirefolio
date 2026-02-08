@@ -38,7 +38,7 @@ export interface PaginatedResponse<T> {
   providedIn: 'root',
 })
 export class BlogService {
-  private apiUrl = `${environment.apiUrl}/api/posts`;
+  private apiUrl = `${environment.apiUrl}${environment.apiPrefix}/posts`;
 
   constructor(
     private http: HttpClient,

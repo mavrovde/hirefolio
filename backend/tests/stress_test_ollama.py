@@ -1,3 +1,4 @@
+from app.config import settings
 import asyncio
 import httpx
 import time
@@ -7,7 +8,7 @@ import re
 async def login(client):
     print("Logging in as admin...")
     response = await client.post(
-        "http://localhost:8000/api/auth/login",
+        "http://localhost:8000{settings.api_prefix}/auth/login",
         data={"username": "admin", "password": "admin"}
     )
     if response.status_code == 200:
@@ -25,7 +26,7 @@ async def send_request(client, user_id, content, all_secrets, headers):
         # Stronger prompt to ensure tinyllama follows instructions
         prompt_content = f"User {user_id} IDENTIFIER: {content}. You MUST include this IDENTIFIER in the summary. Do not mention any other identifiers."
         response = await client.post(
-            "http://localhost:8000/api/posts/suggest-details",
+            "http://localhost:8000{settings.api_prefix}/posts/suggest-details",
             json={
                 "content": prompt_content,
                 "field": "summary"

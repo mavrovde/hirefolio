@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from unittest.mock import patch
 from httpx import AsyncClient
@@ -20,10 +21,10 @@ async def test_list_posts_include_drafts(client: AsyncClient, mock_embedding):
     }
 
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        await client.post("/api/posts", json=post_data)
+        await client.post(f"{settings.api_prefix}/posts", json=post_data)
 
     # Request as admin (default override) with published_only=false
-    response = await client.get("/api/posts?published_only=false")
+    response = await client.get(f"{settings.api_prefix}/posts?published_only=false")
 
     assert response.status_code == 200
     data = response.json()
@@ -36,7 +37,7 @@ async def test_get_draft_post_as_anon(client: AsyncClient, mock_embedding):
     # 1. Create draft (as admin, default fixture)
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         create_res = await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Draft",
                 "slug": "secret",
@@ -51,7 +52,7 @@ async def test_get_draft_post_as_anon(client: AsyncClient, mock_embedding):
 
     # 3. Try to get as anon
     try:
-        response = await client.get("/api/posts/secret")
+        response = await client.get(f"{settings.api_prefix}/posts/secret")
         assert response.status_code == 404
         assert "not found" in response.json().get("detail", "").lower()
     finally:
@@ -62,7 +63,7 @@ async def test_get_draft_post_as_anon(client: AsyncClient, mock_embedding):
 
 @pytest.mark.asyncio
 async def test_update_post_not_found(client: AsyncClient):
-    response = await client.put("/api/posts/999999", json={"title": "New"})
+    response = await client.put(f"{settings.api_prefix}/posts/999999", json={"title": "New"})
     assert response.status_code == 404
 
 
@@ -71,7 +72,7 @@ async def test_update_post_partial(client: AsyncClient, mock_embedding):
     # Create post
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         create_resp = await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Old",
                 "slug": "partial",
@@ -83,7 +84,7 @@ async def test_update_post_partial(client: AsyncClient, mock_embedding):
 
     # Update only title
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        response = await client.put(f"/api/posts/{post_id}", json={"title": "New"})
+        response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json={"title": "New"})
 
     assert response.status_code == 200
     data = response.json()
@@ -93,13 +94,13 @@ async def test_update_post_partial(client: AsyncClient, mock_embedding):
 
 @pytest.mark.asyncio
 async def test_delete_post_not_found(client: AsyncClient):
-    response = await client.delete("/api/posts/999999")
+    response = await client.delete(f"{settings.api_prefix}/posts/999999")
     assert response.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_similar_posts_not_found(client: AsyncClient):
-    response = await client.get("/api/posts/ghost/similar")
+    response = await client.get(f"{settings.api_prefix}/posts/ghost/similar")
     assert response.status_code == 404
 
 
@@ -108,7 +109,7 @@ async def test_similar_posts_no_embedding(client: AsyncClient, mock_embedding):
     # Create valid post
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "NoEmb",
                 "slug": "no-emb",
@@ -131,7 +132,7 @@ async def test_semantic_search_with_results(client: AsyncClient, mock_embedding)
     # Patch where it is imported in app.api.posts
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "SearchMe",
                 "slug": "search-me",
@@ -141,7 +142,7 @@ async def test_semantic_search_with_results(client: AsyncClient, mock_embedding)
         )
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.get("/api/posts/search/semantic?q=query")
+        response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=query")
 
     assert response.status_code == 200
     assert len(response.json()) > 0
@@ -150,7 +151,7 @@ async def test_semantic_search_with_results(client: AsyncClient, mock_embedding)
 @pytest.mark.asyncio
 async def test_semantic_search_no_language_filter(client: AsyncClient, mock_embedding):
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.get("/api/posts/search/semantic?q=query&lang=")
+        response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=query&lang=")
 
     assert response.status_code == 200
 
@@ -161,7 +162,7 @@ async def test_create_post_too_many_tags(client: AsyncClient, mock_embedding):
     tags = [f"tag{i}" for i in range(6)]
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         response = await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Too Many Tags",
                 "slug": "too-many-tags",
@@ -181,7 +182,7 @@ async def test_update_post_too_many_tags(client: AsyncClient, mock_embedding):
     # Create valid post
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         create_res = await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Valid Tags",
                 "slug": "valid-tags",
@@ -194,7 +195,7 @@ async def test_update_post_too_many_tags(client: AsyncClient, mock_embedding):
 
     # Update with too many tags
     tags = [f"tag{i}" for i in range(6)]
-    response = await client.put(f"/api/posts/{post_id}", json={"tags": tags})
+    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json={"tags": tags})
     assert response.status_code == 422
     assert "Max 5 tags allowed" in response.text
 
@@ -203,7 +204,7 @@ async def test_update_post_too_many_tags(client: AsyncClient, mock_embedding):
 async def test_semantic_search_embedding_unavailable(client: AsyncClient):
     """Test semantic search when embedding service fails (returns None)."""
     with patch("app.api.posts.get_embedding", return_value=None):
-        response = await client.get("/api/posts/search/semantic?q=query")
+        response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=query")
 
     assert response.status_code == 400
     assert "Embedding service unavailable" in response.json()["detail"]
@@ -219,7 +220,7 @@ async def test_similar_posts_missing_embedding(
     # Create post with embedding
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "NoEmbSource",
                 "slug": "no-emb-source",
@@ -236,7 +237,7 @@ async def test_similar_posts_missing_embedding(
     post.embedding = None
     await db_session.commit()
 
-    response = await client.get("/api/posts/no-emb-source/similar")
+    response = await client.get(f"{settings.api_prefix}/posts/no-emb-source/similar")
     assert response.status_code == 200
     assert response.json() == []
 
@@ -249,7 +250,7 @@ async def test_list_posts_drafts_as_anon_force_published(
     # 1. Create draft (as admin)
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Draft",
                 "slug": "d1",
@@ -263,7 +264,7 @@ async def test_list_posts_drafts_as_anon_force_published(
 
     # 3. Request drafts
     try:
-        response = await client.get("/api/posts?published_only=false")
+        response = await client.get(f"{settings.api_prefix}/posts?published_only=false")
         assert response.status_code == 200
         data = response.json()
         items = data["items"]
@@ -278,7 +279,7 @@ async def test_get_draft_post_by_id_as_anon(client: AsyncClient, mock_embedding)
     # 1. Create draft (as admin)
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
         create_res = await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Draft",
                 "slug": "d1-id",
@@ -292,5 +293,5 @@ async def test_get_draft_post_by_id_as_anon(client: AsyncClient, mock_embedding)
     app.dependency_overrides[get_current_user_optional] = lambda: None
 
     # 3. Try to get by ID
-    response = await client.get(f"/api/posts/{post_id}")
+    response = await client.get(f"{settings.api_prefix}/posts/{post_id}")
     assert response.status_code == 404

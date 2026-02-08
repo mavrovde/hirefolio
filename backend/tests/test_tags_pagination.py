@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from httpx import AsyncClient
 from unittest.mock import patch
@@ -6,7 +7,7 @@ from unittest.mock import patch
 @pytest.mark.asyncio
 async def test_tags_pagination_empty(client: AsyncClient):
     """Test tags pagination with no posts."""
-    response = await client.get("/api/tags")
+    response = await client.get(f"{settings.api_prefix}/tags")
     assert response.status_code == 200
     data = response.json()
     assert data["items"] == []
@@ -45,10 +46,10 @@ async def test_tags_list_with_counts(client: AsyncClient, mock_embedding):
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
-            await client.post("/api/posts", json=post)
+            await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # List tags
-    response = await client.get("/api/tags")
+    response = await client.get(f"{settings.api_prefix}/tags")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 3  # docker, python, kubernetes
@@ -76,10 +77,10 @@ async def test_tags_search(client: AsyncClient, mock_embedding):
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
-            await client.post("/api/posts", json=post)
+            await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Search for "docker"
-    response = await client.get("/api/tags?search=docker")
+    response = await client.get(f"{settings.api_prefix}/tags?search=docker")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 2  # docker-compose, docker-swarm
@@ -94,7 +95,7 @@ async def test_tags_search_case_insensitive(client: AsyncClient, mock_embedding)
     """Test that tag search is case-insensitive."""
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Test",
                 "slug": "test",
@@ -105,13 +106,13 @@ async def test_tags_search_case_insensitive(client: AsyncClient, mock_embedding)
         )
 
     # Search with lowercase
-    response = await client.get("/api/tags?search=docker")
+    response = await client.get(f"{settings.api_prefix}/tags?search=docker")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
 
     # Search with uppercase
-    response = await client.get("/api/tags?search=DOCKER")
+    response = await client.get(f"{settings.api_prefix}/tags?search=DOCKER")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
@@ -122,7 +123,7 @@ async def test_tags_sort_by_name(client: AsyncClient, mock_embedding):
     """Test sorting tags by name."""
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Test",
                 "slug": "test",
@@ -133,7 +134,7 @@ async def test_tags_sort_by_name(client: AsyncClient, mock_embedding):
         )
 
     # Sort by name ascending
-    response = await client.get("/api/tags?sort_by=name&sort_order=asc")
+    response = await client.get(f"{settings.api_prefix}/tags?sort_by=name&sort_order=asc")
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "alpha"
@@ -141,7 +142,7 @@ async def test_tags_sort_by_name(client: AsyncClient, mock_embedding):
     assert data["items"][2]["name"] == "zebra"
 
     # Sort by name descending
-    response = await client.get("/api/tags?sort_by=name&sort_order=desc")
+    response = await client.get(f"{settings.api_prefix}/tags?sort_by=name&sort_order=desc")
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "zebra"
@@ -177,10 +178,10 @@ async def test_tags_sort_by_count(client: AsyncClient, mock_embedding):
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
-            await client.post("/api/posts", json=post)
+            await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Sort by count descending (default)
-    response = await client.get("/api/tags?sort_by=count&sort_order=desc")
+    response = await client.get(f"{settings.api_prefix}/tags?sort_by=count&sort_order=desc")
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "common"
@@ -189,7 +190,7 @@ async def test_tags_sort_by_count(client: AsyncClient, mock_embedding):
     assert data["items"][1]["count"] == 1
 
     # Sort by count ascending
-    response = await client.get("/api/tags?sort_by=count&sort_order=asc")
+    response = await client.get(f"{settings.api_prefix}/tags?sort_by=count&sort_order=asc")
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "rare"
@@ -204,7 +205,7 @@ async def test_tags_pagination(client: AsyncClient, mock_embedding):
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Test",
                 "slug": "test",
@@ -214,7 +215,7 @@ async def test_tags_pagination(client: AsyncClient, mock_embedding):
             },
         )
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Test2",
                 "slug": "test2",
@@ -224,7 +225,7 @@ async def test_tags_pagination(client: AsyncClient, mock_embedding):
             },
         )
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Test3",
                 "slug": "test3",
@@ -235,7 +236,7 @@ async def test_tags_pagination(client: AsyncClient, mock_embedding):
         )
 
     # Get first page
-    response = await client.get("/api/tags?page=1&page_size=10")
+    response = await client.get(f"{settings.api_prefix}/tags?page=1&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 15
@@ -243,7 +244,7 @@ async def test_tags_pagination(client: AsyncClient, mock_embedding):
     assert data["total_pages"] == 2
 
     # Get second page
-    response = await client.get("/api/tags?page=2&page_size=10")
+    response = await client.get(f"{settings.api_prefix}/tags?page=2&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 5
@@ -281,11 +282,11 @@ async def test_tags_combined_search_sort_pagination(
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
-            await client.post("/api/posts", json=post)
+            await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Search for "docker", sort by name asc, page_size=2
     response = await client.get(
-        "/api/tags?search=docker&sort_by=name&sort_order=asc&page=1&page_size=2"
+        f"{settings.api_prefix}/tags?search=docker&sort_by=name&sort_order=asc&page=1&page_size=2"
     )
     assert response.status_code == 200
     data = response.json()
@@ -296,7 +297,7 @@ async def test_tags_combined_search_sort_pagination(
 
     # Get second page
     response = await client.get(
-        "/api/tags?search=docker&sort_by=name&sort_order=asc&page=2&page_size=2"
+        f"{settings.api_prefix}/tags?search=docker&sort_by=name&sort_order=asc&page=2&page_size=2"
     )
     assert response.status_code == 200
     data = response.json()
@@ -310,7 +311,7 @@ async def test_tags_no_results_search(client: AsyncClient, mock_embedding):
     """Test search with no matching tags."""
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": "Test",
                 "slug": "test",
@@ -320,7 +321,7 @@ async def test_tags_no_results_search(client: AsyncClient, mock_embedding):
             },
         )
 
-    response = await client.get("/api/tags?search=NoMatchHere")
+    response = await client.get(f"{settings.api_prefix}/tags?search=NoMatchHere")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 0

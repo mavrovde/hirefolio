@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from httpx import AsyncClient
 from app.models.user import User
@@ -34,7 +35,7 @@ async def test_login_success(client: AsyncClient, db_session):
 
     # Login
     response = await client.post(
-        "/api/auth/login",
+        f"{settings.api_prefix}/auth/login",
         data={"username": "loginuser", "password": password},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
@@ -48,7 +49,7 @@ async def test_login_success(client: AsyncClient, db_session):
 @pytest.mark.asyncio
 async def test_login_failure(client: AsyncClient):
     response = await client.post(
-        "/api/auth/login",
+        f"{settings.api_prefix}/auth/login",
         data={"username": "nonexistent", "password": "wrongpassword"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
@@ -69,7 +70,7 @@ async def test_login_inactive_user(client: AsyncClient, db_session):
     await db_session.commit()
 
     response = await client.post(
-        "/api/auth/login",
+        f"{settings.api_prefix}/auth/login",
         data={"username": "inactiveuser", "password": password},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
@@ -85,7 +86,7 @@ async def test_change_password_success(client: AsyncClient, db_session):
     # The endpoint change_password uses current_user.
 
     response = await client.put(
-        "/api/auth/password",
+        f"{settings.api_prefix}/auth/password",
         json={"old_password": "admin", "new_password": "newpass"},
     )
     assert response.status_code == 204
@@ -99,7 +100,7 @@ async def test_change_password_success(client: AsyncClient, db_session):
 @pytest.mark.asyncio
 async def test_change_password_invalid_old(client: AsyncClient, db_session):
     response = await client.put(
-        "/api/auth/password",
+        f"{settings.api_prefix}/auth/password",
         json={"old_password": "wrongpass", "new_password": "newpass"},
     )
     assert response.status_code == 400

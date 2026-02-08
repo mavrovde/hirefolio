@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { API_PREFIX } from './config';
 
 test.describe('LLM Terminal', () => {
     test.beforeEach(async ({ page }) => {
@@ -20,7 +21,7 @@ test.describe('LLM Terminal', () => {
     test('should handle multi-chunk streaming response', async ({ page }) => {
         const chunks = ['Hello ', 'this ', 'is ', 'a ', 'streamed ', 'response.'];
 
-        await page.route('**/api/ai/chat', async (route) => {
+        await page.route(`**${API_PREFIX}/ai/chat`, async (route) => {
             await new Promise(resolve => setTimeout(resolve, 100)); // Simulate delay
             await route.fulfill({
                 status: 200,
@@ -45,7 +46,7 @@ test.describe('LLM Terminal', () => {
         const uniqueMessage = `FIXME_STABILITY_${Date.now()}`;
 
         // Mock response to avoid real AI adding same text
-        await page.route('**/api/ai/chat', async (route) => {
+        await page.route(`**${API_PREFIX}/ai/chat`, async (route) => {
             await route.fulfill({
                 status: 200,
                 contentType: 'text/event-stream',
@@ -67,7 +68,7 @@ test.describe('LLM Terminal', () => {
     });
 
     test('should handle API errors gracefully', async ({ page }) => {
-        await page.route('**/api/ai/chat', async (route) => {
+        await page.route(`**${API_PREFIX}/ai/chat`, async (route) => {
             await new Promise(resolve => setTimeout(resolve, 100));
             await route.abort('failed');
         });
@@ -92,7 +93,7 @@ test.describe('LLM Terminal', () => {
 
     test('should maintain focus on input after interaction', async ({ page }) => {
         // Mock API with delay
-        await page.route('**/api/ai/chat', async (route) => {
+        await page.route(`**${API_PREFIX}/ai/chat`, async (route) => {
             await new Promise(resolve => setTimeout(resolve, 200));
             await route.fulfill({
                 status: 200,

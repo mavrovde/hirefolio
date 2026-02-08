@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from unittest.mock import AsyncMock, patch
 from sqlalchemy.future import select
@@ -29,12 +30,12 @@ async def test_cv_request_success(client, db_session):
             "company": "Big Tech",
             "message": "Interested in your profile.",
         }
-        response = await client.post("/api/cv/request", json=payload)
+        response = await client.post(f"{settings.api_prefix}/cv/request", json=payload)
 
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        assert "/api/cv/download" in data["download_url"]
+        assert f"{settings.api_prefix}/cv/download" in data["download_url"]
 
         # Check DB
         result = await db_session.execute(
@@ -57,7 +58,7 @@ async def test_cv_request_validation_error(client):
         "company": "Startup",
         "message": "Valid message",
     }
-    response = await client.post("/api/cv/request", json=payload)
+    response = await client.post(f"{settings.api_prefix}/cv/request", json=payload)
     assert response.status_code == 422
 
 
@@ -68,7 +69,7 @@ async def test_cv_request_short_message_422(client):
         "email": "short@example.com",
         "message": "123",  # Too short (min 5)
     }
-    response = await client.post("/api/cv/request", json=payload)
+    response = await client.post(f"{settings.api_prefix}/cv/request", json=payload)
     assert response.status_code == 422
 
 
@@ -80,7 +81,7 @@ async def test_cv_request_no_cv_available_404(client, db_session):
         "email": "fail@example.com",
         "message": "Valid message length",
     }
-    response = await client.post("/api/cv/request", json=payload)
+    response = await client.post(f"{settings.api_prefix}/cv/request", json=payload)
     assert response.status_code == 404
     assert "CV_ERROR_UNAVAILABLE" == response.json()["detail"]
 
@@ -88,7 +89,7 @@ async def test_cv_request_no_cv_available_404(client, db_session):
 @pytest.mark.asyncio
 async def test_download_cv_not_found(client, db_session):
     # No CV in DB
-    response = await client.get("/api/cv/download")
+    response = await client.get(f"{settings.api_prefix}/cv/download")
     assert response.status_code == 404
     assert response.json()["detail"] == "CV_ERROR_UNAVAILABLE"
 
@@ -109,7 +110,7 @@ async def test_download_cv_db_success(client, db_session):
     db_session.add(doc)
     await db_session.commit()
 
-    response = await client.get("/api/cv/download")
+    response = await client.get(f"{settings.api_prefix}/cv/download")
     assert response.status_code == 200
     assert response.content == b"db pdf content"
 
@@ -143,7 +144,7 @@ async def test_download_cv_with_tracking(client, db_session):
     await db_session.commit()
 
     # Download with req_id
-    response = await client.get(f"/api/cv/download?req_id={str(req_id)}")
+    response = await client.get(f"{settings.api_prefix}/cv/download?req_id={str(req_id)}")
     assert response.status_code == 200
     assert response.content == b"pdf data"
 
@@ -189,7 +190,7 @@ async def test_cv_request_exception(client):
             "email": "recruiter@example.com",
             "message": "Valid message long",
         }
-        response = await client.post("/api/cv/request", json=payload)
+        response = await client.post(f"{settings.api_prefix}/cv/request", json=payload)
 
         assert response.status_code == 500
         assert response.json()["detail"] == "Failed to process request"
@@ -198,5 +199,5 @@ async def test_cv_request_exception(client):
 @pytest.mark.asyncio
 async def test_download_cv_exception(client):
     with patch("app.api.cv.select", side_effect=Exception("DB Error")):
-        response = await client.get("/api/cv/download")
+        response = await client.get(f"{settings.api_prefix}/cv/download")
         assert response.status_code == 500

@@ -1,57 +1,72 @@
 import httpx
 import sys
 import asyncio
+import os
 
 async def verify_proxy_routes():
+    # Use 80 for prod env, 4200 for dev env
+    port = os.getenv("PROXY_PORT", "4200")
+    base_url = f"http://localhost:{port}"
+    ssl_base_url = "https://localhost"
+    
+    api_prefix = os.getenv("API_PREFIX", "/api/app")
+    
     # We use verify=False because local SSL certs might not be trusted by httpx
     # We use timeout=10.0 to allow for backend startup
     async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
         tests = [
-            # 1. Localhost HTTP (Standard mapped to 4200)
+            # 1. API Health
             {
-                "url": "http://localhost:4200/",
+                "url": f"{base_url}{api_prefix}/health",
                 "headers": {"Host": "localhost"},
                 "expected_status": 200,
-                "label": "Localhost HTTP -> Frontend"
+                "label": "API Health (localhost)"
             },
-            # 2. Localhost API
+            # 2. Main Site
             {
-                "url": "http://localhost:4200/api/health",
+                "url": f"{base_url}/",
                 "headers": {"Host": "localhost"},
                 "expected_status": 200,
-                "label": "Localhost API -> Backend"
+                "label": "Main Site (localhost)"
             },
-            # 3. Domain HTTP -> HTTPS Redirect
+            # 3. Production Domain -> Redirect to HTTPS
             {
-                "url": "http://localhost:4200/",
+                "url": f"{base_url}/",
                 "headers": {"Host": "mavrov.de"},
                 "expected_status": 301,
-                "label": "Domain HTTP -> HTTPS Redirect"
+                "label": "Production Host -> HTTPS Redirect"
             },
-            # 4. Domain HTTPS (Standard)
+            # 4. HTTPS Production Domain API
             {
-                "url": "https://localhost/",
+                "url": f"{ssl_base_url}{api_prefix}/health",
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": 200,
+                "label": "HTTPS API Health (mavrov.de)"
+            },
+            # 5. Domain HTTPS (Standard)
+            {
+                "url": f"{ssl_base_url}/",
                 "headers": {"Host": "mavrov.de"},
                 "expected_status": 200,
                 "label": "Domain HTTPS -> Frontend"
             },
-            # 5. /ai subpath
+            # 6. /open subpath
             {
-                "url": "https://localhost/ai/",
+                "url": f"{ssl_base_url}/open/",
                 "headers": {"Host": "mavrov.de"},
                 "expected_status": [200, 502], # 502 is acceptable if open-webui is still starting
-                "label": "AI Subpath -> Open WebUI"
+                "label": "Open WebUI Subpath"
             },
-            # 6. /ai trailing slash redirect
+            # 6. /open trailing slash redirect
             {
-                "url": "https://localhost/ai",
+                "url": f"{ssl_base_url}/open",
                 "headers": {"Host": "mavrov.de"},
                 "expected_status": 301,
-                "label": "AI Trailing Slash Redirect"
+                "label": "Open WebUI Trailing Slash Redirect"
             },
             # 7. Default rejection (Unknown host)
             {
-                "url": "http://localhost/",
+                "url": f"{base_url}/",
                 "headers": {"Host": "unknown.com"},
                 "expected_status": 444, # Nginx custom status for closed connection
                 "label": "Unknown Host -> Reject (444)"
@@ -77,16 +92,16 @@ async def verify_proxy_routes():
                 else:
                     print(f"❌ {test['label']}: FAIL (Got {status}, expected {expected})")
                     failed = True
-            except httpx.ConnectError:
+            except (httpx.ConnectError, httpx.RemoteProtocolError, httpx.ReadError):
                 # Nginx returns 444 by closing the connection abruptly, 
-                # which httpx might catch as a ConnectionError/ConnectError depending on the timing.
+                # which httpx can catch as various connection/protocol errors.
                 if test["expected_status"] == 444:
                     print(f"✅ {test['label']}: PASS (Connection closed as expected)")
                 else:
-                    print(f"❌ {test['label']}: FAIL (Connection Error)")
+                    print(f"❌ {test['label']}: FAIL (Unexpected Connection/Protocol Error)")
                     failed = True
             except Exception as e:
-                print(f"❌ {test['label']}: ERROR ({str(e)})")
+                print(f"❌ {test['label']}: ERROR ({type(e).__name__}: {str(e)})")
                 failed = True
 
         print("="*30)

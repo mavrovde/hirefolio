@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { LlmService, ChatMessage } from './llm.service';
+import { environment } from '../../environments/environment';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 describe('LlmService', () => {
@@ -128,7 +129,7 @@ describe('LlmService', () => {
 
             await service.multiChat(agents, topic, onChunk, onDone);
 
-            expect(globalThis.fetch).toHaveBeenCalledWith('/api/ai/multi-chat', expect.objectContaining({
+            expect(globalThis.fetch).toHaveBeenCalledWith(`${environment.apiUrl}${environment.apiPrefix}/ai/multi-chat`, expect.objectContaining({
                 method: 'POST',
                 body: JSON.stringify({ agents, topic })
             }));

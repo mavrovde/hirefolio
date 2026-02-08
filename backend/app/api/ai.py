@@ -5,7 +5,7 @@ from typing import List, Dict
 from app.services.chat import chat_with_llm
 from app.services.multi_chat import multi_agent_conversation, AgentConfig
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 class ChatRequest(BaseModel):

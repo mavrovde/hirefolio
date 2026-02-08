@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from httpx import AsyncClient
 
@@ -8,7 +9,7 @@ async def test_stats_endpoint_admin(client: AsyncClient):
     # Create some data first
     # Using client which mocks auth
     await client.post(
-        "/api/posts",
+        f"{settings.api_prefix}/posts",
         json={
             "title": "P1",
             "slug": "p1",
@@ -18,7 +19,7 @@ async def test_stats_endpoint_admin(client: AsyncClient):
         },
     )
     await client.post(
-        "/api/posts",
+        f"{settings.api_prefix}/posts",
         json={
             "title": "P2",
             "slug": "p2",
@@ -28,7 +29,7 @@ async def test_stats_endpoint_admin(client: AsyncClient):
         },
     )
 
-    response = await client.get("/api/stats")
+    response = await client.get(f"{settings.api_prefix}/stats")
     assert response.status_code == 200
     data = response.json()
 
@@ -67,7 +68,7 @@ async def test_stats_endpoint_unauthorized(client: AsyncClient):
     # Remove the override for this test
     app.dependency_overrides = {}
 
-    response = await client.get("/api/stats")
+    response = await client.get(f"{settings.api_prefix}/stats")
     assert response.status_code == 401
 
     # Restore override (though conftest should handle it, but we modified app global)
@@ -92,14 +93,14 @@ async def test_stats_ai_service_health_check(client: AsyncClient):
     mock_client_instance.__aexit__.return_value = None
 
     with patch("httpx.AsyncClient", return_value=mock_client_instance):
-        response = await client.get("/api/stats")
+        response = await client.get(f"{settings.api_prefix}/stats")
         assert response.status_code == 200
         assert response.json()["system_health"]["ai_service"] is True
 
     # Mock failure (exception)
     mock_client_instance.get.side_effect = Exception("Connection error")
     with patch("httpx.AsyncClient", return_value=mock_client_instance):
-        response = await client.get("/api/stats")
+        response = await client.get(f"{settings.api_prefix}/stats")
         assert response.status_code == 200
         assert response.json()["system_health"]["ai_service"] is False
 
@@ -144,9 +145,9 @@ async def test_stats_with_tags_and_languages(client: AsyncClient):
     ]
 
     for p in posts:
-        await client.post("/api/posts", json=p)
+        await client.post(f"{settings.api_prefix}/posts", json=p)
 
-    response = await client.get("/api/stats")
+    response = await client.get(f"{settings.api_prefix}/stats")
     assert response.status_code == 200
     data = response.json()
 
@@ -168,7 +169,7 @@ async def test_stats_with_tags_and_languages(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_get_public_stats(client: AsyncClient):
     """Test public stats endpoint."""
-    response = await client.get("/api/stats/public")
+    response = await client.get(f"{settings.api_prefix}/stats/public")
     assert response.status_code == 200
     data = response.json()
     assert "visitor_ip" in data
@@ -180,7 +181,7 @@ async def test_get_public_stats(client: AsyncClient):
 async def test_get_public_stats_with_forwarded_for(client: AsyncClient):
     """Test public stats with X-Forwarded-For header."""
     response = await client.get(
-        "/api/stats/public", headers={"X-Forwarded-For": "1.2.3.4, 5.6.7.8"}
+        f"{settings.api_prefix}/stats/public", headers={"X-Forwarded-For": "1.2.3.4, 5.6.7.8"}
     )
     assert response.status_code == 200
     assert response.json()["visitor_ip"] == "1.2.3.4"

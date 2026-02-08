@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { API_PREFIX } from './config';
 import { Buffer } from 'node:buffer';
 
 test.describe('Admin CV Management', () => {
@@ -23,7 +24,7 @@ test.describe('Admin CV Management', () => {
     test('should display CV requests with download status', async ({ page }) => {
         console.log('[E2E] Mocking CV requests API...');
         // Intercept requests list before navigation - added wildcard for query params
-        await page.route('**/api/admin/cv/requests*', async route => {
+        await page.route(`**${API_PREFIX}/admin/cv/requests*`, async route => {
             console.log('[E2E] Intercepted /api/admin/cv/requests');
             await route.fulfill({
                 status: 200,
@@ -51,7 +52,7 @@ test.describe('Admin CV Management', () => {
 
         console.log('[E2E] Navigating to CV Manager...');
         const responsePromise = page.waitForResponse(response =>
-            response.url().includes('/api/admin/cv/requests') && response.status() === 200
+            response.url().includes(`${API_PREFIX}/admin/cv/requests`) && response.status() === 200
         );
         await page.goto('/admin/cv-manager');
         await responsePromise;
@@ -86,7 +87,7 @@ test.describe('Admin CV Management', () => {
         console.log(`[E2E] Starting upload test with version: ${testVersion}`);
 
         // Intercept upload request
-        await page.route('**/api/admin/cv/upload*', async route => {
+        await page.route(`**${API_PREFIX}/admin/cv/upload*`, async route => {
             console.log('[E2E] Intercepted /api/admin/cv/upload');
             await route.fulfill({
                 status: 200,
@@ -96,7 +97,7 @@ test.describe('Admin CV Management', () => {
         });
 
         // Intercept versions list to include the new version
-        await page.route('**/api/admin/cv/versions*', async route => {
+        await page.route(`**${API_PREFIX}/admin/cv/versions*`, async route => {
             console.log('[E2E] Intercepted /api/admin/cv/versions');
             await route.fulfill({
                 status: 200,

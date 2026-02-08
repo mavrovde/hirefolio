@@ -11,7 +11,7 @@ from app.models.cv_request import CvRequest
 from app.models.user import User
 from app.logger import logger
 
-router = APIRouter(prefix="/api/admin/cv", tags=["Admin CV"])
+router = APIRouter(prefix="/admin/cv", tags=["admin-cv"])
 
 
 class PaginatedResponse(BaseModel):

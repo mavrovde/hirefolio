@@ -31,7 +31,7 @@ export interface SystemStats {
   providedIn: 'root',
 })
 export class StatsService {
-  private apiUrl = `${environment.apiUrl}/api/stats`;
+  private apiUrl = `${environment.apiUrl}${environment.apiPrefix}/stats`;
 
   constructor(private http: HttpClient) { }
 

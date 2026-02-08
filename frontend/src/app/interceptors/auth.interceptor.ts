@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
+import { environment } from '../../environments/environment';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
@@ -10,7 +11,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = authService.getToken();
 
   // Clone request and add authorization header if token exists AND not logging in
-  if (token && !req.url.includes('/api/auth/login')) {
+  if (token && !req.url.includes(`${environment.apiPrefix}/auth/login`)) {
     req = req.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`,
@@ -21,7 +22,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error) => {
       // Handle 401 Unauthorized or 403 Forbidden
-      if ((error.status === 401 || error.status === 403) && !req.url.includes('/api/auth/login')) {
+      if ((error.status === 401 || error.status === 403) && !req.url.includes(`${environment.apiPrefix}/auth/login`)) {
         authService.logout();
         router.navigate(['/admin/login']);
       }

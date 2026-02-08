@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { API_PREFIX } from './config';
 
 test.describe('Post Management', () => {
   test.setTimeout(60000); // Reduced from 300s since AI is now mocked
@@ -7,7 +8,7 @@ test.describe('Post Management', () => {
     console.log(`[E2E] Starting test: ${test.info().title}`);
 
     // Mock AI tag suggestion
-    await page.route('**/api/posts/suggest-tags', async route => {
+    await page.route(`**${API_PREFIX}/posts/suggest-tags`, async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -16,7 +17,7 @@ test.describe('Post Management', () => {
     });
 
     // Mock AI detail suggestion (bulk and individual)
-    await page.route('**/api/posts/suggest-details', async route => {
+    await page.route(`**${API_PREFIX}/posts/suggest-details`, async route => {
       const data = {
         title: 'AI Suggested Title',
         slug: 'ai-suggested-slug',

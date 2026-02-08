@@ -19,7 +19,7 @@ export interface PaginatedResponse<T> {
   providedIn: 'root',
 })
 export class TagsService {
-  private apiUrl = `${environment.apiUrl}/api/tags`;
+  private apiUrl = `${environment.apiUrl}${environment.apiPrefix}/tags`;
 
   constructor(private http: HttpClient) { }
 

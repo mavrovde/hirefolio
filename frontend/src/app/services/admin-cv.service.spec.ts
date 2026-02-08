@@ -32,7 +32,7 @@ describe('AdminCvService', () => {
             expect(response).toBeTruthy();
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/api/admin/cv/upload`);
+        const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/admin/cv/upload`);
         expect(req.request.method).toBe('POST');
         expect(req.request.body.get('version')).toBe(version);
         req.flush({ success: true });
@@ -53,7 +53,7 @@ describe('AdminCvService', () => {
             expect(response.total).toBe(1);
         });
 
-        const req = httpMock.expectOne((request) => request.url === `${environment.apiUrl}/api/admin/cv/requests`);
+        const req = httpMock.expectOne((request) => request.url === `${environment.apiUrl}${environment.apiPrefix}/admin/cv/requests`);
         expect(req.request.method).toBe('GET');
         expect(req.request.params.get('page')).toBe('1');
         expect(req.request.params.get('page_size')).toBe('10');
@@ -75,7 +75,7 @@ describe('AdminCvService', () => {
             expect(response.total).toBe(1);
         });
 
-        const req = httpMock.expectOne((request) => request.url === `${environment.apiUrl}/api/admin/cv/versions`);
+        const req = httpMock.expectOne((request) => request.url === `${environment.apiUrl}${environment.apiPrefix}/admin/cv/versions`);
         expect(req.request.method).toBe('GET');
         expect(req.request.params.get('page')).toBe('1');
         expect(req.request.params.get('page_size')).toBe('10');

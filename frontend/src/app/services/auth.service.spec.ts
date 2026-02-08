@@ -68,11 +68,11 @@ describe('AuthService', () => {
         expect(res).toEqual(mockResponse);
       });
 
-      const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/login`);
+      const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/auth/login`);
       expect(req.request.method).toBe('POST');
       req.flush(mockResponse);
 
-      const meReq = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
+      const meReq = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/auth/me`);
       meReq.flush(mockUser);
 
       expect(window.localStorage.setItem).toHaveBeenCalledWith('auth_token', 'fake-token');
@@ -96,7 +96,7 @@ describe('AuthService', () => {
 
       service.changePassword(oldPwd, newPwd).subscribe();
 
-      const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/password`);
+      const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/auth/password`);
       expect(req.request.method).toBe('PUT');
       expect(req.request.body).toEqual({ old_password: oldPwd, new_password: newPwd });
       req.flush(null);
@@ -110,7 +110,7 @@ describe('AuthService', () => {
       const newService = TestBed.inject(AuthService);
       vi.runAllTimers(); // Trigger setTimeout
 
-      const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
+      const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/auth/me`);
       req.flush({ id: 1, username: 'loaded', email: 'l@test.com', is_admin: false });
 
       expect(newService.getCurrentUser()?.username).toBe('loaded');
@@ -123,7 +123,7 @@ describe('AuthService', () => {
       const newService = TestBed.inject(AuthService);
       vi.runAllTimers();
 
-      const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
+      const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/auth/me`);
       req.flush('Error', { status: 401, statusText: 'Unauthorized' });
 
       expect(spyLogout).toHaveBeenCalled();
@@ -136,7 +136,7 @@ describe('AuthService', () => {
       const newService = TestBed.inject(AuthService);
       vi.runAllTimers();
 
-      const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
+      const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/auth/me`);
       req.flush('Error', { status: 403, statusText: 'Forbidden' });
 
       expect(spyLogout).toHaveBeenCalled();
@@ -149,7 +149,7 @@ describe('AuthService', () => {
       const newService = TestBed.inject(AuthService);
       vi.runAllTimers();
 
-      const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
+      const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/auth/me`);
       req.flush('Error', { status: 500, statusText: 'Server Error' });
 
       expect(spyLogout).not.toHaveBeenCalled();
@@ -163,7 +163,7 @@ describe('AuthService', () => {
       vi.runAllTimers();
 
       // Handle constructor request
-      const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
+      const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/auth/me`);
       req.flush({ id: 1, username: 'test', email: 't@t.com', is_admin: false });
 
       expect(service.isAuthenticated()).toBe(true);

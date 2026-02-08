@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from sqlalchemy.future import select
 from app.models.cv_document import CvDocument
@@ -11,7 +12,7 @@ from unittest.mock import patch
 async def test_upload_cv_success(client, db_session):
     files = {"file": ("test.pdf", b"%PDF-1.4 mock content", "application/pdf")}
     data = {"version": "v2.0"}
-    response = await client.post("/api/admin/cv/upload", files=files, data=data)
+    response = await client.post(f"{settings.api_prefix}/admin/cv/upload", files=files, data=data)
 
     assert response.status_code == 200
     assert response.json()["success"] is True
@@ -31,7 +32,7 @@ async def test_upload_cv_success(client, db_session):
 async def test_upload_cv_invalid_type(client):
     files = {"file": ("test.txt", b"text data", "text/plain")}
     data = {"version": "v2.1"}
-    response = await client.post("/api/admin/cv/upload", files=files, data=data)
+    response = await client.post(f"{settings.api_prefix}/admin/cv/upload", files=files, data=data)
 
     assert response.status_code == 400
     assert "Only PDF files are allowed" in response.json()["detail"]
@@ -50,7 +51,7 @@ async def test_get_cv_requests(client, db_session):
     db_session.add(req)
     await db_session.commit()
 
-    response = await client.get("/api/admin/cv/requests")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests")
     assert response.status_code == 200
     data = response.json()
     items = data["items"]
@@ -66,7 +67,7 @@ async def test_get_cv_versions(client, db_session):
     db_session.add(doc)
     await db_session.commit()
 
-    response = await client.get("/api/admin/cv/versions")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions")
     assert response.status_code == 200
     data = response.json()
     items = data["items"]
@@ -85,7 +86,7 @@ async def test_download_active_cv_from_db(client, db_session):
     db_session.add(doc)
     await db_session.commit()
 
-    response = await client.get("/api/cv/download")
+    response = await client.get(f"{settings.api_prefix}/cv/download")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert 'filename="active.pdf"' in response.headers["content-disposition"]
@@ -104,7 +105,7 @@ async def test_upload_cv_exception(client):
     with patch("app.api.admin_cv.CvDocument", side_effect=Exception("DB Error")):
         files = {"file": ("test.pdf", b"content", "application/pdf")}
         data = {"version": "vErr"}
-        response = await client.post("/api/admin/cv/upload", files=files, data=data)
+        response = await client.post(f"{settings.api_prefix}/admin/cv/upload", files=files, data=data)
         assert response.status_code == 500
         assert "Failed to upload CV" in response.json()["detail"]
 
@@ -115,12 +116,12 @@ async def test_get_cv_requests_exception(client):
     # and used as `select(...)`.
     # `app.api.admin_cv.select` is the reference in that module.
     with patch("app.api.admin_cv.select", side_effect=Exception("DB Error")):
-        response = await client.get("/api/admin/cv/requests")
+        response = await client.get(f"{settings.api_prefix}/admin/cv/requests")
         assert response.status_code == 500
 
 
 @pytest.mark.asyncio
 async def test_get_cv_versions_exception(client):
     with patch("app.api.admin_cv.select", side_effect=Exception("DB Error")):
-        response = await client.get("/api/admin/cv/versions")
+        response = await client.get(f"{settings.api_prefix}/admin/cv/versions")
         assert response.status_code == 500

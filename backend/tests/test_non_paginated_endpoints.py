@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from httpx import AsyncClient
 
@@ -5,7 +6,7 @@ from httpx import AsyncClient
 @pytest.mark.asyncio
 async def test_similar_posts_nonexistent_slug(client: AsyncClient):
     """Test similar posts for non-existent slug."""
-    response = await client.get("/api/posts/nonexistent-slug-12345/similar")
+    response = await client.get(f"{settings.api_prefix}/posts/nonexistent-slug-12345/similar")
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
 
@@ -28,7 +29,7 @@ async def test_similar_posts_no_embedding(client: AsyncClient, db_session):
     )
     await db_session.commit()
 
-    response = await client.get("/api/posts/test-post/similar")
+    response = await client.get(f"{settings.api_prefix}/posts/test-post/similar")
     assert response.status_code == 200
     assert response.json() == []  # Empty when no embedding
 
@@ -50,7 +51,7 @@ async def test_similar_posts_only_one_post(client: AsyncClient, db_session):
     )
     await db_session.commit()
 
-    response = await client.get("/api/posts/only-post/similar")
+    response = await client.get(f"{settings.api_prefix}/posts/only-post/similar")
     assert response.status_code == 200
     assert response.json() == []  # No other posts to compare
 
@@ -72,7 +73,7 @@ async def test_similar_posts_limit_zero(client: AsyncClient, db_session):
     )
     await db_session.commit()
 
-    response = await client.get("/api/posts/test/similar?limit=0")
+    response = await client.get(f"{settings.api_prefix}/posts/test/similar?limit=0")
     assert response.status_code == 200
     assert response.json() == []
 
@@ -96,7 +97,7 @@ async def test_similar_posts_slug_with_special_chars(client: AsyncClient, db_ses
     )
     await db_session.commit()
 
-    response = await client.get("/api/posts/test-post-2024/similar")
+    response = await client.get(f"{settings.api_prefix}/posts/test-post-2024/similar")
     assert response.status_code == 200
 
 
@@ -104,7 +105,7 @@ async def test_similar_posts_slug_with_special_chars(client: AsyncClient, db_ses
 @pytest.mark.asyncio
 async def test_semantic_search_missing_query(client: AsyncClient):
     """Test semantic search without query parameter."""
-    response = await client.get("/api/posts/search/semantic")
+    response = await client.get(f"{settings.api_prefix}/posts/search/semantic")
     assert response.status_code == 422  # Missing required param
 
 
@@ -112,7 +113,7 @@ async def test_semantic_search_missing_query(client: AsyncClient):
 async def test_semantic_search_very_long_query(client: AsyncClient):
     """Test semantic search with very long query (1000+ chars)."""
     long_query = "a" * 1000
-    response = await client.get(f"/api/posts/search/semantic?q={long_query}")
+    response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q={long_query}")
     # Should handle gracefully
     assert response.status_code in [200, 400, 422]
 
@@ -129,7 +130,7 @@ async def test_semantic_search_special_characters(client: AsyncClient):
     ]
 
     for q in queries:
-        response = await client.get(f"/api/posts/search/semantic?q={q}")
+        response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q={q}")
         # Should not crash
         assert response.status_code in [200, 400, 422]
 
@@ -145,14 +146,14 @@ async def test_semantic_search_unicode_query(client: AsyncClient):
     ]
 
     for q in queries:
-        response = await client.get(f"/api/posts/search/semantic?q={q}")
+        response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q={q}")
         assert response.status_code in [200, 400]
 
 
 @pytest.mark.asyncio
 async def test_semantic_search_invalid_lang(client: AsyncClient):
     """Test semantic search with invalid language code."""
-    response = await client.get("/api/posts/search/semantic?q=test&lang=invalid")
+    response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=test&lang=invalid")
     # Should handle gracefully (either accept or reject)
     assert response.status_code in [200, 400, 422]
 
@@ -160,7 +161,7 @@ async def test_semantic_search_invalid_lang(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_semantic_search_limit_zero(client: AsyncClient):
     """Test semantic search with limit=0."""
-    response = await client.get("/api/posts/search/semantic?q=test&limit=0")
+    response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=test&limit=0")
     assert response.status_code in [200, 400, 422]
 
 
@@ -168,7 +169,7 @@ async def test_semantic_search_limit_zero(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_semantic_search_no_posts_in_db(client: AsyncClient, db_session):
     """Test semantic search when no posts exist."""
-    response = await client.get("/api/posts/search/semantic?q=test")
+    response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=test")
     # Should return empty or handle gracefully
     assert response.status_code in [200, 400]
 
@@ -194,7 +195,7 @@ async def test_semantic_search_posts_without_embeddings(
         )
     await db_session.commit()
 
-    response = await client.get("/api/posts/search/semantic?q=test")
+    response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=test")
     assert response.status_code in [200, 400]
 
 
@@ -208,7 +209,7 @@ async def test_semantic_search_sql_injection_attempt(client: AsyncClient):
     ]
 
     for q in malicious_queries:
-        response = await client.get(f"/api/posts/search/semantic?q={q}")
+        response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q={q}")
         # Should not crash or expose errors
         assert response.status_code in [200, 400, 422]
 
@@ -219,7 +220,7 @@ async def test_semantic_search_concurrent_requests(client: AsyncClient):
     import asyncio
 
     queries = ["test1", "test2", "test3", "test4", "test5"]
-    tasks = [client.get(f"/api/posts/search/semantic?q={q}") for q in queries]
+    tasks = [client.get(f"{settings.api_prefix}/posts/search/semantic?q={q}") for q in queries]
 
     responses = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -266,7 +267,7 @@ async def test_similar_posts_unpublished_excluded(client: AsyncClient, db_sessio
         db_session.add(p)
     await db_session.commit()
 
-    response = await client.get("/api/posts/pub/similar")
+    response = await client.get(f"{settings.api_prefix}/posts/pub/similar")
     assert response.status_code == 200
     data = response.json()
     # Should not include drafts
@@ -301,7 +302,7 @@ async def test_semantic_search_unpublished_excluded(client: AsyncClient, db_sess
         db_session.add(p)
     await db_session.commit()
 
-    response = await client.get("/api/posts/search/semantic?q=test")
+    response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=test")
     if response.status_code == 200:
         data = response.json()
         # Should only have published

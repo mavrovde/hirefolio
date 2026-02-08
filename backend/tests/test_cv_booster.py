@@ -3,6 +3,7 @@ from unittest.mock import patch, AsyncMock, MagicMock
 from httpx import AsyncClient
 from app.models.cv_document import CvDocument
 from sqlalchemy.exc import SQLAlchemyError
+from app.config import settings
 
 @pytest.mark.asyncio
 async def test_request_cv_exception(client: AsyncClient, db_session):
@@ -15,7 +16,7 @@ async def test_request_cv_exception(client: AsyncClient, db_session):
     
     # Mock db.add to raise an exception
     with patch("sqlalchemy.ext.asyncio.AsyncSession.commit", side_effect=Exception("DB Error")):
-        response = await client.post("/api/cv/request", json=payload)
+        response = await client.post(f"{settings.api_prefix}/cv/request", json=payload)
         assert response.status_code == 500
         assert response.json()["detail"] == "Failed to process request"
 
@@ -38,59 +39,59 @@ async def test_download_cv_tracking_exception(client: AsyncClient, db_session):
         
         mock_exec.side_effect = [Exception("Tracking Error"), mock_result]
         
-        response = await client.get("/api/cv/download?req_id=some-id")
+        response = await client.get(f"{settings.api_prefix}/cv/download?req_id=some-id")
         assert response.status_code == 200
         assert response.content == b"d"
 
 @pytest.mark.asyncio
 async def test_download_cv_generic_exception(client: AsyncClient, db_session):
     with patch("sqlalchemy.ext.asyncio.AsyncSession.execute", side_effect=Exception("Generic Error")):
-        response = await client.get("/api/cv/download")
+        response = await client.get(f"{settings.api_prefix}/cv/download")
         assert response.status_code == 500
         assert response.json()["detail"] == "Failed to download CV"
 
 @pytest.mark.asyncio
 async def test_admin_upload_invalid_type(client: AsyncClient):
     files = {"file": ("test.txt", b"content", "text/plain")}
-    response = await client.post("/api/admin/cv/upload", files=files, data={"version": "1.0"})
+    response = await client.post(f"{settings.api_prefix}/admin/cv/upload", files=files, data={"version": "1.0"})
     assert response.status_code == 400
     assert response.json()["detail"] == "Only PDF files are allowed"
 
 @pytest.mark.asyncio
 async def test_admin_upload_success(client: AsyncClient, db_session):
     files = {"file": ("test.pdf", b"pdf data", "application/pdf")}
-    response = await client.post("/api/admin/cv/upload", files=files, data={"version": "1.1"})
+    response = await client.post(f"{settings.api_prefix}/admin/cv/upload", files=files, data={"version": "1.1"})
     assert response.status_code == 200
     assert response.json()["success"] is True
 
 @pytest.mark.asyncio
 async def test_admin_get_requests_sort_asc(client: AsyncClient, db_session):
-    response = await client.get("/api/admin/cv/requests?sort_order=asc")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?sort_order=asc")
     assert response.status_code == 200
 
 @pytest.mark.asyncio
 async def test_admin_get_versions_sort_default(client: AsyncClient, db_session):
-    response = await client.get("/api/admin/cv/versions?sort_by=non_existent")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?sort_by=non_existent")
     assert response.status_code == 200
 
 @pytest.mark.asyncio
 async def test_admin_upload_exception(client: AsyncClient, db_session):
     files = {"file": ("test.pdf", b"content", "application/pdf")}
     with patch("sqlalchemy.ext.asyncio.AsyncSession.execute", side_effect=Exception("Upload Error")):
-        response = await client.post("/api/admin/cv/upload", files=files, data={"version": "1.0"})
+        response = await client.post(f"{settings.api_prefix}/admin/cv/upload", files=files, data={"version": "1.0"})
         assert response.status_code == 500
         assert response.json()["detail"] == "Failed to upload CV"
 
 @pytest.mark.asyncio
 async def test_admin_get_requests_sorting_default(client: AsyncClient, db_session):
     # Invalid sort_by should fall back to default
-    response = await client.get("/api/admin/cv/requests?sort_by=non_existent")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?sort_by=non_existent")
     assert response.status_code == 200
 
 @pytest.mark.asyncio
 async def test_admin_get_requests_exception(client: AsyncClient, db_session):
     with patch("sqlalchemy.ext.asyncio.AsyncSession.execute", side_effect=Exception("Fetch Error")):
-        response = await client.get("/api/admin/cv/requests")
+        response = await client.get(f"{settings.api_prefix}/admin/cv/requests")
         assert response.status_code == 500
         assert response.json()["detail"] == "Failed to fetch requests"
 
@@ -103,7 +104,7 @@ async def test_admin_get_versions_full(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Test sorting and search
-    response = await client.get("/api/admin/cv/versions?search=2.0&sort_by=version&sort_order=asc")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?search=2.0&sort_by=version&sort_order=asc")
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 1
@@ -112,7 +113,7 @@ async def test_admin_get_versions_full(client: AsyncClient, db_session):
 @pytest.mark.asyncio
 async def test_admin_get_versions_exception(client: AsyncClient, db_session):
     with patch("sqlalchemy.ext.asyncio.AsyncSession.execute", side_effect=Exception("Versions Error")):
-        response = await client.get("/api/admin/cv/versions")
+        response = await client.get(f"{settings.api_prefix}/admin/cv/versions")
         assert response.status_code == 500
         assert response.json()["detail"] == "Failed to fetch CV versions"
 

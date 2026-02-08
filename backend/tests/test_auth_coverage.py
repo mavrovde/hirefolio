@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from fastapi import HTTPException
 from unittest.mock import MagicMock, patch
@@ -32,7 +33,7 @@ async def test_login_inactive_user(client, db_session):
     await db_session.commit()
 
     response = await client.post(
-        "/api/auth/login",
+        f"{settings.api_prefix}/auth/login",
         data={"username": "inactiveuser", "password": password},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )

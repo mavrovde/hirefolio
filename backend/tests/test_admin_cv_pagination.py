@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from httpx import AsyncClient
 
@@ -5,7 +6,7 @@ from httpx import AsyncClient
 @pytest.mark.asyncio
 async def test_cv_requests_pagination_empty(client: AsyncClient):
     """Test CV requests pagination with no data."""
-    response = await client.get("/api/admin/cv/requests")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests")
     assert response.status_code == 200
     data = response.json()
     assert data["items"] == []
@@ -45,13 +46,13 @@ async def test_cv_requests_search(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Search for "Docker"
-    response = await client.get("/api/admin/cv/requests?search=Docker")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?search=Docker")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 2  # John Docker and bob@docker.io
 
     # Search for "Python"
-    response = await client.get("/api/admin/cv/requests?search=Python")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?search=Python")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1  # Jane Python (Python in name and company)
@@ -79,14 +80,14 @@ async def test_cv_requests_sorting(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Sort by name ascending
-    response = await client.get("/api/admin/cv/requests?sort_by=name&sort_order=asc")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?sort_by=name&sort_order=asc")
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "Alpha User"
     assert data["items"][2]["name"] == "Zebra User"
 
     # Sort by name descending
-    response = await client.get("/api/admin/cv/requests?sort_by=name&sort_order=desc")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?sort_by=name&sort_order=desc")
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "Zebra User"
@@ -111,7 +112,7 @@ async def test_cv_requests_pagination(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Get first page
-    response = await client.get("/api/admin/cv/requests?page=1&page_size=10")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?page=1&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 15
@@ -119,7 +120,7 @@ async def test_cv_requests_pagination(client: AsyncClient, db_session):
     assert data["total_pages"] == 2
 
     # Get second page
-    response = await client.get("/api/admin/cv/requests?page=2&page_size=10")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?page=2&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 5
@@ -128,7 +129,7 @@ async def test_cv_requests_pagination(client: AsyncClient, db_session):
 @pytest.mark.asyncio
 async def test_cv_versions_pagination_empty(client: AsyncClient):
     """Test CV versions pagination with no data."""
-    response = await client.get("/api/admin/cv/versions")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions")
     assert response.status_code == 200
     data = response.json()
     assert data["items"] == []
@@ -155,13 +156,13 @@ async def test_cv_versions_search(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Search for "cv"
-    response = await client.get("/api/admin/cv/versions?search=cv")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?search=cv")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 2  # cv_v1.pdf and cv_v3.pdf
 
     # Search for "2.0"
-    response = await client.get("/api/admin/cv/versions?search=2.0")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?search=2.0")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
@@ -184,7 +185,7 @@ async def test_cv_versions_sorting(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Sort by version ascending
-    response = await client.get("/api/admin/cv/versions?sort_by=version&sort_order=asc")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?sort_by=version&sort_order=asc")
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["version"] == "1.0"
@@ -192,7 +193,7 @@ async def test_cv_versions_sorting(client: AsyncClient, db_session):
 
     # Sort by filename descending
     response = await client.get(
-        "/api/admin/cv/versions?sort_by=filename&sort_order=desc"
+        f"{settings.api_prefix}/admin/cv/versions?sort_by=filename&sort_order=desc"
     )
     assert response.status_code == 200
     data = response.json()
@@ -218,7 +219,7 @@ async def test_cv_versions_pagination(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Get first page
-    response = await client.get("/api/admin/cv/versions?page=1&page_size=5")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?page=1&page_size=5")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 12
@@ -226,7 +227,7 @@ async def test_cv_versions_pagination(client: AsyncClient, db_session):
     assert data["total_pages"] == 3
 
     # Get last page
-    response = await client.get("/api/admin/cv/versions?page=3&page_size=5")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?page=3&page_size=5")
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 2
@@ -264,7 +265,7 @@ async def test_cv_combined_search_sort_pagination(client: AsyncClient, db_sessio
 
     # Search for Docker, sort by name asc, page_size=2
     response = await client.get(
-        "/api/admin/cv/requests?search=Docker&sort_by=name&sort_order=asc&page=1&page_size=2"
+        f"{settings.api_prefix}/admin/cv/requests?search=Docker&sort_by=name&sort_order=asc&page=1&page_size=2"
     )
     assert response.status_code == 200
     data = response.json()
@@ -275,7 +276,7 @@ async def test_cv_combined_search_sort_pagination(client: AsyncClient, db_sessio
 
     # Get second page
     response = await client.get(
-        "/api/admin/cv/requests?search=Docker&sort_by=name&sort_order=asc&page=2&page_size=2"
+        f"{settings.api_prefix}/admin/cv/requests?search=Docker&sort_by=name&sort_order=asc&page=2&page_size=2"
     )
     assert response.status_code == 200
     data = response.json()

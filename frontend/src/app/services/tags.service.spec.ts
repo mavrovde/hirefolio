@@ -41,7 +41,7 @@ describe('TagsService', () => {
             expect(response).toEqual(mockResponse);
         });
 
-        const req = httpMock.expectOne((req) => req.url.includes('/api/tags'));
+        const req = httpMock.expectOne((req) => req.url.includes(environment.apiPrefix + '/tags'));
         expect(req.request.method).toBe('GET');
         expect(req.request.params.get('page')).toBe('1');
         expect(req.request.params.get('page_size')).toBe('10');
@@ -57,7 +57,7 @@ describe('TagsService', () => {
         });
 
         const req = httpMock.expectOne(req =>
-            req.url.includes('/api/tags') && req.params.get('search') === query
+            req.url.includes(environment.apiPrefix + '/tags') && req.params.get('search') === query
         );
         expect(req.request.method).toBe('GET');
         req.flush(mockResponse);
@@ -72,7 +72,7 @@ describe('TagsService', () => {
             expect(response).toEqual(mockResponse);
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/api/tags/${oldName}`);
+        const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/tags/${oldName}`);
         expect(req.request.method).toBe('PUT');
         expect(req.request.body).toEqual({ new_name: newName });
         req.flush(mockResponse);
@@ -86,7 +86,7 @@ describe('TagsService', () => {
             expect(response).toEqual(mockResponse);
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/api/tags/${tagName}`);
+        const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/tags/${tagName}`);
         expect(req.request.method).toBe('DELETE');
         req.flush(mockResponse);
     });

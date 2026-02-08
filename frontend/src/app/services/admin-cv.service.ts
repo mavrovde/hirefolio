@@ -38,7 +38,7 @@ export interface PaginatedResponse<T> {
     providedIn: 'root'
 })
 export class AdminCvService {
-    private apiUrl = `${environment.apiUrl}/api/admin/cv`;
+    private apiUrl = `${environment.apiUrl}${environment.apiPrefix}/admin/cv`;
 
     constructor(private http: HttpClient) { }
 

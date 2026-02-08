@@ -40,7 +40,7 @@ describe('StatsService', () => {
             expect(stats).toEqual(mockStats);
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/api/stats`);
+        const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/stats`);
         expect(req.request.method).toBe('GET');
         req.flush(mockStats);
     });
@@ -51,7 +51,7 @@ describe('StatsService', () => {
             expect(stats).toEqual(mockPublicStats);
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/api/stats/public`);
+        const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/stats/public`);
         expect(req.request.method).toBe('GET');
         req.flush(mockPublicStats);
     });

@@ -1,3 +1,4 @@
+from app.config import settings
 import pytest
 from httpx import AsyncClient
 import asyncio
@@ -9,7 +10,7 @@ async def test_posts_concurrent_pagination_requests(client: AsyncClient):
     # Create 50 posts via API to avoid session conflicts
     for i in range(50):
         await client.post(
-            "/api/posts",
+            f"{settings.api_prefix}/posts",
             json={
                 "title": f"Post {i}",
                 "slug": f"concurrent-post-{i}",
@@ -20,7 +21,7 @@ async def test_posts_concurrent_pagination_requests(client: AsyncClient):
         )
 
     # Make 5 concurrent requests for different pages
-    tasks = [client.get(f"/api/posts?page={p}&page_size=10") for p in range(1, 6)]
+    tasks = [client.get(f"{settings.api_prefix}/posts?page={p}&page_size=10") for p in range(1, 6)]
     responses = await asyncio.gather(*tasks)
 
     # All should succeed
@@ -45,7 +46,7 @@ async def test_posts_extreme_page_number(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Request page 999999
-    response = await client.get("/api/posts?page=999999&page_size=10")
+    response = await client.get(f"{settings.api_prefix}/posts?page=999999&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert data["items"] == []
@@ -65,7 +66,7 @@ async def test_posts_search_very_long_query(client: AsyncClient, db_session):
 
     # 1000 character search query
     long_query = "a" * 1000
-    response = await client.get(f"/api/posts?search={long_query}")
+    response = await client.get(f"{settings.api_prefix}/posts?search={long_query}")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 0  # No match for 1000 'a's
@@ -82,7 +83,7 @@ async def test_posts_sort_by_nonexistent_field(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Try to sort by invalid field
-    response = await client.get("/api/posts?sort_by=nonexistent_field")
+    response = await client.get(f"{settings.api_prefix}/posts?sort_by=nonexistent_field")
     assert response.status_code == 200  # Should fall back to default
     data = response.json()
     assert len(data["items"]) == 1
@@ -107,7 +108,7 @@ async def test_cv_requests_search_email_variations(client: AsyncClient, db_sessi
     await db_session.commit()
 
     # Search should be case-insensitive
-    response = await client.get("/api/admin/cv/requests?search=test")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?search=test")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 3  # All three have "test" in email
@@ -118,7 +119,7 @@ async def test_tags_pagination_with_special_tag_names(client: AsyncClient):
     """Test tags with special characters in names."""
     # Create posts with special tag names via API
     await client.post(
-        "/api/posts",
+        f"{settings.api_prefix}/posts",
         json={
             "title": "P1 Special Tags",
             "slug": "p1-special-tags",
@@ -129,7 +130,7 @@ async def test_tags_pagination_with_special_tag_names(client: AsyncClient):
         },
     )
     await client.post(
-        "/api/posts",
+        f"{settings.api_prefix}/posts",
         json={
             "title": "P2 Special Tags",
             "slug": "p2-special-tags",
@@ -140,7 +141,7 @@ async def test_tags_pagination_with_special_tag_names(client: AsyncClient):
         },
     )
 
-    response = await client.get("/api/tags?search=cpp")
+    response = await client.get(f"{settings.api_prefix}/tags?search=cpp")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] >= 1
@@ -164,7 +165,7 @@ async def test_posts_page_size_exactly_matches_total(client: AsyncClient, db_ses
         )
     await db_session.commit()
 
-    response = await client.get("/api/posts?page=1&page_size=10")
+    response = await client.get(f"{settings.api_prefix}/posts?page=1&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 10
@@ -172,7 +173,7 @@ async def test_posts_page_size_exactly_matches_total(client: AsyncClient, db_ses
     assert data["total_pages"] == 1
 
     # Page 2 should be empty
-    response = await client.get("/api/posts?page=2&page_size=10")
+    response = await client.get(f"{settings.api_prefix}/posts?page=2&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 0
@@ -195,7 +196,7 @@ async def test_cv_versions_with_different_versions(client: AsyncClient, db_sessi
         db_session.add(doc)
     await db_session.commit()
 
-    response = await client.get("/api/admin/cv/versions?search=1.0")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?search=1.0")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 3
@@ -227,7 +228,7 @@ async def test_posts_search_with_newlines_and_tabs(client: AsyncClient, db_sessi
     await db_session.commit()
 
     # Search for word "Test" should still work
-    response = await client.get("/api/posts?search=Test")
+    response = await client.get(f"{settings.api_prefix}/posts?search=Test")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
@@ -258,7 +259,7 @@ async def test_tags_empty_tag_array(client: AsyncClient, db_session):
         db_session.add(p)
     await db_session.commit()
 
-    response = await client.get("/api/tags")
+    response = await client.get(f"{settings.api_prefix}/tags")
     assert response.status_code == 200
     data = response.json()
     # Should only return tags from posts with non-empty arrays
@@ -285,11 +286,11 @@ async def test_posts_search_empty_vs_null(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Empty search should return all
-    response1 = await client.get("/api/posts?search=")
+    response1 = await client.get(f"{settings.api_prefix}/posts?search=")
     data1 = response1.json()
 
     # No search param should return all
-    response2 = await client.get("/api/posts")
+    response2 = await client.get(f"{settings.api_prefix}/posts")
     data2 = response2.json()
 
     assert data1["total"] == data2["total"] == 5
@@ -306,7 +307,7 @@ async def test_cv_requests_zero_results_pagination(client: AsyncClient, db_sessi
     await db_session.commit()
 
     # Search for non-existent term
-    response = await client.get("/api/admin/cv/requests?search=NonExistentCompany")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?search=NonExistentCompany")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 0
@@ -339,8 +340,8 @@ async def test_posts_sort_stability(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Sort by created_at - order should be deterministic
-    response1 = await client.get("/api/posts?sort_by=created_at&sort_order=asc")
-    response2 = await client.get("/api/posts?sort_by=created_at&sort_order=asc")
+    response1 = await client.get(f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=asc")
+    response2 = await client.get(f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=asc")
 
     data1 = response1.json()
     data2 = response2.json()
@@ -376,7 +377,7 @@ async def test_tags_unicode_emoji_tags(client: AsyncClient, db_session):
         db_session.add(p)
     await db_session.commit()
 
-    response = await client.get("/api/tags?search=python")
+    response = await client.get(f"{settings.api_prefix}/tags?search=python")
     assert response.status_code == 200
     data = response.json()
     # Should find "python🐍"
@@ -401,11 +402,11 @@ async def test_posts_page_1_vs_no_page(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Explicit page=1
-    response1 = await client.get("/api/posts?page=1&page_size=10")
+    response1 = await client.get(f"{settings.api_prefix}/posts?page=1&page_size=10")
     data1 = response1.json()
 
     # Default (should be page=1)
-    response2 = await client.get("/api/posts?page_size=10")
+    response2 = await client.get(f"{settings.api_prefix}/posts?page_size=10")
     data2 = response2.json()
 
     assert data1 == data2
@@ -429,13 +430,13 @@ async def test_cv_versions_search_case_sensitivity(client: AsyncClient, db_sessi
     await db_session.commit()
 
     # Search lowercase
-    response = await client.get("/api/admin/cv/versions?search=final")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?search=final")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 2
 
     # Search uppercase
-    response = await client.get("/api/admin/cv/versions?search=FINAL")
+    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?search=FINAL")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 2

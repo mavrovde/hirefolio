@@ -22,7 +22,7 @@ export interface CvResponse {
     providedIn: 'root'
 })
 export class CvService {
-    private apiUrl = `${environment.apiUrl}/api/cv`;
+    private apiUrl = `${environment.apiUrl}${environment.apiPrefix}/cv`;
 
     constructor(private http: HttpClient) { }
 
@@ -33,7 +33,7 @@ export class CvService {
     getDownloadUrl(relativePath: string): string {
         // If the URL is relative, prepend API URL base if needed, 
         // but usually the backend returns a path that works with the base.
-        // If backend returns "/api/cv/download", and apiUrl includes "/api", we might need adjustment 
+        // If backend returns "/api/app/cv/download", and apiUrl includes "/api", we might need adjustment 
         // depending on environment.apiUrl (usually "http://localhost:8000" or empty for proxy).
         // Let's assume environment.apiUrl is the base host (e.g. http://localhost:8000).
         if (relativePath.startsWith('http')) return relativePath;

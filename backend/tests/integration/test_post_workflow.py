@@ -24,7 +24,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
     }
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        create_response = await client.post("/api/posts", json=post_data)
+        create_response = await client.post("/api/app/posts", json=post_data)
 
         assert create_response.status_code == 200
         created_post = create_response.json()
@@ -32,7 +32,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
         post_id = created_post["id"]
 
         # 2. Retrieve the post
-        get_response = await client.get(f"/api/posts/{post_data['slug']}")
+        get_response = await client.get(f"/api/app/posts/{post_data['slug']}")
         assert get_response.status_code == 200
         retrieved_post = get_response.json()
         assert retrieved_post["id"] == post_id
@@ -44,7 +44,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
             "summary": "Updated summary",
         }
 
-        update_response = await client.put(f"/api/posts/{post_id}", json=update_data)
+        update_response = await client.put(f"/api/app/posts/{post_id}", json=update_data)
 
         assert update_response.status_code == 200
         updated_post = update_response.json()
@@ -53,7 +53,7 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
 
         # 4. Search for the post
         search_response = await client.get(
-            "/api/posts/search/semantic?q=ollama+guide&lang=en"
+            "/api/app/posts/search/semantic?q=ollama+guide&lang=en"
         )
 
         assert search_response.status_code == 200
@@ -61,11 +61,11 @@ async def test_complete_post_workflow(client: AsyncClient, mock_embedding):
         assert isinstance(search_results, list)
 
         # 5. Delete the post
-        delete_response = await client.delete(f"/api/posts/{post_id}")
+        delete_response = await client.delete(f"/api/app/posts/{post_id}")
         assert delete_response.status_code == 200
 
         # 6. Verify deletion
-        verify_response = await client.get(f"/api/posts/{post_data['slug']}")
+        verify_response = await client.get(f"/api/app/posts/{post_data['slug']}")
         assert verify_response.status_code == 404
 
 
@@ -92,12 +92,12 @@ async def test_multilingual_posts(client: AsyncClient, mock_embedding):
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
-            response = await client.post("/api/posts", json=post)
+            response = await client.post("/api/app/posts", json=post)
             assert response.status_code == 200
 
         # Verify both posts exist with same slug but different languages
-        en_response = await client.get("/api/posts?lang=en")
-        de_response = await client.get("/api/posts?lang=de")
+        en_response = await client.get("/api/app/posts?lang=en")
+        de_response = await client.get("/api/app/posts?lang=de")
 
         assert en_response.status_code == 200
         assert de_response.status_code == 200
@@ -141,11 +141,11 @@ async def test_similar_posts_workflow(client: AsyncClient, mock_embedding):
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
         for post in posts:
-            await client.post("/api/posts", json=post)
+            await client.post("/api/app/posts", json=post)
 
     # Get similar posts for Ollama Installation
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.get("/api/posts/ollama-installation/similar?limit=2")
+        response = await client.get("/api/app/posts/ollama-installation/similar?limit=2")
 
     assert response.status_code == 200
 

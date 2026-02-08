@@ -15,7 +15,7 @@ from app.services.auth import (
 )
 from app.config import settings
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class TokenResponse(BaseModel):

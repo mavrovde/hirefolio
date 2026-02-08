@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { API_PREFIX } from './config';
 
 test.describe('CV Request Flow', () => {
     test.beforeEach(async ({ page }) => {
@@ -14,9 +15,9 @@ test.describe('CV Request Flow', () => {
         // Intercept the request to verify payload and response
         let requestPayload: any;
         console.log('[E2E] Mocking CV request API...');
-        await page.route('**/api/cv/request*', async route => {
+        await page.route(`**${API_PREFIX}/cv/request*`, async route => {
             requestPayload = route.request().postDataJSON();
-            console.log('[E2E] Intercepted /api/cv/request with payload:', requestPayload);
+            console.log(`[E2E] Intercepted ${API_PREFIX}/cv/request with payload:`, requestPayload);
             await route.continue();
         });
 
@@ -49,7 +50,7 @@ test.describe('CV Request Flow', () => {
         // Verify success state
         console.log('[E2E] Waiting for API response...');
         const response = await page.waitForResponse(response =>
-            response.url().includes('/api/cv/request') && response.status() === 200
+            response.url().includes(`${API_PREFIX}/cv/request`) && response.status() === 200
         );
         expect(response.ok()).toBeTruthy();
         console.log('[E2E] API response received and verified.');

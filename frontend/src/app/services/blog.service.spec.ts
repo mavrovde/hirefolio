@@ -38,7 +38,7 @@ describe('BlogService', () => {
 
       const req = httpMock.expectOne(
         (req) =>
-          req.url.endsWith('/api/posts') &&
+          req.url.endsWith(environment.apiPrefix + '/posts') &&
           req.params.get('published_only') === 'true' &&
           !req.params.has('lang'),
       );
@@ -50,7 +50,7 @@ describe('BlogService', () => {
       service.getPosts(false, null).subscribe();
 
       const req = httpMock.expectOne(
-        (req) => req.url.endsWith('/api/posts') && req.params.get('published_only') === 'false',
+        (req) => req.url.endsWith(environment.apiPrefix + '/posts') && req.params.get('published_only') === 'false',
       );
       req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
     });
@@ -59,7 +59,7 @@ describe('BlogService', () => {
       service.getPosts(true, null, 'angular').subscribe();
 
       const req = httpMock.expectOne(
-        (req) => req.url.endsWith('/api/posts') && req.params.get('tag') === 'angular',
+        (req) => req.url.endsWith(environment.apiPrefix + '/posts') && req.params.get('tag') === 'angular',
       );
       req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
     });
@@ -69,7 +69,7 @@ describe('BlogService', () => {
 
       const req = httpMock.expectOne(
         (req) =>
-          req.url.endsWith('/api/posts') &&
+          req.url.endsWith(environment.apiPrefix + '/posts') &&
           req.params.get('lang') === 'de' &&
           req.params.get('tag') === 'tech',
       );
@@ -81,7 +81,7 @@ describe('BlogService', () => {
       service.getPosts(true).subscribe();
 
       const req = httpMock.expectOne(
-        (req) => req.url.endsWith('/api/posts') && req.params.get('lang') === 'en',
+        (req) => req.url.endsWith(environment.apiPrefix + '/posts') && req.params.get('lang') === 'en',
       );
       req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
     });
@@ -92,7 +92,7 @@ describe('BlogService', () => {
 
       const req = httpMock.expectOne(
         (req) =>
-          req.url.endsWith('/api/posts') &&
+          req.url.endsWith(environment.apiPrefix + '/posts') &&
           req.params.get('lang') === 'en' &&
           req.params.get('tag') === 'tech' &&
           req.params.get('published_only') === 'false',
@@ -112,7 +112,7 @@ describe('BlogService', () => {
       });
 
       // With relative path in environment, exact match might start with /api
-      const req = httpMock.expectOne((req) => req.url.includes('/api/posts/suggest-tags'));
+      const req = httpMock.expectOne((req) => req.url.includes(environment.apiPrefix + '/posts/suggest-tags'));
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({ title, content });
       req.flush(mockResponse);
@@ -129,7 +129,7 @@ describe('BlogService', () => {
         expect(res).toEqual(mockResponse);
       });
 
-      const req = httpMock.expectOne((req) => req.url.includes('/api/posts/suggest-details'));
+      const req = httpMock.expectOne((req) => req.url.includes(environment.apiPrefix + '/posts/suggest-details'));
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({ content, field });
       req.flush(mockResponse);
@@ -143,7 +143,7 @@ describe('BlogService', () => {
         expect(post).toEqual(mockPost as any);
       });
 
-      const req = httpMock.expectOne((req) => req.url.endsWith('/api/posts/1'));
+      const req = httpMock.expectOne((req) => req.url.endsWith(environment.apiPrefix + '/posts/1'));
       expect(req.request.method).toBe('GET');
       req.flush(mockPost);
     });
@@ -154,7 +154,7 @@ describe('BlogService', () => {
         expect(post).toEqual(mockPost as any);
       });
 
-      const req = httpMock.expectOne((req) => req.url.endsWith('/api/posts/test'));
+      const req = httpMock.expectOne((req) => req.url.endsWith(environment.apiPrefix + '/posts/test'));
       expect(req.request.method).toBe('GET');
       req.flush(mockPost);
     });
@@ -165,7 +165,7 @@ describe('BlogService', () => {
         expect(post).toEqual(mockPost as any);
       });
 
-      const req = httpMock.expectOne((req) => req.url.endsWith('/api/posts'));
+      const req = httpMock.expectOne((req) => req.url.endsWith(environment.apiPrefix + '/posts'));
       expect(req.request.method).toBe('POST');
       req.flush(mockPost);
     });
@@ -176,7 +176,7 @@ describe('BlogService', () => {
         expect(post).toEqual(mockPost as any);
       });
 
-      const req = httpMock.expectOne((req) => req.url.endsWith('/api/posts/1'));
+      const req = httpMock.expectOne((req) => req.url.endsWith(environment.apiPrefix + '/posts/1'));
       expect(req.request.method).toBe('PUT');
       req.flush(mockPost);
     });
@@ -186,7 +186,7 @@ describe('BlogService', () => {
         expect(res).toBeNull(); // Void return is often null in tests or undefined
       });
 
-      const req = httpMock.expectOne((req) => req.url.endsWith('/api/posts/1'));
+      const req = httpMock.expectOne((req) => req.url.endsWith(environment.apiPrefix + '/posts/1'));
       expect(req.request.method).toBe('DELETE');
       req.flush(null);
     });
@@ -203,7 +203,7 @@ describe('BlogService', () => {
 
       const req = httpMock.expectOne(
         (req) =>
-          req.url.endsWith('/api/posts/search/semantic') &&
+          req.url.endsWith(environment.apiPrefix + '/posts/search/semantic') &&
           req.params.get('q') === query &&
           req.params.get('lang') === 'en',
       );
@@ -220,7 +220,7 @@ describe('BlogService', () => {
         },
       });
 
-      const req = httpMock.expectOne((req) => req.url.endsWith('/api/posts/999'));
+      const req = httpMock.expectOne((req) => req.url.endsWith(environment.apiPrefix + '/posts/999'));
       req.flush('Not Found', { status: 404, statusText: 'Not Found' });
     });
 
@@ -231,7 +231,7 @@ describe('BlogService', () => {
         },
       });
 
-      const req = httpMock.expectOne((req) => req.url.endsWith('/api/posts'));
+      const req = httpMock.expectOne((req) => req.url.endsWith(environment.apiPrefix + '/posts'));
       req.flush('Server Error', { status: 500, statusText: 'Server Error' });
     });
   });

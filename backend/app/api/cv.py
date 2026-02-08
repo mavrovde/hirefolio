@@ -8,8 +8,9 @@ from app.models.cv_request import CvRequest
 from app.models.cv_document import CvDocument
 from app.services.email import email_service
 from app.logger import logger
+from app.config import settings
 
-router = APIRouter(prefix="/api/cv", tags=["CV"])
+router = APIRouter(prefix="/cv", tags=["cv"])
 
 
 class CvRequestPayload(BaseModel):
@@ -58,7 +59,7 @@ async def request_cv(
         return {
             "success": True,
             "message": "Request received. You can now download the CV.",
-            "download_url": f"/api/cv/download?req_id={cv_request.id}",
+            "download_url": f"{settings.api_prefix}/cv/download?req_id={cv_request.id}",
         }
     except HTTPException:
         raise

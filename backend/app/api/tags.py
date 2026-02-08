@@ -12,7 +12,7 @@ from app.models.post import Post
 from app.models.user import User
 from app.services.auth import get_current_admin_user
 
-router = APIRouter(prefix="/api/tags", tags=["tags"])
+router = APIRouter(prefix="/tags", tags=["tags"])
 
 
 class TagStat(BaseModel):

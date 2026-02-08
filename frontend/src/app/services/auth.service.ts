@@ -51,7 +51,7 @@ export class AuthService {
   login(username: string, password: string): Observable<User> {
     const body = new HttpParams().set('username', username).set('password', password);
 
-    return this.http.post<LoginResponse>(`${this.apiUrl}/api/auth/login`, body).pipe(
+    return this.http.post<LoginResponse>(`${this.apiUrl}${environment.apiPrefix}/auth/login`, body).pipe(
       // Wait for the user to be loaded before completing the login observable
       switchMap((response) => {
         this.setToken(response.access_token);
@@ -67,7 +67,7 @@ export class AuthService {
 
   changePassword(oldPassword: string, newPassword: string): Observable<void> {
     const body = { old_password: oldPassword, new_password: newPassword };
-    return this.http.put<void>(`${this.apiUrl}/api/auth/password`, body);
+    return this.http.put<void>(`${this.apiUrl}${environment.apiPrefix}/auth/password`, body);
   }
 
   getToken(): string | null {
@@ -105,7 +105,7 @@ export class AuthService {
   }
 
   private fetchCurrentUser(): Observable<User> {
-    return this.http.get<User>(`${this.apiUrl}/api/auth/me`).pipe(
+    return this.http.get<User>(`${this.apiUrl}${environment.apiPrefix}/auth/me`).pipe(
       tap({
         next: (user) => {
           this.currentUserSubject.next(user);

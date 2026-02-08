@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { API_PREFIX } from './config';
 
 test.describe('Admin Tag Management', () => {
     test.beforeEach(async ({ page }) => {
@@ -12,7 +13,7 @@ test.describe('Admin Tag Management', () => {
 
     test('should display tags list', async ({ page }) => {
         // Mock API response
-        await page.route('**/api/tags*', async route => {
+        await page.route(`**${API_PREFIX}/tags*`, async route => {
             await route.fulfill({
                 status: 200,
                 contentType: 'application/json',
@@ -43,7 +44,7 @@ test.describe('Admin Tag Management', () => {
     });
 
     test('should search tags', async ({ page }) => {
-        await page.route('**/api/tags*', async route => {
+        await page.route(`**${API_PREFIX}/tags*`, async route => {
             const url = route.request().url();
             if (url.includes('search=React')) {
                 await route.fulfill({
@@ -74,7 +75,7 @@ test.describe('Admin Tag Management', () => {
     });
 
     test('should rename tag', async ({ page }) => {
-        await page.route('**/api/tags*', async route => {
+        await page.route(`**${API_PREFIX}/tags*`, async route => {
             await route.fulfill({
                 status: 200,
                 body: JSON.stringify({
@@ -84,7 +85,7 @@ test.describe('Admin Tag Management', () => {
             });
         });
 
-        await page.route('**/api/tags/Vue', async route => {
+        await page.route(`**${API_PREFIX}/tags/Vue`, async route => {
             if (route.request().method() === 'PUT') {
                 await route.fulfill({ status: 200, body: JSON.stringify({ success: true }) });
             }
@@ -106,7 +107,7 @@ test.describe('Admin Tag Management', () => {
     });
 
     test('should delete tag', async ({ page }) => {
-        await page.route('**/api/tags*', async route => {
+        await page.route(`**${API_PREFIX}/tags*`, async route => {
             await route.fulfill({
                 status: 200,
                 body: JSON.stringify({
@@ -116,7 +117,7 @@ test.describe('Admin Tag Management', () => {
             });
         });
 
-        await page.route('**/api/tags/Legacy', async route => {
+        await page.route(`**${API_PREFIX}/tags/Legacy`, async route => {
             if (route.request().method() === 'DELETE') {
                 await route.fulfill({ status: 200, body: JSON.stringify({ success: true }) });
             }
