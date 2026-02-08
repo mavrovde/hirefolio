@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -19,6 +19,7 @@ export class SqlPanelComponent {
   loading = false;
   error: string | null = null;
   private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
   private apiUrl = `${environment.apiPrefix}/admin/sql/execute`;
 
   executeQuery() {
@@ -28,9 +29,11 @@ export class SqlPanelComponent {
 
     this.http.post<any>(this.apiUrl, { query: this.query }).subscribe({
       next: (data) => {
+        console.log('SQL Check Result:', data); // DEBUG
         if (data.error) {
           this.error = data.error;
           this.loading = false;
+          this.cdr.detectChanges();
           return;
         }
         this.result = data.rows || data; // Backend returns {columns, rows} or just list?
@@ -51,11 +54,13 @@ export class SqlPanelComponent {
           }
         }
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('SQL Execution error:', err);
         this.error = err.error?.detail || 'ADMIN.SQL_ERROR';
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }

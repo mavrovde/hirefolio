@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
@@ -13,6 +13,7 @@ import { TranslatePipe } from '../../../pipes/translate.pipe';
 })
 export class ProfileComponent {
   private authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
   oldPassword = '';
   newPassword = '';
   loading = false;
@@ -33,6 +34,7 @@ export class ProfileComponent {
     this.message = '';
     this.error = '';
     this.statusMessage = 'ADMIN.REQUESTING_PASSWORD_CHANGE';
+    this.cdr.detectChanges();
 
     // Direct call without artificial delays
     this.authService.changePassword(this.oldPassword, this.newPassword).subscribe({
@@ -43,11 +45,13 @@ export class ProfileComponent {
         this.oldPassword = '';
         this.newPassword = '';
         this.loading = false;
+        this.cdr.detectChanges();
 
         // Auto-clear success message after 5 seconds
         setTimeout(() => {
           if (this.message === 'ADMIN.PASSWORD_CHANGED_SUCCESS') {
             this.message = '';
+            this.cdr.detectChanges();
           }
         }, 5000);
       },
@@ -56,6 +60,7 @@ export class ProfileComponent {
         this.error = err.error?.detail || 'ADMIN.PASSWORD_CHANGE_FAILED';
         this.statusMessage = '';
         this.loading = false;
+        this.cdr.detectChanges();
       },
     });
   }
