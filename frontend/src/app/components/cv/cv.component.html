@@ -50,6 +50,20 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label for="position_description">{{ 'CV.POSITION_DESCRIPTION' | translate }}</label>
+                    <textarea id="position_description" formControlName="position_description" rows="4"
+                        [placeholder]="'CV.POSITION_DESCRIPTION_PLACEHOLDER' | translate"
+                        [class.invalid]="cvForm.get('position_description')?.invalid && cvForm.get('position_description')?.touched"></textarea>
+                    <div class="char-count" *ngIf="cvForm.get('position_description')?.value">
+                        {{ cvForm.get('position_description')?.value.length }}/1000
+                    </div>
+                    <div class="error-msg"
+                        *ngIf="cvForm.get('position_description')?.invalid && cvForm.get('position_description')?.touched">
+                        {{ 'CV.POSITION_DESCRIPTION_ERROR' | translate }}
+                    </div>
+                </div>
+
 
 
                 <button type="submit" class="btn-primary" [disabled]="cvForm.invalid || isLoading">

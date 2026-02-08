@@ -6,7 +6,7 @@ from app.logger import logger
 
 class EmailService:
     def send_cv_request_notification(
-        self, name: str, email: str, company: str, message: str
+        self, name: str, email: str, company: str, message: str, position_description: str | None = None
     ):
         if (
             not settings.smtp_host
@@ -28,6 +28,9 @@ Email: {email}
 Company: {company}
 Message:
 {message}
+
+Position/Project Description:
+{position_description or "N/A"}
 --------------------------------
 
 Please review and respond if necessary.

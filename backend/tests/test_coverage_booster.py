@@ -33,6 +33,8 @@ class MockStreamResponse:
     async def aiter_lines(self):
         for line in self.lines:
             yield line
+        # Explicit return to avoid any implicit StopIteration issues
+        return
     async def __aenter__(self):
         return self
     async def __aexit__(self, exc_type, exc, tb):
@@ -103,5 +105,5 @@ async def test_cv_extended(client: AsyncClient):
     # Hit line 75->84, 86-100 in admin_cv via different status filters if any
     # Actually cv.py (public) also needs coverage
     await client.get("/api/cv")
-    await client.post("/api/cv/request", json={"name": "N", "email": "e@t.com", "company": "C", "purpose": "P"})
+    await client.post("/api/cv/request", json={"name": "Name", "email": "e@t.com", "company": "C", "message": "Message Content"})
     await client.get("/api/cv/status/e@t.com")

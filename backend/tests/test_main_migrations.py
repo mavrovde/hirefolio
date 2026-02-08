@@ -82,6 +82,7 @@ async def test_main_cv_seeding_fallback_warning():
                 mock_result_migrate.__iter__.return_value = [
                     ("downloaded_at",),
                     ("download_count",),
+                    ("position_description",),
                 ]
                 mock_conn.execute.return_value = mock_result_migrate
 
@@ -107,7 +108,7 @@ async def test_main_migrations_column_exists():
     # Use simpler mocking to avoid loop issues
     mock_conn = AsyncMock()
     mock_result = MagicMock()
-    mock_result.__iter__.return_value = [("downloaded_at",), ("download_count",)]
+    mock_result.__iter__.return_value = [("downloaded_at",), ("download_count",), ("position_description",)]
     mock_conn.execute.return_value = mock_result
 
     mock_engine = MagicMock()

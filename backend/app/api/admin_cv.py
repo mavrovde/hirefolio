@@ -76,6 +76,7 @@ async def get_cv_requests(
                 (CvRequest.name.ilike(search_term))
                 | (CvRequest.email.ilike(search_term))
                 | (CvRequest.company.ilike(search_term))
+                | (CvRequest.position_description.ilike(search_term))
             )
 
         # Get total count

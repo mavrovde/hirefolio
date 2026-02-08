@@ -32,6 +32,7 @@ async def test_multi_agent_conversation_success():
     async def mock_aiter_lines():
         for line in mock_lines:
             yield line
+        return
 
     mock_stream_resp = MagicMock()
     mock_stream_resp.status_code = 200

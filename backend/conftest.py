@@ -22,6 +22,17 @@ sys.modules["langchain_community"] = mock_lc
 sys.modules["langchain_community.chat_models"] = mock_lc
 mock_lc.ChatOllama = MagicMock
 
+# Additional mocks for langchain-openai and others
+mock_lc_tools = MagicMock()
+class BaseToolMock(MagicMock):
+    pass
+mock_lc_tools.BaseTool = BaseToolMock
+sys.modules["langchain.tools"] = mock_lc_tools
+
+sys.modules["langchain"] = MagicMock()
+sys.modules["langchain_openai"] = MagicMock()
+sys.modules["tiktoken"] = MagicMock()
+
 from typing import AsyncGenerator  # noqa: E402
 import pytest  # noqa: E402
 from httpx import AsyncClient  # noqa: E402

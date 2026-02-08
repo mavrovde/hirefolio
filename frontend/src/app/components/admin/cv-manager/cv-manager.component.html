@@ -43,6 +43,7 @@
                             <th (click)="requestsTable.toggleSort('created_at')" class="sortable">Requested {{
                                 requestsTable.isSorted('created_at') ? (requestsTable.getSortDirection('created_at') ===
                                 'asc' ? '▲' : '▼') : '' }}</th>
+                            <th>Description</th>
                             <th>Download status</th>
                         </tr>
                     </thead>
@@ -53,6 +54,11 @@
                             <td>{{ req.company }}</td>
                             <td>{{ req.cv_version }}</td>
                             <td>{{ req.created_at | date:'short' }}</td>
+                            <td>
+                                <div class="message-preview" [title]="req.position_description">
+                                    {{ req.position_description || 'N/A' }}
+                                </div>
+                            </td>
                             <td class="status-cell">
                                 <span [class]="req.downloaded_at ? 'status-yes' : 'status-no'">
                                     {{ req.downloaded_at ? 'YES' : 'NO' }}
