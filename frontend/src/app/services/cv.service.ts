@@ -9,6 +9,7 @@ export interface CvRequestPayload {
     company?: string;
     message: string;
     position_description?: string;
+    subscribe_to_updates?: boolean;
 }
 
 export interface CvResponse {

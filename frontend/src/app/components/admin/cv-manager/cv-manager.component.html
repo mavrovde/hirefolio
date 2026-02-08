@@ -43,6 +43,11 @@
                             <th (click)="requestsTable.toggleSort('created_at')" class="sortable">Requested {{
                                 requestsTable.isSorted('created_at') ? (requestsTable.getSortDirection('created_at') ===
                                 'asc' ? '▲' : '▼') : '' }}</th>
+                            <th (click)="requestsTable.toggleSort('subscribe_to_updates')" class="sortable">Subscribed
+                                {{
+                                requestsTable.isSorted('subscribe_to_updates') ?
+                                (requestsTable.getSortDirection('subscribe_to_updates') ===
+                                'asc' ? '▲' : '▼') : '' }}</th>
                             <th>Description</th>
                             <th>Download status</th>
                         </tr>
@@ -54,6 +59,11 @@
                             <td>{{ req.company }}</td>
                             <td>{{ req.cv_version }}</td>
                             <td>{{ req.created_at | date:'short' }}</td>
+                            <td>
+                                <span [class]="req.subscribe_to_updates ? 'status-active' : 'status-inactive'">
+                                    {{ (req.subscribe_to_updates ? 'ADMIN.YES' : 'ADMIN.NO') | translate }}
+                                </span>
+                            </td>
                             <td>
                                 <div class="message-preview" [title]="req.position_description">
                                     {{ req.position_description || 'N/A' }}

@@ -18,6 +18,7 @@ class CvRequestPayload(BaseModel):
     company: str | None = None
     message: str = Field(..., min_length=5)
     position_description: str | None = Field(None, max_length=1000)
+    subscribe_to_updates: bool = False
 
 
 @router.post("/request")
@@ -43,6 +44,7 @@ async def request_cv(
             company=payload.company,
             message=payload.message,
             position_description=payload.position_description,
+            subscribe_to_updates=payload.subscribe_to_updates,
             consent_given=True,  # Default to true as per new policy
             cv_version=active_cv.version,
         )
@@ -116,6 +118,7 @@ async def process_email_notifications(request_id, payload):
         company=payload.company or "N/A",
         message=payload.message,
         position_description=payload.position_description,
+        subscribe_to_updates=payload.subscribe_to_updates,
     )
 
     # 2. Notify Requester

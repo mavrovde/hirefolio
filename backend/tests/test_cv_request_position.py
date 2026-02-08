@@ -22,7 +22,8 @@ async def test_cv_request_with_position_description(client: AsyncClient, db_sess
         "email": "test@example.com",
         "company": "Test Co",
         "message": "Hello, I'm interested.",
-        "position_description": "Senior Backend Engineer role at Test Co"
+        "position_description": "Senior Backend Engineer role at Test Co",
+        "subscribe_to_updates": True
     }
 
     with patch("app.services.email.email_service.send_cv_request_notification") as mock_notify, \
@@ -35,6 +36,7 @@ async def test_cv_request_with_position_description(client: AsyncClient, db_sess
         result = await db_session.execute(select(CvRequest).where(CvRequest.email == "test@example.com"))
         cv_req = result.scalar_one()
         assert cv_req.position_description == "Senior Backend Engineer role at Test Co"
+        assert cv_req.subscribe_to_updates is True
         
         # Verify email call
         mock_notify.assert_called_once_with(
@@ -42,7 +44,8 @@ async def test_cv_request_with_position_description(client: AsyncClient, db_sess
             email="test@example.com",
             company="Test Co",
             message="Hello, I'm interested.",
-            position_description="Senior Backend Engineer role at Test Co"
+            position_description="Senior Backend Engineer role at Test Co",
+            subscribe_to_updates=True
         )
 
 @pytest.mark.asyncio

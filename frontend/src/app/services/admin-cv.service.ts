@@ -13,6 +13,7 @@ export interface CvRequestSummary {
     consent_given: boolean;
     cv_version: string;
     position_description?: string;
+    subscribe_to_updates?: boolean;
     downloaded_at?: string;
     download_count?: number;
 }

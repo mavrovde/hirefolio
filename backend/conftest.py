@@ -5,33 +5,51 @@ from unittest.mock import MagicMock
 # Must be before any 'app' imports which might trigger nested imports of these
 from types import SimpleNamespace  # noqa: E402
 
+# Langchain and other external mocks
+def mock_module(name):
+    # Use a fresh MagicMock for each module to avoid shared side_effect exhaustion
+    m = MagicMock()
+    m.__name__ = name
+    sys.modules[name] = m
+    return m
+
+mock_module("tiktoken")
+mock_module("langchain")
+mock_module("langchain_core")
+mock_module("langchain_core.messages")
+mock_module("langchain_core.prompts")
+mock_module("langchain_core.output_parsers")
+mock_module("langchain_core.runnables")
+mock_module("langchain_google_genai")
+mock_module("langchain_openai")
+mock_module("langchain_anthropic")
+mock_module("langchain_community")
+
+# Special handling for classes that are inherited from
+mock_lc_callbacks = mock_module("langchain_core.callbacks")
+class BaseCallbackHandler:
+    pass
+mock_lc_callbacks.BaseCallbackHandler = BaseCallbackHandler
+
+mock_lc_comm_chat = mock_module("langchain_community.chat_models")
+mock_lc_comm_chat.ChatOllama = MagicMock
+
+mock_lc_tools = mock_module("langchain.tools")
+class BaseToolMock:
+    name: str = ""
+    description: str = ""
+    def __init__(self, *args, **kwargs): pass
+mock_lc_tools.BaseTool = BaseToolMock
 
 # CrewAI mocks
+mock_crewai = mock_module("crewai")
 class MockProcess:
     sequential = "sequential"
     hierarchical = "hierarchical"
-
-
-mock_crewai = SimpleNamespace(
-    Process=MockProcess, Agent=MagicMock, Task=MagicMock, Crew=MagicMock
-)
-sys.modules["crewai"] = mock_crewai
-
-mock_lc = MagicMock()
-sys.modules["langchain_community"] = mock_lc
-sys.modules["langchain_community.chat_models"] = mock_lc
-mock_lc.ChatOllama = MagicMock
-
-# Additional mocks for langchain-openai and others
-mock_lc_tools = MagicMock()
-class BaseToolMock(MagicMock):
-    pass
-mock_lc_tools.BaseTool = BaseToolMock
-sys.modules["langchain.tools"] = mock_lc_tools
-
-sys.modules["langchain"] = MagicMock()
-sys.modules["langchain_openai"] = MagicMock()
-sys.modules["tiktoken"] = MagicMock()
+mock_crewai.Process = MockProcess
+mock_crewai.Agent = MagicMock
+mock_crewai.Task = MagicMock
+mock_crewai.Crew = MagicMock
 
 from typing import AsyncGenerator  # noqa: E402
 import pytest  # noqa: E402
@@ -108,7 +126,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     # Ensure app state is initialized for stats tests
     if not hasattr(app.state, "start_time") or app.state.start_time is None:
         app.state.start_time = datetime.now(timezone.utc)
-    app.version = "1.2.3-test"
+    app.version = "1.0.243"
 
     async def override_get_db():
         yield db_session

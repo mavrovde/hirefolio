@@ -14,6 +14,7 @@ class CvRequest(Base):
     company: Mapped[str] = mapped_column(String, nullable=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     position_description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    subscribe_to_updates: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     consent_given: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     cv_version: Mapped[str] = mapped_column(String, nullable=True)
 
