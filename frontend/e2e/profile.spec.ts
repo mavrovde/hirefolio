@@ -27,7 +27,8 @@ test.describe('Admin Profile - Change Password', () => {
 
     test('should display profile page and user details', async ({ page }) => {
         await page.goto('/admin/profile');
-        await expect(page.locator('h2')).toContainText('Profile');
+        // Use class selector to avoid ambiguity
+        await expect(page.locator('h2.profile-title').first()).toContainText('Profile');
         await expect(page.locator('.user-info')).toContainText('admin');
     });
 

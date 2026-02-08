@@ -26,13 +26,29 @@ export class SqlPanelComponent {
     this.error = null;
     this.result = null;
 
-    this.http.post<any[]>(this.apiUrl, { query: this.query }).subscribe({
+    this.http.post<any>(this.apiUrl, { query: this.query }).subscribe({
       next: (data) => {
-        this.result = data;
-        if (data && data.length > 0) {
-          this.columns = Object.keys(data[0]);
-        } else {
-          this.columns = [];
+        if (data.error) {
+          this.error = data.error;
+          this.loading = false;
+          return;
+        }
+        this.result = data.rows || data; // Backend returns {columns, rows} or just list?
+        // Wait, app/api/admin_sql.py returns {"columns": ..., "rows": ...}
+        // Let's check admin_sql.py again.
+        // It says: return {"columns": keys, "rows": [dict(row) for row in result]}
+
+        if (data.columns) {
+          this.columns = data.columns;
+          this.result = data.rows;
+        } else if (Array.isArray(data)) {
+          // Fallback if it returns just array
+          this.result = data;
+          if (data.length > 0) {
+            this.columns = Object.keys(data[0]);
+          } else {
+            this.columns = [];
+          }
         }
         this.loading = false;
       },

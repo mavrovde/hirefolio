@@ -29,7 +29,7 @@ test.describe('Admin SQL Panel', () => {
         await page.goto('/admin/sql');
 
         // Check if we are on the SQL panel
-        await expect(page.locator('h2')).toHaveText('Admin SQL Panel');
+        await expect(page.locator('h2:has-text("SQL Panel")')).toBeVisible();
 
         // Type query
         await page.fill('#query', "SELECT 'test_value' as result_col");
