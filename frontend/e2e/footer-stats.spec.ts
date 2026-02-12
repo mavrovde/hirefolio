@@ -31,7 +31,8 @@ test.describe('Footer Stats', () => {
 
         // Force visibility if still hidden (for verification of content)
         // Check for specific text from real backend
-        const footer = page.locator('app-system-stats');
+        // Check for specific text from real backend
+        const footer = page.locator('app-system-stats > div').first();
         await expect(footer).toBeVisible();
         const footerText = await footer.innerText();
         console.log('Footer text:', footerText);

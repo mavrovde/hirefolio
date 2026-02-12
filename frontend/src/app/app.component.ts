@@ -6,7 +6,7 @@ import { SeoService } from './services/seo.service';
 import { CookieConsentComponent } from './components/cookie-consent/cookie-consent.component';
 import { SystemStatsComponent } from './components/stats/stats.component';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { map } from 'rxjs';
+import { map, delay } from 'rxjs';
 
 import { ViewportScroller } from '@angular/common';
 
@@ -37,6 +37,7 @@ export class AppComponent implements OnInit {
     this.viewportScroller.setOffset([0, 80]);
 
     this.jsonLd$ = this.seoService.jsonLdSchema$.pipe(
+      delay(0),
       map(schema => {
         if (!schema) return null;
         const script = `<script type="application/ld+json">${JSON.stringify(schema, null, 2)}</script>`;
