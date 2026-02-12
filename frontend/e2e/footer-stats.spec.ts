@@ -48,7 +48,7 @@ test.describe('Footer Stats', () => {
         const feVersion = page.getByText('FE: v');
         await expect(feVersion).toBeVisible();
 
-        const beVersion = page.getByText('BE: v1.1.7');
+        const beVersion = page.getByText(/BE: v\d+\.\d+\.\d+/);
         await expect(beVersion).toBeVisible();
     });
 
