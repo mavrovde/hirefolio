@@ -174,7 +174,8 @@ async def test_get_public_stats(client: AsyncClient):
     data = response.json()
     assert "visitor_ip" in data
     assert "uptime" in data
-    assert data["backend_version"] == "1.1.7"
+    from app.main import app
+    assert data["backend_version"] == app.version
     assert data["visitor_ip"] == "127.0.0.1"
 
 
