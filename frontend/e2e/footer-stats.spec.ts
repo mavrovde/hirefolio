@@ -3,6 +3,11 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Footer Stats', () => {
     test.beforeEach(async ({ page }) => {
+        // Block Google Analytics and Tag Manager
+        await page.route('**/*analytics*', route => route.abort());
+        await page.route('**/*googletagmanager*', route => route.abort());
+        await page.route('**/*doubleclick*', route => route.abort());
+
         // Bypass cookie consent
         await page.addInitScript(() => {
             window.localStorage.setItem('cookie_consent', 'true');
