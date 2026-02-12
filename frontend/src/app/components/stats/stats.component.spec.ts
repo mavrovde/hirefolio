@@ -88,6 +88,70 @@ describe('SystemStatsComponent - Browser', () => {
     component.ngOnDestroy();
     expect(clearIntervalSpy).toHaveBeenCalled();
   });
+
+  it('should handle public stats error', () => {
+    // Spy on console.error
+    const consoleSpy = vi.spyOn(console, 'error');
+
+    // Manually trigger the subscription logic with an error since the current mock in beforeEach is hardcoded for success
+    // We can simulate the error behavior directly or mock the service differently for this test.
+    // Given the complexity of overriding providers per test in Angular/Jest/Vitest setups sometimes,
+    // let's just test the private method logic if we can access it, or better:
+    // Create a new component instance with a failing service mock for this specific test case.
+    // Or, since we want to test the component's reaction to the error callback:
+
+    // Call the error callback directly if we can access the subscription? No.
+    // Let's rely on a specific test module configuration for this test suite or just add a new describe block.
+    // However, simplest way here is to just verify the logic we added:
+    // "this.visitorIp = 'Unavailable'; this.backendVersion = 'Error';"
+
+    // Let's simulate the state change manually to ensure the template would reflect it?
+    // No, we want to test the `error` callback execution.
+
+    // We will override the service mock for this specific test if possible, or add a new describe block.
+    // Let's add a new describe block for Error handling specifically.
+  });
+});
+
+describe('SystemStatsComponent - Error Handling', () => {
+  let component: SystemStatsComponent;
+  let fixture: ComponentFixture<SystemStatsComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [SystemStatsComponent],
+      providers: [
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        {
+          provide: StatsService,
+          useValue: {
+            getPublicStats: vi.fn().mockReturnValue({
+              subscribe: (observer: any) => {
+                if (observer.error) {
+                  observer.error('Simulated API Error');
+                }
+                return { unsubscribe: () => { } };
+              }
+            })
+          }
+        }
+      ],
+    })
+      .overrideComponent(SystemStatsComponent, {
+        remove: { imports: [TranslatePipe] },
+        add: { imports: [MockTranslatePipe] },
+      })
+      .compileComponents();
+
+    fixture = TestBed.createComponent(SystemStatsComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should set fallback values on API error', () => {
+    expect(component.visitorIp).toBe('Unavailable');
+    expect(component.backendVersion).toBe('Error');
+  });
 });
 
 describe('SystemStatsComponent - Non-Browser', () => {

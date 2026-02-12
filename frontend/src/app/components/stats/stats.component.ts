@@ -66,8 +66,10 @@ export class SystemStatsComponent implements OnInit, OnDestroy {
           this.uptime = stats.uptime;
         }
       },
-      error: () => {
-        this.visitorIp = 'Unknown';
+      error: (err) => {
+        console.error('Failed to fetch public stats:', err);
+        this.visitorIp = 'Unavailable';
+        this.backendVersion = 'Error';
         this.startUptimeCounter(); // Fallback to client uptime if API fails
       }
     });

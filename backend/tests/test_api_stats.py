@@ -173,8 +173,9 @@ async def test_get_public_stats(client: AsyncClient):
     assert response.status_code == 200
     data = response.json()
     assert "visitor_ip" in data
-    assert "backend_version" in data
     assert "uptime" in data
+    assert data["backend_version"] == "1.1.7"
+    assert data["visitor_ip"] == "127.0.0.1"
 
 
 @pytest.mark.asyncio

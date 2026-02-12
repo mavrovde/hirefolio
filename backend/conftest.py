@@ -129,7 +129,6 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     # Ensure app state is initialized for stats tests
     if not hasattr(app.state, "start_time") or app.state.start_time is None:
         app.state.start_time = datetime.now(timezone.utc)
-    app.version = "1.0.243"
 
     async def override_get_db():
         yield db_session

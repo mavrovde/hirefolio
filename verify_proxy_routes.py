@@ -44,6 +44,14 @@ async def verify_proxy_routes():
                 "label": "HTTPS API Health (mavrov.de)",
                 "expected_text": "healthy"
             },
+            # 4b. HTTPS Public Stats (mavrov.de)
+            {
+                "url": f"{ssl_base_url}{api_prefix}/stats/public",
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": 200,
+                "label": "HTTPS Public Stats (mavrov.de)",
+                "expected_text": "visitor_ip"
+            },
             # 5. Domain HTTPS (Standard)
             {
                 "url": f"{ssl_base_url}/",
