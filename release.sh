@@ -109,6 +109,15 @@ echo "Step 5: Building and pushing AMD64 images..."
 echo ""
 echo "Step 6: Final Happy Path E2E Verification..."
 echo "Running mission-critical tests (Auth & AI Suggestions)..."
+# Ensure stack is running (in case build script stopped it or resource pressure killed it)
+docker-compose up -d backend frontend proxy open-webui
+# Simple wait for frontend
+count=0
+until curl -s -f http://localhost:4200 > /dev/null || [ $count -eq 30 ]; do
+  sleep 1
+  count=$((count + 1))
+done
+
 # Ensure we wait an extra bit for frontend as well
 sleep 5
 cd frontend

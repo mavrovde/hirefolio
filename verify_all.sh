@@ -23,7 +23,7 @@ echo "backend: 🐍 Running Static Analysis & Tests..."
 docker-compose -f docker-compose.yml up -d --force-recreate db
 # Run checks
 cd backend
-/Users/sergii.mavrov/miniconda3/envs/workspace/bin/python3 -m pytest tests
+GEMINI_API_KEY="" /Users/sergii.mavrov/miniconda3/envs/workspace/bin/python3 -m pytest tests
 cd ..
 
 # 2. Frontend Checks

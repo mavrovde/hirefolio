@@ -321,6 +321,7 @@ jobs:
           POSTGRES_PASSWORD: password
           POSTGRES_DB: mavrov
           IMAGE_TAG: sha-${{ github.sha }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           # Start stack
           docker compose -f docker-compose.prod.yml up -d

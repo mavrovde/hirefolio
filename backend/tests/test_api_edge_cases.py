@@ -136,7 +136,7 @@ async def test_semantic_search_with_results(client: AsyncClient, mock_embedding)
             json={
                 "title": "SearchMe",
                 "slug": "search-me",
-                "content": "x",
+                "content": "This content contains the query string.",
                 "published": True,
             },
         )
@@ -206,8 +206,9 @@ async def test_semantic_search_embedding_unavailable(client: AsyncClient):
     with patch("app.api.posts.get_embedding", return_value=None):
         response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=query")
 
-    assert response.status_code == 400
-    assert "Embedding service unavailable" in response.json()["detail"]
+    assert response.status_code == 200
+    # Should return empty list (or keyword results if any match)
+    assert isinstance(response.json(), list)
 
 
 @pytest.mark.asyncio

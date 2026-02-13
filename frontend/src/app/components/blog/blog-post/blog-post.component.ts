@@ -38,7 +38,7 @@ import { SeoService } from '../../../services/seo.service';
                   <span class="text-terminal-highlight">author:</span> sergii
                 </span>
                 <span class="flex items-center gap-2">
-                  <span class="text-terminal-highlight">date:</span> {{ post.date }}
+                  <span class="text-terminal-highlight">date:</span> {{ post.created_at | date }}
                 </span>
                 <span class="flex items-center gap-2">
                    <span class="text-terminal-highlight">lang:</span> {{ post.language }}
@@ -122,7 +122,7 @@ export class BlogPostComponent implements OnInit {
                 "@context": "https://schema.org",
                 "@type": "BlogPosting",
                 "headline": post.title,
-                "datePublished": post.date,
+                "datePublished": post.created_at,
                 "author": {
                   "@type": "Person",
                   "name": "Sergii Mavrov",

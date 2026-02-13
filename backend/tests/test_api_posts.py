@@ -240,8 +240,9 @@ async def test_semantic_search_no_embedding(client: AsyncClient):
     with patch("app.api.posts.get_embedding", return_value=None):
         response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=test")
 
-    assert response.status_code == 400
-    assert "unavailable" in response.json()["detail"].lower()
+    # Now returns 200 with fallback to empty list (or keyword results)
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
 
 
 @pytest.mark.asyncio

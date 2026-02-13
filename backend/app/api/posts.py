@@ -347,40 +347,94 @@ async def semantic_search(
     q: str,
     lang: Optional[str] = "en",
     limit: int = 10,
+    min_relevance: float = 0.3, # Filter out low relevance
     db: AsyncSession = Depends(get_db),
 ):
-    """Search posts using semantic similarity."""
-    query_embedding = await get_embedding(q)
+    """
+    Search posts using hybrid approach: Semantic (Vector) + Keyword (SQL ILIKE).
+    """
+    if not q or len(q.strip()) < 2:
+        return []
 
-    if query_embedding is None:
-        raise HTTPException(status_code=400, detail="Embedding service unavailable")
+    # 1. Vector Search
+    vector_results = []
+    try:
+        query_embedding = await get_embedding(q)
+        if query_embedding:
+            vector_query = (
+                select(
+                    Post,
+                    (1 - Post.embedding.cosine_distance(query_embedding)).label("relevance"),
+                )
+                .where(Post.published.is_(True))
+                .where(Post.embedding.isnot(None))
+            )
+            if lang:
+                vector_query = vector_query.where(Post.language == lang)
+            
+            # Fetch slightly more to allow for filtering/reranking
+            vector_query = vector_query.order_by(text("relevance DESC")).limit(limit * 2)
+            
+            v_res = await db.execute(vector_query)
+            vector_results = v_res.all()
+    except Exception as e:
+        # Fallback to keyword search if vector fails
+        pass
 
-    search_query = (
-        select(
-            Post,
-            Post.embedding.cosine_distance(query_embedding).label("distance"),
-        )
-        .where(Post.published.is_(True))
-        .where(Post.embedding.isnot(None))
-    )
-
+    # 2. Keyword Search
+    keyword_results = []
+    keyword_query = select(Post).where(Post.published.is_(True))
     if lang:
-        search_query = search_query.where(Post.language == lang)
+        keyword_query = keyword_query.where(Post.language == lang)
+        
+    search_term = f"%{q}%"
+    keyword_query = keyword_query.where(
+        (Post.title.ilike(search_term)) | (Post.summary.ilike(search_term)) | (Post.content.ilike(search_term))
+    ).limit(limit)
+    
+    k_res = await db.execute(keyword_query)
+    keyword_posts = k_res.scalars().all()
 
-    search_query = search_query.order_by("distance").limit(limit)
+    # 3. Merge Results
+    results_map = {}
 
-    result = await db.execute(search_query)
-    posts = result.all()
+    # Process Vector Results
+    for post, relevance in vector_results:
+        if relevance < min_relevance:
+            continue
+        results_map[post.id] = {
+            "post": post,
+            "relevance": float(relevance),
+            "sources": {"vector"}
+        }
+
+    # Process Keyword Results
+    for post in keyword_posts:
+        if post.id in results_map:
+            # Boost score if found in both
+            results_map[post.id]["relevance"] = min(1.0, results_map[post.id]["relevance"] + 0.2)
+            results_map[post.id]["sources"].add("keyword")
+        else:
+            # Add keyword-only match (give it a decent base score)
+            results_map[post.id] = {
+                "post": post,
+                "relevance": 0.85, # High confidence for exact match
+                "sources": {"keyword"}
+            }
+
+    # Sort by relevance
+    sorted_results = sorted(results_map.values(), key=lambda x: x["relevance"], reverse=True)[:limit]
 
     return [
         {
-            "id": p.id,
-            "title": p.title,
-            "slug": p.slug,
-            "summary": p.summary,
-            "relevance": 1 - distance,
+            "id": item["post"].id,
+            "title": item["post"].title,
+            "slug": item["post"].slug,
+            "summary": item["post"].summary,
+            "relevance": item["relevance"],
+            # Debugging info could be returned if needed, but keeping schema clean for now
         }
-        for p, distance in posts
+        for item in sorted_results
     ]
 
 

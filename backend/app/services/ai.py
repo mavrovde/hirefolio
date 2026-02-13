@@ -66,19 +66,21 @@ async def suggest_tags(title: str, content: str) -> list[str]:
     Returns a list of strings (max 5).
     """
     prompt = f"""
-    You are a blog tagging assistant.
-    Suggest exactly 5 short, relevant tags for the following blog post.
-    Return ONLY a JSON array of strings. Do not include any explanation or markdown formatting.
+    You are a technical blog tagging assistant.
+    Analyze the following blog post and extract exactly 5 relevant tags.
+    Focus on specific technologies, concepts, frameworks, or key themes discussed in the text.
+    Avoid generic terms like "guide", "introduction", or "tutorial".
+    Return ONLY a JSON array of strings (e.g., ["tag1", "tag2"]).
     
     Title: {title}
-    Content: {content[:1000]}...
+    Content: {content[:10000]}
     """
 
     # Try Gemini first
     gemini_response = await _generate_text_gemini(prompt)
     if gemini_response:
         response_text = gemini_response
-        logger.info("Using Gemini for suggest_tags")
+        logger.info(f"Using Gemini for suggest_tags. Raw response: {response_text[:200]}...")
     else:
         logger.info("Using Ollama for suggest_tags (fallback)")
         try:
@@ -147,8 +149,9 @@ async def suggest_post_details(content: str) -> dict[str, Union[str, List[str]]]
     Generate title, slug, summary, and tags suggestions using Gemini (primary) or Ollama (fallback).
     """
     prompt = f"""
-    You are a blog editor assistant.
+    You are a technical blog editor assistant.
     Based on the following blog content, suggest a catchy title, a URL-friendly slug, a brief 1-2 sentence summary, and 5 relevant tags.
+    Focus on specific technologies and key themes for the tags.
     
     Rules:
     1. Return ONLY a valid JSON object.
@@ -157,13 +160,13 @@ async def suggest_post_details(content: str) -> dict[str, Union[str, List[str]]]
     4. Do NBOT use placeholders like "[Snipped]" or "Insert text here". Generate actual content based on the input.
     5. Do not include any explanation or markdown formatting.
     
-    Content: {content[:2000]}...
+    Content: {content[:10000]}
     """
 
     gemini_response = await _generate_text_gemini(prompt)
     if gemini_response:
         response_text = gemini_response
-        logger.info("Using Gemini for suggest_post_details")
+        logger.info(f"Using Gemini for suggest_post_details. Raw response: {response_text[:200]}...")
     else:
         logger.info("Using Ollama for suggest_post_details (fallback)")
         try:
@@ -239,9 +242,9 @@ async def suggest_field(content: str, field: str) -> dict[str, str]:
     Generate a suggestion for a single field using Gemini (primary) or Ollama (fallback).
     """
     prompts = {
-        "title": f"Suggest a catchy, professional, and SEO-friendly title for the following blog content. Return ONLY the raw title text. DO NOT prefix it with 'Title:', 'Suggestion:', or any other label. DO NOT use quotes.\n\nContent: {content[:1000]}",
-        "slug": f"Suggest a URL-friendly slug (kebab-case) for the following blog content. Return ONLY the raw slug text. DO NOT prefix it with 'Slug:', 'URL:', or any other label. DO NOT use quotes.\n\nContent: {content[:1000]}",
-        "summary": f"Summarize the following blog content in exactly 1-2 concise, engaging sentences for a social media preview. Return ONLY the raw summary text. DO NOT prefix it with 'Summary:', 'Description:', or any other label. DO NOT use quotes.\n\nContent: {content[:1000]}",
+        "title": f"Suggest a catchy, professional, and SEO-friendly title for the following blog content. Return ONLY the raw title text. DO NOT prefix it with 'Title:', 'Suggestion:', or any other label. DO NOT use quotes.\n\nContent: {content[:10000]}",
+        "slug": f"Suggest a URL-friendly slug (kebab-case) for the following blog content. Return ONLY the raw slug text. DO NOT prefix it with 'Slug:', 'URL:', or any other label. DO NOT use quotes.\n\nContent: {content[:10000]}",
+        "summary": f"Summarize the following blog content in exactly 1-2 concise, engaging sentences for a social media preview. Return ONLY the raw summary text. DO NOT prefix it with 'Summary:', 'Description:', or any other label. DO NOT use quotes.\n\nContent: {content[:10000]}",
     }
 
     if field not in prompts:
@@ -341,8 +344,17 @@ async def generate_full_post(topic: str, keywords: List[str] = [], language: str
 
     # Parse JSON
     try:
-        cleaned_text = re.sub(r"```json\s*|\s*```", "", response_text).strip()
-        post_data = json.loads(cleaned_text)
+        # Robust extraction: find first { and last }
+        start_idx = response_text.find("{")
+        end_idx = response_text.rfind("}")
+        
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            cleaned_text = response_text[start_idx:end_idx+1]
+            post_data = json.loads(cleaned_text)
+        else:
+            # Fallback to regex if braces not found (unlikely for valid JSON)
+            cleaned_text = re.sub(r"```json\s*|\s*```", "", response_text).strip()
+            post_data = json.loads(cleaned_text)
         
         # Validate structure
         required_keys = ["title", "slug", "summary", "tags", "content"]
