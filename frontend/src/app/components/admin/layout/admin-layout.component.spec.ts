@@ -78,4 +78,14 @@ describe('AdminLayoutComponent', () => {
     );
     expect(tagsLink).toBeFalsy();
   });
+
+  it('should show Gemini Chat link', () => {
+    fixture.detectChanges();
+    const nativeElement = fixture.nativeElement as HTMLElement;
+    const chatLink = Array.from(nativeElement.querySelectorAll('a')).find(
+      (a) => a.textContent?.trim().includes('Gemini Chat')
+    );
+    expect(chatLink).toBeTruthy();
+    expect(chatLink?.getAttribute('href')).toBe('/admin/chat');
+  });
 });
