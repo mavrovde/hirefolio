@@ -40,12 +40,14 @@ import { SeoService } from '../../services/seo.service';
 
       <main *ngIf="profile$ | async as profile" class="pb-16">
         <app-hero [profile]="profile"></app-hero>
+        <app-blog [standalone]="false"></app-blog>
+
+        <!-- Other sections below -->
         <app-about [profile]="profile"></app-about>
         <app-experience [profile]="profile"></app-experience>
         <app-skills [profile]="profile"></app-skills>
         <app-education [profile]="profile"></app-education>
         <!-- <app-recommendations [profile]="profile"></app-recommendations> -->
-        <app-blog [standalone]="false"></app-blog>
         <app-contact [profile]="profile"></app-contact>
       </main>
     </div>

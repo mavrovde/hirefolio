@@ -409,6 +409,86 @@ async def suggest_tags_endpoint(
     return {"tags": tags}
 
 
+class PostGenerationRequest(BaseModel):
+    topic: str
+    keywords: List[str] = []
+    language: str = "en"
+
+
+@router.post("/generate", response_model=PostResponse)
+async def generate_post_endpoint(
+    request: PostGenerationRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    Generate a full blog post using AI and save it as a draft.
+    """
+    from app.services.ai import generate_full_post
+    from datetime import datetime
+
+    generated_data = await generate_full_post(
+        topic=request.topic, 
+        keywords=request.keywords, 
+        language=request.language
+    )
+    
+    if not generated_data:
+        raise HTTPException(status_code=500, detail="Failed to generate post content")
+        
+    # Create the post structure
+    # We need to generate an embedding for it too
+    
+    title = generated_data.get("title", "Untitled Post")
+    content = generated_data.get("content", "")
+    slug = generated_data.get("slug", "")
+    summary = generated_data.get("summary", "")
+    tags = generated_data.get("tags", [])
+    
+    # Ensure slug is unique-ish? For now let DB handle unique constraint error or append timestamp
+    # But usually user will edit it.
+    
+    text_for_embedding = f"{title}\n\n{content}"
+    embedding = await get_embedding(text_for_embedding)
+    
+    post = Post(
+        title=title,
+        slug=slug,
+        content=content,
+        summary=summary,
+        language=request.language,
+        published=False, # Draft by default
+        tags=tags,
+        embedding=embedding,
+    )
+    
+    try:
+        db.add(post)
+        await db.commit()
+        await db.refresh(post)
+    except Exception as e:
+        await db.rollback()
+        # Handle unique constraint on slug potentially
+        import random
+        post.slug = f"{slug}-{random.randint(1000, 9999)}"
+        db.add(post)
+        await db.commit()
+        await db.refresh(post)
+
+    return PostResponse(
+        id=post.id,
+        title=post.title,
+        slug=post.slug,
+        content=post.content,
+        summary=post.summary,
+        language=post.language,
+        published=post.published,
+        tags=post.tags,
+        created_at=post.created_at.isoformat(),
+        updated_at=post.updated_at.isoformat(),
+    )
+
+
 @router.put("/{id:int}", response_model=PostResponse)
 async def update_post_by_id(
     id: int,

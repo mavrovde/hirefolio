@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     admin_email: str = "admin@mavrov.de"
     api_prefix: str = "/api/app"
+    gemini_api_key: str = ""
     cv_version: str = "v1.0"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
