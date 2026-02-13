@@ -15,12 +15,12 @@ export class HeaderComponent {
   currentLang: Language = 'en';
 
   navItems = [
+    { labelKey: 'NAV.BLOG', href: '#blog' },
     { labelKey: 'NAV.ABOUT', href: '#about' },
     { labelKey: 'NAV.EXPERIENCE', href: '#experience' },
     { labelKey: 'NAV.SKILLS', href: '#skills' },
     { labelKey: 'NAV.EDUCATION', href: '#education' },
     { labelKey: 'NAV.CV', href: '/cv' },
-    { labelKey: 'NAV.BLOG', href: '#blog' },
     { labelKey: 'NAV.CONTACT', href: '#contact' },
     { labelKey: 'NAV.LLM', href: '/llm' },
   ];

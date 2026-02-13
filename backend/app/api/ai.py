@@ -21,18 +21,30 @@ class MultiChatRequest(BaseModel):
     topic: str
 
 
+
 @router.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     """
-    Stream chat response from LLM.
-    Open to public for now (or restrict to authenticated users if desired).
+    Stream chat response from LLM (Ollama).
     """
-    # If we want to restrict to users:
-    # async def chat_endpoint(request: ChatRequest, current_user: User = Depends(get_current_user)):
-
     return StreamingResponse(
         chat_with_llm(request.messages), media_type="text/event-stream"
     )
+
+
+@router.post("/gemini-chat")
+async def gemini_chat_endpoint(request: ChatRequest):
+    """
+    Chat with Gemini (non-streaming for now as per service implementation).
+    """
+    # Extract history and last message
+    history = request.messages[:-1]
+    last_message = request.messages[-1]["content"] if request.messages else ""
+    
+    from app.services.ai import chat_with_gemini
+    response = await chat_with_gemini(last_message, history)
+    return {"response": response}
+
 
 
 async def _generate_agent_name(description: str) -> str:

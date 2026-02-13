@@ -111,4 +111,18 @@ export class LlmService {
             if (onDone) onDone();
         }
     }
+    async chatGemini(messages: ChatMessage[]): Promise<string> {
+        const response = await fetch(`${this.apiUrl}/gemini-chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to chat with Gemini');
+        }
+
+        const data = await response.json();
+        return data.response;
+    }
 }

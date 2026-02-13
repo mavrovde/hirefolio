@@ -38,12 +38,13 @@
       </div>
       <div class="space-y-4">
         <div *ngFor="let result of results" class="border-l-2 border-primary pl-4 py-1">
-          <div (click)="togglePost(result.slug)" class="cursor-pointer group">
+          <a [routerLink]="['/blog', result.slug]"
+            class="cursor-pointer group block hover:bg-terminal-dim rounded px-2 py-1 transition-colors relative -left-2">
             <span class="text-terminal-highlight">[{{ (result.relevance * 100).toFixed(0) }}%]</span>
             <span class="text-primary font-bold ml-2 group-hover:underline decoration-dashed">{{
               result.title
               }}</span>
-          </div>
+          </a>
           <div class="text-secondary text-sm ml-12 opacity-80">{{ result.summary }}</div>
         </div>
       </div>

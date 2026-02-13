@@ -108,8 +108,8 @@ describe('HeaderComponent', () => {
   });
 
   it('should have correct properties in navItems', () => {
-    expect(component.navItems[0]).toEqual({ labelKey: 'NAV.ABOUT', href: '#about' });
-    expect(component.navItems[4]).toEqual({ labelKey: 'NAV.CV', href: '/cv' });
+    expect(component.navItems[0]).toEqual({ labelKey: 'NAV.BLOG', href: '#blog' });
+    expect(component.navItems[5]).toEqual({ labelKey: 'NAV.CV', href: '/cv' });
     expect(component.navItems[component.navItems.length - 1]).toEqual({ labelKey: 'NAV.LLM', href: '/llm' });
   });
 });

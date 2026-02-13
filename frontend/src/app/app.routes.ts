@@ -99,6 +99,13 @@ export const routes: Routes = [
             (m) => m.SqlPanelComponent,
           ),
       },
+      {
+        path: 'chat',
+        loadComponent: () =>
+          import('./components/admin/chat/chat.component').then(
+            (m) => m.AdminChatComponent,
+          ),
+      },
     ],
   },
 ];

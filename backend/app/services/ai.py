@@ -282,6 +282,48 @@ async def suggest_field(content: str, field: str) -> dict[str, str]:
     return {field: suggestion}
 
 
+
+async def chat_with_gemini(message: str, history: List[dict] = []) -> str:
+    """
+    Chat with Gemini model, maintaining conversation history.
+    """
+    client = _get_gemini_client()
+    if not client:
+        return "Gemini is not configured."
+
+    try:
+        # Convert simple history format to Gemini format
+        # Input: [{"role": "user", "content": "msg"}, {"role": "assistant", "content": "msg"}]
+        # Output: [{"role": "user", "parts": ["msg"]}, {"role": "model", "parts": ["msg"]}]
+        gemini_history = []
+        for msg in history:
+            role = "user" if msg.get("role") in ["user", "system"] else "model"
+            content = msg.get("content", "")
+            if content:
+                gemini_history.append({"role": role, "parts": [content]})
+        
+        # Use a model that supports chat
+        chat = client.models.start_chat(
+            model='gemini-2.0-flash', # or client.chats.create depending on SDK version
+            history=gemini_history
+        )
+        
+        response = chat.send_message(message)
+        return response.text
+    except Exception as e:
+        # Fallback to 1.5
+        try:
+             chat = client.models.start_chat(
+                model='gemini-1.5-flash',
+                history=gemini_history
+            )
+             response = chat.send_message(message)
+             return response.text
+        except Exception as e2:
+            logger.error(f"Error in chat_with_gemini: {e2}", exc_info=True)
+            return f"Error: {str(e2)}"
+
+
 async def generate_full_post(topic: str, keywords: List[str] = [], language: str = "en") -> dict[str, Union[str, List[str]]]:
     """
     Generate a complete blog post including title, slug, summary, tags, and markdown content.
