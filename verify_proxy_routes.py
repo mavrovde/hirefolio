@@ -80,6 +80,14 @@ async def verify_proxy_routes():
                 "expected_status": 401, # Should be unauthorized without token
                 "label": "Protected Admin Route (401 Check)"
             },
+            # 5e. Image Upload Route (PUT Method Check)
+            {
+                "url": f"{ssl_base_url}{api_prefix}/posts/1/image",
+                "headers": {"Host": "mavrov.de"},
+                "method": "PUT",
+                "expected_status": 401, # Should be unauthorized, but confirms PUT reaches backend
+                "label": "Image Upload Route (PUT Verification only)"
+            },
             # 6. /open subpath
             {
                 "url": f"{ssl_base_url}/open/",
@@ -141,7 +149,14 @@ async def verify_proxy_routes():
         
         for test in tests:
             try:
-                response = await client.get(test["url"], headers=test["headers"], follow_redirects=False)
+                method = test.get("method", "GET")
+                if method == "GET":
+                    response = await client.get(test["url"], headers=test["headers"], follow_redirects=False)
+                elif method == "PUT":
+                     response = await client.put(test["url"], headers=test["headers"], follow_redirects=False)
+                elif method == "POST":
+                     response = await client.post(test["url"], headers=test["headers"], follow_redirects=False)
+                
                 status = response.status_code
                 
                 expected = test["expected_status"]

@@ -7,10 +7,10 @@ from app.config import settings
 API_PREFIX = settings.api_prefix
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
 async def test_upload_and_get_post_image(
-    async_client: AsyncClient,
+    client: AsyncClient,
     db_session: AsyncSession,
-    admin_token_headers: dict,
 ):
     # 1. Create a post
     post_data = {
@@ -20,7 +20,7 @@ async def test_upload_and_get_post_image(
         "language": "en",
         "published": True
     }
-    response = await async_client.post(f"{API_PREFIX}/posts", json=post_data, headers=admin_token_headers)
+    response = await client.post(f"{API_PREFIX}/posts", json=post_data)
     assert response.status_code == 200, f"Failed to create post: {response.text}"
     post_id = response.json()["id"]
 
@@ -30,7 +30,7 @@ async def test_upload_and_get_post_image(
     
     files = {"file": ("test_image.gif", fake_image_content, "image/gif")}
     
-    response = await async_client.put(f"{API_PREFIX}/posts/{post_id}/image", files=files, headers=admin_token_headers)
+    response = await client.put(f"{API_PREFIX}/posts/{post_id}/image", files=files)
     assert response.status_code == 200, f"Failed to upload image: {response.text}"
     data = response.json()
     
@@ -40,23 +40,22 @@ async def test_upload_and_get_post_image(
     assert data["image_url"] == expected_url, f"Expected {expected_url}, got {data.get('image_url')}"
     
     # 4. Get the image
-    response = await async_client.get(expected_url)
+    response = await client.get(expected_url)
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/gif"
     assert response.content == fake_image_content
 
 @pytest.mark.asyncio
 async def test_upload_image_post_not_found(
-    async_client: AsyncClient,
-    admin_token_headers: dict,
+    client: AsyncClient,
 ):
     files = {"file": ("test.jpg", b"fake", "image/jpeg")}
-    response = await async_client.put(f"{API_PREFIX}/posts/999999/image", files=files, headers=admin_token_headers)
+    response = await client.put(f"{API_PREFIX}/posts/999999/image", files=files)
     assert response.status_code == 404
 
 @pytest.mark.asyncio
 async def test_get_image_not_found(
-    async_client: AsyncClient,
+    client: AsyncClient,
 ):
-    response = await async_client.get(f"{API_PREFIX}/posts/999999/image")
+    response = await client.get(f"{API_PREFIX}/posts/999999/image")
     assert response.status_code == 404
