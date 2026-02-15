@@ -41,7 +41,7 @@ docker build -t "$FRONTEND_IMAGE" ./frontend >/dev/null
 # 2. Start Proxy (and dependencies) using Prod Compose
 echo "[2/4] Starting Proxy stack (Prod Env)..."
 # We start proxy (which triggers deps)
-docker compose -f docker-compose.prod.yml up -d proxy || docker-compose -f docker-compose.prod.yml up -d proxy
+docker compose -f docker-compose.prod.yml up -d --force-recreate proxy || docker-compose -f docker-compose.prod.yml up -d --force-recreate proxy
 
 # 3. Wait for Startup
 echo "[3/4] Waiting for startup (5s)..."
