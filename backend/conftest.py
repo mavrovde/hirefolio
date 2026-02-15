@@ -25,6 +25,55 @@ mock_module("langchain_openai")
 mock_module("langchain_anthropic")
 mock_module("langchain_community")
 
+# Mock heavy/problematic libs
+mock_numpy = mock_module("numpy")
+mock_numpy.ndarray = MagicMock
+
+# Create a mock that looks like a SQLAlchemy TypeEngine
+from sqlalchemy.types import UserDefinedType
+from sqlalchemy.sql import expression
+
+class MockVector(UserDefinedType):
+    def __init__(self, dim=None):
+        self.dim = dim
+    
+    def get_col_spec(self, **kw):
+        return "VECTOR"
+        
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
+            # Convert list/array to string format "[1.0, 2.0, ...]" for postgres
+            return str(list(value))
+        return process
+
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            if value is None:
+                return None
+            if isinstance(value, str):
+                # asyncpg might return the vector as a string if types aren't registered
+                # format is usually "[0.1,0.2,...]"
+                import json
+                try:
+                    return json.loads(value)
+                except:
+                    # Fallback for simple parsing if json fails (postgres format)
+                    return [float(x) for x in value.strip("[]").split(",")]
+            return value
+        return process
+        
+    class Comparator(UserDefinedType.Comparator):
+        def cosine_distance(self, other):
+            return expression.literal_column("0.5") # Mock distance
+
+    comparator_factory = Comparator
+
+mock_pgvector = mock_module("pgvector")
+mock_pgvector_sqla = mock_module("pgvector.sqlalchemy")
+mock_pgvector_sqla.Vector = MockVector
+
 # Special handling for classes that are inherited from
 mock_lc_callbacks = mock_module("langchain_core.callbacks")
 class BaseCallbackHandler:

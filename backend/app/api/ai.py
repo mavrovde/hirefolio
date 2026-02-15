@@ -4,6 +4,9 @@ from pydantic import BaseModel
 from typing import List, Dict
 from app.services.chat import chat_with_llm
 from app.services.multi_chat import multi_agent_conversation, AgentConfig
+from app.models.user import User
+from app.services.auth import get_current_admin_user
+from fastapi import Depends
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -33,7 +36,10 @@ async def chat_endpoint(request: ChatRequest):
 
 
 @router.post("/gemini-chat")
-async def gemini_chat_endpoint(request: ChatRequest):
+async def gemini_chat_endpoint(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_admin_user)
+):
     """
     Chat with Gemini (non-streaming for now as per service implementation).
     """
@@ -42,7 +48,7 @@ async def gemini_chat_endpoint(request: ChatRequest):
     last_message = request.messages[-1]["content"] if request.messages else ""
     
     from app.services.ai import chat_with_gemini
-    response = await chat_with_gemini(last_message, history)
+    response = await chat_with_gemini(last_message, history, current_user.gemini_api_key)
     return {"response": response}
 
 

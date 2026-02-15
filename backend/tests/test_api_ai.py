@@ -65,7 +65,8 @@ async def test_gemini_chat_endpoint(client: AsyncClient):
         # Verify call arguments
         # history should be empty list (slice [:-1] of 1 item is empty)
         # last message "Hello"
-        mock_chat.assert_called_with("Hello", [])
+        # api_key should be None (default for mock user)
+        mock_chat.assert_called_with("Hello", [], None)
 
 
 @pytest.mark.asyncio
@@ -85,6 +86,7 @@ async def test_gemini_chat_endpoint_with_history(client: AsyncClient):
         
         mock_chat.assert_called_with(
             "How are you?", 
-            [{"role": "user", "content": "Hi"}, {"role": "model", "content": "Hello"}]
+            [{"role": "user", "content": "Hi"}, {"role": "model", "content": "Hello"}],
+            None
         )
 

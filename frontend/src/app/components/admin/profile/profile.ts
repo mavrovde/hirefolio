@@ -22,7 +22,45 @@ export class ProfileComponent {
   statusMessage = '';
   currentUser$ = this.authService.currentUser$;
 
+  geminiApiKey = '';
+  showKey = false;
+
   constructor() { }
+
+  ngOnInit() {
+    this.currentUser$.subscribe(user => {
+      if (user) {
+        this.geminiApiKey = user.gemini_api_key || '';
+      }
+    });
+  }
+
+  toggleKeyVisibility() {
+    this.showKey = !this.showKey;
+  }
+
+  onSaveKey() {
+    this.loading = true;
+    this.message = '';
+    this.error = '';
+    this.statusMessage = 'Saving API Key...';
+
+    this.authService.updateGeminiKey(this.geminiApiKey).subscribe({
+      next: (user) => {
+        this.message = 'API Key saved successfully';
+        this.statusMessage = '';
+        this.loading = false;
+        // Update local user state if needed, though auth service subject might handle it
+        this.cdr.detectChanges();
+        setTimeout(() => this.message = '', 3000);
+      },
+      error: (err) => {
+        this.error = 'Failed to save API Key';
+        this.loading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
 
   onSubmit() {
     console.log('DEBUG: onSubmit started');

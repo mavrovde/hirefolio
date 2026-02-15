@@ -15,6 +15,7 @@ export interface User {
   username: string;
   email: string;
   is_admin: boolean;
+  gemini_api_key?: string;
 }
 
 @Injectable({
@@ -69,6 +70,12 @@ export class AuthService {
   changePassword(oldPassword: string, newPassword: string): Observable<void> {
     const body = { old_password: oldPassword, new_password: newPassword };
     return this.http.put<void>(`${this.apiUrl}${environment.apiPrefix}/auth/password`, body);
+  }
+
+  updateGeminiKey(apiKey: string): Observable<User> {
+    return this.http.put<User>(`${this.apiUrl}${environment.apiPrefix}/auth/gemini-key`, { api_key: apiKey }).pipe(
+      tap(user => this.currentUserSubject.next(user))
+    );
   }
 
   getToken(): string | null {

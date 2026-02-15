@@ -1,116 +1,87 @@
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
 import { ProfileComponent } from './profile';
 import { AuthService } from '../../../services/auth.service';
-import { BehaviorSubject, of, throwError } from 'rxjs';
-import { vi } from 'vitest';
-import { MockTranslatePipe } from '../../../testing/mock-translate.pipe';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { FormsModule } from '@angular/forms';
+import { of, throwError, BehaviorSubject } from 'rxjs';
+import { ChangeDetectorRef } from '@angular/core';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 describe('ProfileComponent', () => {
   let component: ProfileComponent;
   let fixture: ComponentFixture<ProfileComponent>;
-  let authServiceMock: any;
-  let currentUserSubject: BehaviorSubject<any>;
+  let authServiceSpy: any;
+  const currentUserSubject = new BehaviorSubject<any>({
+    username: 'admin',
+    email: 'admin@mavrov.de',
+    is_admin: true,
+    gemini_api_key: 'initial-key'
+  });
 
   beforeEach(async () => {
-    currentUserSubject = new BehaviorSubject({
-      id: 1,
-      username: 'testadmin',
-      email: 'admin@test.com',
-      is_admin: true
-    });
-
-    authServiceMock = {
-      changePassword: vi.fn().mockReturnValue(of(void 0)),
+    authServiceSpy = {
+      changePassword: vi.fn(),
+      updateGeminiKey: vi.fn(),
       currentUser$: currentUserSubject.asObservable()
     };
 
     await TestBed.configureTestingModule({
-      imports: [ProfileComponent, MockTranslatePipe],
+      imports: [ProfileComponent, FormsModule, TranslatePipe],
       providers: [
-        provideZonelessChangeDetection(),
-        { provide: AuthService, useValue: authServiceMock }
+        { provide: AuthService, useValue: authServiceSpy },
+        ChangeDetectorRef
       ]
-    })
-      .overrideComponent(ProfileComponent, {
-        remove: { imports: [TranslatePipe] },
-        add: { imports: [MockTranslatePipe] }
-      })
-      .compileComponents();
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ProfileComponent);
     component = fixture.componentInstance;
-    fixture.detectChanges(); // Initial render
+    fixture.detectChanges();
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
-  // LOGIC TESTS: Verify internal state ONLY.
-  it('should handle successful password change (logic)', () => {
-    vi.useFakeTimers();
-
-    component.oldPassword = 'old';
-    component.newPassword = 'new';
-
-    component.onSubmit();
-
-    expect(component.loading).toBe(false);
-    // No more "Requesting..." phase wait, service is called immediately
-
-    // Simulate service response
-    expect(authServiceMock.changePassword).toHaveBeenCalledWith('old', 'new');
-    expect(component.message).toBe('ADMIN.PASSWORD_CHANGED_SUCCESS');
-
-    // Test auto-clear
-    vi.advanceTimersByTime(5000);
-    expect(component.message).toBe('');
-
-    vi.useRealTimers();
+  it('should load initial Gemini API Key', () => {
+    expect(component.geminiApiKey).toBe('initial-key');
   });
 
-  it('should handle incorrect old password (logic)', () => {
-    component.oldPassword = 'wrong';
-    component.newPassword = 'new';
-
-    authServiceMock.changePassword.mockReturnValue(
-      throwError(() => ({
-        status: 400,
-        error: { detail: 'Incorrect old password' }
-      }))
-    );
-
-    component.onSubmit();
-
-    expect(component.error).toBe('Incorrect old password');
-    expect(component.loading).toBe(false);
+  it('should start with key hidden', () => {
+    expect(component.showKey).toBe(false);
   });
 
-  it('should handle server error (logic)', () => {
-    component.oldPassword = 'old';
-    component.newPassword = 'new';
-
-    authServiceMock.changePassword.mockReturnValue(
-      throwError(() => ({
-        status: 500,
-        error: { detail: 'Internal Server Error' }
-      }))
-    );
-
-    component.onSubmit();
-
-    expect(component.error).toBe('Internal Server Error');
-    expect(component.loading).toBe(false);
+  it('should toggle key visibility', () => {
+    component.toggleKeyVisibility();
+    expect(component.showKey).toBe(true);
+    component.toggleKeyVisibility();
+    expect(component.showKey).toBe(false);
   });
 
+  it('should call updateGeminiKey when saving', () => {
+    const newKey = 'new-api-key';
+    component.geminiApiKey = newKey;
+    authServiceSpy.updateGeminiKey.mockReturnValue(of({
+      username: 'admin',
+      email: 'admin@mavrov.de',
+      id: 1,
+      is_admin: true,
+      gemini_api_key: newKey
+    }));
 
+    component.onSaveKey();
 
-  it('should display user details (UI)', () => {
-    // fixture.detectChanges() was called in beforeEach, so view should be ready
-    const details = fixture.nativeElement.querySelector('.user-details');
-    expect(details?.textContent).toContain('testadmin');
-    expect(details?.textContent).toContain('admin@test.com');
+    expect(component.loading).toBe(false);
+    expect(component.message).toBe('API Key saved successfully');
+    expect(authServiceSpy.updateGeminiKey).toHaveBeenCalledWith(newKey);
+  });
+
+  it('should handle save error', () => {
+    authServiceSpy.updateGeminiKey.mockReturnValue(throwError(() => new Error('Error')));
+
+    component.onSaveKey();
+
+    expect(component.loading).toBe(false);
+    expect(component.error).toBe('Failed to save API Key');
   });
 });

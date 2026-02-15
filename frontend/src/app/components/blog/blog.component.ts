@@ -17,7 +17,14 @@ import { HeaderComponent } from '../header/header.component';
 })
 export class BlogComponent implements OnInit {
   @Input() standalone = true;
-  posts$: Observable<BlogPost[]> | null = null;
+  // Pagination State
+  posts: BlogPost[] = [];
+  currentPage = 1;
+  pageSize = 10;
+  hasMore = false;
+  isLoading = false;
+
+  // Search State
   searchResults$: Observable<BlogSearchResult[]> | null = null;
   expandedPostId: string | null = null;
   isSearching = false;
@@ -39,26 +46,49 @@ export class BlogComponent implements OnInit {
         keywords: 'Blog, Technology, Software Engineering, AI, Cloud, Sergii Mavrov'
       });
     }
+    this.loadInitialPosts();
+  }
+
+  loadInitialPosts() {
+    this.posts = [];
+    this.currentPage = 1;
+    this.hasMore = false;
     this.loadPosts();
   }
 
   loadPosts() {
-    // Fetch all published posts regardless of language, optional tag filter
-    this.posts$ = this.blogService.getPosts(true, null, this.activeTag).pipe(
-      map(response => response.items)
-    );
+    if (this.isLoading) return;
+    this.isLoading = true;
+
+    this.blogService.getPosts(true, null, this.activeTag, this.currentPage, this.pageSize).subscribe({
+      next: (response) => {
+        this.posts = [...this.posts, ...response.items];
+        this.hasMore = this.posts.length < response.total;
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Failed to load posts', err);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  loadMore() {
+    if (!this.hasMore || this.isLoading) return;
+    this.currentPage++;
+    this.loadPosts();
   }
 
   filterByTag(tag: string) {
     this.activeTag = tag;
     this.currentQuery = ''; // Clear text search
     this.searchResults$ = null;
-    this.loadPosts();
+    this.loadInitialPosts();
   }
 
   clearTagFilter() {
     this.activeTag = null;
-    this.loadPosts();
+    this.loadInitialPosts();
   }
 
   onSearch(event: any) {

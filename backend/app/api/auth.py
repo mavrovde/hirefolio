@@ -29,6 +29,7 @@ class UserResponse(BaseModel):
     username: str
     email: str
     is_admin: bool
+    gemini_api_key: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -81,6 +82,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
         username=current_user.username,
         email=current_user.email,
         is_admin=current_user.is_admin,
+        gemini_api_key=current_user.gemini_api_key,
     )
 
 
@@ -109,3 +111,28 @@ async def change_password(
     db.add(current_user)
     await db.commit()
     return
+    
+    
+class UpdateGeminiKeyRequest(BaseModel):
+    api_key: str | None
+
+
+@router.put("/gemini-key", response_model=UserResponse)
+async def update_gemini_key(
+    key_data: UpdateGeminiKeyRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update current user's Gemini API key."""
+    current_user.gemini_api_key = key_data.api_key
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    
+    return UserResponse(
+        id=current_user.id,
+        username=current_user.username,
+        email=current_user.email,
+        is_admin=current_user.is_admin,
+        gemini_api_key=current_user.gemini_api_key,
+    )

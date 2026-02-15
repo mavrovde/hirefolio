@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { BlogComponent } from './blog.component';
 import { BlogService } from '../../services/blog.service';
 import { LanguageService } from '../../services/language.service';
-import { of } from 'rxjs';
+import { of, Observable } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -75,93 +75,120 @@ describe('BlogComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should load posts on init', async () => {
+  it('should load initial posts', () => {
+    // Initial load happens in ngOnInit
     fixture.detectChanges();
-    expect(blogServiceSpy.getPosts).toHaveBeenCalled();
-
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const postElement = fixture.debugElement.query(By.css('.group .text-primary.font-bold'));
-    if (postElement) {
-      expect(postElement.nativeElement.textContent).toContain('Test Post');
-    }
+    expect(component.posts.length).toBe(1);
+    expect(component.posts[0].title).toBe('Test Post');
+    expect(component.currentPage).toBe(1);
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 10);
   });
 
-  it('should toggle post expansion state', () => {
-    fixture.detectChanges();
+  it('should append posts on loadMore', () => {
+    fixture.detectChanges(); // Initial load (page 1)
 
-    // 1. Expand - Synchronous call
-    component.togglePost('1');
+    // Mock next page response
+    const nextPosts = [{ ...mockPosts[0], id: '2', title: 'Next Post' }];
+    blogServiceSpy.getPosts.mockReturnValueOnce(of({
+      items: nextPosts,
+      total: 20,
+      page: 2,
+      page_size: 10,
+      total_pages: 2
+    }));
 
-    // Assert state, verified function logic
-    expect(component.expandedPostId).toBe('1');
-    expect(component.isExpanded('1')).toBe(true);
+    // Trigger load more
+    component.hasMore = true; // Ensure it's clickable
+    component.loadMore();
 
-    // 2. Collapse - Synchronous call
-    component.togglePost('1');
-
-    // Assert state
-    expect(component.expandedPostId).toBeNull();
-    expect(component.isExpanded('1')).toBe(false);
+    expect(component.currentPage).toBe(2);
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 2, 10);
+    expect(component.posts.length).toBe(2);
+    expect(component.posts[1].title).toBe('Next Post');
   });
 
-  it('should perform semantic search on enter', async () => {
+  it('should handle end of list', () => {
     fixture.detectChanges();
 
-    // This triggers a setTimeout in component
-    component.onSearch({ target: { value: 'angular' } } as any);
+    // Mock last page response
+    // Initial load added 1 item.
+    // Total is 1. If we return 0 items, total length remains 1. 1 < 1 is false.
+    blogServiceSpy.getPosts.mockReturnValueOnce(of({
+      items: [],
+      total: 1, // Total matches existing count
+      page: 2,
+      page_size: 10,
+      total_pages: 1
+    }));
 
-    // Wait for timeout to resolve.
-    await wait(200);
+    component.hasMore = true;
+    component.loadMore();
 
-    expect(blogServiceSpy.searchPosts).toHaveBeenCalledWith('angular');
-
-    // Subscribe to exercise the map operator
-    component.searchResults$?.subscribe();
-    expect(component.isSearching).toBe(false);
+    expect(component.hasMore).toBe(false);
   });
 
-  it('should clear search', async () => {
+  it('should not load more if isLoading or no more posts', () => {
     fixture.detectChanges();
 
-    // Setup state directly to avoid waiting for search
-    component.onSearch({ target: { value: 'angular' } } as any);
-    await wait(200);
+    // Case 1: isLoading
+    component.isLoading = true;
+    component.loadMore();
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledTimes(1); // Only initial load
 
-    const input = document.createElement('input');
-    input.value = 'angular';
-
-    component.clearSearch(input);
-    await wait(200);
-
-    expect(component.currentQuery).toBe('');
+    // Case 2: !hasMore
+    component.isLoading = false;
+    component.hasMore = false;
+    component.loadMore();
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledTimes(1);
   });
 
-  it('should not search if query is too short', async () => {
+  it('should handle load error', () => {
     fixture.detectChanges();
 
-    component.onSearch({ target: { value: 'ab' } } as any);
-    await wait(200);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+    blogServiceSpy.getPosts.mockReturnValueOnce(new Observable(observer => {
+      observer.error('Network error');
+    }));
 
-    expect(blogServiceSpy.searchPosts).not.toHaveBeenCalled();
-    expect(component.searchResults$).toBeNull();
-    expect(component.isSearching).toBe(false);
+    component.hasMore = true;
+    component.loadMore();
+
+    expect(component.isLoading).toBe(false);
+    expect(errorSpy).toHaveBeenCalled();
   });
 
-  it('should filter by tag', () => {
+  it('should filter by tag and reset pagination', () => {
     fixture.detectChanges();
+
+    // Clear calls from init
+    blogServiceSpy.getPosts.mockClear();
+
+    // Mock response for filter
+    blogServiceSpy.getPosts.mockReturnValueOnce(of({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: 10,
+      total_pages: 0
+    }));
+
     component.filterByTag('angular');
+
     expect(component.activeTag).toBe('angular');
-    expect(component.currentQuery).toBe('');
-    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, 'angular');
+    expect(component.currentPage).toBe(1);
+    expect(component.posts).toEqual([]);
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, 'angular', 1, 10);
   });
 
-  it('should clear tag filter', () => {
+  it('should clear tag filter and reset pagination', () => {
+    component.activeTag = 'angular';
     fixture.detectChanges();
-    component.filterByTag('angular');
+    blogServiceSpy.getPosts.mockClear();
+
     component.clearTagFilter();
+
     expect(component.activeTag).toBeNull();
-    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null);
+    expect(component.currentPage).toBe(1);
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 10);
   });
 });

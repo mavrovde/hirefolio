@@ -13,7 +13,11 @@ export NVM_DIR="$HOME/.nvm"
 echo "========================================"
 echo "🚀 STARTING AUTOMATED RELEASE PROCESS 🚀"
 echo "========================================"
-
+# Load environment variables from .env
+if [ -f .env ]; then
+    export $(cat .env | xargs)
+    echo "✅ Loaded environment variables from .env"
+fi
 # Ensure DOCKER_HOST is set for Podman
 if [ -z "$DOCKER_HOST" ]; then
     PODMAN_SOCKET=$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' 2>/dev/null || true)
@@ -97,13 +101,13 @@ git commit -m "$FINAL_MSG"
 echo ""
 echo "Step 4: Tagging and pushing code..."
 git tag -a "v$VERSION" -m "$DESC"
-git push origin main
-git push origin "v$VERSION"
+# git push origin main
+# git push origin "v$VERSION"
 
 # 5. Build and Push AMD64 images
 echo ""
-echo "Step 5: Building and pushing AMD64 images..."
-./build_amd64_and_push.sh
+echo "Step 5: Building and pushing AMD64 images... (SKIPPED for local release)"
+# ./build_amd64_and_push.sh
 
 # 6. Final Happy Path E2E Verification
 echo ""

@@ -15,6 +15,7 @@ Personal portfolio website with blog functionality powered by semantic search an
 ## 🏗️ Architecture
 
 ### Frontend
+
 - **Framework**: Angular 18+ (Standalone Components, Signals)
 - **Styling**: Vanilla CSS (Tailwind concepts), Dark/Light mode
 - **State Management**: RxJS Observables
@@ -22,22 +23,24 @@ Personal portfolio website with blog functionality powered by semantic search an
 - **i18n**: Custom translation service
 
 ### Backend
+
 - **Framework**: FastAPI (Python 3.13+)
 - **Database**: PostgreSQL 16 with `pgvector` extension
 - **AI**: Ollama (Local LLM & Embeddings)
-    - Embeddings: `nomic-embed-text`
-    - Logic/Text: `tinyllama`
+  - Embeddings: `nomic-embed-text`
+  - Logic/Text: `tinyllama`
 - **ORM**: SQLAlchemy 2.0 (async)
 - **Testing**: pytest (High coverage >89%)
 
 ### CI/CD Pipeline
+
 - **Platform**: GitHub Actions
 - **Quality Gates**:
-    - Linting (Ruff, ESLint)
-    - Type Checking (MyPy)
-    - Security Scanning (Bandit)
-    - Unit Tests (Frontend & Backend)
-    - E2E Tests (Playwright with real Ollama integration)
+  - Linting (Ruff, ESLint)
+  - Type Checking (MyPy)
+  - Security Scanning (Bandit)
+  - Unit Tests (Frontend & Backend)
+  - E2E Tests (Playwright with real Ollama integration)
 - **Optimization**: Aggressive caching for Docker images, AI models, and browsers
 
 ## 📋 Prerequisites
@@ -102,16 +105,17 @@ npm start
 
 ### 5. Access Application
 
-- **Frontend**: http://localhost:4200
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **Ollama**: http://localhost:11434
+- **Frontend**: <http://localhost:4200>
+- **Backend API**: <http://localhost:8000>
+- **API Docs**: <http://localhost:8000/docs>
+- **Ollama**: <http://localhost:11434>
 
 ## 🧪 Testing
 
 We verify the application at multiple levels:
 
 ### 1. Unit & Integration
+
 ```bash
 # Backend
 cd backend && pytest
@@ -121,6 +125,7 @@ cd frontend && npm test
 ```
 
 ### 2. End-to-End (E2E)
+
 Our E2E suite runs in a fully isolated testing environment (with dedicated DB and AI models).
 
 ```bash
@@ -129,6 +134,7 @@ npx playwright test
 ```
 
 ### 3. Verification Script
+
 Run the entire test suite (Lint, Type Check, Unit, E2E) in one go:
 
 ```bash
@@ -174,6 +180,15 @@ Create `backend/.env`:
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov
 OLLAMA_URL=http://localhost:11434
 EMBEDDING_MODEL=nomic-embed-text
+GEMINI_API_KEY=your_api_key_here
+```
+
+### Root Environment (Release Script)
+
+Create `.env` in the project root to configure the release script:
+
+```bash
+GEMINI_API_KEY=your_api_key_here
 ```
 
 ### Frontend Environment
@@ -335,7 +350,7 @@ This project is private and proprietary.
 
 ## 📞 Contact
 
-- **Website**: https://mavrov.de
+- **Website**: <https://mavrov.de>
 - **LinkedIn**: [Your LinkedIn Profile]
 - **Email**: [Your Email]
 

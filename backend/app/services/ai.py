@@ -14,21 +14,24 @@ except ImportError:
 logger = get_logger(__name__)
 
 
-def _get_gemini_client():
-    """Configures and returns a Gemini client instance if API key is present."""
-    if not HAS_GEMINI or not settings.gemini_api_key:
+
+def _get_gemini_client(user_api_key: Optional[str] = None):
+    """Configures and returns a Gemini client instance."""
+    api_key = user_api_key or settings.gemini_api_key
+    
+    if not HAS_GEMINI or not api_key:
         return None
     
     try:
-        return genai.Client(api_key=settings.gemini_api_key)
+        return genai.Client(api_key=api_key)
     except Exception as e:
         logger.error(f"Failed to configure Gemini client: {e}")
         return None
 
 
-async def _generate_text_gemini(prompt: str) -> Optional[str]:
+async def _generate_text_gemini(prompt: str, user_api_key: Optional[str] = None) -> Optional[str]:
     """Helper to generate text using Gemini, returning None if failed or not configured."""
-    client = _get_gemini_client()
+    client = _get_gemini_client(user_api_key)
     if not client:
         return None
 
@@ -60,7 +63,7 @@ async def _generate_text_gemini(prompt: str) -> Optional[str]:
             return None
 
 
-async def suggest_tags(title: str, content: str) -> list[str]:
+async def suggest_tags(title: str, content: str, user_api_key: Optional[str] = None) -> list[str]:
     """
     Generate tag suggestions using Gemini (primary) or Ollama (fallback).
     Returns a list of strings (max 5).
@@ -144,7 +147,7 @@ async def suggest_tags(title: str, content: str) -> list[str]:
     return processed_tags[:5]
 
 
-async def suggest_post_details(content: str) -> dict[str, Union[str, List[str]]]:
+async def suggest_post_details(content: str, user_api_key: Optional[str] = None) -> dict[str, Union[str, List[str]]]:
     """
     Generate title, slug, summary, and tags suggestions using Gemini (primary) or Ollama (fallback).
     """
@@ -237,7 +240,7 @@ async def suggest_post_details(content: str) -> dict[str, Union[str, List[str]]]
     return {"title": "", "slug": "", "summary": "", "tags": []}
 
 
-async def suggest_field(content: str, field: str) -> dict[str, str]:
+async def suggest_field(content: str, field: str, user_api_key: Optional[str] = None) -> dict[str, str]:
     """
     Generate a suggestion for a single field using Gemini (primary) or Ollama (fallback).
     """
@@ -283,11 +286,11 @@ async def suggest_field(content: str, field: str) -> dict[str, str]:
 
 
 
-async def chat_with_gemini(message: str, history: List[dict] = []) -> str:
+async def chat_with_gemini(message: str, history: List[dict] = [], user_api_key: Optional[str] = None) -> str:
     """
     Chat with Gemini model, maintaining conversation history.
     """
-    client = _get_gemini_client()
+    client = _get_gemini_client(user_api_key)
     if not client:
         return "Gemini is not configured."
 
@@ -324,7 +327,7 @@ async def chat_with_gemini(message: str, history: List[dict] = []) -> str:
             return f"Error: {str(e2)}"
 
 
-async def generate_full_post(topic: str, keywords: List[str] = [], language: str = "en") -> dict[str, Union[str, List[str]]]:
+async def generate_full_post(topic: str, keywords: List[str] = [], language: str = "en", user_api_key: Optional[str] = None) -> dict[str, Union[str, List[str]]]:
     """
     Generate a complete blog post including title, slug, summary, tags, and markdown content.
     Returns a dictionary with these fields.

@@ -1,4 +1,4 @@
-FROM nginx:1.28.2-alpine
+FROM nginx:1.26-alpine
 
 RUN --mount=type=cache,target=/var/cache/apk \
     apk add openssl curl

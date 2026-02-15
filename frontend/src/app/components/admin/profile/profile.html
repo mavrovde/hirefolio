@@ -23,7 +23,24 @@
             </div>
             }
 
-            <h2 class="profile-title" style="margin-top: 2rem;">> {{ 'ADMIN.CHANGE_PASSWORD' | translate }}</h2>
+            <h2 class="profile-title section-spacing">> GEMINI API KEY</h2>
+            <div class="form-group">
+                <label for="geminiKey">> API KEY:</label>
+                <div class="gemini-key-group">
+                    <input [type]="showKey ? 'text' : 'password'" id="geminiKey" [(ngModel)]="geminiApiKey"
+                        [disabled]="loading" placeholder="Enter your Gemini API Key" />
+                    <button type="button" (click)="toggleKeyVisibility()" class="btn-secondary">
+                        {{ showKey ? 'HIDE' : 'SHOW' }}
+                    </button>
+                </div>
+                <div class="save-key-btn">
+                    <button type="button" (click)="onSaveKey()" [disabled]="loading" class="btn-primary">
+                        [ SAVE KEY ]
+                    </button>
+                </div>
+            </div>
+
+            <h2 class="profile-title section-spacing">> {{ 'ADMIN.CHANGE_PASSWORD' | translate }}</h2>
 
             <form (ngSubmit)="onSubmit()" #passwordForm="ngForm">
                 <div class="form-group">

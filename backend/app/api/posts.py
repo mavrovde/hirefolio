@@ -447,9 +447,9 @@ async def suggest_post_details_endpoint(
     from app.services.ai import suggest_field, suggest_post_details
 
     if not request.field or request.field == "all":
-        return await suggest_post_details(request.content)
+        return await suggest_post_details(request.content, current_user.gemini_api_key)
 
-    return await suggest_field(request.content, request.field)
+    return await suggest_field(request.content, request.field, current_user.gemini_api_key)
 
 
 @router.post("/suggest-tags")
@@ -459,7 +459,7 @@ async def suggest_tags_endpoint(
     """Suggest tags for a post using AI."""
     from app.services.ai import suggest_tags
 
-    tags = await suggest_tags(request.title, request.content)
+    tags = await suggest_tags(request.title, request.content, current_user.gemini_api_key)
     return {"tags": tags}
 
 
@@ -484,7 +484,8 @@ async def generate_post_endpoint(
     generated_data = await generate_full_post(
         topic=request.topic, 
         keywords=request.keywords, 
-        language=request.language
+        language=request.language,
+        user_api_key=current_user.gemini_api_key
     )
     
     if not generated_data:
