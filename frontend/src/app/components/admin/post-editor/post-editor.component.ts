@@ -9,6 +9,7 @@ interface PostData {
   slug: string;
   content: string;
   summary: string;
+  image_url: string;
   language: string;
   published: boolean;
   tags: string[];
@@ -27,6 +28,7 @@ export class PostEditorComponent implements OnInit {
     slug: '',
     content: '',
     summary: '',
+    image_url: '',
     language: 'en',
     published: false,
     tags: [],
@@ -52,7 +54,7 @@ export class PostEditorComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -76,6 +78,7 @@ export class PostEditorComponent implements OnInit {
             slug: post.slug,
             content: post.content,
             summary: post.summary || '',
+            image_url: post.image_url || '',
             language: post.language,
             published: post.published,
             tags: [...(post.tags || [])],
@@ -257,6 +260,28 @@ export class PostEditorComponent implements OnInit {
     this.onSubmit(); // Save immediately
   }
 
+  selectedFile: File | null = null;
+  imagePreview: string | null = null;
+
+  // ... (existing properties)
+
+  onFileSelected(event: any): void {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file;
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.imagePreview = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+
+      // Clear external URL if file is selected (optional logic)
+      // this.post.image_url = ''; 
+    }
+  }
+
   onSubmit(): void {
     this.saving = true;
     this.errorMessage = '';
@@ -267,8 +292,22 @@ export class PostEditorComponent implements OnInit {
         : this.blogService.createPost(this.post);
 
     request.subscribe({
-      next: () => {
-        this.router.navigate(['/admin/posts']);
+      next: (savedPost) => {
+        // If file selected, upload it now
+        if (this.selectedFile && savedPost.id) {
+          this.blogService.uploadImage(savedPost.id, this.selectedFile).subscribe({
+            next: () => {
+              this.router.navigate(['/admin/posts']);
+            },
+            error: (err) => {
+              console.error('Image upload failed', err);
+              // Navigate anyway, but maybe show warning?
+              this.router.navigate(['/admin/posts']);
+            }
+          });
+        } else {
+          this.router.navigate(['/admin/posts']);
+        }
       },
       error: (error) => {
         this.saving = false;

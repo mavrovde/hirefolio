@@ -1,5 +1,5 @@
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from math import ceil
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,7 @@ class PostCreate(BaseModel):
     slug: str
     content: str
     summary: Optional[str] = None
+    image_url: Optional[str] = None
     language: str = "en"
     published: bool = False
     tags: List[str] = []
@@ -35,6 +36,7 @@ class PostUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     summary: Optional[str] = None
+    image_url: Optional[str] = None
     language: Optional[str] = None
     published: Optional[bool] = None
     tags: Optional[List[str]] = None
@@ -47,19 +49,24 @@ class PostUpdate(BaseModel):
         return v
 
 
+from pydantic import BaseModel, field_validator, ConfigDict, Field
+
+# ...
+
 class PostResponse(BaseModel):
     id: int
     title: str
     slug: str
     content: str
     summary: Optional[str]
+    image_url: Optional[str] = Field(None, validation_alias="display_image_url")
     language: str
     published: bool
     tags: List[str]
     created_at: str
     updated_at: str
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class PostListResponse(BaseModel):
@@ -67,12 +74,13 @@ class PostListResponse(BaseModel):
     title: str
     slug: str
     summary: Optional[str]
+    image_url: Optional[str] = Field(None, validation_alias="display_image_url")
     language: str
     published: bool
     tags: List[str]
     created_at: str
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class PaginatedPostListResponse(BaseModel):
@@ -179,6 +187,7 @@ async def list_posts(
                 title=p.title,
                 slug=p.slug,
                 summary=p.summary,
+                image_url=p.display_image_url,
                 language=p.language,
                 published=p.published,
                 tags=p.tags,
@@ -217,6 +226,7 @@ async def get_post_by_id(
         slug=post.slug,
         content=post.content,
         summary=post.summary,
+        image_url=post.display_image_url,
         language=post.language,
         published=post.published,
         tags=post.tags,
@@ -314,6 +324,7 @@ async def semantic_search(
             "title": item["post"].title,
             "slug": item["post"].slug,
             "summary": item["post"].summary,
+            "image_url": item["post"].display_image_url,
             "relevance": item["relevance"],
             # Debugging info could be returned if needed, but keeping schema clean for now
         }
@@ -345,6 +356,7 @@ async def get_post(
         slug=post.slug,
         content=post.content,
         summary=post.summary,
+        image_url=post.display_image_url,
         language=post.language,
         published=post.published,
         tags=post.tags,
@@ -369,6 +381,7 @@ async def create_post(
         slug=post_data.slug,
         content=post_data.content,
         summary=post_data.summary,
+        image_url=post_data.image_url,
         language=post_data.language,
         published=post_data.published,
         tags=post_data.tags,
@@ -398,6 +411,7 @@ async def create_post(
         slug=post.slug,
         content=post.content,
         summary=post.summary,
+        image_url=post.display_image_url,
         language=post.language,
         published=post.published,
         tags=post.tags,
@@ -445,13 +459,11 @@ async def get_similar_posts(
             title=p.title,
             slug=p.slug,
             summary=p.summary,
+            image_url=p.display_image_url,
             similarity=1 - distance,  # Convert distance to similarity
         )
         for p, distance in similar_posts
     ]
-
-
-
 
 
 @router.post("/suggest-details")
@@ -558,6 +570,7 @@ async def generate_post_endpoint(
         slug=post.slug,
         content=post.content,
         summary=post.summary,
+        image_url=post.display_image_url,
         language=post.language,
         published=post.published,
         tags=post.tags,
@@ -589,6 +602,8 @@ async def update_post_by_id(
         update_embedding = True
     if post_data.summary is not None:
         post.summary = post_data.summary
+    if post_data.image_url is not None:
+        post.image_url = post_data.image_url
     if post_data.language is not None:
         post.language = post_data.language
     if post_data.published is not None:
@@ -610,6 +625,7 @@ async def update_post_by_id(
         slug=post.slug,
         content=post.content,
         summary=post.summary,
+        image_url=post.display_image_url,
         language=post.language,
         published=post.published,
         tags=post.tags,
@@ -635,3 +651,75 @@ async def delete_post_by_id(
     await db.commit()
 
     return {"message": "Post deleted"}
+
+
+@router.put("/{post_id}/image", response_model=PostResponse)
+async def upload_post_image(
+    post_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    Upload an image for a blog post.
+    """
+    result = await db.execute(select(Post).where(Post.id == post_id))
+    post = result.scalar_one_or_none()
+    
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    # Read file content
+    content = await file.read()
+    
+    # Update post
+    post.image_blob = content
+    post.image_type = file.content_type
+    
+    # Clear external URL if a file is uploaded
+    post.image_url = None 
+    
+    await db.commit()
+    await db.refresh(post)
+    await db.commit()
+    await db.refresh(post)
+    return PostResponse(
+        id=post.id,
+        title=post.title,
+        slug=post.slug,
+        content=post.content,
+        summary=post.summary,
+        # image_url handled by validator/alias from display_image_url property
+        image_url=post.display_image_url, 
+        language=post.language,
+        published=post.published,
+        tags=post.tags,
+        created_at=post.created_at.isoformat(),
+        updated_at=post.updated_at.isoformat(),
+    )
+
+
+@router.get("/{post_id}/image")
+async def get_post_image(
+    post_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get the image for a blog post.
+    """
+    from sqlalchemy.orm import undefer
+    result = await db.execute(select(Post).options(undefer(Post.image_blob)).where(Post.id == post_id))
+    post = result.scalar_one_or_none()
+
+    
+    if not post or not post.image_blob:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    from io import BytesIO
+    from starlette.responses import StreamingResponse
+
+    return StreamingResponse(
+        BytesIO(post.image_blob), 
+        media_type=post.image_type or "image/jpeg"
+    )
+

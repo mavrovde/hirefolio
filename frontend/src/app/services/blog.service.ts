@@ -9,13 +9,15 @@ export interface BlogPost {
   id: number;
   title: string;
   slug: string;
-  date: string;
-  summary: string;
   content: string;
+  summary?: string;
+  image_url?: string;
   language: string;
   published: boolean;
   tags: string[];
-  created_at?: string;
+  created_at: string;
+  updated_at?: string;
+  similarity?: number; // For search results
 }
 
 export interface BlogSearchResult {
@@ -24,6 +26,7 @@ export interface BlogSearchResult {
   slug: string;
   summary: string;
   relevance: number;
+  image_url?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -143,5 +146,11 @@ export class BlogService {
 
   suggestPostDetails(content: string, field: string = 'all'): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/suggest-details`, { content, field });
+  }
+
+  uploadImage(id: number, file: File): Observable<BlogPost> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.put<BlogPost>(`${this.apiUrl}/${id}/image`, formData);
   }
 }

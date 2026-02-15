@@ -41,6 +41,30 @@
         <input type="text" id="slug" name="slug" [(ngModel)]="post.slug" required [disabled]="saving" />
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="image_file" [class.field-changed]="isChanged('image_url')">Post Image</label>
+        <div class="flex flex-col gap-2">
+          <input type="file" id="image_file" (change)="onFileSelected($event)" accept="image/*" [disabled]="saving"
+            class="file-input text-sm text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-terminal-dim file:text-primary hover:file:bg-terminal-dim/80" />
+
+          <div *ngIf="imagePreview || post.image_url" class="mt-2 relative inline-block">
+            <img [src]="imagePreview || post.image_url" alt="Preview"
+              class="h-32 rounded border border-terminal-dim object-cover">
+            <div *ngIf="imagePreview" class="text-xs text-yellow-500 mt-1">New image selected (will upload on save)
+            </div>
+          </div>
+
+          <!-- Fallback URL input if needed, or hidden -->
+          <details class="text-xs text-terminal-dim">
+            <summary class="cursor-pointer hover:text-secondary">Advanced: Use External URL</summary>
+            <input type="text" id="image_url" name="image_url" [(ngModel)]="post.image_url" [disabled]="saving"
+              placeholder="https://example.com/image.jpg"
+              class="mt-2 w-full bg-black border border-terminal-dim rounded px-2 py-1 text-primary focus:border-primary outline-none" />
+          </details>
+        </div>
+      </div>
+    </div>
 
     <div class="form-row">
       <div class="form-group">

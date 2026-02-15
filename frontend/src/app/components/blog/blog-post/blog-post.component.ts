@@ -55,6 +55,9 @@ import { SeoService } from '../../../services/seo.service';
 
             <!-- Content -->
             <article class="prose prose-invert prose-p:text-primary prose-a:text-terminal-highlight prose-headings:text-primary prose-pre:bg-terminal-dim/20 prose-pre:border prose-pre:border-terminal-dim max-w-none">
+              <div *ngIf="post.image_url" class="mb-8">
+                <img [src]="post.image_url" [alt]="post.title" class="w-full h-auto rounded border border-terminal-dim shadow-lg object-cover max-h-[500px]">
+              </div>
               <div [innerHTML]="post.content" class="whitespace-pre-wrap"></div>
             </article>
 

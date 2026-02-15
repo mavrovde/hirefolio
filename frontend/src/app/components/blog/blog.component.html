@@ -38,14 +38,22 @@
       </div>
       <div class="space-y-4">
         <div *ngFor="let result of results" class="border-l-2 border-primary pl-4 py-1">
-          <a [routerLink]="['/blog', result.slug]"
-            class="cursor-pointer group block hover:bg-terminal-dim rounded px-2 py-1 transition-colors relative -left-2">
-            <span class="text-terminal-highlight">[{{ (result.relevance * 100).toFixed(0) }}%]</span>
-            <span class="text-primary font-bold ml-2 group-hover:underline decoration-dashed">{{
-              result.title
-              }}</span>
-          </a>
-          <div class="text-secondary text-sm ml-12 opacity-80">{{ result.summary }}</div>
+          <div class="flex items-start gap-4">
+            <div *ngIf="result.image_url" class="shrink-0">
+              <img [src]="result.image_url" alt="Result Image"
+                class="w-16 h-16 rounded border border-terminal-dim object-cover">
+            </div>
+            <div>
+              <a [routerLink]="['/blog', result.slug]"
+                class="cursor-pointer group block hover:bg-terminal-dim rounded px-2 py-1 transition-colors relative -left-2">
+                <span class="text-terminal-highlight">[{{ (result.relevance * 100).toFixed(0) }}%]</span>
+                <span class="text-primary font-bold ml-2 group-hover:underline decoration-dashed">{{
+                  result.title
+                  }}</span>
+              </a>
+              <div class="text-secondary text-sm ml-2 opacity-80">{{ result.summary }}</div>
+            </div>
+          </div>
         </div>
       </div>
       <div *ngIf="results.length === 0" class="text-secondary">
@@ -62,25 +70,33 @@
       <div *ngFor="let post of posts" class="group">
         <!-- Terminal File Line -->
         <div (click)="togglePost(post.id)"
-          class="cursor-pointer flex flex-col md:flex-row md:items-center gap-2 md:gap-4 hover:bg-terminal-dim p-2 rounded transition-colors duration-200">
-          <span class="text-secondary shrink-0"> -rw-r--r-- 1 sergii users </span>
+          class="cursor-pointer flex flex-col hover:bg-terminal-dim p-2 rounded transition-colors duration-200">
+          <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+            <span class="text-secondary shrink-0"> -rw-r--r-- 1 sergii users </span>
 
-          <span class="text-terminal-highlight shrink-0">
-            {{ post.created_at | date }}
-          </span>
+            <span class="text-terminal-highlight shrink-0">
+              {{ post.created_at | date }}
+            </span>
 
-          <span
-            class="text-primary font-bold group-hover:underline decoration-dashed underline-offset-4 break-all flex flex-wrap items-center gap-2">
-            <span class="text-xs text-black bg-primary px-1 rounded uppercase font-bold select-none">
-              {{ post.language }}
+            <span
+              class="text-primary font-bold group-hover:underline decoration-dashed underline-offset-4 break-all flex flex-wrap items-center gap-2">
+              <span class="text-xs text-black bg-primary px-1 rounded uppercase font-bold select-none">
+                {{ post.language }}
+              </span>
+              {{ post.title }}
+              <!-- Tags Display -->
+              <span *ngFor="let tag of post.tags" (click)="$event.stopPropagation(); filterByTag(tag)"
+                class="text-xs border border-terminal-dim text-secondary px-1 rounded hover:text-primary hover:border-primary transition-colors ml-1">
+                #{{ tag }}
+              </span>
             </span>
-            {{ post.title }}
-            <!-- Tags Display -->
-            <span *ngFor="let tag of post.tags" (click)="$event.stopPropagation(); filterByTag(tag)"
-              class="text-xs border border-terminal-dim text-secondary px-1 rounded hover:text-primary hover:border-primary transition-colors ml-1">
-              #{{ tag }}
-            </span>
-          </span>
+          </div>
+
+          <!-- Image Preview in List -->
+          <div *ngIf="post.image_url" class="mt-2 pl-4 md:pl-0">
+            <img [src]="post.image_url" alt="Post Request Image"
+              class="max-h-32 rounded border border-terminal-dim opacity-80 hover:opacity-100 transition-opacity object-cover">
+          </div>
         </div>
 
         <!-- Summary Area -->
