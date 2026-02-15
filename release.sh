@@ -125,8 +125,17 @@ until curl -s -f http://localhost/api/app/health > /dev/null || [ $count -eq 30 
   sleep 2
   count=$((count + 1))
 done
-# Extra buffer for full stack stabilization
-sleep 10
+# Restart proxy and frontend for fresh DNS resolution after network recreation
+echo "Restarting Frontend & Proxy for fresh DNS..."
+docker-compose restart frontend proxy
+sleep 5
+# Final readiness check
+count=0
+until curl -s -f http://localhost/admin/login > /dev/null || [ $count -eq 30 ]; do
+  sleep 2
+  count=$((count + 1))
+done
+echo "Stack ready for E2E tests."
 cd frontend
 export BASE_URL=http://localhost
 # Run standard tests first (Read-only or non-destructive logic)
