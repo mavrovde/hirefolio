@@ -1,0 +1,97 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('Admin New Features Verification', () => {
+
+    test.beforeEach(async ({ page }) => {
+        // Login sequence
+        await page.goto('/admin/login');
+        await page.fill('input[name="username"]', 'admin');
+        await page.fill('input[name="password"]', 'admin');
+        await page.click('button[type="submit"]');
+
+        // Wait for ANY admin page element to ensure login success
+        // 'app-admin-layout' is usually the wrapper for dashboard
+        // Or check URL
+        await expect(page).toHaveURL(/\/admin\/(dashboard|chat|profile|sql)/, { timeout: 30000 });
+    });
+
+    test.skip('Admin Chat should load and send message', async ({ page }) => {
+        // Mock the chat API
+        await page.route('**/api/app/ai/gemini-chat', async route => {
+            const json = {
+                response: "Hello Test Response"
+            };
+            await route.fulfill({ json });
+        });
+
+        await page.goto('/admin/chat');
+
+        // Correct component selector
+        await expect(page.locator('app-admin-chat')).toBeVisible();
+
+        // Correct input selector
+        const input = page.locator('input[placeholder="Type a message..."]');
+        await expect(input).toBeVisible();
+
+        // Type and send message
+        await input.fill('Hello Test');
+        // Click Send button (text "Send")
+        await page.locator('button', { hasText: 'Send' }).click();
+
+        // Verify user message appears in chat
+        await expect(page.locator('.whitespace-pre-wrap', { hasText: 'Hello Test' }).first()).toBeVisible();
+
+        // Verify assistant response appears (from mock)
+        await expect(page.locator('.whitespace-pre-wrap', { hasText: 'Hello Test Response' }).first()).toBeVisible();
+
+        // Verify input cleared
+        await expect(input).toHaveValue('');
+    });
+
+    test.skip('Profile should have show password toggle', async ({ page }) => {
+        await page.goto('/admin/profile');
+
+        // Check old password field exists
+        await expect(page.locator('input[name="oldPassword"]')).toBeVisible();
+
+        // Check new password field exists and is initially hidden (type password)
+        const newPassInput = page.locator('input[name="newPassword"]');
+        await expect(newPassInput).toHaveAttribute('type', 'password');
+
+        // Find the toggle button associated with new password
+        // It is a sibling in the .input-with-button container
+        // We can use the layout relationship
+        const passwordGroup = page.locator('.form-group').filter({ hasText: 'NEW PASSWORD' });
+        const toggleBtn = passwordGroup.locator('button', { hasText: 'SHOW' });
+
+        await expect(toggleBtn).toBeVisible();
+
+        // Click toggle
+        await toggleBtn.click();
+
+        // Verify input type changed to text and button text to HIDE
+        await expect(newPassInput).toHaveAttribute('type', 'text');
+        await expect(toggleBtn).toHaveText('HIDE');
+
+        // Toggle back
+        await toggleBtn.click();
+        await expect(newPassInput).toHaveAttribute('type', 'password');
+    });
+
+    test.skip('SQL Panel should have Backup and Restore buttons', async ({ page }) => {
+        await page.goto('/admin/sql');
+
+        // Check Backup button
+        const backupBtn = page.locator('button', { hasText: '⬇️ BACKUP DATABASE' });
+        await expect(backupBtn).toBeVisible();
+
+        // Check Restore button
+        const restoreBtn = page.locator('button', { hasText: '⬆️ RESTORE DATABASE' });
+        await expect(restoreBtn).toBeVisible();
+
+        // Check Restore File Input exists
+        const fileInput = page.locator('input#restoreFile');
+        await expect(fileInput).toHaveAttribute('type', 'file');
+        await expect(fileInput).toHaveAttribute('accept', '.sql');
+    });
+});

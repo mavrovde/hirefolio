@@ -58,16 +58,29 @@ describe('ProfileComponent', () => {
     expect(component.showKey).toBe(false);
   });
 
+  it('should toggle new password visibility', () => {
+    expect(component.showNewPassword).toBe(false);
+    component.toggleNewPasswordVisibility();
+    expect(component.showNewPassword).toBe(true);
+    component.toggleNewPasswordVisibility();
+    expect(component.showNewPassword).toBe(false);
+  });
+
   it('should call updateGeminiKey when saving', () => {
     const newKey = 'new-api-key';
     component.geminiApiKey = newKey;
-    authServiceSpy.updateGeminiKey.mockReturnValue(of({
+    const mockUser = {
       username: 'admin',
       email: 'admin@mavrov.de',
       id: 1,
       is_admin: true,
-      gemini_api_key: newKey
-    }));
+      gemini_api_key: newKey,
+      is_active: true,
+      hashed_password: 'hash',
+      created_at: new Date().toISOString()
+    };
+    // Fix: mockReturnValue needs to return an observable that matches the expected type
+    authServiceSpy.updateGeminiKey.mockReturnValue(of(mockUser));
 
     component.onSaveKey();
 
@@ -83,5 +96,55 @@ describe('ProfileComponent', () => {
 
     expect(component.loading).toBe(false);
     expect(component.error).toBe('Failed to save API Key');
+  });
+
+  it('should not submit password change if fields are empty', () => {
+    component.oldPassword = '';
+    component.newPassword = '';
+    component.onSubmit();
+    expect(authServiceSpy.changePassword).not.toHaveBeenCalled();
+  });
+
+  it('should submit password change successfully', () => {
+    vi.useFakeTimers();
+    component.oldPassword = 'old';
+    component.newPassword = 'new-strong-password';
+    authServiceSpy.changePassword.mockReturnValue(of({}));
+
+    component.onSubmit();
+
+    expect(component.loading).toBe(false);
+    expect(component.message).toBe('ADMIN.PASSWORD_CHANGED_SUCCESS');
+    expect(component.oldPassword).toBe('');
+    expect(component.newPassword).toBe('');
+    expect(authServiceSpy.changePassword).toHaveBeenCalledWith('old', 'new-strong-password');
+
+    // Test auto-clear message
+    vi.advanceTimersByTime(5000);
+    expect(component.message).toBe('');
+    vi.useRealTimers();
+  });
+
+  it('should handle password change error', () => {
+    component.oldPassword = 'old';
+    component.newPassword = 'new';
+    const errorResponse = { error: { detail: 'Incorrect password' } };
+    authServiceSpy.changePassword.mockReturnValue(throwError(() => errorResponse));
+
+    component.onSubmit();
+
+    expect(component.loading).toBe(false);
+    expect(component.error).toBe('Incorrect password');
+  });
+
+  it('should handle generic password change error', () => {
+    component.oldPassword = 'old';
+    component.newPassword = 'new';
+    authServiceSpy.changePassword.mockReturnValue(throwError(() => new Error('Network error')));
+
+    component.onSubmit();
+
+    expect(component.loading).toBe(false);
+    expect(component.error).toBe('ADMIN.PASSWORD_CHANGE_FAILED');
   });
 });

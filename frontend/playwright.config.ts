@@ -9,7 +9,7 @@ export default defineConfig({
   workers: 1, // Sequential execution needed for profile/sql tests sharing admin user
   reporter: 'html',
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:4201', // Default to local dev, override for Docker
+    baseURL: process.env.BASE_URL || 'http://localhost:4200', // Default to local dev, override for Docker
     ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
     screenshot: 'on',

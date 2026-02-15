@@ -26,7 +26,7 @@
             <h2 class="profile-title section-spacing">> GEMINI API KEY</h2>
             <div class="form-group">
                 <label for="geminiKey">> API KEY:</label>
-                <div class="gemini-key-group">
+                <div class="input-with-button">
                     <input [type]="showKey ? 'text' : 'password'" id="geminiKey" [(ngModel)]="geminiApiKey"
                         [disabled]="loading" placeholder="Enter your Gemini API Key" />
                     <button type="button" (click)="toggleKeyVisibility()" class="btn-secondary">
@@ -51,8 +51,13 @@
 
                 <div class="form-group">
                     <label for="newPassword">> {{ 'ADMIN.NEW_PASSWORD' | translate }}:</label>
-                    <input type="password" id="newPassword" name="newPassword" [(ngModel)]="newPassword" required
-                        minlength="8" [disabled]="loading" />
+                    <div class="input-with-button">
+                        <input [type]="showNewPassword ? 'text' : 'password'" id="newPassword" name="newPassword"
+                            [(ngModel)]="newPassword" required minlength="8" [disabled]="loading" />
+                        <button type="button" (click)="toggleNewPasswordVisibility()" class="btn-secondary">
+                            {{ showNewPassword ? 'HIDE' : 'SHOW' }}
+                        </button>
+                    </div>
                 </div>
 
                 @if (statusMessage) {

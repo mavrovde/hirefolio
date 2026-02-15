@@ -24,6 +24,7 @@ export class ProfileComponent {
 
   geminiApiKey = '';
   showKey = false;
+  showNewPassword = false;
 
   constructor() { }
 
@@ -37,6 +38,10 @@ export class ProfileComponent {
 
   toggleKeyVisibility() {
     this.showKey = !this.showKey;
+  }
+
+  toggleNewPasswordVisibility() {
+    this.showNewPassword = !this.showNewPassword;
   }
 
   onSaveKey() {

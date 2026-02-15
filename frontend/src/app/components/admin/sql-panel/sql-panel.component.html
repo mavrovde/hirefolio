@@ -9,10 +9,26 @@
             placeholder="SELECT * FROM users;"></textarea>
     </div>
 
-    <button (click)="executeQuery()" [disabled]="loading || !query"
-        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-secondary hover:bg-terminal-highlight focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
-        {{ loading ? ('ADMIN.PROCESSING' | translate) : ('ADMIN.EXECUTE' | translate) }}
-    </button>
+    <div class="flex flex-wrap gap-4 mb-4">
+        <button (click)="executeQuery()" [disabled]="loading || !query"
+            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-secondary hover:bg-terminal-highlight focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+            {{ loading ? ('ADMIN.PROCESSING' | translate) : ('ADMIN.EXECUTE' | translate) }}
+        </button>
+
+        <button (click)="backup()" [disabled]="loading"
+            class="inline-flex justify-center py-2 px-4 border border-terminal shadow-sm text-sm font-medium rounded-md text-terminal hover:bg-terminal-dim focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-terminal disabled:opacity-50">
+            ⬇️ BACKUP DATABASE
+        </button>
+
+        <div class="relative">
+            <input type="file" id="restoreFile" (change)="onFileSelected($event)" accept=".sql" class="hidden"
+                #fileInput>
+            <button (click)="fileInput.click()" [disabled]="loading"
+                class="inline-flex justify-center py-2 px-4 border border-red-600 shadow-sm text-sm font-medium rounded-md text-red-500 hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50">
+                ⬆️ RESTORE DATABASE
+            </button>
+        </div>
+    </div>
 
     <div *ngIf="error" class="mt-4 p-4 border border-terminal text-primary rounded-md">
         {{ error | translate }}

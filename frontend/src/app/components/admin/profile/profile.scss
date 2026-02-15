@@ -73,6 +73,19 @@ input {
     }
 }
 
+.input-with-button {
+    display: flex;
+    gap: 0.5rem;
+
+    input {
+        flex: 1;
+    }
+
+    button {
+        white-space: nowrap;
+    }
+}
+
 .button-group {
     margin-top: 2rem;
     display: flex;

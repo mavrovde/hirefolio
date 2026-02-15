@@ -8,24 +8,35 @@ from app.logger import get_logger
 try:
     from google import genai
     HAS_GEMINI = True
-except ImportError:
+    print("DEBUG: google.genai imported successfully.")
+except ImportError as e:
     HAS_GEMINI = False
+    print(f"DEBUG: Failed to import google.genai: {e}")
 
 logger = get_logger(__name__)
-
 
 
 def _get_gemini_client(user_api_key: Optional[str] = None):
     """Configures and returns a Gemini client instance."""
     api_key = user_api_key or settings.gemini_api_key
     
-    if not HAS_GEMINI or not api_key:
+    print(f"DEBUG: _get_gemini_client called. Has key? {bool(api_key)}")
+
+    if not HAS_GEMINI:
+        print("DEBUG: HAS_GEMINI is False.")
+        return None
+        
+    if not api_key:
+        print("DEBUG: No API Key provided.")
         return None
     
     try:
-        return genai.Client(api_key=api_key)
+        client = genai.Client(api_key=api_key)
+        print("DEBUG: Gemini Client created successfully.")
+        return client
     except Exception as e:
         logger.error(f"Failed to configure Gemini client: {e}")
+        print(f"DEBUG: Client creation failed: {e}")
         return None
 
 

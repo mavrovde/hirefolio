@@ -23,42 +23,102 @@ export class SqlPanelComponent {
   private apiUrl = `${environment.apiPrefix}/admin/sql/execute`;
 
   executeQuery() {
+    if (!this.query.trim()) return;
+
     this.loading = true;
     this.error = null;
     this.result = null;
 
-    this.http.post<any>(this.apiUrl, { query: this.query }).subscribe({
+    this.http.post<any[]>(this.apiUrl, { query: this.query }).subscribe({
       next: (data) => {
-        console.log('SQL Check Result:', data); // DEBUG
-        if (data.error) {
-          this.error = data.error;
-          this.loading = false;
-          this.cdr.detectChanges();
-          return;
-        }
-        this.result = data.rows || data; // Backend returns {columns, rows} or just list?
-        // Wait, app/api/admin_sql.py returns {"columns": ..., "rows": ...}
-        // Let's check admin_sql.py again.
-        // It says: return {"columns": keys, "rows": [dict(row) for row in result]}
-
-        if (data.columns) {
-          this.columns = data.columns;
-          this.result = data.rows;
-        } else if (Array.isArray(data)) {
-          // Fallback if it returns just array
-          this.result = data;
-          if (data.length > 0) {
-            this.columns = Object.keys(data[0]);
-          } else {
-            this.columns = [];
-          }
+        this.result = data;
+        if (data && data.length > 0) {
+          this.columns = Object.keys(data[0]);
+        } else {
+          this.columns = [];
         }
         this.loading = false;
         this.cdr.detectChanges();
       },
       error: (err) => {
-        console.error('SQL Execution error:', err);
-        this.error = err.error?.detail || 'ADMIN.SQL_ERROR';
+        console.error('SQL Error:', err);
+        this.error = err.error?.detail || 'Execution failed';
+        this.loading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  backup() {
+    this.loading = true;
+    this.error = null;
+    this.result = null;
+
+    this.http.get(`${environment.apiPrefix}/admin/sql/backup`, {
+      responseType: 'blob',
+      observe: 'response'
+    }).subscribe({
+      next: (response) => {
+        const blob = new Blob([response.body!], { type: 'application/sql' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+
+        // Extract filename from header or default
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'backup.sql';
+        if (contentDisposition) {
+          const matches = /filename="?([^"]*)"?/.exec(contentDisposition);
+          if (matches && matches[1]) {
+            filename = matches[1];
+          }
+        }
+
+        link.download = filename;
+        link.click();
+        window.URL.revokeObjectURL(url);
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Backup error:', err);
+        this.error = 'Failed to download backup';
+        this.loading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  onFileSelected(event: any) {
+    const file: File = event.target.files[0];
+    if (file) {
+      this.restore(file);
+    }
+  }
+
+  restore(file: File) {
+    if (!confirm('WARNING: This will overwrite the current database. Are you sure?')) {
+      return;
+    }
+
+    this.loading = true;
+    this.error = null;
+    this.result = null;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this.http.post<any>(`${environment.apiPrefix}/admin/sql/restore`, formData).subscribe({
+      next: (data) => {
+        this.result = [{ message: data.message, output: data.output }];
+        this.columns = ['message', 'output'];
+        this.loading = false;
+        this.cdr.detectChanges();
+        alert('Database restored successfully!');
+      },
+      error: (err) => {
+        console.error('Restore error:', err);
+        this.error = err.error?.detail || 'Restore failed';
         this.loading = false;
         this.cdr.detectChanges();
       }
