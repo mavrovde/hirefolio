@@ -60,10 +60,7 @@ sed -i '' "s|maverickde/mavrov.de-backend:v[0-9.]*|maverickde/mavrov.de-backend:
 sed -i '' "s|maverickde/mavrov.de-frontend:v[0-9.]*|maverickde/mavrov.de-frontend:v$VERSION|g" docker-compose.prod.yml
 sed -i '' "s|maverickde/mavrov.de-proxy:v[0-9.]*|maverickde/mavrov.de-proxy:v$VERSION|g" docker-compose.prod.yml
 
-# 3c. Generate 1Panel Configuration
-echo "Step 1c: Generating docker-compose.1panel.yml..."
-chmod +x generate_1panel_config.sh
-./generate_1panel_config.sh
+
 
 # 4. Run Full Verification Suite
 echo ""
@@ -115,9 +112,9 @@ echo "Step 6: Final Happy Path E2E Verification..."
 echo "Running mission-critical tests (Auth & AI Suggestions)..."
 # Ensure stack is running (in case build script stopped it or resource pressure killed it)
 docker-compose up -d backend frontend proxy open-webui
-# Simple wait for frontend
+# Simple wait for frontend (via Proxy on port 80)
 count=0
-until curl -s -f http://localhost:4200 > /dev/null || [ $count -eq 30 ]; do
+until curl -s -f http://localhost > /dev/null || [ $count -eq 30 ]; do
   sleep 1
   count=$((count + 1))
 done
@@ -125,8 +122,13 @@ done
 # Ensure we wait an extra bit for frontend as well
 sleep 5
 cd frontend
-export BASE_URL=http://localhost:4200
-CI=true npx playwright test auth.spec.ts ai-suggestions.spec.ts
+export BASE_URL=http://localhost
+# Run standard tests first (Read-only or non-destructive logic)
+CI=true npx playwright test auth.spec.ts ai-suggestions.spec.ts admin-features.spec.ts
+
+# Run destructive/state-changing tests sequentially (Password changes)
+# echo "Running profile tests (Password Change)..."
+# CI=true npx playwright test profile.spec.ts
 cd ..
 
 echo ""

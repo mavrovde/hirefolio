@@ -20,3 +20,24 @@ async def clean_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
         yield ac
 
     app.dependency_overrides.clear()
+
+from .fixtures_auth_custom import admin_user, admin_token_headers, normal_user, normal_user_token_headers
+
+@pytest.fixture
+def mock_embedding():
+    """Return a mock embedding vector (list of floats)."""
+    return [0.1] * 768
+
+@pytest.fixture(autouse=True)
+def mock_embedding_global(mocker):
+    """Global mock for embeddings to prevent external API calls during tests."""
+    val = [0.1] * 768
+    
+    async def mock_get_embedding(*args, **kwargs):
+        return val[:]
+
+    # Patch the service and api imports
+    mocker.patch("app.services.embeddings.get_embedding", side_effect=mock_get_embedding)
+    mocker.patch("app.api.posts.get_embedding", side_effect=mock_get_embedding)
+    
+    return mock_get_embedding

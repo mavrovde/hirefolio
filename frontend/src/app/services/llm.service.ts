@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
+import { AuthService } from './auth.service';
 
 export interface ChatMessage {
     role: 'user' | 'assistant' | 'system';
@@ -20,7 +21,7 @@ export interface AgentConfig {
 export class LlmService {
     private apiUrl = `${environment.apiUrl}${environment.apiPrefix}/ai`;
 
-    constructor() { }
+    constructor(private authService: AuthService) { }
 
     async chat(messages: ChatMessage[], onChunk: (chunk: string) => void, signal?: AbortSignal): Promise<void> {
         const response = await fetch(`${this.apiUrl}/chat`, {
@@ -112,9 +113,17 @@ export class LlmService {
         }
     }
     async chatGemini(messages: ChatMessage[]): Promise<string> {
+        const token = this.authService.getToken();
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json'
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch(`${this.apiUrl}/gemini-chat`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ messages })
         });
 

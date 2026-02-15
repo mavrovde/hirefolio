@@ -58,7 +58,9 @@ async def test_suggest_tags_http_error():
         respx_mock.post("/api/generate").mock(return_value=Response(500))
 
         tags = await suggest_tags("Title", "Content")
-        assert tags == []
+        # Fallback regex should extract words from title and content
+        assert "title" in tags
+        assert "content" in tags
 
 
 @pytest.mark.asyncio
@@ -72,7 +74,9 @@ async def test_suggest_tags_connection_error():
         )
 
         tags = await suggest_tags("Title", "Content")
-        assert tags == []
+        # Fallback regex should extract words
+        assert "title" in tags
+        assert "content" in tags
 
 
 @pytest.mark.asyncio
@@ -149,7 +153,9 @@ async def test_suggest_tags_exception():
     """Test suggest_tags with an unexpected exception."""
     with patch("httpx.AsyncClient.post", side_effect=Exception("Unexpected")):
         tags = await suggest_tags("Title", "Content")
-        assert tags == []
+        # Fallback regex
+        assert "title" in tags
+        assert "content" in tags
 
 
 @pytest.mark.asyncio

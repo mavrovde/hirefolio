@@ -4,6 +4,13 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
+@pytest.fixture(autouse=True)
+def mock_embedding(mocker):
+    # Mocking get_embedding to avoid real calls to Ollama
+    # Patch the reference where it is USED
+    mocker.patch("app.api.posts.get_embedding", return_value=[0.1] * 768)
+
+@pytest.mark.asyncio
 async def test_create_post_with_tags(client: AsyncClient):
     """Test creating a post with tags."""
     post_data = {

@@ -8,7 +8,7 @@ test.describe('Admin Chat', () => {
 
         // Perform login
         await page.fill('input[name="username"]', 'admin');
-        await page.fill('input[name="password"]', 'admin');
+        await page.fill('input[name="password"]', 'admin123');
         await page.click('button[type="submit"]');
 
         // Wait for navigation to dashboard

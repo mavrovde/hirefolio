@@ -23,7 +23,7 @@ export class LoginComponent {
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
-  ) {}
+  ) { }
 
   onSubmit(): void {
     if (!this.username || !this.password) {
@@ -38,11 +38,13 @@ export class LoginComponent {
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
         next: () => {
+          console.log('Login successful, navigating...');
           const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/admin/dashboard';
+          console.log('Navigating to:', returnUrl);
           this.router.navigate([returnUrl]);
         },
         error: (error: any) => {
-          console.error('Login error:', error);
+          console.error('Login error in component:', error);
           if (error.status === 401) {
             this.errorMessage = 'Incorrect username or password.';
           } else if (error.status === 0) {

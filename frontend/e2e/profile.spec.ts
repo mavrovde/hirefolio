@@ -18,14 +18,14 @@ test.describe('Admin Profile - Change Password', () => {
         // Retry login once if it fails due to concurrency or slower start
         try {
             await page.fill('input[name="username"]', 'admin');
-            await page.fill('input[name="password"]', 'admin');
+            await page.fill('input[name="password"]', 'admin123');
             await page.click('button[type="submit"]');
             await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 10000 });
         } catch (e) {
             console.log('[E2E] Login failed, retrying once...');
             await page.goto('/admin/login');
             await page.fill('input[name="username"]', 'admin');
-            await page.fill('input[name="password"]', 'admin');
+            await page.fill('input[name="password"]', 'admin123');
             await page.click('button[type="submit"]');
             await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 10000 });
         }
@@ -54,12 +54,12 @@ test.describe('Admin Profile - Change Password', () => {
         // await expect(page.locator('.error-message')).toContainText('Incorrect old password');
     });
 
-    test.skip('should succeed with correct password (full flow)', async ({ page }) => {
+    test('should succeed with correct password (full flow)', async ({ page }) => {
         // 1. Login with initial password 'admin' (Handled by beforeEach)
 
         // 2. Change password to 'newpass123'
         await page.goto('/admin/profile');
-        await page.fill('input[name="oldPassword"]', 'admin');
+        await page.fill('input[name="oldPassword"]', 'admin123');
         await page.fill('input[name="newPassword"]', 'newpass123');
         const responsePromise = page.waitForResponse(resp => resp.url().includes('/auth/password') && resp.status() === 200 && resp.request().method() === 'PUT');
 
@@ -85,7 +85,7 @@ test.describe('Admin Profile - Change Password', () => {
         console.log('[E2E] Reverting password...');
         await page.goto('/admin/profile');
         await page.fill('input[name="oldPassword"]', 'newpass123');
-        await page.fill('input[name="newPassword"]', 'admin');
+        await page.fill('input[name="newPassword"]', 'admin123');
         const revertPromise = page.waitForResponse(resp => resp.url().includes('/auth/password') && resp.status() === 200 && resp.request().method() === 'PUT');
         await page.locator('button[type="submit"]').click({ force: true });
         await revertPromise;
@@ -100,9 +100,42 @@ test.describe('Admin Profile - Change Password', () => {
         // 7. Login with OLD password 'admin'
         console.log('[E2E] logging in with old password...');
         await page.fill('input[name="username"]', 'admin');
-        await page.fill('input[name="password"]', 'admin');
+        await page.fill('input[name="password"]', 'admin123');
         await page.click('button[type="submit"]');
         await expect(page).toHaveURL(/\/admin\/dashboard/);
         console.log('[E2E] Password reverted successfully and full flow verified.');
     });
+
+    test.afterAll(async ({ browser }) => {
+        const page = await browser.newPage();
+        console.log('[E2E] CLEANUP: Ensuring password is reset to "admin"...');
+
+        try {
+            await page.goto('/admin/login');
+
+            // Try logging in with NEW password
+            await page.fill('input[name="username"]', 'admin');
+            await page.fill('input[name="password"]', 'newpass123');
+            await page.click('button[type="submit"]');
+
+            try {
+                await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 5000 });
+                console.log('[E2E] CLEANUP: Logged in with NEW password. Reverting...');
+
+                await page.goto('/admin/profile');
+                await page.fill('input[name="oldPassword"]', 'newpass123');
+                await page.fill('input[name="newPassword"]', 'admin123');
+                await page.click('button[type="submit"]');
+                await expect(page.locator('.message-success')).toBeVisible({ timeout: 5000 });
+                console.log('[E2E] CLEANUP: Password reverted successfully.');
+            } catch (e) {
+                console.log('[E2E] CLEANUP: Could not login with new password (maybe already reverted?).');
+            }
+        } catch (err) {
+            console.log('[E2E] CLEANUP: Error during cleanup (ignoring)', err);
+        } finally {
+            await page.close();
+        }
+    });
+
 });

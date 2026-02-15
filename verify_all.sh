@@ -43,12 +43,12 @@ echo ""
 echo "e2e: 🎭 Running E2E Tests..."
 # Ensure full stack is running
 echo "Starting full stack..."
-docker-compose up -d --build backend frontend proxy open-webui
+docker-compose -f docker-compose.prod.yml up -d --build backend frontend proxy open-webui
 # Waiting for Health with timeouts instead of fixed sleeps
 echo "Waiting for Backend to be ready..."
 # Portable wait function
 count=0
-until curl -s -f http://localhost:8000/api/app/health > /dev/null || [ $count -eq 30 ]; do
+until curl -s -f http://localhost/health > /dev/null || [ $count -eq 30 ]; do
     sleep 1
     count=$((count + 1))
 done
@@ -59,11 +59,11 @@ if [ $count -eq 30 ]; then
 fi
 
 echo "🔄 Restarting Frontend & Proxy to ensure fresh DNS resolution..."
-docker-compose restart frontend proxy
+docker-compose -f docker-compose.prod.yml restart frontend proxy
 
 echo "Waiting for Frontend to be ready..."
 count=0
-until curl -s -f http://localhost:4200 > /dev/null || [ $count -eq 60 ]; do
+until curl -s -f http://localhost > /dev/null || [ $count -eq 60 ]; do
     sleep 1
     count=$((count + 1))
     if [ $((count % 10)) -eq 0 ]; then
@@ -75,7 +75,7 @@ done
 echo "Waiting for Open WebUI to be ready..."
 count=0
 # Wait longer for Open WebUI (can be slow)
-until curl -s -f http://localhost:4200/open/health > /dev/null || [ $count -eq 90 ]; do
+until curl -s -f http://localhost/open/health > /dev/null || [ $count -eq 90 ]; do
     sleep 2
     count=$((count + 1))
     if [ $((count % 5)) -eq 0 ]; then
@@ -84,7 +84,7 @@ until curl -s -f http://localhost:4200/open/health > /dev/null || [ $count -eq 9
 done
 
 if [ $count -eq 90 ]; then
-    echo "❌ Open WebUI failed to start on http://localhost:4200/open/health"
+    echo "❌ Open WebUI failed to start on http://localhost/open/health"
     docker-compose ps
     docker-compose logs --tail=20 open-webui
     # We don't exit here, we let the python script fail with more details if needed, or exit?
@@ -93,7 +93,7 @@ if [ $count -eq 90 ]; then
 fi
 
 if [ $count -eq 60 ]; then
-    echo "❌ Frontend failed to start on http://localhost:4200"
+    echo "❌ Frontend failed to start on http://localhost"
     docker-compose ps
     docker-compose logs proxy frontend
     exit 1
@@ -101,17 +101,21 @@ fi
 
 
 echo "🌱 Seeding E2E data..."
-docker-compose exec -T backend python scripts/seed_e2e_user.py
+docker-compose -f docker-compose.prod.yml exec -T backend python scripts/seed_e2e_user.py
 
 # Run Playwright
 echo "🛡️  Verifying Proxy Routes..."
 python3 -m pip install httpx --quiet --break-system-packages || true
-python3 verify_proxy_routes.py
+PROXY_PORT=80 python3 verify_proxy_routes.py
 
 echo "Running Playwright..."
 cd frontend
-export BASE_URL=http://localhost:4200
-CI=true npx playwright test
+export BASE_URL=http://localhost
+echo "Running Standard E2E Tests..."
+CI=true npx playwright test --grep-invert "profile"
+
+echo "Running Destructive E2E Tests (Profile/Password)..."
+CI=true npx playwright test profile.spec.ts
 cd ..
 
 echo ""

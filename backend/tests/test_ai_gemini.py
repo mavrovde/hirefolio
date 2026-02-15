@@ -1,6 +1,6 @@
 
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, AsyncMock, PropertyMock
 from app.services import ai
 from app.config import settings
 
@@ -25,7 +25,9 @@ async def test_get_gemini_client_error():
     """Test _get_gemini_client handles exception."""
     with patch("app.services.ai.settings.gemini_api_key", "key"), \
          patch("app.services.ai.HAS_GEMINI", True), \
-         patch("app.services.ai.genai.Client", side_effect=Exception("Boom")):
+         patch("app.services.ai.genai", create=True) as mock_genai:
+        
+        mock_genai.Client.side_effect = Exception("Boom")
         client = ai._get_gemini_client()
         assert client is None
 
@@ -34,7 +36,7 @@ async def test_generate_text_gemini_success():
     """Test _generate_text_gemini success path."""
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = "Generated Text"
+    type(mock_response).text = PropertyMock(return_value="Generated Text")
     mock_client.models.generate_content.return_value = mock_response
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
@@ -49,7 +51,7 @@ async def test_generate_text_gemini_fallback():
     """Test _generate_text_gemini fallback to 1.5."""
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = "Fallback Text"
+    type(mock_response).text = PropertyMock(return_value="Fallback Text")
     
     # First call raises, second succeeds
     mock_client.models.generate_content.side_effect = [Exception("2.0 fail"), mock_response]
@@ -80,9 +82,9 @@ async def test_chat_with_gemini_success():
     mock_client = MagicMock()
     mock_chat = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = "Chat Response"
+    type(mock_response).text = PropertyMock(return_value="Chat Response")
     mock_chat.send_message.return_value = mock_response
-    mock_client.models.start_chat.return_value = mock_chat
+    mock_client.chats.create.return_value = mock_chat
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
         history = [{"role": "user", "content": "hi"}]
@@ -91,7 +93,7 @@ async def test_chat_with_gemini_success():
         
         # Verify history conversion
         expected_history = [{"role": "user", "parts": ["hi"]}]
-        mock_client.models.start_chat.assert_called_with(
+        mock_client.chats.create.assert_called_with(
             model='gemini-2.0-flash',
             history=expected_history
         )
@@ -101,23 +103,23 @@ async def test_chat_with_gemini_fallback():
     mock_client = MagicMock()
     mock_chat = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = "Fallback Chat"
+    type(mock_response).text = PropertyMock(return_value="Fallback Chat")
     mock_chat.send_message.return_value = mock_response
     
-    # First start_chat fails, second succeeds
-    mock_client.models.start_chat.side_effect = [Exception("2.0 fail"), mock_chat]
+    # First create fails, second succeeds
+    mock_client.chats.create.side_effect = [Exception("2.0 fail"), mock_chat]
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
         res = await ai.chat_with_gemini("hello")
         assert res == "Fallback Chat"
-        assert mock_client.models.start_chat.call_count == 2
-        args, kwargs = mock_client.models.start_chat.call_args_list[1]
+        assert mock_client.chats.create.call_count == 2
+        args, kwargs = mock_client.chats.create.call_args_list[1]
         assert kwargs['model'] == 'gemini-1.5-flash'
 
 @pytest.mark.asyncio
 async def test_chat_with_gemini_error():
     mock_client = MagicMock()
-    mock_client.models.start_chat.side_effect = Exception("Total fail")
+    mock_client.chats.create.side_effect = Exception("Total fail")
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
         res = await ai.chat_with_gemini("hello")
@@ -126,14 +128,12 @@ async def test_chat_with_gemini_error():
 async def test_suggest_tags_gemini_success():
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = '["tag1", "tag2"]'
+    type(mock_response).text = PropertyMock(return_value='["tag1", "tag2"]')
     mock_client.models.generate_content.return_value = mock_response
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
-        # We also need to mock settings if we want to ensure no Ollama config needed
         tags = await ai.suggest_tags("Title", "Content")
         assert tags == ["tag1", "tag2"]
-        # Verify prompt contained title/content
         call_args = mock_client.models.generate_content.call_args
         assert "Title" in call_args.kwargs['contents']
 
@@ -141,7 +141,7 @@ async def test_suggest_tags_gemini_success():
 async def test_suggest_tags_gemini_json_markdown():
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = '```json\n["tag1", "tag2"]\n```'
+    type(mock_response).text = PropertyMock(return_value='```json\n["tag1", "tag2"]\n```')
     mock_client.models.generate_content.return_value = mock_response
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
@@ -150,7 +150,6 @@ async def test_suggest_tags_gemini_json_markdown():
 
 @pytest.mark.asyncio
 async def test_suggest_tags_fallback_ollama():
-    # Gemini returns None
     with patch("app.services.ai._generate_text_gemini", return_value=None), \
          patch("app.services.ai.httpx.AsyncClient") as mock_http:
         
@@ -169,8 +168,7 @@ async def test_suggest_tags_fallback_ollama():
 async def test_suggest_post_details_gemini_success():
     mock_client = MagicMock()
     mock_response = MagicMock()
-    # Simple valid JSON
-    mock_response.text = '{"title": "T", "slug": "s", "summary": "sum", "tags": ["t1"]}'
+    type(mock_response).text = PropertyMock(return_value='{"title": "T", "slug": "s", "summary": "sum", "tags": ["t1"]}')
     mock_client.models.generate_content.return_value = mock_response
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
@@ -182,7 +180,7 @@ async def test_suggest_post_details_gemini_success():
 async def test_suggest_field_gemini_success():
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = "Suggested Title"
+    type(mock_response).text = PropertyMock(return_value="Suggested Title")
     mock_client.models.generate_content.return_value = mock_response
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
@@ -201,7 +199,7 @@ async def test_generate_full_post_gemini_success():
         "content": "# Markdown"
     }
     import json
-    mock_response.text = json.dumps(content_json)
+    type(mock_response).text = PropertyMock(return_value=json.dumps(content_json))
     mock_client.models.generate_content.return_value = mock_response
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
@@ -213,8 +211,7 @@ async def test_generate_full_post_gemini_success():
 async def test_generate_full_post_robust_parsing():
     mock_client = MagicMock()
     mock_response = MagicMock()
-    # Malformed text around JSON
-    mock_response.text = 'Sure! Here is the JSON:\n```json\n{"title": "Full Post", "slug": "s", "summary": "sum", "tags": ["t"], "content": "c"}\n```'
+    type(mock_response).text = PropertyMock(return_value='Sure! Here is the JSON:\n```json\n{"title": "Full Post", "slug": "s", "summary": "sum", "tags": ["t"], "content": "c"}\n```')
     mock_client.models.generate_content.return_value = mock_response
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
@@ -223,7 +220,6 @@ async def test_generate_full_post_robust_parsing():
 
 @pytest.mark.asyncio
 async def test_generate_full_post_fallback_fail():
-    # Both fail
     with patch("app.services.ai._generate_text_gemini", return_value=None), \
          patch("app.services.ai.httpx.AsyncClient") as mock_http:
         
@@ -233,4 +229,3 @@ async def test_generate_full_post_fallback_fail():
 
         res = await ai.generate_full_post("Topic")
         assert res == {}
-

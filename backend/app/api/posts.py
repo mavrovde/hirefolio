@@ -1,7 +1,7 @@
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from math import ceil
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, field_validator, ConfigDict
 
@@ -225,123 +225,6 @@ async def get_post_by_id(
     )
 
 
-@router.get("/{slug}", response_model=PostResponse)
-async def get_post(
-    slug: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
-):
-    """Get a single post by slug."""
-    result = await db.execute(select(Post).where(Post.slug == slug))
-    post = result.scalar_one_or_none()
-
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-
-    # Check permissions for drafts
-    if not post.published:
-        if not current_user or not current_user.is_admin:
-            raise HTTPException(status_code=404, detail="Post not found")
-
-    return PostResponse(
-        id=post.id,
-        title=post.title,
-        slug=post.slug,
-        content=post.content,
-        summary=post.summary,
-        language=post.language,
-        published=post.published,
-        tags=post.tags,
-        created_at=post.created_at.isoformat(),
-        updated_at=post.updated_at.isoformat(),
-    )
-
-
-@router.post("", response_model=PostResponse)
-async def create_post(
-    post_data: PostCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user),
-):
-    """Create a new post with embedding."""
-    # Generate embedding from title + content
-    text_for_embedding = f"{post_data.title}\n\n{post_data.content}"
-    embedding = await get_embedding(text_for_embedding)
-
-    post = Post(
-        title=post_data.title,
-        slug=post_data.slug,
-        content=post_data.content,
-        summary=post_data.summary,
-        language=post_data.language,
-        published=post_data.published,
-        tags=post_data.tags,
-        embedding=embedding,
-    )
-
-    db.add(post)
-    await db.commit()
-    await db.refresh(post)
-
-    return PostResponse(
-        id=post.id,
-        title=post.title,
-        slug=post.slug,
-        content=post.content,
-        summary=post.summary,
-        language=post.language,
-        published=post.published,
-        tags=post.tags,
-        created_at=post.created_at.isoformat(),
-        updated_at=post.updated_at.isoformat(),
-    )
-
-
-@router.get("/{slug}/similar", response_model=List[SimilarPostResponse])
-async def get_similar_posts(
-    slug: str,
-    limit: int = 5,
-    db: AsyncSession = Depends(get_db),
-):
-    """Find similar posts using vector similarity."""
-    result = await db.execute(select(Post).where(Post.slug == slug))
-    post = result.scalar_one_or_none()
-
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-
-    if post.embedding is None:
-        return []
-
-    # Find similar posts using cosine distance
-    similar_query = (
-        select(
-            Post,
-            Post.embedding.cosine_distance(post.embedding).label("distance"),
-        )
-        .where(Post.id != post.id)
-        .where(Post.published.is_(True))
-        .where(Post.language == post.language)
-        .where(Post.embedding.isnot(None))
-        .order_by("distance")
-        .limit(limit)
-    )
-
-    result = await db.execute(similar_query)
-    similar_posts = result.all()
-
-    return [
-        SimilarPostResponse(
-            id=p.id,
-            title=p.title,
-            slug=p.slug,
-            summary=p.summary,
-            similarity=1 - distance,  # Convert distance to similarity
-        )
-        for p, distance in similar_posts
-    ]
-
-
 @router.get("/search/semantic")
 async def semantic_search(
     q: str,
@@ -438,6 +321,139 @@ async def semantic_search(
     ]
 
 
+@router.get("/{slug}", response_model=PostResponse)
+async def get_post(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Get a single post by slug."""
+    result = await db.execute(select(Post).where(Post.slug == slug))
+    post = result.scalar_one_or_none()
+
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    # Check permissions for drafts
+    if not post.published:
+        if not current_user or not current_user.is_admin:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+    return PostResponse(
+        id=post.id,
+        title=post.title,
+        slug=post.slug,
+        content=post.content,
+        summary=post.summary,
+        language=post.language,
+        published=post.published,
+        tags=post.tags,
+        created_at=post.created_at.isoformat(),
+        updated_at=post.updated_at.isoformat(),
+    )
+
+
+@router.post("", response_model=PostResponse)
+async def create_post(
+    post_data: PostCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Create a new post with embedding."""
+    # Generate embedding from title + content
+    text_for_embedding = f"{post_data.title}\n\n{post_data.content}"
+    embedding = await get_embedding(text_for_embedding)
+
+    post = Post(
+        title=post_data.title,
+        slug=post_data.slug,
+        content=post_data.content,
+        summary=post_data.summary,
+        language=post_data.language,
+        published=post_data.published,
+        tags=post_data.tags,
+        embedding=embedding,
+    )
+
+    try:
+        db.add(post)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        # Handle unique constraint on slug potentially
+        import random
+        post.slug = f"{post_data.slug}-{random.randint(1000, 9999)}"
+        db.add(post)
+        try:
+            await db.commit()
+            print("DEBUG: create_post retry commit success")
+        except Exception as e2:
+             print(f"DEBUG: create_post retry commit failed: {e2}")
+             raise e2
+    await db.refresh(post)
+
+    return PostResponse(
+        id=post.id,
+        title=post.title,
+        slug=post.slug,
+        content=post.content,
+        summary=post.summary,
+        language=post.language,
+        published=post.published,
+        tags=post.tags,
+        created_at=post.created_at.isoformat(),
+        updated_at=post.updated_at.isoformat(),
+    )
+
+
+@router.get("/{slug}/similar", response_model=List[SimilarPostResponse])
+async def get_similar_posts(
+    slug: str,
+    limit: int = 5,
+    db: AsyncSession = Depends(get_db),
+):
+    """Find similar posts using vector similarity."""
+    result = await db.execute(select(Post).where(Post.slug == slug))
+    post = result.scalar_one_or_none()
+
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    if post.embedding is None:
+        return []
+
+    # Find similar posts using cosine distance
+    similar_query = (
+        select(
+            Post,
+            Post.embedding.cosine_distance(post.embedding).label("distance"),
+        )
+        .where(Post.id != post.id)
+        .where(Post.published.is_(True))
+        .where(Post.language == post.language)
+        .where(Post.embedding.isnot(None))
+        .order_by("distance")
+        .limit(limit)
+    )
+
+    result = await db.execute(similar_query)
+    similar_posts = result.all()
+
+    return [
+        SimilarPostResponse(
+            id=p.id,
+            title=p.title,
+            slug=p.slug,
+            summary=p.summary,
+            similarity=1 - distance,  # Convert distance to similarity
+        )
+        for p, distance in similar_posts
+    ]
+
+
+
+
+
 @router.post("/suggest-details")
 async def suggest_post_details_endpoint(
     request: PostDetailSuggestionRequest,
@@ -522,12 +538,18 @@ async def generate_post_endpoint(
         await db.commit()
         await db.refresh(post)
     except Exception as e:
+        print(f"DEBUG: create_post exception caught: {e}")
         await db.rollback()
         # Handle unique constraint on slug potentially
         import random
         post.slug = f"{slug}-{random.randint(1000, 9999)}"
         db.add(post)
-        await db.commit()
+        try:
+            await db.commit()
+            print("DEBUG: create_post retry commit success")
+        except Exception as e2:
+             print(f"DEBUG: create_post retry commit failed: {e2}")
+             raise e2
         await db.refresh(post)
 
     return PostResponse(

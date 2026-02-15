@@ -1,5 +1,5 @@
 
-import { Component, ElementRef, ViewChild, AfterViewChecked } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewChecked, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LlmService, ChatMessage } from '../../../services/llm.service';
@@ -22,7 +22,7 @@ export class AdminChatComponent implements AfterViewChecked {
     userInput: string = '';
     isLoading: boolean = false;
 
-    constructor(private llmService: LlmService) { }
+    constructor(private llmService: LlmService, private cdr: ChangeDetectorRef) { }
 
     ngAfterViewChecked() {
         this.scrollToBottom();
@@ -50,6 +50,7 @@ export class AdminChatComponent implements AfterViewChecked {
             this.messages.push({ role: 'assistant', content: 'Error: Failed to get response from Gemini.' });
         } finally {
             this.isLoading = false;
+            this.cdr.detectChanges(); // Force update for E2E tests
         }
     }
 }

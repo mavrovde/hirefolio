@@ -128,4 +128,24 @@ describe('CvManagerComponent', () => {
         component.loadVersions();
         expect(consoleSpy).toHaveBeenCalledWith('Error loading versions:', expect.anything());
     });
+
+    it('should handle file selection with no files', () => {
+        const event = { target: { files: [] } } as any;
+        component.onFileSelected(event);
+        expect(component.selectedFile).toBeNull();
+    });
+
+    it('should not upload if form is invalid', () => {
+        component.uploadForm.setValue({ version: '' }); // Invalid
+        component.selectedFile = new File([''], 'test.pdf');
+        component.onUpload();
+        expect(mockCvService.uploadCv).not.toHaveBeenCalled();
+    });
+
+    it('should not upload if file is missing', () => {
+        component.uploadForm.setValue({ version: '1.0' });
+        component.selectedFile = null; // Missing
+        component.onUpload();
+        expect(mockCvService.uploadCv).not.toHaveBeenCalled();
+    });
 });

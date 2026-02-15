@@ -1,10 +1,11 @@
 import pytest
 from sqlalchemy import select
 from app.models.cv_document import CvDocument
+from contextlib import asynccontextmanager
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip("Flaky test due to mocking issues with lifespan and db_session")
+
 async def test_lifespan_seeds_cv(db_session, init_db):
     # Ensure DB is empty
     result = await db_session.execute(select(CvDocument))
@@ -17,56 +18,54 @@ async def test_lifespan_seeds_cv(db_session, init_db):
 
     app = FastAPI()
     
-    # Create a mock session maker that yields our existing test session
-    # We need an async context manager
-    class MockSessionContext:
-        async def __aenter__(self):
-            return db_session
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            pass
-            
-    mock_session_maker = MagicMock(return_value=MockSessionContext())
-
-    # Mock engine.begin() to return a context manager that yields a connection
-    # We can probably use the existing DB session's bind (connection) or just mock it to do nothing
-    # if we only care about the session part.
-    # However, lifespan also does `async with engine.begin() as conn:` for migrations.
-    # We should point it to the test engine.
+    # Create a mock session that proxies to our test db_session
+    # But lifespan creates a NEW session using async_session() context manager
+    # So we need to mock async_session to return a context manager that yields our db_session
     
-    # Patch app.main.engine and app.main.async_session
-    with patch("app.main.engine", init_db), \
-         patch("app.main.async_session", mock_session_maker):
-         
-        # We also need to mock ollama check to avoid network calls/timeouts
-        # And file system checks for CV seeding
-        # We use a side_effect for exists so we don't accidentally trigger .env.local loading
-        def exists_side_effect(path):
-            return str(path).endswith("cv.pdf")
+    from unittest.mock import MagicMock, AsyncMock
 
-        with patch("httpx.AsyncClient.get", new_callable=MagicMock) as mock_get, \
+    # Mock the async_session factory to return a Context Manager that yields db_session
+    mock_session_factory = MagicMock()
+    
+    @asynccontextmanager
+    async def mock_session_cm():
+        yield db_session
+
+    mock_session_factory.return_value = mock_session_cm()
+
+    # Patch modules
+    with patch("app.main.engine", init_db), \
+         patch("app.main.async_session", side_effect=mock_session_cm):
+         
+        # Mock file system and network calls
+        def exists_side_effect(path):
+            return str(path).endswith("cv.pdf") or str(path).endswith(".env.local")
+
+        with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get, \
              patch("os.path.exists", side_effect=exists_side_effect), \
              patch("builtins.open", new_callable=MagicMock) as mock_open:
             
             mock_get.return_value.status_code = 200
-            mock_open.return_value.__enter__.return_value.read.return_value = b"dummy pdf content"
             
-            # We need to simulate the lifespan context
+            # Mock file read: bytes for PDF, string for env
+            def open_side_effect(file, mode="r", *args, **kwargs):
+                file_mock = MagicMock()
+                if str(file).endswith("cv.pdf") or "rb" in mode:
+                    file_mock.__enter__.return_value.read.return_value = b"dummy pdf content"
+                else:
+                    # For .env files
+                    file_mock.__enter__.return_value.read.return_value = "GEMINI_API_KEY=test_key"
+                    file_mock.__enter__.return_value.__iter__.return_value = ["GEMINI_API_KEY=test_key"]
+                return file_mock
+            
+            mock_open.side_effect = open_side_effect
+            
+            # Execute lifespan
             async with lifespan(app):
                 pass
-
-    # Check if CV was seeded
-    # The session we passed to lifespan (db_session) should have the changes
-    # But wait, did lifespan commit? 
-    # Yes, `await session.commit()` in lifespan.
-    # Since db_session fixture usually runs in a transaction that rolls back, 
-    # committing inside might be tricky if using `nested` transaction or `savepoint`.
-    # But our `db_session` fixture (in conftest) yields a session made from `get_test_engine`.
-    # It closes at the end.
-    
-    # We need to verify the data is there.
-    # Since we reused the same session, we might need to expire/refresh if we want to see changes 
-    # made "by the app" reflected in our view, but it's the SAME session object.
-    
+                
+    # Explicitly flush/commit if needed, though lifespan should have committed
+    # We query using the same session
     result = await db_session.execute(select(CvDocument))
     seeded_cv = result.scalars().first()
 

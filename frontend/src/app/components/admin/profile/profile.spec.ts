@@ -1,4 +1,3 @@
-
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ProfileComponent } from './profile';
 import { AuthService } from '../../../services/auth.service';
@@ -146,5 +145,15 @@ describe('ProfileComponent', () => {
 
     expect(component.loading).toBe(false);
     expect(component.error).toBe('ADMIN.PASSWORD_CHANGE_FAILED');
+  });
+
+  it('should handle API key save error', () => {
+    component.geminiApiKey = 'new-key';
+    authServiceSpy.updateGeminiKey.mockReturnValue(throwError(() => new Error('Save failed')));
+
+    component.onSaveKey();
+
+    expect(component.error).toBe('Failed to save API Key');
+    expect(component.loading).toBe(false);
   });
 });

@@ -10,7 +10,7 @@ test.describe('AI Suggestions Flow', () => {
     // Login first
     await page.goto('/admin/login');
     await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin');
+    await page.fill('input[name="password"]', 'admin123');
     await page.click('button[type="submit"]');
     await expect(page).toHaveURL('/admin/dashboard');
   });

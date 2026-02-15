@@ -14,6 +14,9 @@ from app.services.auth import (
     get_current_user,
 )
 from app.config import settings
+from app.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -48,6 +51,9 @@ async def login(
 
     # Verify user exists and password is correct
     if not user or not verify_password(form_data.password, user.hashed_password):
+        logger.warning(
+            f"LOGIN FAILED: Username '{form_data.username}' - User found: {bool(user)} - Password match: {verify_password(form_data.password, user.hashed_password) if user else False}"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",

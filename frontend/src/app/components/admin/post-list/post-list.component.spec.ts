@@ -149,4 +149,13 @@ describe('PostListComponent', () => {
 
     consoleSpy.mockRestore();
   });
+
+  it('should cancel delete if user declines confirmation', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const post = mockPosts[0];
+
+    component.deletePost(post);
+
+    expect(blogServiceSpy.deletePostById).not.toHaveBeenCalled();
+  });
 });

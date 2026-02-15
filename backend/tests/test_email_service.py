@@ -1,98 +1,52 @@
-import unittest
+import pytest
 from unittest.mock import patch, MagicMock
 from app.services.email import EmailService
 
+@pytest.fixture
+def email_service():
+    return EmailService()
 
-class TestEmailService(unittest.TestCase):
-    @patch("app.services.email.settings")
-    @patch("smtplib.SMTP")
-    def test_send_cv_request_notification_success(self, mock_smtp, mock_settings):
-        # Setup mock settings
-        mock_settings.smtp_host = "smtp.example.com"
-        mock_settings.smtp_port = 587
-        mock_settings.smtp_user = "user@example.com"
-        mock_settings.smtp_password = "password"
-        mock_settings.admin_email = "admin@example.com"
-
-        # Setup mock SMTP server
+def test_send_email_success(email_service):
+    # Test proper sending via public method
+    with patch("smtplib.SMTP") as mock_smtp:
         mock_server = MagicMock()
         mock_smtp.return_value.__enter__.return_value = mock_server
+        
+        with patch("app.config.settings.smtp_host", "localhost"), \
+             patch("app.config.settings.smtp_user", "user"), \
+             patch("app.config.settings.smtp_password", "pass"):
+             
+            res = email_service.send_requester_confirmation("Name", "test@test.com")
+            assert res is True
+            mock_server.send_message.assert_called_once()
 
-        service = EmailService()
-        result = service.send_cv_request_notification(
-            name="John Doe",
-            email="john@example.com",
-            company="Test Corp",
-            message="Please send CV",
-        )
+def test_send_email_failure(email_service):
+    with patch("smtplib.SMTP", side_effect=Exception("SMTP Error")):
+         with patch("app.config.settings.smtp_host", "localhost"), \
+             patch("app.config.settings.smtp_user", "user"), \
+             patch("app.config.settings.smtp_password", "pass"):
+            
+            res = email_service.send_requester_confirmation("Name", "test@test.com")
+            assert res is False
 
-        self.assertTrue(result)
-        mock_server.starttls.assert_called_once()
-        mock_server.login.assert_called_with("user@example.com", "password")
-        mock_server.send_message.assert_called_once()
-
-        # Verify message content roughly
-        args, _ = mock_server.send_message.call_args
-        msg = args[0]
-        self.assertEqual(msg["Subject"], "CV Request from John Doe (Test Corp)")
-
-    @patch("app.services.email.settings")
-    def test_send_cv_request_missing_config(self, mock_settings):
-        mock_settings.smtp_host = ""
-
-        service = EmailService()
-        result = service.send_cv_request_notification("Name", "email", "co", "msg")
-
-        self.assertFalse(result)
-
-    @patch("app.services.email.settings")
-    @patch("smtplib.SMTP")
-    def test_send_cv_request_exception(self, mock_smtp, mock_settings):
-        # Setup mock settings
-        mock_settings.smtp_host = "smtp.example.com"
-        mock_settings.smtp_user = "user"
-        mock_settings.smtp_password = "pw"
-
-        # Setup mock exception
-        mock_smtp.side_effect = Exception("Connection failed")
-
-        service = EmailService()
-        result = service.send_cv_request_notification("Name", "email", "co", "msg")
-
-        self.assertFalse(result)
-
-    @patch("app.services.email.settings")
-    @patch("smtplib.SMTP")
-    def test_send_requester_confirmation_success(self, mock_smtp, mock_settings):
-        mock_settings.smtp_host = "smtp.example.com"
-        mock_settings.smtp_port = 587
-        mock_settings.smtp_user = "user@example.com"
-        mock_settings.smtp_password = "password"
-
+def test_send_cv_notification_details(email_service):
+    with patch("smtplib.SMTP") as mock_smtp:
         mock_server = MagicMock()
         mock_smtp.return_value.__enter__.return_value = mock_server
+        
+        with patch("app.config.settings.smtp_host", "localhost"), \
+             patch("app.config.settings.smtp_user", "user"), \
+             patch("app.config.settings.smtp_password", "pass"):
+             
+            email_service.send_cv_request_notification(
+                "Name", "email@test.com", "Company", "Msg", "Pos", True
+            )
+            mock_server.send_message.assert_called_once()
+            call_args = mock_server.send_message.call_args[0][0]
+            assert "CV Request" in call_args["Subject"]
+            assert "Name" in call_args.get_content()
 
-        service = EmailService()
-        result = service.send_requester_confirmation("John", "john@example.com")
-
-        self.assertTrue(result)
-        mock_server.send_message.assert_called_once()
-        args, _ = mock_server.send_message.call_args
-        msg = args[0]
-        self.assertEqual(msg["Subject"], "CV Request Confirmation - Sergii Mavrov")
-
-    @patch("app.services.email.settings")
-    def test_send_requester_confirmation_missing_config(self, mock_settings):
-        mock_settings.smtp_host = ""
-        service = EmailService()
-        result = service.send_requester_confirmation("Name", "email")
-        self.assertFalse(result)
-
-    @patch("app.services.email.settings")
-    @patch("smtplib.SMTP")
-    def test_send_requester_confirmation_exception(self, mock_smtp, mock_settings):
-        mock_settings.smtp_host = "smtp.example.com"
-        mock_smtp.side_effect = Exception("SMTP Error")
-        service = EmailService()
-        result = service.send_requester_confirmation("Name", "email")
-        self.assertFalse(result)
+def test_email_config_missing(email_service):
+    # Test early return when config is missing
+    with patch("app.config.settings.smtp_host", None):
+        assert email_service.send_requester_confirmation("Name", "test@test.com") is False

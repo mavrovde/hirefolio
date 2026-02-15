@@ -11,14 +11,14 @@ test.describe('Admin SQL Panel', () => {
         // Retry login once if it fails due to concurrency or slower start
         try {
             await page.fill('input[name="username"]', 'admin');
-            await page.fill('input[name="password"]', 'admin');
+            await page.fill('input[name="password"]', 'admin123');
             await page.click('button[type="submit"]');
             await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 10000 });
         } catch (e) {
             console.log('[E2E] Login failed, retrying once...');
             await page.goto('/admin/login');
             await page.fill('input[name="username"]', 'admin');
-            await page.fill('input[name="password"]', 'admin');
+            await page.fill('input[name="password"]', 'admin123');
             await page.click('button[type="submit"]');
             await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 10000 });
         }

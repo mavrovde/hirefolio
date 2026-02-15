@@ -1,11 +1,10 @@
 from app.config import settings
 import pytest
-from unittest.mock import patch
 from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_list_posts_with_data(client: AsyncClient, mock_embedding):
+async def test_list_posts_with_data(client: AsyncClient, mock_embedding, mocker):
     """Test listing posts returns proper response format."""
     posts = [
         {
@@ -26,9 +25,9 @@ async def test_list_posts_with_data(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        for post in posts:
-            await client.post(f"{settings.api_prefix}/posts", json=post)
+
+    for post in posts:
+        await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Test default (published only)
     response = await client.get(f"{settings.api_prefix}/posts")
@@ -50,7 +49,7 @@ async def test_list_posts_with_data(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_get_post_full_response(client: AsyncClient, mock_embedding):
+async def test_get_post_full_response(client: AsyncClient, mock_embedding, mocker):
     """Test get post returns full response with all fields."""
     post_data = {
         "title": "Full Response Test",
@@ -61,8 +60,8 @@ async def test_get_post_full_response(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        create_response = await client.post(f"{settings.api_prefix}/posts", json=post_data)
+
+    create_response = await client.post(f"{settings.api_prefix}/posts", json=post_data)
 
     # Verify create response has all fields
     created = create_response.json()
@@ -88,7 +87,7 @@ async def test_get_post_full_response(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_update_post_full_response(client: AsyncClient, mock_embedding):
+async def test_update_post_full_response(client: AsyncClient, mock_embedding, mocker):
     """Test update returns full response."""
     # Create
     post_data = {
@@ -100,9 +99,9 @@ async def test_update_post_full_response(client: AsyncClient, mock_embedding):
         "published": False,
     }
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
-        post_id = create_resp.json()["id"]
+
+    create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
+    post_id = create_resp.json()["id"]
 
     # Update with all fields
     update_data = {
@@ -113,8 +112,7 @@ async def test_update_post_full_response(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
+    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
 
     assert response.status_code == 200
     data = response.json()
@@ -129,7 +127,7 @@ async def test_update_post_full_response(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_similar_posts_with_results(client: AsyncClient, mock_embedding):
+async def test_similar_posts_with_results(client: AsyncClient, mock_embedding, mocker):
     """Test similar posts returns proper response format."""
     posts = [
         {
@@ -158,9 +156,9 @@ async def test_similar_posts_with_results(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        for post in posts:
-            await client.post(f"{settings.api_prefix}/posts", json=post)
+
+    for post in posts:
+        await client.post(f"{settings.api_prefix}/posts", json=post)
 
     response = await client.get(f"{settings.api_prefix}/posts/post-1/similar?limit=2")
     assert response.status_code == 200

@@ -18,7 +18,7 @@ test.describe('Authentication Flow', () => {
     await expect(page.locator('input[name="username"]')).toBeVisible();
 
     await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin');
+    await page.fill('input[name="password"]', 'admin123');
     await page.click('button[type="submit"]');
 
     // Expect to be redirected to dashboard
@@ -40,7 +40,7 @@ test.describe('Authentication Flow', () => {
 
     await page.goto('/admin/login');
     await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin');
+    await page.fill('input[name="password"]', 'admin123');
     await page.click('button[type="submit"]');
     await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 15000 });
 

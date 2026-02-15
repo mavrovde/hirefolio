@@ -59,6 +59,27 @@ async def verify_proxy_routes():
                 "expected_status": 200,
                 "label": "Domain HTTPS -> Frontend"
             },
+            # 5b. Admin Login Route (Frontend)
+            {
+                "url": f"{ssl_base_url}/admin/login",
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": 200,
+                "label": "Frontend Admin Login Route"
+            },
+            # 5c. Backend Auth Endpoint (Method Not Allowed for GET)
+            {
+                "url": f"{ssl_base_url}{api_prefix}/auth/login",
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": 405, # POST only
+                "label": "Backend Auth Login (Exists)"
+            },
+            # 5d. Protected Admin Endpoint (Unauthorized)
+            {
+                "url": f"{ssl_base_url}{api_prefix}/stats",
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": 401, # Should be unauthorized without token
+                "label": "Protected Admin Route (401 Check)"
+            },
             # 6. /open subpath
             {
                 "url": f"{ssl_base_url}/open/",

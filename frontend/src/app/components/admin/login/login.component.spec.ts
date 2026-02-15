@@ -71,7 +71,7 @@ describe('LoginComponent', () => {
   });
 
   it('should handle login error', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     component.username = 'admin';
     component.password = 'wrong';
     authServiceSpy.login.mockReturnValue(
@@ -83,12 +83,12 @@ describe('LoginComponent', () => {
     expect(component.loading).toBe(false);
     expect(component.errorMessage).toBe('Incorrect username or password.');
     expect(routerSpy.navigate).not.toHaveBeenCalled();
-    expect(consoleSpy).toHaveBeenCalledWith('Login error:', expect.anything());
+    expect(consoleSpy).toHaveBeenCalledWith('Login error in component:', expect.anything());
     consoleSpy.mockRestore();
   });
 
   it('should handle connection error', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     component.username = 'admin';
     component.password = 'pass';
     authServiceSpy.login.mockReturnValue(throwError(() => ({ status: 0, error: {} })));
@@ -103,7 +103,7 @@ describe('LoginComponent', () => {
   });
 
   it('should handle generic error', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     component.username = 'admin';
     component.password = 'pass';
     authServiceSpy.login.mockReturnValue(
@@ -125,7 +125,7 @@ describe('LoginComponent', () => {
   });
 
   it('should use fallback message when error detail is missing', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     component.username = 'admin';
     component.password = 'pass';
     authServiceSpy.login.mockReturnValue(throwError(() => ({ status: 500, error: null })));

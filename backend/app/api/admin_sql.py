@@ -24,9 +24,6 @@ async def execute_sql(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)
 ):
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     start_time = time.time()
     try:
         # Check for forbidden keywords (very basic check, but test expects 400 on invalid query)
@@ -55,9 +52,6 @@ async def execute_sql(
 async def backup_database(
     current_user: User = Depends(get_current_admin_user)
 ):
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     import subprocess
     import os
     from datetime import datetime
@@ -128,9 +122,6 @@ async def restore_database(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_admin_user)
 ):
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     import subprocess
     import os
     from app.config import settings

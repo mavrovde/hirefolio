@@ -78,12 +78,12 @@ async def test_ai_service_uses_user_key(client: AsyncClient, db_session: AsyncSe
     # We can use the simple gemini-chat endpoint
     mock_chat_session = mocker.Mock()
     mock_response = mocker.Mock()
-    mock_response.text = "AI Response"
+    mock_response.configure_mock(text="AI Response")
     mock_chat_session.send_message.return_value = mock_response
     
-    # Setup chain: client.models.start_chat -> chat_session
+    # Setup chain: client.chats.create -> chat_session
     mock_client_instance = mock_client_cls.return_value
-    mock_client_instance.models.start_chat.return_value = mock_chat_session
+    mock_client_instance.chats.create.return_value = mock_chat_session
     
     response = await client.post(
         "/api/app/ai/gemini-chat",

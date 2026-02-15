@@ -1,6 +1,5 @@
 from app.config import settings
 import pytest
-from unittest.mock import patch
 from httpx import AsyncClient
 
 
@@ -17,7 +16,7 @@ async def test_list_posts_empty(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_create_post(client: AsyncClient, mock_embedding):
+async def test_create_post(client: AsyncClient, mock_embedding, mocker):
     """Test creating a new post."""
     post_data = {
         "title": "Getting Started with Ollama",
@@ -28,8 +27,11 @@ async def test_create_post(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.post(f"{settings.api_prefix}/posts", json=post_data)
+    # Use mocker to patch like in test_api_tags.py
+    # pytest-mock handles async/await for return_value automatically if target is async
+
+    
+    response = await client.post(f"{settings.api_prefix}/posts", json=post_data)
 
     assert response.status_code == 200
     data = response.json()
@@ -41,7 +43,7 @@ async def test_create_post(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_get_post(client: AsyncClient, mock_embedding):
+async def test_get_post(client: AsyncClient, mock_embedding, mocker):
     """Test retrieving a specific post."""
     # Create a post first
     post_data = {
@@ -53,8 +55,8 @@ async def test_get_post(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        await client.post(f"{settings.api_prefix}/posts", json=post_data)
+
+    await client.post(f"{settings.api_prefix}/posts", json=post_data)
 
     # Retrieve the post
     response = await client.get(f"{settings.api_prefix}/posts/ollama-embeddings")
@@ -73,7 +75,7 @@ async def test_get_post_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_update_post(client: AsyncClient, mock_embedding):
+async def test_update_post(client: AsyncClient, mock_embedding, mocker):
     """Test updating a post."""
     # Create a post
     post_data = {
@@ -84,9 +86,9 @@ async def test_update_post(client: AsyncClient, mock_embedding):
         "published": False,
     }
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
-        post_id = resp.json()["id"]
+
+    resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
+    post_id = resp.json()["id"]
 
     # Update the post
     update_data = {
@@ -94,8 +96,7 @@ async def test_update_post(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
+    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
 
     assert response.status_code == 200
     data = response.json()
@@ -104,7 +105,7 @@ async def test_update_post(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_delete_post(client: AsyncClient, mock_embedding):
+async def test_delete_post(client: AsyncClient, mock_embedding, mocker):
     """Test deleting a post."""
     # Create a post
     post_data = {
@@ -114,9 +115,9 @@ async def test_delete_post(client: AsyncClient, mock_embedding):
         "language": "en",
     }
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
-        post_id = resp.json()["id"]
+
+    resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
+    post_id = resp.json()["id"]
 
     # Delete the post
     response = await client.delete(f"{settings.api_prefix}/posts/{post_id}")
@@ -129,7 +130,7 @@ async def test_delete_post(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_list_posts_with_filters(client: AsyncClient, mock_embedding):
+async def test_list_posts_with_filters(client: AsyncClient, mock_embedding, mocker):
     """Test listing posts with language and published filters."""
     posts = [
         {
@@ -155,9 +156,9 @@ async def test_list_posts_with_filters(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for post in posts:
-            await client.post(f"{settings.api_prefix}/posts", json=post)
+
+    for post in posts:
+        await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Test published filter
     response = await client.get(f"{settings.api_prefix}/posts?published_only=true")
@@ -177,7 +178,7 @@ async def test_list_posts_with_filters(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_similar_posts(client: AsyncClient, mock_embedding):
+async def test_similar_posts(client: AsyncClient, mock_embedding, mocker):
     """Test finding similar posts."""
     # Create multiple posts
     posts = [
@@ -197,9 +198,9 @@ async def test_similar_posts(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for post in posts:
-            await client.post(f"{settings.api_prefix}/posts", json=post)
+
+    for post in posts:
+        await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Get similar posts
     response = await client.get(f"{settings.api_prefix}/posts/ollama-guide/similar")
@@ -209,7 +210,7 @@ async def test_similar_posts(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_semantic_search(client: AsyncClient, mock_embedding):
+async def test_semantic_search(client: AsyncClient, mock_embedding, mocker):
     """Test semantic search."""
     # Create a post
     post_data = {
@@ -220,14 +221,13 @@ async def test_semantic_search(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        await client.post(f"{settings.api_prefix}/posts", json=post_data)
+
+    await client.post(f"{settings.api_prefix}/posts", json=post_data)
 
     # Search
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.get(
-            f"{settings.api_prefix}/posts/search/semantic?q=semantic+search&lang=en"
-        )
+    response = await client.get(
+        f"{settings.api_prefix}/posts/search/semantic?q=semantic+search&lang=en"
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -235,10 +235,10 @@ async def test_semantic_search(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_semantic_search_no_embedding(client: AsyncClient):
+async def test_semantic_search_no_embedding(client: AsyncClient, mocker):
     """Test semantic search when embedding service is unavailable."""
-    with patch("app.api.posts.get_embedding", return_value=None):
-        response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=test")
+    mocker.patch("app.api.posts.get_embedding", return_value=None)
+    response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=test")
 
     # Now returns 200 with fallback to empty list (or keyword results)
     assert response.status_code == 200
@@ -246,7 +246,7 @@ async def test_semantic_search_no_embedding(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_post_by_id(client: AsyncClient, mock_embedding):
+async def test_get_post_by_id(client: AsyncClient, mock_embedding, mocker):
     """Test retrieving a post by ID."""
     post_data = {
         "title": "Post for ID Fetch",
@@ -256,10 +256,10 @@ async def test_get_post_by_id(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
-        created_post = create_resp.json()
-        post_id = created_post["id"]
+
+    create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
+    created_post = create_resp.json()
+    post_id = created_post["id"]
 
     # Fetch by ID
     response = await client.get(f"{settings.api_prefix}/posts/{post_id}")
@@ -277,7 +277,7 @@ async def test_get_post_by_id_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_update_post_by_id(client: AsyncClient, mock_embedding):
+async def test_update_post_by_id(client: AsyncClient, mock_embedding, mocker):
     """Test updating a post by ID."""
     post_data = {
         "title": "Original ID Update",
@@ -287,14 +287,13 @@ async def test_update_post_by_id(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
-        post_id = create_resp.json()["id"]
+
+    create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
+    post_id = create_resp.json()["id"]
 
     update_data = {"title": "Updated via ID", "content": "New Content"}
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
+    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
 
     assert response.status_code == 200
     data = response.json()
@@ -304,7 +303,7 @@ async def test_update_post_by_id(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_delete_post_by_id(client: AsyncClient, mock_embedding):
+async def test_delete_post_by_id(client: AsyncClient, mock_embedding, mocker):
     """Test deleting a post by ID."""
     post_data = {
         "title": "ID Delete Test",
@@ -314,9 +313,9 @@ async def test_delete_post_by_id(client: AsyncClient, mock_embedding):
         "published": True,
     }
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
-        post_id = create_resp.json()["id"]
+
+    create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
+    post_id = create_resp.json()["id"]
 
     # Delete by ID
     response = await client.delete(f"{settings.api_prefix}/posts/{post_id}")
@@ -328,39 +327,39 @@ async def test_delete_post_by_id(client: AsyncClient, mock_embedding):
 
 
 @pytest.mark.asyncio
-async def test_suggest_tags_endpoint(client: AsyncClient):
+async def test_suggest_tags_endpoint(client: AsyncClient, mocker):
     """Test the suggest-tags endpoint."""
-    with patch("app.services.ai.suggest_tags", return_value=["tag1", "tag2"]) as mock:
-        response = await client.post(
-            f"{settings.api_prefix}/posts/suggest-tags", json={"title": "T", "content": "C"}
-        )
-        assert response.status_code == 200
-        assert response.json() == {"tags": ["tag1", "tag2"]}
-        mock.assert_called_once()
+    mock = mocker.patch("app.services.ai.suggest_tags", return_value=["tag1", "tag2"])
+    response = await client.post(
+        f"{settings.api_prefix}/posts/suggest-tags", json={"title": "T", "content": "C"}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"tags": ["tag1", "tag2"]}
+    mock.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_suggest_details_endpoint_all(client: AsyncClient):
+async def test_suggest_details_endpoint_all(client: AsyncClient, mocker):
     """Test the suggest-details endpoint with field=all."""
     mock_res = {"title": "T", "slug": "s", "summary": "Sum", "tags": []}
-    with patch("app.services.ai.suggest_post_details", return_value=mock_res) as mock:
-        response = await client.post(
-            f"{settings.api_prefix}/posts/suggest-details", json={"content": "C", "field": "all"}
-        )
-        assert response.status_code == 200
-        assert response.json() == mock_res
-        mock.assert_called_once()
+    mock = mocker.patch("app.services.ai.suggest_post_details", return_value=mock_res)
+    response = await client.post(
+        f"{settings.api_prefix}/posts/suggest-details", json={"content": "C", "field": "all"}
+    )
+    assert response.status_code == 200
+    assert response.json() == mock_res
+    mock.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_suggest_details_endpoint_single_field(client: AsyncClient):
+async def test_suggest_details_endpoint_single_field(client: AsyncClient, mocker):
     """Test the suggest-details endpoint with a specific field."""
-    with patch(
+    mock = mocker.patch(
         "app.services.ai.suggest_field", return_value={"title": "Suggested"}
-    ) as mock:
-        response = await client.post(
-            f"{settings.api_prefix}/posts/suggest-details", json={"content": "C", "field": "title"}
-        )
-        assert response.status_code == 200
-        assert response.json() == {"title": "Suggested"}
-        mock.assert_called_once()
+    )
+    response = await client.post(
+        f"{settings.api_prefix}/posts/suggest-details", json={"content": "C", "field": "title"}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"title": "Suggested"}
+    mock.assert_called_once()

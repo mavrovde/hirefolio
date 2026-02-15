@@ -8,17 +8,16 @@ from httpx import AsyncClient
 async def test_pagination_basic(client: AsyncClient, mock_embedding):
     """Test basic pagination functionality."""
     # Create 15 posts
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for i in range(15):
-            await client.post(
-                f"{settings.api_prefix}/posts",
-                json={
-                    "title": f"Post {i}",
-                    "slug": f"post-{i}",
-                    "content": f"Content {i}",
-                    "published": True,
-                },
-            )
+    for i in range(15):
+        await client.post(
+            f"{settings.api_prefix}/posts",
+            json={
+                "title": f"Post {i}",
+                "slug": f"post-{i}",
+                "content": f"Content {i}",
+                "published": True,
+            },
+        )
 
     # Request first page (default page_size=10)
     response = await client.get(f"{settings.api_prefix}/posts?page=1&page_size=10")
@@ -42,17 +41,17 @@ async def test_pagination_basic(client: AsyncClient, mock_embedding):
 async def test_pagination_page_size_limits(client: AsyncClient, mock_embedding):
     """Test page_size limits."""
     # Create 5 posts
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for i in range(5):
-            await client.post(
-                f"{settings.api_prefix}/posts",
-                json={
-                    "title": f"Post {i}",
-                    "slug": f"post-{i}",
-                    "content": f"Content {i}",
-                    "published": True,
-                },
-            )
+    # Create 5 posts
+    for i in range(5):
+        await client.post(
+            f"{settings.api_prefix}/posts",
+            json={
+                "title": f"Post {i}",
+                "slug": f"post-{i}",
+                "content": f"Content {i}",
+                "published": True,
+            },
+        )
 
     # Test with page_size=2
     response = await client.get(f"{settings.api_prefix}/posts?page=1&page_size=2")
@@ -73,17 +72,17 @@ async def test_pagination_page_size_limits(client: AsyncClient, mock_embedding):
 async def test_pagination_out_of_bounds(client: AsyncClient, mock_embedding):
     """Test requesting page beyond available pages."""
     # Create 5 posts
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for i in range(5):
-            await client.post(
-                f"{settings.api_prefix}/posts",
-                json={
-                    "title": f"Post {i}",
-                    "slug": f"post-{i}",
-                    "content": f"Content {i}",
-                    "published": True,
-                },
-            )
+    # Create 5 posts
+    for i in range(5):
+        await client.post(
+            f"{settings.api_prefix}/posts",
+            json={
+                "title": f"Post {i}",
+                "slug": f"post-{i}",
+                "content": f"Content {i}",
+                "published": True,
+            },
+        )
 
     # Request page 999
     response = await client.get(f"{settings.api_prefix}/posts?page=999&page_size=10")
@@ -103,9 +102,8 @@ async def test_sorting_by_field(client: AsyncClient, mock_embedding):
         {"title": "Beta", "slug": "beta", "content": "B", "published": True},
     ]
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for post in posts:
-            await client.post(f"{settings.api_prefix}/posts", json=post)
+    for post in posts:
+        await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Sort by title ascending
     response = await client.get(f"{settings.api_prefix}/posts?sort_by=title&sort_order=asc")
@@ -128,17 +126,17 @@ async def test_sorting_by_field(client: AsyncClient, mock_embedding):
 async def test_sorting_by_created_at(client: AsyncClient, mock_embedding):
     """Test sorting by created_at (default sort)."""
     # Create posts in sequence
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for i in range(3):
-            await client.post(
-                f"{settings.api_prefix}/posts",
-                json={
-                    "title": f"Post {i}",
-                    "slug": f"post-{i}",
-                    "content": f"Content {i}",
-                    "published": True,
-                },
-            )
+    # Create posts in sequence
+    for i in range(3):
+        await client.post(
+            f"{settings.api_prefix}/posts",
+            json={
+                "title": f"Post {i}",
+                "slug": f"post-{i}",
+                "content": f"Content {i}",
+                "published": True,
+            },
+        )
 
     # Default sort is created_at desc (newest first)
     response = await client.get(f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=desc")
@@ -158,17 +156,17 @@ async def test_sorting_by_created_at(client: AsyncClient, mock_embedding):
 async def test_sorting_invalid_field(client: AsyncClient, mock_embedding):
     """Test sorting with invalid field falls back to default."""
     # Create posts
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for i in range(3):
-            await client.post(
-                f"{settings.api_prefix}/posts",
-                json={
-                    "title": f"Post {i}",
-                    "slug": f"post-{i}",
-                    "content": f"Content {i}",
-                    "published": True,
-                },
-            )
+    # Create posts in sequence
+    for i in range(3):
+        await client.post(
+            f"{settings.api_prefix}/posts",
+            json={
+                "title": f"Post {i}",
+                "slug": f"post-{i}",
+                "content": f"Content {i}",
+                "published": True,
+            },
+        )
 
     # Try to sort by non-existent field
     response = await client.get(f"{settings.api_prefix}/posts?sort_by=invalid_field&sort_order=asc")
@@ -205,9 +203,8 @@ async def test_search_functionality(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for post in posts:
-            await client.post(f"{settings.api_prefix}/posts", json=post)
+    for post in posts:
+        await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Search for "Docker" - should match 2 posts
     response = await client.get(f"{settings.api_prefix}/posts?search=Docker")
@@ -230,16 +227,15 @@ async def test_search_functionality(client: AsyncClient, mock_embedding):
 @pytest.mark.asyncio
 async def test_search_case_insensitive(client: AsyncClient, mock_embedding):
     """Test that search is case-insensitive."""
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        await client.post(
-            f"{settings.api_prefix}/posts",
-            json={
-                "title": "Docker Tutorial",
-                "slug": "docker",
-                "content": "Content",
-                "published": True,
-            },
-        )
+    await client.post(
+        f"{settings.api_prefix}/posts",
+        json={
+            "title": "Docker Tutorial",
+            "slug": "docker",
+            "content": "Content",
+            "published": True,
+        },
+    )
 
     # Search with lowercase
     response = await client.get(f"{settings.api_prefix}/posts?search=docker")
@@ -257,13 +253,14 @@ async def test_search_case_insensitive(client: AsyncClient, mock_embedding):
 @pytest.mark.asyncio
 async def test_search_no_results(client: AsyncClient, mock_embedding):
     """Test search with no matching results."""
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
+    # Create posts
+    for i in range(3):
         await client.post(
             f"{settings.api_prefix}/posts",
             json={
-                "title": "Test Post",
-                "slug": "test",
-                "content": "Content",
+                "title": f"Post {i}",
+                "slug": f"post-{i}",
+                "content": f"Content {i}",
                 "published": True,
             },
         )
@@ -302,9 +299,8 @@ async def test_combined_pagination_search_sort(client: AsyncClient, mock_embeddi
         },
     ]
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for post in posts:
-            await client.post(f"{settings.api_prefix}/posts", json=post)
+    for post in posts:
+        await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Search for "Docker", sort by title asc, page_size=2
     response = await client.get(
@@ -358,9 +354,8 @@ async def test_pagination_with_filters(client: AsyncClient, mock_embedding):
         },
     ]
 
-    with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        for post in posts:
-            await client.post(f"{settings.api_prefix}/posts", json=post)
+    for post in posts:
+        await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Filter by language and tag
     response = await client.get(f"{settings.api_prefix}/posts?lang=en&tag=docker")

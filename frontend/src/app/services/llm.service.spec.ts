@@ -1,13 +1,24 @@
 import { TestBed } from '@angular/core/testing';
 import { LlmService, ChatMessage } from './llm.service';
+import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 describe('LlmService', () => {
     let service: LlmService;
+    let mockAuthService: any;
 
     beforeEach(() => {
-        TestBed.configureTestingModule({});
+        mockAuthService = {
+            getToken: vi.fn().mockReturnValue('test-token')
+        };
+
+        TestBed.configureTestingModule({
+            providers: [
+                LlmService,
+                { provide: AuthService, useValue: mockAuthService }
+            ]
+        });
         service = TestBed.inject(LlmService);
         (globalThis as any).fetch = vi.fn();
     });
@@ -204,6 +215,54 @@ describe('LlmService', () => {
 
             await service.multiChat(agents, topic, onChunk, onDone);
             expect(onDone).toHaveBeenCalled();
+        });
+    });
+
+    describe('chatGemini', () => {
+        it('should send auth token in headers', async () => {
+            const messages: ChatMessage[] = [{ role: 'user', content: 'hello' }];
+            const mockResponse = { response: 'Hi' };
+
+            (globalThis.fetch as any).mockResolvedValue({
+                ok: true,
+                json: async () => mockResponse
+            });
+
+            const result = await service.chatGemini(messages);
+
+            expect(result).toBe('Hi');
+            expect(globalThis.fetch).toHaveBeenCalledWith(
+                `${environment.apiUrl}${environment.apiPrefix}/ai/gemini-chat`,
+                expect.objectContaining({
+                    method: 'POST',
+                    headers: expect.objectContaining({
+                        'Authorization': 'Bearer test-token',
+                        'Content-Type': 'application/json'
+                    })
+                })
+            );
+        });
+
+        it('should not send auth header if no token', async () => {
+            mockAuthService.getToken.mockReturnValue(null);
+            const messages: ChatMessage[] = [{ role: 'user', content: 'hello' }];
+            const mockResponse = { response: 'Hi' };
+
+            (globalThis.fetch as any).mockResolvedValue({
+                ok: true,
+                json: async () => mockResponse
+            });
+
+            await service.chatGemini(messages);
+
+            expect(globalThis.fetch).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+            );
         });
     });
 });

@@ -19,7 +19,7 @@ async def seed_e2e_user():
         )
         user = result.scalar_one_or_none()
 
-        hashed = get_password_hash("admin")
+        hashed = get_password_hash("admin123")
 
         if user:
             print("Updating existing admin user...")

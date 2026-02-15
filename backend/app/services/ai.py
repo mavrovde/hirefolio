@@ -113,7 +113,7 @@ async def suggest_tags(title: str, content: str, user_api_key: Optional[str] = N
                 response_text = data.get("response", "")
         except Exception as e:
             logger.error(f"Unexpected error in suggest_tags (Ollama): {e}", exc_info=True)
-            return []
+            response_text = ""
 
     # Process response_text (same logic for both)
     tags = []
@@ -317,8 +317,8 @@ async def chat_with_gemini(message: str, history: List[dict] = [], user_api_key:
                 gemini_history.append({"role": role, "parts": [content]})
         
         # Use a model that supports chat
-        chat = client.models.start_chat(
-            model='gemini-2.0-flash', # or client.chats.create depending on SDK version
+        chat = client.chats.create(
+            model='gemini-2.0-flash',
             history=gemini_history
         )
         
@@ -327,7 +327,7 @@ async def chat_with_gemini(message: str, history: List[dict] = [], user_api_key:
     except Exception as e:
         # Fallback to 1.5
         try:
-             chat = client.models.start_chat(
+             chat = client.chats.create(
                 model='gemini-1.5-flash',
                 history=gemini_history
             )
