@@ -92,7 +92,7 @@ async def test_chat_with_gemini_success():
         assert res == "Chat Response"
         
         # Verify history conversion
-        expected_history = [{"role": "user", "parts": ["hi"]}]
+        expected_history = [{"role": "user", "parts": [{"text": "hi"}]}]
         mock_client.chats.create.assert_called_with(
             model='gemini-2.0-flash',
             history=expected_history

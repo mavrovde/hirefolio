@@ -66,6 +66,12 @@ async def backup_database(
     # We need the password. detailed parsing of DATABASE_URL might be needed if not in simpler envs.
     # settings.database_url is a PostgresDsn. 
     db_url = str(settings.database_url)
+    # Fix: pg_dump does not support +asyncpg scheme
+    if "+asyncpg" in db_url:
+        db_url = db_url.replace("+asyncpg", "")
+    # Fix: pg_dump does not support +asyncpg scheme
+    if "+asyncpg" in db_url:
+        db_url = db_url.replace("+asyncpg", "")
     
     # Generate backup filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

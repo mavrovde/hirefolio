@@ -314,7 +314,7 @@ async def chat_with_gemini(message: str, history: List[dict] = [], user_api_key:
             role = "user" if msg.get("role") in ["user", "system"] else "model"
             content = msg.get("content", "")
             if content:
-                gemini_history.append({"role": role, "parts": [content]})
+                gemini_history.append({"role": role, "parts": [{"text": content}]})
         
         # Use a model that supports chat
         chat = client.chats.create(
