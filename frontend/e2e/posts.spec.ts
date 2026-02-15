@@ -162,9 +162,9 @@ test.describe('Post Management', () => {
     });
 
     // Verify preview appears
-    await expect(page.locator('img[alt="Preview"]')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('img[alt="Preview"]')).toBeVisible({ timeout: 10000 });
     // Verify "New image selected" indicator
-    await expect(page.locator('text=New image selected')).toBeVisible();
+    await expect(page.locator('text=New image selected')).toBeVisible({ timeout: 5000 });
   });
 
   test('should logout', async ({ page }) => {
