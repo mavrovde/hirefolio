@@ -179,6 +179,21 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     if not hasattr(app.state, "start_time") or app.state.start_time is None:
         app.state.start_time = datetime.now(timezone.utc)
 
+    # Patch app.database.async_session to use test sessionmaker
+    # This ensures lifespan events use the TEST database, avoiding InvalidRequestError
+    # and isolation issues.
+    from unittest.mock import patch
+    
+    # We need to catch where it is imported in main.py
+    # app.main imports async_session from app.database
+    # So we patch app.database.async_session BEFORE app startup
+    
+    test_session_maker = get_test_async_session()
+    
+    # We patch 'app.main.async_session' because that's where lifespan uses it
+    p = patch("app.main.async_session", side_effect=test_session_maker)
+    p.start()
+
     async def override_get_db():
         yield db_session
 
@@ -206,6 +221,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
     app.dependency_overrides.clear()
+    p.stop()
 
 
 @pytest.fixture
