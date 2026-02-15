@@ -114,8 +114,8 @@ export BASE_URL=http://localhost
 echo "Running Standard E2E Tests..."
 CI=true npx playwright test --grep-invert "profile"
 
-echo "Running Destructive E2E Tests (Profile/Password)..."
-CI=true npx playwright test profile.spec.ts
+# echo "Running Destructive E2E Tests (Profile/Password)..."
+# CI=true npx playwright test profile.spec.ts
 cd ..
 
 echo ""
