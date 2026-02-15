@@ -1,0 +1,59 @@
+import { TestBed } from '@angular/core/testing';
+import { Title, Meta } from '@angular/platform-browser';
+import { SeoService } from './seo.service';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+
+describe('SeoService', () => {
+    let service: SeoService;
+    let titleService: Title;
+    let metaService: Meta;
+
+    beforeEach(() => {
+        TestBed.configureTestingModule({
+            providers: [SeoService, Title, Meta]
+        });
+        service = TestBed.inject(SeoService);
+        titleService = TestBed.inject(Title);
+        metaService = TestBed.inject(Meta);
+    });
+
+    it('should be created', () => {
+        expect(service).toBeTruthy();
+    });
+
+    it('should update SEO with full config', () => {
+        const spy = vi.spyOn(metaService, 'updateTag');
+        const titleSpy = vi.spyOn(titleService, 'setTitle');
+
+        service.updateSeo({
+            title: 'Page Title',
+            description: 'Page Desc',
+            keywords: 'k1, k2',
+            image: '/img.jpg',
+            url: '/page',
+            type: 'article'
+        });
+
+        expect(titleSpy).toHaveBeenCalledWith('Page Title | Sergii Mavrov');
+        expect(spy).toHaveBeenCalledWith({ name: 'description', content: 'Page Desc' });
+        expect(spy).toHaveBeenCalledWith({ name: 'keywords', content: 'k1, k2' });
+        expect(spy).toHaveBeenCalledWith({ property: 'og:type', content: 'article' });
+        expect(spy).toHaveBeenCalledWith({ name: 'twitter:card', content: 'summary_large_image' });
+    });
+
+    it('should use defaults when config is empty', () => {
+        const titleSpy = vi.spyOn(titleService, 'setTitle');
+        service.updateSeo({});
+
+        expect(titleSpy).toHaveBeenCalledWith('Sergii Mavrov | Principal Software Engineer');
+    });
+
+    it('should set JSON-LD schema', () => {
+        const schema = { '@type': 'Person', name: 'Test' };
+        service.setJsonLd(schema);
+
+        service.jsonLdSchema$.subscribe(val => {
+            expect(val).toEqual(schema);
+        });
+    });
+});

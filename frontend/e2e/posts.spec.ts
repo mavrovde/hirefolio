@@ -132,6 +132,41 @@ test.describe('Post Management', () => {
     await expect(page.locator('input[id="title"]')).toHaveValue('AI Suggested Title');
   });
 
+  test('should upload image on post', async ({ page }) => {
+    // Create a post first
+    await page.click('.btn-new');
+    const timestamp = Date.now();
+    const title = `Image Test ${timestamp}`;
+    const slug = `image-test-${timestamp}`;
+
+    await page.fill('input[id="title"]', title);
+    await page.fill('input[id="slug"]', slug);
+    await page.fill('textarea[id="content"]', 'Image upload test content.');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('/admin/posts');
+
+    // Edit the created post
+    const row = page.locator('tr', { hasText: title });
+    await row.locator('.btn-edit').click();
+
+    // Upload a 1x1 red PNG
+    const pngBuffer = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
+      'base64'
+    );
+    const fileInput = page.locator('input#image_file');
+    await fileInput.setInputFiles({
+      name: 'test-image.png',
+      mimeType: 'image/png',
+      buffer: pngBuffer,
+    });
+
+    // Verify preview appears
+    await expect(page.locator('img[alt="Preview"]')).toBeVisible({ timeout: 5000 });
+    // Verify "New image selected" indicator
+    await expect(page.locator('text=New image selected')).toBeVisible();
+  });
+
   test('should logout', async ({ page }) => {
     await page.click('.logout-btn');
     await expect(page).toHaveURL('/admin/login');

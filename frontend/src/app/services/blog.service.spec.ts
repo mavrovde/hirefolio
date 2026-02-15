@@ -235,4 +235,19 @@ describe('BlogService', () => {
       req.flush('Server Error', { status: 500, statusText: 'Server Error' });
     });
   });
+
+  describe('Image Upload', () => {
+    it('should upload image via PUT with FormData', () => {
+      const file = new File(['fake-image'], 'test.png', { type: 'image/png' });
+
+      service.uploadImage(42, file).subscribe(post => {
+        expect(post.id).toBe(42);
+      });
+
+      const req = httpMock.expectOne((req) => req.url.endsWith(environment.apiPrefix + '/posts/42/image'));
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body instanceof FormData).toBe(true);
+      req.flush({ id: 42, title: 'Test', slug: 'test', content: '', language: 'en', published: true, tags: [], created_at: '' });
+    });
+  });
 });

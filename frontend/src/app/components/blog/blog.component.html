@@ -67,7 +67,7 @@
     </div>
 
     <div class="space-y-6" *ngIf="!searchResults$">
-      <div *ngFor="let post of posts" class="group">
+      <div *ngFor="let post of posts; trackBy: trackByPostId" class="group">
         <!-- Terminal File Line -->
         <div (click)="togglePost(post.id)"
           class="cursor-pointer flex flex-col hover:bg-terminal-dim p-2 rounded transition-colors duration-200">

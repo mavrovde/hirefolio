@@ -9,6 +9,8 @@ echo "========================================"
 # We will verify our LOCALLY built proxy:latest against them.
 # Use environment IMAGE_TAG or default to 'latest'
 export IMAGE_TAG="${IMAGE_TAG:-latest}"
+unset COMPOSE_FILE
+unset COMPOSE_PATH_SEPARATOR
 PROXY_IMAGE="maverickde/mavrov.de-proxy:$IMAGE_TAG"
 BACKEND_IMAGE="maverickde/mavrov.de-backend:$IMAGE_TAG"
 FRONTEND_IMAGE="maverickde/mavrov.de-frontend:$IMAGE_TAG"

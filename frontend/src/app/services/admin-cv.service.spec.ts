@@ -81,4 +81,22 @@ describe('AdminCvService', () => {
         expect(req.request.params.get('page_size')).toBe('10');
         req.flush(mockResponse);
     });
+
+    it('should include search param in getRequests', () => {
+        service.getRequests(1, 10, 'created_at', 'asc', 'John').subscribe();
+        const req = httpMock.expectOne((request: any) =>
+            request.url.includes('/requests') && request.params.get('search') === 'John'
+        );
+        expect(req.request.method).toBe('GET');
+        req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 0 });
+    });
+
+    it('should include search param in getVersions', () => {
+        service.getVersions(1, 10, 'created_at', 'asc', 'v1').subscribe();
+        const req = httpMock.expectOne((request: any) =>
+            request.url.includes('/versions') && request.params.get('search') === 'v1'
+        );
+        expect(req.request.method).toBe('GET');
+        req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 0 });
+    });
 });

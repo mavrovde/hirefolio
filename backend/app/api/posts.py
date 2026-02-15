@@ -162,12 +162,12 @@ async def list_posts(
     if hasattr(Post, sort_by):
         order_column = getattr(Post, sort_by)
         if sort_order == "desc":
-            query = query.order_by(order_column.desc())
+            query = query.order_by(order_column.desc(), Post.id.desc())
         else:
-            query = query.order_by(order_column.asc())
+            query = query.order_by(order_column.asc(), Post.id.asc())
     else:
         # Default to created_at desc if invalid sort field
-        query = query.order_by(Post.created_at.desc())
+        query = query.order_by(Post.created_at.desc(), Post.id.desc())
 
     # Apply pagination
     offset = (page - 1) * page_size
@@ -679,8 +679,6 @@ async def upload_post_image(
     # Clear external URL if a file is uploaded
     post.image_url = None 
     
-    await db.commit()
-    await db.refresh(post)
     await db.commit()
     await db.refresh(post)
     return PostResponse(

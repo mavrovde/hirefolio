@@ -704,5 +704,48 @@ describe('LlmComponent', () => {
             component['loadState']();
             expect(component.agents.length).toBeGreaterThan(0); // Should fallback to defaults
         });
+
+        describe('Edge Cases & Error Handling', () => {
+            it('should handle scrollToBottom errors gracefully', () => {
+                // Mock nativeElement to throw on scrollTop access
+                const mockEl = {
+                    get scrollTop() { throw new Error('DOM Error'); },
+                    set scrollTop(v) { throw new Error('DOM Error'); }
+                };
+                (component as any).scrollContainer = { nativeElement: mockEl };
+
+                // Should not throw
+                expect(() => component.scrollToBottom()).not.toThrow();
+            });
+
+            it('should handle sendMessage chat error (not AbortError)', async () => {
+                const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+                component.userInput = 'Hello';
+                llmService.chat.mockRejectedValue(new Error('Network Error'));
+
+                await component.sendMessage();
+
+                expect(consoleSpy).toHaveBeenCalledWith('Chat error:', expect.any(Error));
+                expect(component.messages.some(m => m.content.includes('Connection error'))).toBe(true);
+                expect(component.isThinking).toBe(false);
+                consoleSpy.mockRestore();
+            });
+
+            it('should handle loadState with invalid JSON', () => {
+                const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+                localStorage.setItem('llm-component-state', '{ invalid json ');
+                component['loadState']();
+                expect(consoleSpy).toHaveBeenCalled();
+                consoleSpy.mockRestore();
+            });
+
+            it('should handle saveState when localStorage throws', () => {
+                vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+                    throw new Error('QuotaExceededError');
+                });
+                // Should not throw
+                expect(() => component['saveState']()).not.toThrow();
+            });
+        });
     });
 });

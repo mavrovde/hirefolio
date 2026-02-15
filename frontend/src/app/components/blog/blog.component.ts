@@ -133,4 +133,8 @@ export class BlogComponent implements OnInit {
   isExpanded(id: number | string): boolean {
     return this.expandedPostId === String(id);
   }
+
+  trackByPostId(index: number, post: BlogPost): number {
+    return post.id;
+  }
 }

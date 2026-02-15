@@ -110,6 +110,32 @@ describe('SystemStatsComponent - Browser', () => {
 
     // We will override the service mock for this specific test if possible, or add a new describe block.
     // Let's add a new describe block for Error handling specifically.
+    // Verify checkVisibility is called on NavigationEnd
+    // This is tricky with real Router, but we can verify checkVisibility logic directly
+    (component as any).checkVisibility('/admin/dashboard');
+    expect(component.isVisible).toBe(false);
+
+    (component as any).checkVisibility('/home');
+    expect(component.isVisible).toBe(true);
+  });
+
+  it('should use uptime from API if start_time is missing', () => {
+    // Mock service to return no start_time
+    const statsService = TestBed.inject(StatsService);
+    vi.spyOn(statsService, 'getPublicStats').mockReturnValue({
+      subscribe: (observer: any) => {
+        observer.next({
+          visitor_ip: '1.2.3.4',
+          backend_version: '1.0',
+          uptime: '100 days',
+          start_time: null
+        });
+        return { unsubscribe: () => { } };
+      }
+    } as any);
+
+    (component as any).fetchPublicStats();
+    expect(component.uptime).toBe('100 days');
   });
 });
 

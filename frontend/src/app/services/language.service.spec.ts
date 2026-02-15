@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { LanguageService } from './language.service';
 import { StorageService } from './storage.service';
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('LanguageService', () => {
@@ -121,5 +121,52 @@ describe('LanguageService', () => {
 
     expect(results[1]).toBe('Deutsch');
     sub.unsubscribe();
+  });
+});
+
+describe('LanguageService with saved language', () => {
+  it('should initialize with saved language if valid', () => {
+    const storageServiceMock = {
+      getItem: vi.fn().mockReturnValue('de'),
+      setItem: vi.fn(),
+    };
+
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [
+        LanguageService,
+        { provide: StorageService, useValue: storageServiceMock },
+      ],
+    });
+    const localService = TestBed.inject(LanguageService);
+    const localHttp = TestBed.inject(HttpTestingController);
+
+    const req = localHttp.expectOne('/assets/i18n/de.json');
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+
+    expect(localService.getCurrentLanguage()).toBe('de');
+    localHttp.verify();
+  });
+
+  it('should fallback to en if saved language is invalid', () => {
+    const storageServiceMock = {
+      getItem: vi.fn().mockReturnValue('fr'),
+      setItem: vi.fn(),
+    };
+
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [
+        LanguageService,
+        { provide: StorageService, useValue: storageServiceMock },
+      ],
+    });
+    const localService = TestBed.inject(LanguageService);
+    const localHttp = TestBed.inject(HttpTestingController);
+
+    localHttp.expectOne('/assets/i18n/en.json');
+    expect(localService.getCurrentLanguage()).toBe('en');
+    localHttp.verify();
   });
 });
