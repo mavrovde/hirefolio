@@ -112,15 +112,21 @@ echo "Step 6: Final Happy Path E2E Verification..."
 echo "Running mission-critical tests (Auth & AI Suggestions)..."
 # Ensure stack is running (in case build script stopped it or resource pressure killed it)
 docker-compose up -d backend frontend proxy open-webui
-# Simple wait for frontend (via Proxy on port 80)
+# Wait for frontend (via Proxy on port 80)
 count=0
-until curl -s -f http://localhost > /dev/null || [ $count -eq 30 ]; do
-  sleep 1
+until curl -s -f http://localhost > /dev/null || [ $count -eq 60 ]; do
+  sleep 2
   count=$((count + 1))
 done
-
-# Ensure we wait an extra bit for frontend as well
-sleep 5
+# Wait for backend API health
+count=0
+echo "Waiting for backend API health..."
+until curl -s -f http://localhost/api/app/health > /dev/null || [ $count -eq 30 ]; do
+  sleep 2
+  count=$((count + 1))
+done
+# Extra buffer for full stack stabilization
+sleep 10
 cd frontend
 export BASE_URL=http://localhost
 # Run standard tests first (Read-only or non-destructive logic)
