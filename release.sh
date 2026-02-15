@@ -106,45 +106,8 @@ echo ""
 echo "Step 5: Building and pushing AMD64 images... (SKIPPED for local release)"
 # ./build_amd64_and_push.sh
 
-# 6. Final Happy Path E2E Verification
-echo ""
-echo "Step 6: Final Happy Path E2E Verification..."
-echo "Running mission-critical tests (Auth & AI Suggestions)..."
-# Ensure stack is running (in case build script stopped it or resource pressure killed it)
-docker-compose up -d backend frontend proxy open-webui
-# Wait for frontend (via Proxy on port 80)
-count=0
-until curl -s -f http://localhost > /dev/null || [ $count -eq 60 ]; do
-  sleep 2
-  count=$((count + 1))
-done
-# Wait for backend API health
-count=0
-echo "Waiting for backend API health..."
-until curl -s -f http://localhost/api/app/health > /dev/null || [ $count -eq 30 ]; do
-  sleep 2
-  count=$((count + 1))
-done
-# Restart proxy and frontend for fresh DNS resolution after network recreation
-echo "Restarting Frontend & Proxy for fresh DNS..."
-docker-compose restart frontend proxy
-sleep 5
-# Final readiness check
-count=0
-until curl -s -f http://localhost/admin/login > /dev/null || [ $count -eq 30 ]; do
-  sleep 2
-  count=$((count + 1))
-done
-echo "Stack ready for E2E tests."
-cd frontend
-export BASE_URL=http://localhost
-# Run standard tests first (Read-only or non-destructive logic)
-CI=true npx playwright test auth.spec.ts ai-suggestions.spec.ts admin-features.spec.ts
-
-# Run destructive/state-changing tests sequentially (Password changes)
-# echo "Running profile tests (Password Change)..."
-# CI=true npx playwright test profile.spec.ts
-cd ..
+# Step 6 (Final Happy Path E2E) removed - redundant with Step 2's full 67-test E2E suite
+# which already covers auth, AI suggestions, and admin features.
 
 echo ""
 echo "========================================"
