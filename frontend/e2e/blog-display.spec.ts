@@ -57,16 +57,6 @@ test.describe('Blog Display on Page Load', () => {
 
         // Logout and visit the blog page as a visitor
         await page.click('.logout-btn');
-
-        // Navigate to blog and intercept all posts API calls
-        const apiResponses: any[] = [];
-        await page.route('**/api/app/posts?**', async (route) => {
-            const response = await route.fetch();
-            const json = await response.json();
-            apiResponses.push({ url: route.request().url(), total: json.total, itemCount: json.items?.length });
-            await route.fulfill({ response });
-        });
-
         await page.goto('/blog');
         await page.waitForLoadState('networkidle');
 
@@ -86,6 +76,7 @@ test.describe('Blog Display on Page Load', () => {
         await expect(loadMoreBtn).toBeVisible();
 
         // Set up a promise to wait for the load-more API response (page > 1)
+        // waitForResponse does NOT consume the body - it only observes
         const loadMoreResponse = page.waitForResponse(
             resp => {
                 const url = resp.url();
@@ -101,8 +92,8 @@ test.describe('Blog Display on Page Load', () => {
         // Wait for the API response to arrive
         await loadMoreResponse;
 
-        // Wait a bit for Angular to render the new posts
-        await page.waitForTimeout(1000);
+        // Wait for Angular to render the new posts
+        await page.waitForTimeout(2000);
 
         // Should now have more than 10 posts (10 initial + up to 5 more)
         const afterLoadMoreCount = await blogSection.locator('.space-y-6 > .group').count();
