@@ -136,6 +136,9 @@ async def restore_database(
          raise HTTPException(status_code=400, detail="Only .sql files are allowed")
 
     db_url = str(settings.database_url)
+    # Fix: psql does not support +asyncpg scheme
+    if "+asyncpg" in db_url:
+        db_url = db_url.replace("+asyncpg", "")
     
     # We need to write the uploaded file to a temp file or stream it to psql stdin
     # Streaming to stdin is better for large files
