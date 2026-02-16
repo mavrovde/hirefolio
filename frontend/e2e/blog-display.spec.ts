@@ -71,10 +71,32 @@ test.describe('Blog Display on Page Load', () => {
         const initialCount = await postGroups.count();
         expect(initialCount).toBe(10);
 
+        // DEBUG: Log all API responses for posts
+        page.on('response', async (response) => {
+            const url = response.url();
+            if (url.includes('/api/app/posts')) {
+                try {
+                    const body = await response.text();
+                    console.log(`[E2E-DEBUG] Posts API response: ${url} status=${response.status()} body_length=${body.length} body_preview=${body.substring(0, 200)}`);
+                } catch (e) {
+                    console.log(`[E2E-DEBUG] Posts API response: ${url} status=${response.status()} ERROR reading body: ${e}`);
+                }
+            }
+        });
+
+        // DEBUG: Verify the API works directly from browser context
+        const apiResult = await page.evaluate(async () => {
+            try {
+                const resp = await fetch('/api/app/posts?page=3&page_size=5&published_only=true&sort_by=created_at&sort_order=desc');
+                const data = await resp.json();
+                return { status: resp.status, total: data.total, items: data.items?.length, itemIds: data.items?.map((i: any) => i.id) };
+            } catch (e: any) {
+                return { error: e.message };
+            }
+        });
+        console.log('[E2E-DEBUG] Direct fetch result:', JSON.stringify(apiResult));
+
         // Find the "LOAD MORE RECORDS" button and wait for it to be ENABLED.
-        // This ensures Angular hydration is complete and the initial load has
-        // finished (isLoading=false). During SSR hydration, Angular may still
-        // be processing the initial API response, keeping the button disabled.
         const loadMoreBtn = page.locator('button:has-text("LOAD MORE RECORDS")');
         await expect(loadMoreBtn).toBeVisible({ timeout: 10000 });
         await expect(loadMoreBtn).toBeEnabled({ timeout: 10000 });
@@ -82,8 +104,6 @@ test.describe('Blog Display on Page Load', () => {
         await loadMoreBtn.click();
 
         // Wait for the post count to increase using Playwright's auto-retrying assertion.
-        // This is more reliable than waitForTimeout because it keeps checking
-        // the DOM until the condition is met or the timeout expires.
         const allPosts = blogSection.locator('.space-y-6 > .group');
         await expect(allPosts).toHaveCount(15, { timeout: 15000 });
     });
