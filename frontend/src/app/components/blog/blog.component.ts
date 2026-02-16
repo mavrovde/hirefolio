@@ -63,19 +63,30 @@ export class BlogComponent implements OnInit {
     this.isLoading = true;
 
     const effectivePageSize = this.currentPage === 1 ? this.pageSize : this.loadMoreSize;
-    // Use pageSize for page calculation so backend offset is always correct
-    // Page 1: offset=0, limit=pageSize(10)
-    // Page 2+: use actual offset based on accumulated posts
-    const apiPage = this.currentPage === 1 ? 1 : Math.floor(this.posts.length / effectivePageSize) + 1;
+    // After the initial load of pageSize(10) items, subsequent loads use loadMoreSize(5).
+    // To get the correct offset, compute API page in terms of loadMoreSize:
+    // Initial: page=1, page_size=10 -> offset=0, limit=10
+    // Load more #1: need offset=10 -> page=3 with page_size=5 (offset=(3-1)*5=10)
+    // Load more #2: need offset=15 -> page=4 with page_size=5 (offset=(4-1)*5=15)
+    let apiPage: number;
+    let apiPageSize: number;
+    if (this.currentPage === 1) {
+      apiPage = 1;
+      apiPageSize = this.pageSize;
+    } else {
+      apiPageSize = this.loadMoreSize;
+      // posts.length gives us the actual offset we need
+      apiPage = Math.floor(this.posts.length / apiPageSize) + 1;
+    }
 
     if (this.usingFallback) {
       this.loadFallbackPosts(effectivePageSize);
       return;
     }
 
-    this.blogService.getPosts(true, null, this.activeTag, apiPage, effectivePageSize).subscribe({
+    this.blogService.getPosts(true, null, this.activeTag, apiPage, apiPageSize).subscribe({
       next: (response) => {
-        // Deduplicate by id in case of offset overlap
+        // Deduplicate by id to handle any edge cases
         const existingIds = new Set(this.posts.map(p => p.id));
         const newPosts = response.items.filter(p => !existingIds.has(p.id));
         this.posts = [...this.posts, ...newPosts];

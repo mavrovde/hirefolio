@@ -99,9 +99,9 @@ describe('BlogComponent', () => {
     blogServiceSpy.getPosts.mockReturnValueOnce(of({
       items: nextPosts,
       total: 20,
-      page: 2,
+      page: 1,
       page_size: 5,
-      total_pages: 3
+      total_pages: 4
     }));
 
     // Trigger load more
@@ -109,7 +109,8 @@ describe('BlogComponent', () => {
     component.loadMore();
 
     expect(component.currentPage).toBe(2);
-    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 2, 5);
+    // After initial load of 1 post, apiPage = floor(1/5)+1 = 1, apiPageSize = 5
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 5);
     expect(component.posts.length).toBe(2);
     expect(component.posts[1].title).toBe('Next Post');
   });
