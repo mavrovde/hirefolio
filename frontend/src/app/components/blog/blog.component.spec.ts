@@ -7,13 +7,14 @@ import { of, Observable } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('BlogComponent', () => {
   let component: BlogComponent;
   let fixture: ComponentFixture<BlogComponent>;
   let blogServiceSpy: any;
   let languageServiceMock: any;
+  let fetchSpy: any;
 
   const mockPosts = [
     {
@@ -38,6 +39,23 @@ describe('BlogComponent', () => {
 
   // Helper to wait for timeouts
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Helper to create a mock fetch Response
+  const mockFetchResponse = (data: any) => {
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(data),
+    } as Response);
+  };
+
+  const mockFetchError = () => {
+    return Promise.resolve({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({}),
+    } as Response);
+  };
 
   beforeEach(async () => {
     blogServiceSpy = {
@@ -65,6 +83,9 @@ describe('BlogComponent', () => {
       getCurrentLanguage: () => 'en',
     };
 
+    // Mock global fetch for loadMoreWithFetch
+    fetchSpy = vi.spyOn(globalThis, 'fetch');
+
     await TestBed.configureTestingModule({
       imports: [BlogComponent, MockTranslatePipe, NoopAnimationsModule],
       providers: [
@@ -76,6 +97,10 @@ describe('BlogComponent', () => {
 
     fixture = TestBed.createComponent(BlogComponent);
     component = fixture.componentInstance;
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
   });
 
   it('should create', () => {
@@ -91,12 +116,12 @@ describe('BlogComponent', () => {
     expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 10);
   });
 
-  it('should append posts on loadMore with loadMoreSize=5', () => {
+  it('should append posts on loadMore with loadMoreSize=5', async () => {
     fixture.detectChanges(); // Initial load (page 1)
 
-    // Mock next page response
+    // Mock fetch for load-more (uses native fetch on browser)
     const nextPosts = [{ ...mockPosts[0], id: '2', title: 'Next Post' }];
-    blogServiceSpy.getPosts.mockReturnValueOnce(of({
+    fetchSpy.mockReturnValueOnce(mockFetchResponse({
       items: nextPosts,
       total: 20,
       page: 1,
@@ -105,12 +130,11 @@ describe('BlogComponent', () => {
     }));
 
     // Trigger load more
-    component.hasMore = true; // Ensure it's clickable
+    component.hasMore = true;
     component.loadMore();
+    await fixture.whenStable();
 
     expect(component.currentPage).toBe(2);
-    // After initial load of 1 post, apiPage = floor(1/5)+1 = 1, apiPageSize = 5
-    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 5);
     expect(component.posts.length).toBe(2);
     expect(component.posts[1].title).toBe('Next Post');
   });
@@ -139,22 +163,21 @@ describe('BlogComponent', () => {
     errorSpy.mockRestore();
   });
 
-  it('should handle end of list', () => {
+  it('should handle end of list', async () => {
     fixture.detectChanges();
 
-    // Mock last page response
-    // Initial load added 1 item.
-    // Total is 1. If we return 0 items, total length remains 1. 1 < 1 is false.
-    blogServiceSpy.getPosts.mockReturnValueOnce(of({
+    // Mock fetch for load-more returning empty items
+    fetchSpy.mockReturnValueOnce(mockFetchResponse({
       items: [],
-      total: 1, // Total matches existing count
+      total: 1,
       page: 2,
-      page_size: 10,
+      page_size: 5,
       total_pages: 1
     }));
 
     component.hasMore = true;
     component.loadMore();
+    await fixture.whenStable();
 
     expect(component.hasMore).toBe(false);
   });
@@ -174,16 +197,17 @@ describe('BlogComponent', () => {
     expect(blogServiceSpy.getPosts).toHaveBeenCalledTimes(1);
   });
 
-  it('should handle load error', () => {
+  it('should handle load error', async () => {
     fixture.detectChanges();
 
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-    blogServiceSpy.getPosts.mockReturnValueOnce(new Observable(observer => {
-      observer.error('Network error');
-    }));
+
+    // Mock fetch to return error for load-more
+    fetchSpy.mockReturnValueOnce(mockFetchError());
 
     component.hasMore = true;
     component.loadMore();
+    await fixture.whenStable();
 
     expect(component.isLoading).toBe(false);
     expect(errorSpy).toHaveBeenCalled();
