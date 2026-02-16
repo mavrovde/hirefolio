@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { switchMap, shareReplay, map } from 'rxjs/operators';
+import { switchMap, map } from 'rxjs/operators';
 import { LanguageService } from './language.service';
 import { environment } from '../../environments/environment';
 
@@ -80,7 +80,7 @@ export class BlogService {
       } else {
         params.published_only = 'false';
       }
-      return this.http.get<PaginatedResponse<BlogPost>>(this.apiUrl, { params }).pipe(shareReplay(1));
+      return this.http.get<PaginatedResponse<BlogPost>>(this.apiUrl, { params });
     }
 
     // Otherwise fallback to current language from service
@@ -106,7 +106,6 @@ export class BlogService {
         }
         return this.http.get<PaginatedResponse<BlogPost>>(this.apiUrl, { params });
       }),
-      shareReplay(1),
     );
   }
 
