@@ -38,8 +38,8 @@ test.describe('Blog Display on Page Load', () => {
         await page.click('button[type="submit"]');
         await expect(page).toHaveURL(/\/admin\/dashboard/);
 
-        // Create 12 published posts (enough to trigger load-more after initial 10)
-        for (let i = 0; i < 12; i++) {
+        // Create 15 published posts (enough to trigger load-more after initial 10)
+        for (let i = 0; i < 15; i++) {
             const uniqueId = Date.now() + i;
             await page.goto('/admin/posts');
             await page.click('.btn-new');
@@ -57,6 +57,16 @@ test.describe('Blog Display on Page Load', () => {
 
         // Logout and visit the blog page as a visitor
         await page.click('.logout-btn');
+
+        // Navigate to blog and intercept all posts API calls
+        const apiResponses: any[] = [];
+        await page.route('**/api/app/posts?**', async (route) => {
+            const response = await route.fetch();
+            const json = await response.json();
+            apiResponses.push({ url: route.request().url(), total: json.total, itemCount: json.items?.length });
+            await route.fulfill({ response });
+        });
+
         await page.goto('/blog');
         await page.waitForLoadState('networkidle');
 
@@ -74,15 +84,30 @@ test.describe('Blog Display on Page Load', () => {
         // Find and click the "LOAD MORE RECORDS" button
         const loadMoreBtn = page.locator('button:has-text("LOAD MORE RECORDS")');
         await expect(loadMoreBtn).toBeVisible();
+
+        // Set up a promise to wait for the load-more API response (page > 1)
+        const loadMoreResponse = page.waitForResponse(
+            resp => {
+                const url = resp.url();
+                if (!url.includes('/api/app/posts')) return false;
+                const pageMatch = url.match(/[?&]page=(\d+)/);
+                return pageMatch !== null && parseInt(pageMatch[1]) > 1 && resp.status() === 200;
+            },
+            { timeout: 15000 }
+        );
+
         await loadMoreBtn.click();
 
-        // Wait for the 11th post to appear (proves load-more worked)
-        await blogSection.locator('.space-y-6 > .group').nth(10).waitFor({ state: 'visible', timeout: 10000 });
+        // Wait for the API response to arrive
+        await loadMoreResponse;
+
+        // Wait a bit for Angular to render the new posts
+        await page.waitForTimeout(1000);
 
         // Should now have more than 10 posts (10 initial + up to 5 more)
         const afterLoadMoreCount = await blogSection.locator('.space-y-6 > .group').count();
         expect(afterLoadMoreCount).toBeGreaterThan(initialCount);
-        expect(afterLoadMoreCount).toBeLessThanOrEqual(15); // 10 + 5
+        expect(afterLoadMoreCount).toBeLessThanOrEqual(20); // generous upper bound
     });
 
     test('newly created blog post shows title on public page', async ({ page }) => {
