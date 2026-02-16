@@ -21,8 +21,10 @@ export class BlogComponent implements OnInit {
   posts: BlogPost[] = [];
   currentPage = 1;
   pageSize = 10;
+  loadMoreSize = 5;
   hasMore = false;
   isLoading = false;
+  private usingFallback = false;
 
   // Search State
   searchResults$: Observable<BlogSearchResult[]> | null = null;
@@ -60,14 +62,35 @@ export class BlogComponent implements OnInit {
     if (this.isLoading) return;
     this.isLoading = true;
 
-    this.blogService.getPosts(true, null, this.activeTag, this.currentPage, this.pageSize).subscribe({
+    const effectivePageSize = this.currentPage === 1 ? this.pageSize : this.loadMoreSize;
+
+    if (this.usingFallback) {
+      this.loadFallbackPosts(effectivePageSize);
+      return;
+    }
+
+    this.blogService.getPosts(true, null, this.activeTag, this.currentPage, effectivePageSize).subscribe({
       next: (response) => {
         this.posts = [...this.posts, ...response.items];
         this.hasMore = this.posts.length < response.total;
         this.isLoading = false;
       },
       error: (err) => {
-        console.error('Failed to load posts', err);
+        console.error('Failed to load posts from API, using fallback', err);
+        this.usingFallback = true;
+        this.loadFallbackPosts(effectivePageSize);
+      }
+    });
+  }
+
+  private loadFallbackPosts(effectivePageSize: number) {
+    this.blogService.getStaticPosts(this.currentPage, effectivePageSize).subscribe({
+      next: (response) => {
+        this.posts = [...this.posts, ...response.items];
+        this.hasMore = this.posts.length < response.total;
+        this.isLoading = false;
+      },
+      error: () => {
         this.isLoading = false;
       }
     });

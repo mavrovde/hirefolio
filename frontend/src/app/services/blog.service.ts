@@ -148,6 +148,35 @@ export class BlogService {
     return this.http.post<any>(`${this.apiUrl}/suggest-details`, { content, field });
   }
 
+  getStaticPosts(page: number = 1, pageSize: number = 10): Observable<PaginatedResponse<BlogPost>> {
+    const lang = this.languageService.getCurrentLanguage();
+    return this.http.get<any[]>(`/assets/blog_data_${lang}.json`).pipe(
+      map((posts) => {
+        const total = posts.length;
+        const start = (page - 1) * pageSize;
+        const items = posts.slice(start, start + pageSize).map((p: any, i: number) => ({
+          id: i + start,
+          title: p.title,
+          slug: p.id || p.slug || `post-${i + start}`,
+          content: p.content || '',
+          summary: p.summary || '',
+          image_url: p.image_url,
+          language: lang,
+          published: true,
+          tags: p.tags || [],
+          created_at: p.date || new Date().toISOString(),
+        }));
+        return {
+          items,
+          total,
+          page,
+          page_size: pageSize,
+          total_pages: Math.ceil(total / pageSize),
+        } as PaginatedResponse<BlogPost>;
+      }),
+    );
+  }
+
   uploadImage(id: number, file: File): Observable<BlogPost> {
     const formData = new FormData();
     formData.append('file', file);

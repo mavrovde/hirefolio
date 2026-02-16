@@ -49,6 +49,13 @@ describe('BlogComponent', () => {
         total_pages: 1
       })),
       searchPosts: vi.fn().mockReturnValue(of(mockSearchResults)),
+      getStaticPosts: vi.fn().mockReturnValue(of({
+        items: mockPosts,
+        total: mockPosts.length,
+        page: 1,
+        page_size: 10,
+        total_pages: 1
+      })),
     };
 
     languageServiceMock = {
@@ -84,7 +91,7 @@ describe('BlogComponent', () => {
     expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 10);
   });
 
-  it('should append posts on loadMore', () => {
+  it('should append posts on loadMore with loadMoreSize=5', () => {
     fixture.detectChanges(); // Initial load (page 1)
 
     // Mock next page response
@@ -93,8 +100,8 @@ describe('BlogComponent', () => {
       items: nextPosts,
       total: 20,
       page: 2,
-      page_size: 10,
-      total_pages: 2
+      page_size: 5,
+      total_pages: 3
     }));
 
     // Trigger load more
@@ -102,9 +109,33 @@ describe('BlogComponent', () => {
     component.loadMore();
 
     expect(component.currentPage).toBe(2);
-    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 2, 10);
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 2, 5);
     expect(component.posts.length).toBe(2);
     expect(component.posts[1].title).toBe('Next Post');
+  });
+
+  it('should fall back to static posts on API error', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+    blogServiceSpy.getPosts.mockReturnValue(new Observable(observer => {
+      observer.error('Network error');
+    }));
+
+    const staticPosts = [{ ...mockPosts[0], id: '99', title: 'Static Post' }];
+    blogServiceSpy.getStaticPosts.mockReturnValue(of({
+      items: staticPosts,
+      total: 5,
+      page: 1,
+      page_size: 10,
+      total_pages: 1
+    }));
+
+    fixture.detectChanges(); // triggers ngOnInit -> loadInitialPosts -> loadPosts
+
+    expect(blogServiceSpy.getStaticPosts).toHaveBeenCalledWith(1, 10);
+    expect(component.posts.length).toBe(1);
+    expect(component.posts[0].title).toBe('Static Post');
+    expect(component.isLoading).toBe(false);
+    errorSpy.mockRestore();
   });
 
   it('should handle end of list', () => {
