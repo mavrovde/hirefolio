@@ -56,6 +56,11 @@ describe('SystemStatsComponent - Browser', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should set frontendVersion from package.json', () => {
+    expect(component.frontendVersion).toBeTruthy();
+    expect(component.frontendVersion).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
   it('should start uptime counter in browser', () => {
     // Initial uptime
     expect(component.uptime).toBe('00:00:00');
