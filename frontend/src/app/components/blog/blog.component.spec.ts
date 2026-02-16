@@ -37,8 +37,8 @@ describe('BlogComponent', () => {
     },
   ];
 
-  // Helper to wait for timeouts
-  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  // Helper to flush all microtasks (Promises)
+  const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
 
   // Helper to create a mock fetch Response
   const mockFetchResponse = (data: any) => {
@@ -132,7 +132,10 @@ describe('BlogComponent', () => {
     // Trigger load more
     component.hasMore = true;
     component.loadMore();
-    await fixture.whenStable();
+
+    // Flush all microtasks (fetch mock returns nested Promises)
+    await flushPromises();
+    await flushPromises();
 
     expect(component.currentPage).toBe(2);
     expect(component.posts.length).toBe(2);
@@ -177,7 +180,10 @@ describe('BlogComponent', () => {
 
     component.hasMore = true;
     component.loadMore();
-    await fixture.whenStable();
+
+    // Flush all microtasks
+    await flushPromises();
+    await flushPromises();
 
     expect(component.hasMore).toBe(false);
   });
@@ -207,7 +213,10 @@ describe('BlogComponent', () => {
 
     component.hasMore = true;
     component.loadMore();
-    await fixture.whenStable();
+
+    // Flush all microtasks
+    await flushPromises();
+    await flushPromises();
 
     expect(component.isLoading).toBe(false);
     expect(errorSpy).toHaveBeenCalled();
