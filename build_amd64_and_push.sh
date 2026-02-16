@@ -4,7 +4,20 @@ set -e
 # build_amd64_and_push.sh - Build and push AMD64 images to GHCR sequentially to save disk space
 export PATH=/usr/local/bin:/opt/homebrew/bin:/opt/podman/bin:$PATH
 
-VERSION=$(cat VERSION)
+# Read version from the latest git tag (authoritative source from release script)
+GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+if [ -z "$GIT_TAG" ]; then
+  echo "❌ ERROR: No git tag found. Run the release script first."
+  exit 1
+fi
+VERSION="${GIT_TAG#v}"  # Strip leading 'v' (e.g. v1.1.30 -> 1.1.30)
+
+# Safety check: verify docker-compose.prod.yml matches this version
+if ! grep -q "v${VERSION}" docker-compose.prod.yml; then
+  echo "❌ ERROR: docker-compose.prod.yml does not reference v${VERSION}. Version mismatch!"
+  exit 1
+fi
+
 echo "========================================"
 echo "🏗️  BUILDING AMD64 IMAGES FOR v$VERSION 🏗️"
 echo "========================================"
