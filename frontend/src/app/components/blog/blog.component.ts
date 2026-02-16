@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, Input, Inject, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BlogService, BlogPost, BlogSearchResult } from '../../services/blog.service';
 import { Observable, map } from 'rxjs';
@@ -36,6 +36,8 @@ export class BlogComponent implements OnInit {
   constructor(
     private blogService: BlogService,
     private seoService: SeoService,
+    private ngZone: NgZone,
+    private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
   ) { }
 
@@ -117,15 +119,21 @@ export class BlogComponent implements OnInit {
         throw new Error(`HTTP ${resp.status}`);
       }
       const response = await resp.json();
-      const existingIds = new Set(this.posts.map((p: BlogPost) => p.id));
-      const newPosts = (response.items || []).filter((p: BlogPost) => !existingIds.has(p.id));
-      this.posts = [...this.posts, ...newPosts];
-      this.hasMore = this.posts.length < response.total;
-      this.isLoading = false;
+      // Run inside Angular's zone to trigger change detection
+      this.ngZone.run(() => {
+        const existingIds = new Set(this.posts.map((p: BlogPost) => p.id));
+        const newPosts = (response.items || []).filter((p: BlogPost) => !existingIds.has(p.id));
+        this.posts = [...this.posts, ...newPosts];
+        this.hasMore = this.posts.length < response.total;
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      });
     } catch (err) {
       console.error('Failed to load more posts via fetch, using fallback', err);
-      this.usingFallback = true;
-      this.loadFallbackPosts(this.loadMoreSize);
+      this.ngZone.run(() => {
+        this.usingFallback = true;
+        this.loadFallbackPosts(this.loadMoreSize);
+      });
     }
   }
 
