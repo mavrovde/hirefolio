@@ -82,17 +82,19 @@ describe('BlogComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should load initial posts', () => {
+  it('should load initial posts', async () => {
     // Initial load happens in ngOnInit
     fixture.detectChanges();
+    await fixture.whenStable();
     expect(component.posts.length).toBe(1);
     expect(component.posts[0].title).toBe('Test Post');
     expect(component.currentPage).toBe(1);
     expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 10);
   });
 
-  it('should append posts on loadMore with loadMoreSize=5', () => {
+  it('should append posts on loadMore with loadMoreSize=5', async () => {
     fixture.detectChanges(); // Initial load (page 1)
+    await fixture.whenStable();
 
     // Mock next page response
     const nextPosts = [{ ...mockPosts[0], id: '2', title: 'Next Post' }];
@@ -107,6 +109,7 @@ describe('BlogComponent', () => {
     // Trigger load more
     component.hasMore = true; // Ensure it's clickable
     component.loadMore();
+    await fixture.whenStable();
 
     expect(component.currentPage).toBe(2);
     // After initial load of 1 post, apiPage = floor(1/5)+1 = 1, apiPageSize = 5
@@ -115,7 +118,7 @@ describe('BlogComponent', () => {
     expect(component.posts[1].title).toBe('Next Post');
   });
 
-  it('should fall back to static posts on API error', () => {
+  it('should fall back to static posts on API error', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     blogServiceSpy.getPosts.mockReturnValue(new Observable(observer => {
       observer.error('Network error');
@@ -131,6 +134,7 @@ describe('BlogComponent', () => {
     }));
 
     fixture.detectChanges(); // triggers ngOnInit -> loadInitialPosts -> loadPosts
+    await fixture.whenStable();
 
     expect(blogServiceSpy.getStaticPosts).toHaveBeenCalledWith(1, 10);
     expect(component.posts.length).toBe(1);
@@ -139,8 +143,9 @@ describe('BlogComponent', () => {
     errorSpy.mockRestore();
   });
 
-  it('should handle end of list', () => {
+  it('should handle end of list', async () => {
     fixture.detectChanges();
+    await fixture.whenStable();
 
     // Mock last page response
     // Initial load added 1 item.
@@ -155,12 +160,14 @@ describe('BlogComponent', () => {
 
     component.hasMore = true;
     component.loadMore();
+    await fixture.whenStable();
 
     expect(component.hasMore).toBe(false);
   });
 
-  it('should not load more if isLoading or no more posts', () => {
+  it('should not load more if isLoading or no more posts', async () => {
     fixture.detectChanges();
+    await fixture.whenStable();
 
     // Case 1: isLoading
     component.isLoading = true;
@@ -174,8 +181,9 @@ describe('BlogComponent', () => {
     expect(blogServiceSpy.getPosts).toHaveBeenCalledTimes(1);
   });
 
-  it('should handle load error', () => {
+  it('should handle load error', async () => {
     fixture.detectChanges();
+    await fixture.whenStable();
 
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
     blogServiceSpy.getPosts.mockReturnValueOnce(new Observable(observer => {
@@ -184,13 +192,15 @@ describe('BlogComponent', () => {
 
     component.hasMore = true;
     component.loadMore();
+    await fixture.whenStable();
 
     expect(component.isLoading).toBe(false);
     expect(errorSpy).toHaveBeenCalled();
   });
 
-  it('should filter by tag and reset pagination', () => {
+  it('should filter by tag and reset pagination', async () => {
     fixture.detectChanges();
+    await fixture.whenStable();
 
     // Clear calls from init
     blogServiceSpy.getPosts.mockClear();
@@ -205,6 +215,7 @@ describe('BlogComponent', () => {
     }));
 
     component.filterByTag('angular');
+    await fixture.whenStable();
 
     expect(component.activeTag).toBe('angular');
     expect(component.currentPage).toBe(1);
@@ -212,12 +223,14 @@ describe('BlogComponent', () => {
     expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, 'angular', 1, 10);
   });
 
-  it('should clear tag filter and reset pagination', () => {
+  it('should clear tag filter and reset pagination', async () => {
     component.activeTag = 'angular';
     fixture.detectChanges();
+    await fixture.whenStable();
     blogServiceSpy.getPosts.mockClear();
 
     component.clearTagFilter();
+    await fixture.whenStable();
 
     expect(component.activeTag).toBeNull();
     expect(component.currentPage).toBe(1);

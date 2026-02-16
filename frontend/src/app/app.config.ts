@@ -4,7 +4,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './interceptors/auth.interceptor';
-import { provideClientHydration, withEventReplay, withNoHttpTransferCache } from '@angular/platform-browser';
+import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -16,6 +16,6 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
       })
     ),
-    provideHttpClient(withInterceptors([authInterceptor])), provideClientHydration(withEventReplay(), withNoHttpTransferCache()),
+    provideHttpClient(withInterceptors([authInterceptor])), provideClientHydration(withEventReplay()),
   ],
 };

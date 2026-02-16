@@ -1,7 +1,7 @@
 import { Component, OnInit, Input, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BlogService, BlogPost, BlogSearchResult } from '../../services/blog.service';
-import { Observable, map } from 'rxjs';
+import { Observable, map, firstValueFrom } from 'rxjs';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { RouterModule } from '@angular/router';
 import { SeoService } from '../../services/seo.service';
@@ -58,7 +58,7 @@ export class BlogComponent implements OnInit {
     this.loadPosts();
   }
 
-  loadPosts() {
+  async loadPosts() {
     if (this.isLoading) return;
     this.isLoading = true;
 
@@ -84,21 +84,21 @@ export class BlogComponent implements OnInit {
       return;
     }
 
-    this.blogService.getPosts(true, null, this.activeTag, apiPage, apiPageSize).subscribe({
-      next: (response) => {
-        // Deduplicate by id to handle any edge cases
-        const existingIds = new Set(this.posts.map(p => p.id));
-        const newPosts = response.items.filter(p => !existingIds.has(p.id));
-        this.posts = [...this.posts, ...newPosts];
-        this.hasMore = this.posts.length < response.total;
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Failed to load posts from API, using fallback', err);
-        this.usingFallback = true;
-        this.loadFallbackPosts(effectivePageSize);
-      }
-    });
+    try {
+      const response = await firstValueFrom(
+        this.blogService.getPosts(true, null, this.activeTag, apiPage, apiPageSize)
+      );
+      // Deduplicate by id to handle any edge cases
+      const existingIds = new Set(this.posts.map(p => p.id));
+      const newPosts = response.items.filter(p => !existingIds.has(p.id));
+      this.posts = [...this.posts, ...newPosts];
+      this.hasMore = this.posts.length < response.total;
+      this.isLoading = false;
+    } catch (err) {
+      console.error('Failed to load posts from API, using fallback', err);
+      this.usingFallback = true;
+      this.loadFallbackPosts(effectivePageSize);
+    }
   }
 
   private loadFallbackPosts(effectivePageSize: number) {
