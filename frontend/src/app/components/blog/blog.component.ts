@@ -63,15 +63,22 @@ export class BlogComponent implements OnInit {
     this.isLoading = true;
 
     const effectivePageSize = this.currentPage === 1 ? this.pageSize : this.loadMoreSize;
+    // Use pageSize for page calculation so backend offset is always correct
+    // Page 1: offset=0, limit=pageSize(10)
+    // Page 2+: use actual offset based on accumulated posts
+    const apiPage = this.currentPage === 1 ? 1 : Math.floor(this.posts.length / effectivePageSize) + 1;
 
     if (this.usingFallback) {
       this.loadFallbackPosts(effectivePageSize);
       return;
     }
 
-    this.blogService.getPosts(true, null, this.activeTag, this.currentPage, effectivePageSize).subscribe({
+    this.blogService.getPosts(true, null, this.activeTag, apiPage, effectivePageSize).subscribe({
       next: (response) => {
-        this.posts = [...this.posts, ...response.items];
+        // Deduplicate by id in case of offset overlap
+        const existingIds = new Set(this.posts.map(p => p.id));
+        const newPosts = response.items.filter(p => !existingIds.has(p.id));
+        this.posts = [...this.posts, ...newPosts];
         this.hasMore = this.posts.length < response.total;
         this.isLoading = false;
       },

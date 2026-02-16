@@ -76,8 +76,8 @@ test.describe('Blog Display on Page Load', () => {
         await expect(loadMoreBtn).toBeVisible();
         await loadMoreBtn.click();
 
-        // Wait for new posts to load
-        await page.waitForTimeout(2000);
+        // Wait for the 11th post to appear (proves load-more worked)
+        await blogSection.locator('.space-y-6 > .group').nth(10).waitFor({ state: 'visible', timeout: 10000 });
 
         // Should now have more than 10 posts (10 initial + up to 5 more)
         const afterLoadMoreCount = await blogSection.locator('.space-y-6 > .group').count();
