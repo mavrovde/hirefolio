@@ -65,12 +65,18 @@ import { SeoService } from '../../../services/seo.service';
             <div class="mt-12 pt-8 border-t border-dashed border-terminal-dim text-center text-secondary">
               <span class="animate-pulse">_</span>
               <span class="ml-2">End of file</span>
-              <div class="mt-4">
+              <div class="mt-4 flex flex-wrap justify-center gap-4">
                  <button 
                   (click)="goBack()" 
                   class="text-terminal-highlight hover:text-white hover:underline decoration-dashed transition-colors"
                 >
                   [ cd .. ]
+                </button>
+                <button 
+                  (click)="sharePost()" 
+                  class="text-secondary hover:text-terminal-highlight hover:underline decoration-dashed transition-colors"
+                >
+                  $ cp post.url /clipboard →
                 </button>
               </div>
             </div>
@@ -152,6 +158,18 @@ export class BlogPostComponent implements OnInit {
 
 
   goBack() {
-    this.router.navigate(['/'], { fragment: 'blog' });
+    this.router.navigate(['/blog']);
+  }
+
+  async sharePost() {
+    const slug = this.route.snapshot.paramMap.get('slug');
+    const url = `${isPlatformBrowser(this.platformId) ? window.location.origin : 'https://mavrov.de'}/blog/${slug}`;
+    if (isPlatformBrowser(this.platformId) && navigator.share) {
+      try {
+        await navigator.share({ title: document.title, url });
+      } catch { }
+    } else if (isPlatformBrowser(this.platformId)) {
+      await navigator.clipboard.writeText(url);
+    }
   }
 }

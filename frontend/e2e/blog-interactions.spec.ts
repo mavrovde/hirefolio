@@ -89,8 +89,12 @@ test.describe('Blog Interactions', () => {
         const readMoreBtn = postGroup.getByRole('link', { name: '$ cat full_post.md' });
         await expect(readMoreBtn).toBeVisible();
 
-        // 2. Navigate to Full Post
-        await readMoreBtn.click();
+        // Check for share button ($ cp post.url /clipboard)
+        const shareBtn = postGroup.getByRole('button', { name: /cp post\.url/ });
+        await expect(shareBtn).toBeVisible();
+
+        // 2. Navigate to Full Post (click title again when expanded to navigate)
+        await postTitle.click();
 
         // Verify URL pattern /blog/:slug
         await expect(page).toHaveURL(/\/blog\/.+/);
@@ -112,12 +116,16 @@ test.describe('Blog Interactions', () => {
         await footerBackBtn.scrollIntoViewIfNeeded();
         await expect(footerBackBtn).toBeVisible();
 
-        // 3. Navigate Back (using the footer button this time to verify it works)
+        // 3. Verify share button on post detail page
+        const detailShareBtn = page.getByRole('button', { name: /cp post\.url/ });
+        await detailShareBtn.scrollIntoViewIfNeeded();
+        await expect(detailShareBtn).toBeVisible();
+
+        // 4. Navigate Back (using the footer button this time to verify it works)
         await footerBackBtn.click();
 
-        // Verify return to home with fragment
-        // The router navigates to /#blog
-        await expect(page).toHaveURL(/.*#blog/);
+        // Verify return to /blog route
+        await expect(page).toHaveURL(/\/blog$/);
     });
 
     test('should navigate directly to a post via URL', async ({ page }) => {
@@ -153,5 +161,29 @@ test.describe('Blog Interactions', () => {
 
         // Verify grep search input exists
         await expect(page.getByPlaceholder('search semantically...')).toBeVisible();
+    });
+
+    test('should show blog posts after navigating away and back', async ({ page }) => {
+        // Verify posts are visible initially
+        const postGroup = page.locator('.group', { hasText: 'Stable E2E Post' }).first();
+        await expect(postGroup).toBeVisible();
+
+        // Navigate to a post detail
+        const postTitle = postGroup.locator('.text-primary.font-bold');
+        await postTitle.click(); // expand
+        await postTitle.click(); // navigate
+
+        await expect(page).toHaveURL(/\/blog\/.+/);
+
+        // Navigate back via header Blog link
+        const blogNavLink = page.locator('nav a', { hasText: 'Blog' }).first();
+        await blogNavLink.click();
+
+        // Verify we're on /blog
+        await expect(page).toHaveURL(/\/blog$/);
+
+        // Verify posts are still visible (not empty)
+        const postGroupAfterReturn = page.locator('.group', { hasText: 'Stable E2E Post' }).first();
+        await expect(postGroupAfterReturn).toBeVisible({ timeout: 10000 });
     });
 });

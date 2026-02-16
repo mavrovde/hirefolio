@@ -40,7 +40,10 @@ describe('BlogPostComponent', () => {
                 { provide: BlogService, useValue: blogServiceSpy },
                 {
                     provide: ActivatedRoute,
-                    useValue: { paramMap: paramMapSubject.asObservable() }
+                    useValue: {
+                        paramMap: paramMapSubject.asObservable(),
+                        snapshot: { paramMap: { get: (key: string) => (key === 'slug' ? 'test-post' : null) } }
+                    }
                 },
             ],
         }).compileComponents();
@@ -120,6 +123,18 @@ describe('BlogPostComponent', () => {
 
     it('should navigate back on goBack()', () => {
         component.goBack();
-        expect(routerSpy.navigate).toHaveBeenCalledWith(['/'], { fragment: 'blog' });
+        expect(routerSpy.navigate).toHaveBeenCalledWith(['/blog']);
+    });
+
+    it('should copy URL to clipboard on sharePost', async () => {
+        const writeTextSpy = vi.fn().mockResolvedValue(undefined);
+        Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: writeTextSpy },
+            writable: true,
+            configurable: true,
+        });
+
+        await component.sharePost();
+        expect(writeTextSpy).toHaveBeenCalledWith(expect.stringContaining('/blog/test-post'));
     });
 });

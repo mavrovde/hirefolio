@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { BlogComponent } from './blog.component';
 import { BlogService } from '../../services/blog.service';
 import { LanguageService } from '../../services/language.service';
@@ -20,6 +20,7 @@ describe('BlogComponent', () => {
     {
       id: '1',
       title: 'Test Post',
+      slug: 'test-post',
       date: '2026-01-24',
       summary: 'Summary',
       content: '<p>Content</p>',
@@ -57,6 +58,14 @@ describe('BlogComponent', () => {
     } as Response);
   };
 
+  const initialFetchData = {
+    items: mockPosts,
+    total: mockPosts.length,
+    page: 1,
+    page_size: 10,
+    total_pages: 1
+  };
+
   beforeEach(async () => {
     blogServiceSpy = {
       getPosts: vi.fn().mockReturnValue(of({
@@ -83,8 +92,9 @@ describe('BlogComponent', () => {
       getCurrentLanguage: () => 'en',
     };
 
-    // Mock global fetch for loadMoreWithFetch
+    // Mock global fetch - initial load uses fetch on browser
     fetchSpy = vi.spyOn(globalThis, 'fetch');
+    fetchSpy.mockReturnValue(mockFetchResponse(initialFetchData));
 
     await TestBed.configureTestingModule({
       imports: [BlogComponent, MockTranslatePipe, NoopAnimationsModule],
@@ -107,19 +117,23 @@ describe('BlogComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should load initial posts', () => {
-    // Initial load happens in ngOnInit
+  it('should load initial posts via fetch', async () => {
     fixture.detectChanges();
+    await flushPromises();
+    await flushPromises();
+
     expect(component.posts.length).toBe(1);
     expect(component.posts[0].title).toBe('Test Post');
     expect(component.currentPage).toBe(1);
-    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 10);
+    expect(fetchSpy).toHaveBeenCalled();
   });
 
   it('should append posts on loadMore with loadMoreSize=5', async () => {
-    fixture.detectChanges(); // Initial load (page 1)
+    fixture.detectChanges();
+    await flushPromises();
+    await flushPromises();
 
-    // Mock fetch for load-more (uses native fetch on browser)
+    // Mock fetch for load-more
     const nextPosts = [{ ...mockPosts[0], id: '2', title: 'Next Post' }];
     fetchSpy.mockReturnValueOnce(mockFetchResponse({
       items: nextPosts,
@@ -133,7 +147,6 @@ describe('BlogComponent', () => {
     component.hasMore = true;
     component.loadMore();
 
-    // Flush all microtasks (fetch mock returns nested Promises)
     await flushPromises();
     await flushPromises();
 
@@ -142,11 +155,12 @@ describe('BlogComponent', () => {
     expect(component.posts[1].title).toBe('Next Post');
   });
 
-  it('should fall back to static posts on API error', () => {
+  it('should fall back to static posts on fetch error', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-    blogServiceSpy.getPosts.mockReturnValue(new Observable(observer => {
-      observer.error('Network error');
-    }));
+
+    // Reset fetch to return error
+    fetchSpy.mockReset();
+    fetchSpy.mockReturnValue(mockFetchError());
 
     const staticPosts = [{ ...mockPosts[0], id: '99', title: 'Static Post' }];
     blogServiceSpy.getStaticPosts.mockReturnValue(of({
@@ -157,9 +171,11 @@ describe('BlogComponent', () => {
       total_pages: 1
     }));
 
-    fixture.detectChanges(); // triggers ngOnInit -> loadInitialPosts -> loadPosts
+    fixture.detectChanges();
+    await flushPromises();
+    await flushPromises();
 
-    expect(blogServiceSpy.getStaticPosts).toHaveBeenCalledWith(1, 10);
+    expect((component as any).usingFallback).toBe(true);
     expect(component.posts.length).toBe(1);
     expect(component.posts[0].title).toBe('Static Post');
     expect(component.isLoading).toBe(false);
@@ -168,8 +184,9 @@ describe('BlogComponent', () => {
 
   it('should handle end of list', async () => {
     fixture.detectChanges();
+    await flushPromises();
+    await flushPromises();
 
-    // Mock fetch for load-more returning empty items
     fetchSpy.mockReturnValueOnce(mockFetchResponse({
       items: [],
       total: 1,
@@ -181,55 +198,58 @@ describe('BlogComponent', () => {
     component.hasMore = true;
     component.loadMore();
 
-    // Flush all microtasks
     await flushPromises();
     await flushPromises();
 
     expect(component.hasMore).toBe(false);
   });
 
-  it('should not load more if isLoading or no more posts', () => {
+  it('should not load more if isLoading or no more posts', async () => {
     fixture.detectChanges();
+    await flushPromises();
+    await flushPromises();
+
+    const fetchCallCount = fetchSpy.mock.calls.length;
 
     // Case 1: isLoading
     component.isLoading = true;
     component.loadMore();
-    expect(blogServiceSpy.getPosts).toHaveBeenCalledTimes(1); // Only initial load
+    expect(fetchSpy.mock.calls.length).toBe(fetchCallCount);
 
     // Case 2: !hasMore
     component.isLoading = false;
     component.hasMore = false;
     component.loadMore();
-    expect(blogServiceSpy.getPosts).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls.length).toBe(fetchCallCount);
   });
 
-  it('should handle load error', async () => {
+  it('should handle load error on load-more', async () => {
     fixture.detectChanges();
+    await flushPromises();
+    await flushPromises();
 
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
-    // Mock fetch to return error for load-more
     fetchSpy.mockReturnValueOnce(mockFetchError());
 
     component.hasMore = true;
     component.loadMore();
 
-    // Flush all microtasks
     await flushPromises();
     await flushPromises();
 
     expect(component.isLoading).toBe(false);
     expect(errorSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 
-  it('should filter by tag and reset pagination', () => {
+  it('should filter by tag and reset pagination', async () => {
     fixture.detectChanges();
+    await flushPromises();
+    await flushPromises();
 
-    // Clear calls from init
-    blogServiceSpy.getPosts.mockClear();
-
-    // Mock response for filter
-    blogServiceSpy.getPosts.mockReturnValueOnce(of({
+    fetchSpy.mockClear();
+    fetchSpy.mockReturnValueOnce(mockFetchResponse({
       items: [],
       total: 0,
       page: 1,
@@ -242,18 +262,69 @@ describe('BlogComponent', () => {
     expect(component.activeTag).toBe('angular');
     expect(component.currentPage).toBe(1);
     expect(component.posts).toEqual([]);
-    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, 'angular', 1, 10);
+    expect(fetchSpy).toHaveBeenCalled();
   });
 
-  it('should clear tag filter and reset pagination', () => {
+  it('should clear tag filter and reset pagination', async () => {
     component.activeTag = 'angular';
     fixture.detectChanges();
-    blogServiceSpy.getPosts.mockClear();
+    await flushPromises();
+    await flushPromises();
+
+    fetchSpy.mockClear();
+    fetchSpy.mockReturnValueOnce(mockFetchResponse(initialFetchData));
 
     component.clearTagFilter();
 
     expect(component.activeTag).toBeNull();
     expect(component.currentPage).toBe(1);
-    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 10);
+    expect(fetchSpy).toHaveBeenCalled();
+  });
+
+  it('should expand post on first click via toggleOrNavigate', async () => {
+    fixture.detectChanges();
+    await flushPromises();
+    await flushPromises();
+
+    const post = { ...mockPosts[0], slug: 'test-post' } as any;
+
+    component.toggleOrNavigate(post);
+    expect(component.isExpanded(post.id)).toBe(true);
+  });
+
+  it('should navigate to post on second click via toggleOrNavigate', async () => {
+    fixture.detectChanges();
+    await flushPromises();
+    await flushPromises();
+
+    const router = TestBed.inject(Router) as any;
+    vi.spyOn(router, 'navigate');
+    const post = { ...mockPosts[0], slug: 'test-post' } as any;
+
+    // First click: expand
+    component.toggleOrNavigate(post);
+    expect(component.isExpanded(post.id)).toBe(true);
+
+    // Second click: navigate
+    component.toggleOrNavigate(post);
+    expect(router.navigate).toHaveBeenCalledWith(['/blog', 'test-post']);
+  });
+
+  it('should copy URL to clipboard on sharePost', async () => {
+    fixture.detectChanges();
+    await flushPromises();
+    await flushPromises();
+
+    const post = { ...mockPosts[0], slug: 'test-post', title: 'Test Post' } as any;
+
+    const writeTextSpy = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: writeTextSpy },
+      writable: true,
+      configurable: true,
+    });
+
+    await component.sharePost(post);
+    expect(writeTextSpy).toHaveBeenCalledWith(expect.stringContaining('/blog/test-post'));
   });
 });

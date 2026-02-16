@@ -3,7 +3,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BlogService, BlogPost, BlogSearchResult } from '../../services/blog.service';
 import { Observable, map } from 'rxjs';
 import { TranslatePipe } from '../../pipes/translate.pipe';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { SeoService } from '../../services/seo.service';
 
 import { HeaderComponent } from '../header/header.component';
@@ -36,6 +36,7 @@ export class BlogComponent implements OnInit {
   constructor(
     private blogService: BlogService,
     private seoService: SeoService,
+    private router: Router,
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
@@ -80,8 +81,8 @@ export class BlogComponent implements OnInit {
       return;
     }
 
-    // For load-more on the browser, use native fetch to bypass Angular HttpClient SSR issues
-    if (this.currentPage > 1 && isPlatformBrowser(this.platformId)) {
+    // Use native fetch on browser to bypass Angular HttpClient SSR hydration issues
+    if (isPlatformBrowser(this.platformId)) {
       this.loadMoreWithFetch(apiPage, apiPageSize);
       return;
     }
@@ -207,11 +208,30 @@ export class BlogComponent implements OnInit {
     }
   }
 
+  toggleOrNavigate(post: BlogPost) {
+    if (this.isExpanded(post.id)) {
+      this.router.navigate(['/blog', post.slug]);
+    } else {
+      this.togglePost(post.id);
+    }
+  }
+
   isExpanded(id: number | string): boolean {
     return this.expandedPostId === String(id);
   }
 
   trackByPostId(index: number, post: BlogPost): number {
     return post.id;
+  }
+
+  async sharePost(post: BlogPost) {
+    const url = `${isPlatformBrowser(this.platformId) ? window.location.origin : 'https://mavrov.de'}/blog/${post.slug}`;
+    if (isPlatformBrowser(this.platformId) && navigator.share) {
+      try {
+        await navigator.share({ title: post.title, url });
+      } catch { }
+    } else if (isPlatformBrowser(this.platformId)) {
+      await navigator.clipboard.writeText(url);
+    }
   }
 }
