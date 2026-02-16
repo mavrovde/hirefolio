@@ -124,8 +124,8 @@ test.describe('Blog Interactions', () => {
         // 4. Navigate Back (using the footer button this time to verify it works)
         await footerBackBtn.click();
 
-        // Verify return to /blog route
-        await expect(page).toHaveURL(/\/blog$/);
+        // Verify return to homepage with #blog
+        await expect(page).toHaveURL(/.*#blog/);
     });
 
     test('should navigate directly to a post via URL', async ({ page }) => {
@@ -179,8 +179,8 @@ test.describe('Blog Interactions', () => {
         const blogNavLink = page.locator('nav a', { hasText: 'Blog' }).first();
         await blogNavLink.click();
 
-        // Verify we're on /blog
-        await expect(page).toHaveURL(/\/blog$/);
+        // Verify we're on homepage with #blog
+        await expect(page).toHaveURL(/.*#blog/);
 
         // Verify posts are still visible (not empty)
         const postGroupAfterReturn = page.locator('.group', { hasText: 'Stable E2E Post' }).first();

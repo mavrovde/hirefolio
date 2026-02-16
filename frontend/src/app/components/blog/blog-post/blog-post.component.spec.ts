@@ -123,7 +123,7 @@ describe('BlogPostComponent', () => {
 
     it('should navigate back on goBack()', () => {
         component.goBack();
-        expect(routerSpy.navigate).toHaveBeenCalledWith(['/blog']);
+        expect(routerSpy.navigate).toHaveBeenCalledWith(['/'], { fragment: 'blog' });
     });
 
     it('should copy URL to clipboard on sharePost', async () => {

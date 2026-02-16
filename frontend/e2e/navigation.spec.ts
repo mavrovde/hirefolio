@@ -6,6 +6,7 @@ const navItems = [
     { label: 'Experience', hash: '#experience' },
     { label: 'Skills', hash: '#skills' },
     { label: 'Education', hash: '#education' },
+    { label: 'Blog', hash: '#blog' }
 ];
 
 test.describe('Cross-Route Navigation', () => {
@@ -80,18 +81,4 @@ test.describe('Cross-Route Navigation', () => {
             }
         });
     }
-
-    test('should navigate from CV to Blog route', async ({ page }) => {
-        await page.goto('/cv');
-        await expect(page.locator('app-cv')).toBeVisible();
-        await page.click('nav >> text=Blog');
-        await expect(page).toHaveURL(/\/blog$/);
-    });
-
-    test('should navigate from LLM to Blog route', async ({ page }) => {
-        await page.goto('/llm');
-        await expect(page.locator('app-llm')).toBeVisible();
-        await page.click('nav >> text=Blog');
-        await expect(page).toHaveURL(/\/blog$/);
-    });
 });

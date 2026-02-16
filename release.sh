@@ -98,13 +98,13 @@ git commit -m "$FINAL_MSG"
 echo ""
 echo "Step 4: Tagging and pushing code..."
 git tag -a "v$VERSION" -m "$DESC"
-# git push origin main
-# git push origin "v$VERSION"
+git push origin main
+git push origin "v$VERSION"
 
 # 5. Build and Push AMD64 images
 echo ""
-echo "Step 5: Building and pushing AMD64 images... (SKIPPED for local release)"
-# ./build_amd64_and_push.sh
+echo "Step 5: Building and pushing AMD64 images..."
+./build_amd64_and_push.sh
 
 # Step 6 (Final Happy Path E2E) removed - redundant with Step 2's full 67-test E2E suite
 # which already covers auth, AI suggestions, and admin features.

@@ -158,7 +158,7 @@ export class BlogPostComponent implements OnInit {
 
 
   goBack() {
-    this.router.navigate(['/blog']);
+    this.router.navigate(['/'], { fragment: 'blog' });
   }
 
   async sharePost() {
