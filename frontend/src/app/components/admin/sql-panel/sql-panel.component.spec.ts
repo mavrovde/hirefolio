@@ -98,7 +98,8 @@ describe('SqlPanelComponent', () => {
         const req = httpMock.expectOne(`${environment.apiPrefix}/admin/sql/backup`);
         req.flush(new Blob(['Server Error']), { status: 500, statusText: 'Internal Server Error' });
 
-        expect(component.error).toBe('Failed to download backup');
+        expect(component.error).toContain('Backup failed');
+        expect(component.result).toBeTruthy();
         expect(component.loading).toBe(false);
     });
 

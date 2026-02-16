@@ -74,15 +74,24 @@ export class SqlPanelComponent {
           }
         }
 
+        const sizeKB = (blob.size / 1024).toFixed(1);
         link.download = filename;
         link.click();
         window.URL.revokeObjectURL(url);
         this.loading = false;
+        this.result = [{ status: '✅ Backup downloaded', filename, size: `${sizeKB} KB` }];
+        this.columns = ['status', 'filename', 'size'];
         this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Backup error:', err);
-        this.error = 'Failed to download backup';
+        // Try to read error detail from blob response
+        const detail = err.error instanceof Blob
+          ? 'Server error (check backend logs)'
+          : (err.error?.detail || err.message || 'Unknown error');
+        this.error = `Backup failed: ${detail}`;
+        this.result = [{ status: '❌ Backup failed', error: detail, http_status: err.status }];
+        this.columns = ['status', 'error', 'http_status'];
         this.loading = false;
         this.cdr.detectChanges();
       }
@@ -118,7 +127,10 @@ export class SqlPanelComponent {
       },
       error: (err) => {
         console.error('Restore error:', err);
-        this.error = err.error?.detail || 'Restore failed';
+        const detail = err.error?.detail || 'Restore failed';
+        this.error = detail;
+        this.result = [{ status: '❌ Restore failed', detail, http_status: err.status }];
+        this.columns = ['status', 'detail', 'http_status'];
         this.loading = false;
         this.cdr.detectChanges();
       }

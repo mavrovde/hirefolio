@@ -48,71 +48,59 @@ async def execute_sql(
         raise HTTPException(status_code=400, detail=f"SQL Execution Error: {str(e)}")
 
 
+def _get_db_url():
+    """Get the database URL with +asyncpg stripped for CLI tools."""
+    from app.config import settings
+    db_url = str(settings.database_url)
+    if "+asyncpg" in db_url:
+        db_url = db_url.replace("+asyncpg", "")
+    return db_url
+
+
 @router.get("/backup")
 async def backup_database(
     current_user: User = Depends(get_current_admin_user)
 ):
-    import subprocess
+    import asyncio
     import os
     from datetime import datetime
     from fastapi.responses import StreamingResponse
-    from app.config import settings
 
-    # Construct connection details from settings or defaults
-    # Parse DATABASE_URL or use env vars. Ideally use PGPASSWORD env var.
-    # For now, assuming standard docker-compose env vars are available or part of settings.
-    # Extracting from settings.database_url is safer if available, but let's try standard envs first.
-    
-    # We need the password. detailed parsing of DATABASE_URL might be needed if not in simpler envs.
-    # settings.database_url is a PostgresDsn. 
-    db_url = str(settings.database_url)
-    # Fix: pg_dump does not support +asyncpg scheme
-    if "+asyncpg" in db_url:
-        db_url = db_url.replace("+asyncpg", "")
-    # Fix: pg_dump does not support +asyncpg scheme
-    if "+asyncpg" in db_url:
-        db_url = db_url.replace("+asyncpg", "")
-    
+    db_url = _get_db_url()
+
     # Generate backup filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"backup_mavrov_{timestamp}.sql"
 
-    # Command to dump database
-    # pg_dump -h db -U postgres -d mavrov
-    # We pass the full connection string/URL to avoid password prompts if properly formatted
-    
     cmd = ["pg_dump", db_url]
 
     try:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env={**os.environ} # Pass current env
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env={**os.environ}
         )
     except FileNotFoundError:
-         raise HTTPException(status_code=500, detail="pg_dump not found. Is postgresql-client installed?")
+        raise HTTPException(status_code=500, detail="pg_dump not found. Is postgresql-client installed?")
 
-    def iter_backup():
+    async def iter_backup():
         try:
             while True:
-                chunk = proc.stdout.read(8192)
+                chunk = await proc.stdout.read(8192)
                 if not chunk:
                     break
                 yield chunk
-            
-            # Check for errors after finishing stdout
-            proc.stdout.close()
-            return_code = proc.wait()
-            if return_code != 0:
-                stderr = proc.stderr.read()
-                print(f"Backup failed: {stderr}")
-                # We can't raise HTTP exception inside generator easily, but log it.
+
+            await proc.wait()
+            if proc.returncode != 0:
+                stderr = await proc.stderr.read()
+                print(f"Backup failed (exit {proc.returncode}): {stderr.decode()}")
         except Exception as e:
             print(f"Backup streaming error: {e}")
         finally:
-             if proc.poll() is None:
-                 proc.terminate()
+            if proc.returncode is None:
+                proc.terminate()
 
     return StreamingResponse(
         iter_backup(),
@@ -128,43 +116,71 @@ async def restore_database(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_admin_user)
 ):
-    import subprocess
+    import asyncio
     import os
-    from app.config import settings
 
     if not file.filename.endswith('.sql'):
          raise HTTPException(status_code=400, detail="Only .sql files are allowed")
 
-    db_url = str(settings.database_url)
-    # Fix: psql does not support +asyncpg scheme
-    if "+asyncpg" in db_url:
-        db_url = db_url.replace("+asyncpg", "")
-    
-    # We need to write the uploaded file to a temp file or stream it to psql stdin
-    # Streaming to stdin is better for large files
-    
+    db_url = _get_db_url()
     cmd = ["psql", db_url]
 
     try:
-        proc = subprocess.Popen(
-            cmd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
             env={**os.environ}
         )
-        
-        # Stream file content to psql
+
+        # Read uploaded file content
         content = await file.read()
-        stdout, stderr = proc.communicate(input=content)
+        file_size = len(content)
+
+        # Communicate with timeout (5 minutes max for large dumps)
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                proc.communicate(input=content),
+                timeout=300
+            )
+        except asyncio.TimeoutError:
+            proc.kill()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Restore timed out after 300s. File size: {file_size} bytes"
+            )
+
+        stdout_text = stdout.decode() if stdout else ""
+        stderr_text = stderr.decode() if stderr else ""
+
+        # Build detailed log
+        log_lines = []
+        log_lines.append(f"File: {file.filename} ({file_size:,} bytes)")
+        log_lines.append(f"Exit code: {proc.returncode}")
+        if stdout_text:
+            # Truncate very long output
+            if len(stdout_text) > 2000:
+                stdout_text = stdout_text[:2000] + f"\n... ({len(stdout_text)} chars total, truncated)"
+            log_lines.append(f"stdout:\n{stdout_text}")
+        if stderr_text:
+            if len(stderr_text) > 2000:
+                stderr_text = stderr_text[:2000] + f"\n... ({len(stderr_text)} chars total, truncated)"
+            log_lines.append(f"stderr:\n{stderr_text}")
+
+        log_output = "\n".join(log_lines)
 
         if proc.returncode != 0:
-            error_msg = stderr.decode() if stderr else "Unknown error"
-            raise HTTPException(status_code=500, detail=f"Restore failed: {error_msg}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Restore failed (exit {proc.returncode}):\n{log_output}"
+            )
 
-        return {"message": "Database restored successfully", "output": stdout.decode() if stdout else ""}
+        return {"message": "Database restored successfully", "output": log_output}
 
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="psql not found. Is postgresql-client installed?")
+    except HTTPException:
+        raise
     except Exception as e:
          raise HTTPException(status_code=500, detail=f"Restore error: {str(e)}")
