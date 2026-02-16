@@ -71,34 +71,21 @@ test.describe('Blog Display on Page Load', () => {
         const initialCount = await postGroups.count();
         expect(initialCount).toBe(10);
 
-        // Find and click the "LOAD MORE RECORDS" button
+        // Find the "LOAD MORE RECORDS" button and wait for it to be ENABLED.
+        // This ensures Angular hydration is complete and the initial load has
+        // finished (isLoading=false). During SSR hydration, Angular may still
+        // be processing the initial API response, keeping the button disabled.
         const loadMoreBtn = page.locator('button:has-text("LOAD MORE RECORDS")');
-        await expect(loadMoreBtn).toBeVisible();
-
-        // Set up a promise to wait for the load-more API response (page > 1)
-        // waitForResponse does NOT consume the body - it only observes
-        const loadMoreResponse = page.waitForResponse(
-            resp => {
-                const url = resp.url();
-                if (!url.includes('/api/app/posts')) return false;
-                const pageMatch = url.match(/[?&]page=(\d+)/);
-                return pageMatch !== null && parseInt(pageMatch[1]) > 1 && resp.status() === 200;
-            },
-            { timeout: 15000 }
-        );
+        await expect(loadMoreBtn).toBeVisible({ timeout: 10000 });
+        await expect(loadMoreBtn).toBeEnabled({ timeout: 10000 });
 
         await loadMoreBtn.click();
 
-        // Wait for the API response to arrive
-        await loadMoreResponse;
-
-        // Wait for Angular to render the new posts
-        await page.waitForTimeout(2000);
-
-        // Should now have more than 10 posts (10 initial + up to 5 more)
-        const afterLoadMoreCount = await blogSection.locator('.space-y-6 > .group').count();
-        expect(afterLoadMoreCount).toBeGreaterThan(initialCount);
-        expect(afterLoadMoreCount).toBeLessThanOrEqual(20); // generous upper bound
+        // Wait for the post count to increase using Playwright's auto-retrying assertion.
+        // This is more reliable than waitForTimeout because it keeps checking
+        // the DOM until the condition is met or the timeout expires.
+        const allPosts = blogSection.locator('.space-y-6 > .group');
+        await expect(allPosts).toHaveCount(15, { timeout: 15000 });
     });
 
     test('newly created blog post shows title on public page', async ({ page }) => {
