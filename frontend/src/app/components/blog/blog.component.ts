@@ -1,7 +1,7 @@
 import { Component, OnInit, Input, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BlogService, BlogPost, BlogSearchResult } from '../../services/blog.service';
-import { Observable, map, firstValueFrom } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { RouterModule } from '@angular/router';
 import { SeoService } from '../../services/seo.service';
@@ -58,16 +58,11 @@ export class BlogComponent implements OnInit {
     this.loadPosts();
   }
 
-  async loadPosts() {
+  loadPosts() {
     if (this.isLoading) return;
     this.isLoading = true;
 
     const effectivePageSize = this.currentPage === 1 ? this.pageSize : this.loadMoreSize;
-    // After the initial load of pageSize(10) items, subsequent loads use loadMoreSize(5).
-    // To get the correct offset, compute API page in terms of loadMoreSize:
-    // Initial: page=1, page_size=10 -> offset=0, limit=10
-    // Load more #1: need offset=10 -> page=3 with page_size=5 (offset=(3-1)*5=10)
-    // Load more #2: need offset=15 -> page=4 with page_size=5 (offset=(4-1)*5=15)
     let apiPage: number;
     let apiPageSize: number;
     if (this.currentPage === 1) {
@@ -75,7 +70,6 @@ export class BlogComponent implements OnInit {
       apiPageSize = this.pageSize;
     } else {
       apiPageSize = this.loadMoreSize;
-      // posts.length gives us the actual offset we need
       apiPage = Math.floor(this.posts.length / apiPageSize) + 1;
     }
 
@@ -84,20 +78,54 @@ export class BlogComponent implements OnInit {
       return;
     }
 
+    // For load-more on the browser, use native fetch to bypass Angular HttpClient SSR issues
+    if (this.currentPage > 1 && isPlatformBrowser(this.platformId)) {
+      this.loadMoreWithFetch(apiPage, apiPageSize);
+      return;
+    }
+
+    this.blogService.getPosts(true, null, this.activeTag, apiPage, apiPageSize).subscribe({
+      next: (response) => {
+        const existingIds = new Set(this.posts.map(p => p.id));
+        const newPosts = response.items.filter(p => !existingIds.has(p.id));
+        this.posts = [...this.posts, ...newPosts];
+        this.hasMore = this.posts.length < response.total;
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Failed to load posts from API, using fallback', err);
+        this.usingFallback = true;
+        this.loadFallbackPosts(effectivePageSize);
+      }
+    });
+  }
+
+  private async loadMoreWithFetch(apiPage: number, apiPageSize: number) {
     try {
-      const response = await firstValueFrom(
-        this.blogService.getPosts(true, null, this.activeTag, apiPage, apiPageSize)
-      );
-      // Deduplicate by id to handle any edge cases
-      const existingIds = new Set(this.posts.map(p => p.id));
-      const newPosts = response.items.filter(p => !existingIds.has(p.id));
+      const params = new URLSearchParams({
+        page: apiPage.toString(),
+        page_size: apiPageSize.toString(),
+        sort_by: 'created_at',
+        sort_order: 'desc',
+        published_only: 'true',
+      });
+      if (this.activeTag) {
+        params.set('tag', this.activeTag);
+      }
+      const resp = await fetch(`/api/app/posts?${params.toString()}`);
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
+      }
+      const response = await resp.json();
+      const existingIds = new Set(this.posts.map((p: BlogPost) => p.id));
+      const newPosts = (response.items || []).filter((p: BlogPost) => !existingIds.has(p.id));
       this.posts = [...this.posts, ...newPosts];
       this.hasMore = this.posts.length < response.total;
       this.isLoading = false;
     } catch (err) {
-      console.error('Failed to load posts from API, using fallback', err);
+      console.error('Failed to load more posts via fetch, using fallback', err);
       this.usingFallback = true;
-      this.loadFallbackPosts(effectivePageSize);
+      this.loadFallbackPosts(this.loadMoreSize);
     }
   }
 
