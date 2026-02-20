@@ -16,27 +16,27 @@ Personal portfolio website with blog functionality powered by semantic search an
 
 ### Frontend
 
-- **Framework**: Angular 18+ (Standalone Components, Signals)
-- **Styling**: Vanilla CSS (Tailwind concepts), Dark/Light mode
-- **State Management**: RxJS Observables
-- **Testing**: Vitest (Unit), Playwright (E2E)
+- **Framework**: Angular 21 (Standalone Components, Signals)
+- **Styling**: TailwindCSS 4.2, Dark/Light mode
+- **State Management**: RxJS 7.8 Observables
+- **Testing**: Vitest 4.x (Unit), Playwright 1.58 (E2E)
 - **i18n**: Custom translation service
 
 ### Backend
 
-- **Framework**: FastAPI (Python 3.13+)
+- **Framework**: FastAPI 0.129 (Python 3.13+)
 - **Database**: PostgreSQL 16 with `pgvector` extension
 - **AI**: Ollama (Local LLM & Embeddings)
   - Embeddings: `nomic-embed-text`
   - Logic/Text: `tinyllama`
-- **ORM**: SQLAlchemy 2.0 (async)
-- **Testing**: pytest (High coverage >89%)
+- **ORM**: SQLAlchemy 2.0.46 (async)
+- **Testing**: pytest + Vitest (High coverage >89%)
 
 ### CI/CD Pipeline
 
 - **Platform**: GitHub Actions
 - **Quality Gates**:
-  - Linting (Ruff, ESLint)
+  - Linting (Ruff 0.15, ESLint)
   - Type Checking (MyPy)
   - Security Scanning (Bandit)
   - Unit Tests (Frontend & Backend)
@@ -45,7 +45,7 @@ Personal portfolio website with blog functionality powered by semantic search an
 
 ## 📋 Prerequisites
 
-- **Node.js** 20+
+- **Node.js** 20+ (npm 11+)
 - **Python** 3.13+
 - **PostgreSQL** 16+
 - **Docker/Podman** (Recommended for local dev)
@@ -143,7 +143,7 @@ Run the entire test suite (Lint, Type Check, Unit, E2E) in one go:
 
 ## 📁 Project Structure
 
-```
+```text
 mavrov.de/
 ├── backend/                 # FastAPI backend
 │   ├── app/
@@ -358,10 +358,16 @@ This project is private and proprietary.
 
 - [x] Blog management admin interface
 - [x] User authentication and authorization (Admin only)
-- [x] AI Tag Suggestions
+- [x] AI Tag Suggestions (Ollama + Gemini)
+- [x] SEO optimization (meta tags, structured data)
+- [x] Google Analytics integration
+- [x] Gemini AI Chat integration
+- [x] CV/Resume management and download
+- [x] Admin SQL panel (backup/restore)
+- [x] Cookie consent management
+- [x] Admin tag manager
+- [x] E2E test suite (Playwright)
 - [ ] RSS feed generation
-- [ ] SEO optimization
-- [ ] Analytics dashboard
 - [ ] Newsletter integration
 
 ---

@@ -5,8 +5,9 @@ This document explains how to run tests and view coverage reports for the mavrov
 ## Backend Tests (Python/FastAPI)
 
 ### Prerequisites
+
 - PostgreSQL running (for integration tests)
-- Python 3.11+
+- Python 3.13+
 - Dependencies installed: `pip install -r requirements.txt`
 
 ### Running Tests
@@ -39,6 +40,7 @@ pytest tests/integration/
 ### Coverage Reports
 
 After running tests with coverage, open the HTML report:
+
 ```bash
 open htmlcov/index.html  # macOS
 xdg-open htmlcov/index.html  # Linux
@@ -47,6 +49,7 @@ xdg-open htmlcov/index.html  # Linux
 ### Test Database
 
 Integration tests use a separate test database (`mavrov_test`). Create it:
+
 ```bash
 createdb mavrov_test
 ```
@@ -54,7 +57,8 @@ createdb mavrov_test
 ## Frontend Tests (Angular/Vitest)
 
 ### Prerequisites
-- Node.js 18+
+
+- Node.js 20+
 - Dependencies installed: `npm install`
 
 ### Running Tests
@@ -81,6 +85,7 @@ npm test -- --ui
 ### Coverage Reports
 
 Coverage reports are generated in `coverage/` directory:
+
 ```bash
 open coverage/index.html  # macOS
 xdg-open coverage/index.html  # Linux
@@ -129,6 +134,7 @@ curl http://localhost:8000/api/posts/getting-started-ollama/similar
 ## Manual Testing Checklist
 
 ### Backend
+
 - [ ] Ollama service starts and pulls model
 - [ ] Database migrations run successfully
 - [ ] API endpoints respond correctly
@@ -137,6 +143,7 @@ curl http://localhost:8000/api/posts/getting-started-ollama/similar
 - [ ] Similar posts feature works
 
 ### Frontend
+
 - [ ] Application loads without errors
 - [ ] Language switching works
 - [ ] All components render correctly
@@ -166,15 +173,18 @@ npm test -- --coverage --run
 ## Troubleshooting
 
 ### Backend Tests Fail
+
 - Ensure PostgreSQL is running
 - Check test database exists
 - Verify Ollama is accessible (for integration tests)
 
 ### Frontend Tests Fail
+
 - Clear node_modules and reinstall: `rm -rf node_modules && npm install`
 - Check for TypeScript errors: `npm run build`
 
 ### Ollama Connection Issues
+
 - Verify Ollama is running: `docker-compose ps`
 - Check logs: `docker-compose logs ollama`
 - Test endpoint: `curl http://localhost:11434/api/tags`

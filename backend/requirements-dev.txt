@@ -10,12 +10,12 @@ pytest-mock==3.15.1
 
 
 # Linting & Formatting
-ruff==0.14.14
+ruff==0.15.2
 
 # Type Checking
 mypy==1.19.1
-types-passlib==1.7.7.20250602
+types-passlib==1.7.7.20260211
 
 # Security
 bandit==1.9.3
-rich>=13.0.0,<14.0.0
+rich>=13.0.0,<15.0.0
