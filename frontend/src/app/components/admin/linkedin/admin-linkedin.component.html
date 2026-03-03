@@ -1,0 +1,86 @@
+<div class="dashboard linkedin-sync">
+    <div class="header">
+        <h1 class="page-title">&gt; LinkedIn Sync</h1>
+
+        <div class="tabs">
+            <button class="btn-tab" [class.active]="activeTab === 'posts'" (click)="setTab('posts')">Posts</button>
+            <button class="btn-tab" [class.active]="activeTab === 'profile'"
+                (click)="setTab('profile')">Profile</button>
+        </div>
+    </div>
+
+    <div *ngIf="statusMessage" class="status-bar">
+        &gt; System: {{ statusMessage }}
+    </div>
+
+    <!-- Post Transfer Tab -->
+    <div class="tab-content" *ngIf="activeTab === 'posts'">
+        <div class="controls-bar">
+            <button (click)="fetchPosts()" [disabled]="isFetchingPosts" class="btn-primary">
+                <span class="icon">⬇️</span>
+                {{ isFetchingPosts ? 'Fetching...' : 'Fetch Recent Posts' }}
+            </button>
+            <div class="helper-text">This will scrape your recent activity to find latest posts natively from LinkedIn
+                (~30s).</div>
+        </div>
+
+        @if (isFetchingPosts) {
+        <div class="loading">Loading posts...</div>
+        } @else if (posts.length === 0) {
+        <div class="empty-state">
+            <p>&gt; No posts fetched yet. Click "Fetch Recent Posts" to start.</p>
+        </div>
+        } @else {
+        <div class="posts-grid">
+            @for (post of posts; track post.id) {
+            <div class="post-card">
+                <div class="post-header">
+                    <span class="post-time">{{ post.time }}</span>
+                    <span class="post-id">ID: {{ post.id }}</span>
+                </div>
+
+                <div *ngIf="post.imageUrl" class="post-image">
+                    <img [src]="post.imageUrl" alt="Post Image">
+                </div>
+
+                <div class="post-body">
+                    <p>{{ truncateText(post.content) }}</p>
+                    <a *ngIf="post.url" [href]="post.url" target="_blank" class="post-link">View on LinkedIn ↗</a>
+                </div>
+
+                <div class="post-actions">
+                    <button class="btn-action" (click)="transferPost(post)" [disabled]="transferringPostId === post.id">
+                        <span class="icon">📦</span>
+                        {{ transferringPostId === post.id ? 'Transferring...' : 'Transfer to DB' }}
+                    </button>
+                </div>
+            </div>
+            }
+        </div>
+        }
+    </div>
+
+    <!-- Profile Sync Tab -->
+    <div class="tab-content" *ngIf="activeTab === 'profile'">
+        <div class="controls-bar">
+            <button (click)="syncProfile()" [disabled]="isSyncingProfile" class="btn-primary">
+                <span class="icon">🔄</span>
+                {{ isSyncingProfile ? 'Scanning...' : 'Scan Profile' }}
+            </button>
+            <div class="helper-text">Scrape the entire LinkedIn profile data and display it here (~20s).</div>
+        </div>
+
+        @if (isSyncingProfile) {
+        <div class="loading">Scanning profile...</div>
+        } @else if (profileData) {
+        <div class="data-view">
+            <div class="data-header">&gt; Extract Complete JSON</div>
+            <pre class="json-content">{{ profileData | json }}</pre>
+        </div>
+        } @else {
+        <div class="empty-state">
+            <p>&gt; No profile data scanned yet. Click "Scan Profile" to start.</p>
+        </div>
+        }
+    </div>
+</div>

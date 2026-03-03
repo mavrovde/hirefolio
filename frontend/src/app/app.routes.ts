@@ -106,6 +106,13 @@ export const routes: Routes = [
             (m) => m.AdminChatComponent,
           ),
       },
+      {
+        path: 'linkedin',
+        loadComponent: () =>
+          import('./components/admin/linkedin/admin-linkedin.component').then(
+            (m) => m.AdminLinkedinComponent,
+          ),
+      },
     ],
   },
 ];
