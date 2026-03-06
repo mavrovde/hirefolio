@@ -44,8 +44,12 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install maturin
 
 # Install production dependencies
+# linkedin-api==2.2.1 has a broken entry point (lint = black:None) in its PyPI package
+# Install it separately with --no-deps to avoid the entry point error
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements.txt
+    pip install --no-deps linkedin-api==2.2.1 && \
+    pip install beautifulsoup4 lxml && \
+    grep -v 'linkedin-api' requirements.txt | pip install -r /dev/stdin
 
 # Final runtime stage inherits from base
 FROM base AS runtime
