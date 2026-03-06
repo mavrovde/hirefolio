@@ -134,7 +134,9 @@ async def test_tags_sort_by_name(client: AsyncClient, mock_embedding):
         )
 
     # Sort by name ascending
-    response = await client.get(f"{settings.api_prefix}/tags?sort_by=name&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/tags?sort_by=name&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "alpha"
@@ -142,7 +144,9 @@ async def test_tags_sort_by_name(client: AsyncClient, mock_embedding):
     assert data["items"][2]["name"] == "zebra"
 
     # Sort by name descending
-    response = await client.get(f"{settings.api_prefix}/tags?sort_by=name&sort_order=desc")
+    response = await client.get(
+        f"{settings.api_prefix}/tags?sort_by=name&sort_order=desc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "zebra"
@@ -181,7 +185,9 @@ async def test_tags_sort_by_count(client: AsyncClient, mock_embedding):
             await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Sort by count descending (default)
-    response = await client.get(f"{settings.api_prefix}/tags?sort_by=count&sort_order=desc")
+    response = await client.get(
+        f"{settings.api_prefix}/tags?sort_by=count&sort_order=desc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "common"
@@ -190,7 +196,9 @@ async def test_tags_sort_by_count(client: AsyncClient, mock_embedding):
     assert data["items"][1]["count"] == 1
 
     # Sort by count ascending
-    response = await client.get(f"{settings.api_prefix}/tags?sort_by=count&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/tags?sort_by=count&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "rare"

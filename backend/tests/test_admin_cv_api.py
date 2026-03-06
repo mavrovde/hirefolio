@@ -12,7 +12,9 @@ from unittest.mock import patch
 async def test_upload_cv_success(client, db_session):
     files = {"file": ("test.pdf", b"%PDF-1.4 mock content", "application/pdf")}
     data = {"version": "v2.0"}
-    response = await client.post(f"{settings.api_prefix}/admin/cv/upload", files=files, data=data)
+    response = await client.post(
+        f"{settings.api_prefix}/admin/cv/upload", files=files, data=data
+    )
 
     assert response.status_code == 200
     assert response.json()["success"] is True
@@ -32,7 +34,9 @@ async def test_upload_cv_success(client, db_session):
 async def test_upload_cv_invalid_type(client):
     files = {"file": ("test.txt", b"text data", "text/plain")}
     data = {"version": "v2.1"}
-    response = await client.post(f"{settings.api_prefix}/admin/cv/upload", files=files, data=data)
+    response = await client.post(
+        f"{settings.api_prefix}/admin/cv/upload", files=files, data=data
+    )
 
     assert response.status_code == 400
     assert "Only PDF files are allowed" in response.json()["detail"]
@@ -105,7 +109,9 @@ async def test_upload_cv_exception(client):
     with patch("app.api.admin_cv.CvDocument", side_effect=Exception("DB Error")):
         files = {"file": ("test.pdf", b"content", "application/pdf")}
         data = {"version": "vErr"}
-        response = await client.post(f"{settings.api_prefix}/admin/cv/upload", files=files, data=data)
+        response = await client.post(
+            f"{settings.api_prefix}/admin/cv/upload", files=files, data=data
+        )
         assert response.status_code == 500
         assert "Failed to upload CV" in response.json()["detail"]
 

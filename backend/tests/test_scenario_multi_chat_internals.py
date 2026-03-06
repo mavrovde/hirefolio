@@ -2,7 +2,12 @@ import pytest
 import json
 import asyncio
 from unittest.mock import MagicMock, patch, AsyncMock
-from app.services.multi_chat import multi_agent_conversation, AgentConfig, ChatMessage, StopChatTool
+from app.services.multi_chat import (
+    multi_agent_conversation,
+    AgentConfig,
+    ChatMessage,
+    StopChatTool,
+)
 
 
 @pytest.mark.asyncio
@@ -95,6 +100,7 @@ async def test_streaming_callback_handler():
     handler.on_llm_new_token("")
     assert queue.empty()
 
+
 @pytest.mark.asyncio
 async def test_multi_chat_internals():
     """Test internal classes and edge cases of multi_chat."""
@@ -103,13 +109,13 @@ async def test_multi_chat_internals():
     # It is already imported
     msg = ChatMessage(agent_name="TestAgent", content="Hello")
     assert msg.to_string() == "TestAgent: Hello"
-    
+
     # 2. StopChatTool
     tool = StopChatTool()
     with pytest.raises(Exception) as exc:
         tool._run("Violation")
     assert "STOPPED_BY_MODERATOR: Violation" in str(exc.value)
-    
+
     # 3. Empty config
     gen = multi_agent_conversation([], "Topic")
     # Async generator returning immediately raises StopAsyncIteration on first next()

@@ -8,7 +8,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 print("Client dir:", dir(client))
-if hasattr(client, 'models'):
+if hasattr(client, "models"):
     print("Client.models dir:", dir(client.models))
-if hasattr(client, 'chats'):
+if hasattr(client, "chats"):
     print("Client.chats dir:", dir(client.chats))

@@ -21,7 +21,10 @@ async def test_posts_concurrent_pagination_requests(client: AsyncClient):
         )
 
     # Make 5 concurrent requests for different pages
-    tasks = [client.get(f"{settings.api_prefix}/posts?page={p}&page_size=10") for p in range(1, 6)]
+    tasks = [
+        client.get(f"{settings.api_prefix}/posts?page={p}&page_size=10")
+        for p in range(1, 6)
+    ]
     responses = await asyncio.gather(*tasks)
 
     # All should succeed
@@ -83,7 +86,9 @@ async def test_posts_sort_by_nonexistent_field(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Try to sort by invalid field
-    response = await client.get(f"{settings.api_prefix}/posts?sort_by=nonexistent_field")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=nonexistent_field"
+    )
     assert response.status_code == 200  # Should fall back to default
     data = response.json()
     assert len(data["items"]) == 1
@@ -307,7 +312,9 @@ async def test_cv_requests_zero_results_pagination(client: AsyncClient, db_sessi
     await db_session.commit()
 
     # Search for non-existent term
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?search=NonExistentCompany")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?search=NonExistentCompany"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 0
@@ -340,8 +347,12 @@ async def test_posts_sort_stability(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Sort by created_at - order should be deterministic
-    response1 = await client.get(f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=asc")
-    response2 = await client.get(f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=asc")
+    response1 = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=asc"
+    )
+    response2 = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=asc"
+    )
 
     data1 = response1.json()
     data2 = response2.json()

@@ -18,7 +18,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("gemini_api_key", sa.String(length=255), nullable=True))
+    op.add_column(
+        "users", sa.Column("gemini_api_key", sa.String(length=255), nullable=True)
+    )
 
 
 def downgrade() -> None:

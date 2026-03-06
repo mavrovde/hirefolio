@@ -49,7 +49,6 @@ class PostUpdate(BaseModel):
         return v
 
 
-
 class PostResponse(BaseModel):
     id: int
     title: str
@@ -237,7 +236,7 @@ async def semantic_search(
     q: str,
     lang: Optional[str] = "en",
     limit: int = 10,
-    min_relevance: float = 0.3, # Filter out low relevance
+    min_relevance: float = 0.3,  # Filter out low relevance
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -254,17 +253,21 @@ async def semantic_search(
             vector_query = (
                 select(
                     Post,
-                    (1 - Post.embedding.cosine_distance(query_embedding)).label("relevance"),
+                    (1 - Post.embedding.cosine_distance(query_embedding)).label(
+                        "relevance"
+                    ),
                 )
                 .where(Post.published.is_(True))
                 .where(Post.embedding.isnot(None))
             )
             if lang:
                 vector_query = vector_query.where(Post.language == lang)
-            
+
             # Fetch slightly more to allow for filtering/reranking
-            vector_query = vector_query.order_by(text("relevance DESC")).limit(limit * 2)
-            
+            vector_query = vector_query.order_by(text("relevance DESC")).limit(
+                limit * 2
+            )
+
             v_res = await db.execute(vector_query)
             vector_results = v_res.all()
     except Exception:
@@ -275,12 +278,14 @@ async def semantic_search(
     keyword_query = select(Post).where(Post.published.is_(True))
     if lang:
         keyword_query = keyword_query.where(Post.language == lang)
-        
+
     search_term = f"%{q}%"
     keyword_query = keyword_query.where(
-        (Post.title.ilike(search_term)) | (Post.summary.ilike(search_term)) | (Post.content.ilike(search_term))
+        (Post.title.ilike(search_term))
+        | (Post.summary.ilike(search_term))
+        | (Post.content.ilike(search_term))
     ).limit(limit)
-    
+
     k_res = await db.execute(keyword_query)
     keyword_posts = k_res.scalars().all()
 
@@ -294,25 +299,29 @@ async def semantic_search(
         results_map[post.id] = {
             "post": post,
             "relevance": float(relevance),
-            "sources": {"vector"}
+            "sources": {"vector"},
         }
 
     # Process Keyword Results
     for post in keyword_posts:
         if post.id in results_map:
             # Boost score if found in both
-            results_map[post.id]["relevance"] = min(1.0, results_map[post.id]["relevance"] + 0.2)
+            results_map[post.id]["relevance"] = min(
+                1.0, results_map[post.id]["relevance"] + 0.2
+            )
             results_map[post.id]["sources"].add("keyword")
         else:
             # Add keyword-only match (give it a decent base score)
             results_map[post.id] = {
                 "post": post,
-                "relevance": 0.85, # High confidence for exact match
-                "sources": {"keyword"}
+                "relevance": 0.85,  # High confidence for exact match
+                "sources": {"keyword"},
             }
 
     # Sort by relevance
-    sorted_results = sorted(results_map.values(), key=lambda x: x["relevance"], reverse=True)[:limit]
+    sorted_results = sorted(
+        results_map.values(), key=lambda x: x["relevance"], reverse=True
+    )[:limit]
 
     return [
         {
@@ -391,14 +400,15 @@ async def create_post(
         await db.rollback()
         # Handle unique constraint on slug potentially
         import random
+
         post.slug = f"{post_data.slug}-{random.randint(1000, 9999)}"
         db.add(post)
         try:
             await db.commit()
             print("DEBUG: create_post retry commit success")
         except Exception as e2:
-             print(f"DEBUG: create_post retry commit failed: {e2}")
-             raise e2
+            print(f"DEBUG: create_post retry commit failed: {e2}")
+            raise e2
     await db.refresh(post)
 
     return PostResponse(
@@ -473,7 +483,9 @@ async def suggest_post_details_endpoint(
     if not request.field or request.field == "all":
         return await suggest_post_details(request.content, current_user.gemini_api_key)
 
-    return await suggest_field(request.content, request.field, current_user.gemini_api_key)
+    return await suggest_field(
+        request.content, request.field, current_user.gemini_api_key
+    )
 
 
 @router.post("/suggest-tags")
@@ -483,7 +495,9 @@ async def suggest_tags_endpoint(
     """Suggest tags for a post using AI."""
     from app.services.ai import suggest_tags
 
-    tags = await suggest_tags(request.title, request.content, current_user.gemini_api_key)
+    tags = await suggest_tags(
+        request.title, request.content, current_user.gemini_api_key
+    )
     return {"tags": tags}
 
 
@@ -505,41 +519,41 @@ async def generate_post_endpoint(
     from app.services.ai import generate_full_post
 
     generated_data = await generate_full_post(
-        topic=request.topic, 
-        keywords=request.keywords, 
+        topic=request.topic,
+        keywords=request.keywords,
         language=request.language,
-        user_api_key=current_user.gemini_api_key
+        user_api_key=current_user.gemini_api_key,
     )
-    
+
     if not generated_data:
         raise HTTPException(status_code=500, detail="Failed to generate post content")
-        
+
     # Create the post structure
     # We need to generate an embedding for it too
-    
+
     title = generated_data.get("title", "Untitled Post")
     content = generated_data.get("content", "")
     slug = generated_data.get("slug", "")
     summary = generated_data.get("summary", "")
     tags = generated_data.get("tags", [])
-    
+
     # Ensure slug is unique-ish? For now let DB handle unique constraint error or append timestamp
     # But usually user will edit it.
-    
+
     text_for_embedding = f"{title}\n\n{content}"
     embedding = await get_embedding(text_for_embedding)
-    
+
     post = Post(
         title=title,
         slug=slug,
         content=content,
         summary=summary,
         language=request.language,
-        published=False, # Draft by default
+        published=False,  # Draft by default
         tags=tags,
         embedding=embedding,
     )
-    
+
     try:
         db.add(post)
         await db.commit()
@@ -549,14 +563,15 @@ async def generate_post_endpoint(
         await db.rollback()
         # Handle unique constraint on slug potentially
         import random
+
         post.slug = f"{slug}-{random.randint(1000, 9999)}"
         db.add(post)
         try:
             await db.commit()
             print("DEBUG: create_post retry commit success")
         except Exception as e2:
-             print(f"DEBUG: create_post retry commit failed: {e2}")
-             raise e2
+            print(f"DEBUG: create_post retry commit failed: {e2}")
+            raise e2
         await db.refresh(post)
 
     return PostResponse(
@@ -660,20 +675,20 @@ async def upload_post_image(
     """
     result = await db.execute(select(Post).where(Post.id == post_id))
     post = result.scalar_one_or_none()
-    
+
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
     # Read file content
     content = await file.read()
-    
+
     # Update post
     post.image_blob = content
     post.image_type = file.content_type
-    
+
     # Clear external URL if a file is uploaded
-    post.image_url = None 
-    
+    post.image_url = None
+
     await db.commit()
     await db.refresh(post)
     return PostResponse(
@@ -683,7 +698,7 @@ async def upload_post_image(
         content=post.content,
         summary=post.summary,
         # image_url handled by validator/alias from display_image_url property
-        image_url=post.display_image_url, 
+        image_url=post.display_image_url,
         language=post.language,
         published=post.published,
         tags=post.tags,
@@ -701,10 +716,12 @@ async def get_post_image(
     Get the image for a blog post.
     """
     from sqlalchemy.orm import undefer
-    result = await db.execute(select(Post).options(undefer(Post.image_blob)).where(Post.id == post_id))
+
+    result = await db.execute(
+        select(Post).options(undefer(Post.image_blob)).where(Post.id == post_id)
+    )
     post = result.scalar_one_or_none()
 
-    
     if not post or not post.image_blob:
         raise HTTPException(status_code=404, detail="Image not found")
 
@@ -712,7 +729,5 @@ async def get_post_image(
     from starlette.responses import StreamingResponse
 
     return StreamingResponse(
-        BytesIO(post.image_blob), 
-        media_type=post.image_type or "image/jpeg"
+        BytesIO(post.image_blob), media_type=post.image_type or "image/jpeg"
     )
-

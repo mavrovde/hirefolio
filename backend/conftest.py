@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 # Global mocks for dependencies that require Rust/tiktoken or other system deps
 # Must be before any 'app' imports which might trigger nested imports of these
 
+
 # Langchain and other external mocks
 def mock_module(name):
     # Use a fresh MagicMock for each module to avoid shared side_effect exhaustion
@@ -11,6 +12,7 @@ def mock_module(name):
     m.__name__ = name
     sys.modules[name] = m
     return m
+
 
 mock_module("tiktoken")
 mock_module("langchain")
@@ -32,19 +34,21 @@ mock_numpy.ndarray = MagicMock
 from sqlalchemy.types import UserDefinedType  # noqa: E402
 from sqlalchemy.sql import expression  # noqa: E402
 
+
 class MockVector(UserDefinedType):
     def __init__(self, dim=None):
         self.dim = dim
-    
+
     def get_col_spec(self, **kw):
         return "VECTOR"
-        
+
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
                 return None
             # Convert list/array to string format "[1.0, 2.0, ...]" for postgres
             return str(list(value))
+
         return process
 
     def result_processor(self, dialect, coltype):
@@ -55,19 +59,22 @@ class MockVector(UserDefinedType):
                 # asyncpg might return the vector as a string if types aren't registered
                 # format is usually "[0.1,0.2,...]"
                 import json
+
                 try:
                     return json.loads(value)
                 except Exception:
                     # Fallback for simple parsing if json fails (postgres format)
                     return [float(x) for x in value.strip("[]").split(",")]
             return value
+
         return process
-        
+
     class Comparator(UserDefinedType.Comparator):
         def cosine_distance(self, other):
-            return expression.literal_column("0.5") # Mock distance
+            return expression.literal_column("0.5")  # Mock distance
 
     comparator_factory = Comparator
+
 
 mock_pgvector = mock_module("pgvector")
 mock_pgvector_sqla = mock_module("pgvector.sqlalchemy")
@@ -75,25 +82,39 @@ mock_pgvector_sqla.Vector = MockVector
 
 # Special handling for classes that are inherited from
 mock_lc_callbacks = mock_module("langchain_core.callbacks")
+
+
 class BaseCallbackHandler:
     pass
+
+
 mock_lc_callbacks.BaseCallbackHandler = BaseCallbackHandler
 
 mock_lc_comm_chat = mock_module("langchain_community.chat_models")
 mock_lc_comm_chat.ChatOllama = MagicMock
 
 mock_lc_tools = mock_module("langchain.tools")
+
+
 class BaseToolMock:
     name: str = ""
     description: str = ""
-    def __init__(self, *args, **kwargs): pass
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+
 mock_lc_tools.BaseTool = BaseToolMock
 
 # CrewAI mocks
 mock_crewai = mock_module("crewai")
+
+
 class MockProcess:
     sequential = "sequential"
     hierarchical = "hierarchical"
+
+
 mock_crewai.Process = MockProcess
 mock_crewai.Agent = MagicMock
 mock_crewai.Task = MagicMock
@@ -141,6 +162,7 @@ def get_test_async_session():
 async def init_db():
     """Initialize the database schema for each test."""
     from app.database import Base
+
     engine = get_test_engine()
 
     # Reset Database State
@@ -182,13 +204,13 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     # This ensures lifespan events use the TEST database, avoiding InvalidRequestError
     # and isolation issues.
     from unittest.mock import patch
-    
+
     # We need to catch where it is imported in main.py
     # app.main imports async_session from app.database
     # So we patch app.database.async_session BEFORE app startup
-    
+
     test_session_maker = get_test_async_session()
-    
+
     # We patch 'app.main.async_session' because that's where lifespan uses it
     p = patch("app.main.async_session", side_effect=test_session_maker)
     p.start()
@@ -242,12 +264,10 @@ def sample_post_data():
     }
 
 
-
-
 @pytest.fixture(scope="function")
 async def clean_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create a test client WITHOUT admin auth overrides.
-    
+
     Used for testing permission denied scenarios where we need real auth checks.
     """
     from app.main import app
@@ -280,7 +300,7 @@ async def clean_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 @pytest.fixture
 def admin_token_headers():
     """Return Authorization headers for admin user.
-    
+
     Auth is already overridden in the client fixture, so any Bearer token works.
     """
     return {"Authorization": "Bearer test-admin-token"}
@@ -290,4 +310,3 @@ def admin_token_headers():
 def normal_user_token_headers():
     """Return Authorization headers for a non-admin user."""
     return {"Authorization": "Bearer non-admin-token"}
-

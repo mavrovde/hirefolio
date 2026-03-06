@@ -12,26 +12,27 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.services.multi_chat import multi_agent_conversation, AgentConfig  # noqa: E402
 
+
 async def run_clean_transcript():
     agents = [
         AgentConfig(
-            id=1, 
-            name="Leo", 
-            role="Leo", 
-            goal="Risotto is about tradition and heart.", 
-            description="Loud old-school Italian chef."
+            id=1,
+            name="Leo",
+            role="Leo",
+            goal="Risotto is about tradition and heart.",
+            description="Loud old-school Italian chef.",
         ),
         AgentConfig(
-            id=2, 
-            name="Mia", 
-            role="Mia", 
-            goal="Risotto is about precision and science.", 
-            description="Cool analytical scientist."
-        )
+            id=2,
+            name="Mia",
+            role="Mia",
+            goal="Risotto is about precision and science.",
+            description="Cool analytical scientist.",
+        ),
     ]
     topic = "What is the secret to a perfect risotto?"
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("AGENT CONFIGURATIONS:")
     for agent in agents:
         print(f"Agent {agent.id}: {agent.name}")
@@ -39,7 +40,7 @@ async def run_clean_transcript():
         print(f" - Goal: {agent.goal}")
         print(f" - Description: {agent.description}")
         print("-" * 20)
-    print("="*50 + "\n")
+    print("=" * 50 + "\n")
 
     print(f"TOPIC: {topic}\n")
     print("--- CONVERSATION START ---\n")
@@ -51,10 +52,10 @@ async def run_clean_transcript():
                 data = json.loads(chunk)
                 if data.get("done"):
                     break
-                
+
                 agent_id = data.get("agent", 0)
                 content = data.get("content", "")
-                
+
                 if not content:
                     continue
 
@@ -64,14 +65,15 @@ async def run_clean_transcript():
                         print("\n", end="", flush=True)
                     print(f"[{name}]: ", end="", flush=True)
                     current_agent_id = agent_id
-                
+
                 print(content, end="", flush=True)
             except Exception:
                 pass
     except Exception as e:
         print(f"\nERROR: {e}")
-    
+
     print("\nTRANSCRIPT_END")
+
 
 if __name__ == "__main__":
     asyncio.run(run_clean_transcript())

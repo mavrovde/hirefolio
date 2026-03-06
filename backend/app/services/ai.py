@@ -7,6 +7,7 @@ from app.logger import get_logger
 
 try:
     from google import genai
+
     HAS_GEMINI = True
     print("DEBUG: google.genai imported successfully.")
 except ImportError as e:
@@ -19,17 +20,17 @@ logger = get_logger(__name__)
 def _get_gemini_client(user_api_key: Optional[str] = None):
     """Configures and returns a Gemini client instance."""
     api_key = user_api_key or settings.gemini_api_key
-    
+
     print(f"DEBUG: _get_gemini_client called. Has key? {bool(api_key)}")
 
     if not HAS_GEMINI:
         print("DEBUG: HAS_GEMINI is False.")
         return None
-        
+
     if not api_key:
         print("DEBUG: No API Key provided.")
         return None
-    
+
     try:
         client = genai.Client(api_key=api_key)
         print("DEBUG: Gemini Client created successfully.")
@@ -40,7 +41,9 @@ def _get_gemini_client(user_api_key: Optional[str] = None):
         return None
 
 
-async def _generate_text_gemini(prompt: str, user_api_key: Optional[str] = None) -> Optional[str]:
+async def _generate_text_gemini(
+    prompt: str, user_api_key: Optional[str] = None
+) -> Optional[str]:
     """Helper to generate text using Gemini, returning None if failed or not configured."""
     client = _get_gemini_client(user_api_key)
     if not client:
@@ -48,33 +51,33 @@ async def _generate_text_gemini(prompt: str, user_api_key: Optional[str] = None)
 
     try:
         # The new SDK might allow sync calls, but we should wrap in asyncio.to_thread if strictly sync
-        # Checking docs: client.models.generate_content is sync. 
+        # Checking docs: client.models.generate_content is sync.
         # We should use aio if available or run in thread.
         # Actually, for the new SDK, let's try the sync call first as it's safer than guessing async method names
-        # without documentation access. Fast generation is okayish for sync in a pinch, 
-        # but better to offload if possible. 
+        # without documentation access. Fast generation is okayish for sync in a pinch,
+        # but better to offload if possible.
         # However, for simplicity and correctness with the new SDK, we'll confirm strict usage.
-        
+
         # NOTE: The new SDK `google-genai` uses `client.models.generate_content`.
         response = client.models.generate_content(
-            model='gemini-2.0-flash', 
-            contents=prompt
+            model="gemini-2.0-flash", contents=prompt
         )
         return response.text
     except Exception:
         # Fallback to gemini-1.5-flash if 2.0 not available
         try:
-             response = client.models.generate_content(
-                model='gemini-1.5-flash', 
-                contents=prompt
+            response = client.models.generate_content(
+                model="gemini-1.5-flash", contents=prompt
             )
-             return response.text
+            return response.text
         except Exception as e2:
             logger.error(f"Gemini generation error: {e2}")
             return None
 
 
-async def suggest_tags(title: str, content: str, user_api_key: Optional[str] = None) -> list[str]:
+async def suggest_tags(
+    title: str, content: str, user_api_key: Optional[str] = None
+) -> list[str]:
     """
     Generate tag suggestions using Gemini (primary) or Ollama (fallback).
     Returns a list of strings (max 5).
@@ -94,7 +97,9 @@ async def suggest_tags(title: str, content: str, user_api_key: Optional[str] = N
     gemini_response = await _generate_text_gemini(prompt)
     if gemini_response:
         response_text = gemini_response
-        logger.info(f"Using Gemini for suggest_tags. Raw response: {response_text[:200]}...")
+        logger.info(
+            f"Using Gemini for suggest_tags. Raw response: {response_text[:200]}..."
+        )
     else:
         logger.info("Using Ollama for suggest_tags (fallback)")
         try:
@@ -112,7 +117,9 @@ async def suggest_tags(title: str, content: str, user_api_key: Optional[str] = N
                 data = response.json()
                 response_text = data.get("response", "")
         except Exception as e:
-            logger.error(f"Unexpected error in suggest_tags (Ollama): {e}", exc_info=True)
+            logger.error(
+                f"Unexpected error in suggest_tags (Ollama): {e}", exc_info=True
+            )
             response_text = ""
 
     # Process response_text (same logic for both)
@@ -121,7 +128,7 @@ async def suggest_tags(title: str, content: str, user_api_key: Optional[str] = N
         # Clean markdown code blocks if present (Gemini loves ```json ... ```)
         cleaned_text = re.sub(r"```json\s*|\s*```", "", response_text).strip()
         parsed_json = json.loads(cleaned_text)
-        
+
         if isinstance(parsed_json, list):
             tags = parsed_json
         elif isinstance(parsed_json, dict):
@@ -135,7 +142,17 @@ async def suggest_tags(title: str, content: str, user_api_key: Optional[str] = N
     # Process and filter tags
     processed_tags = []
     stop_words = {
-        "here", "are", "some", "tags", "the", "is", "for", "and", "title", "slug", "summary"
+        "here",
+        "are",
+        "some",
+        "tags",
+        "the",
+        "is",
+        "for",
+        "and",
+        "title",
+        "slug",
+        "summary",
     }
     for t in tags:
         t_str = str(t).lower().strip().replace(" ", "-")
@@ -158,7 +175,9 @@ async def suggest_tags(title: str, content: str, user_api_key: Optional[str] = N
     return processed_tags[:5]
 
 
-async def suggest_post_details(content: str, user_api_key: Optional[str] = None) -> dict[str, Union[str, List[str]]]:
+async def suggest_post_details(
+    content: str, user_api_key: Optional[str] = None
+) -> dict[str, Union[str, List[str]]]:
     """
     Generate title, slug, summary, and tags suggestions using Gemini (primary) or Ollama (fallback).
     """
@@ -180,7 +199,9 @@ async def suggest_post_details(content: str, user_api_key: Optional[str] = None)
     gemini_response = await _generate_text_gemini(prompt)
     if gemini_response:
         response_text = gemini_response
-        logger.info(f"Using Gemini for suggest_post_details. Raw response: {response_text[:200]}...")
+        logger.info(
+            f"Using Gemini for suggest_post_details. Raw response: {response_text[:200]}..."
+        )
     else:
         logger.info("Using Ollama for suggest_post_details (fallback)")
         try:
@@ -198,13 +219,15 @@ async def suggest_post_details(content: str, user_api_key: Optional[str] = None)
                 data = response.json()
                 response_text = data.get("response", "")
         except Exception as e:
-            logger.error(f"Unexpected error in suggest_post_details: {e}", exc_info=True)
+            logger.error(
+                f"Unexpected error in suggest_post_details: {e}", exc_info=True
+            )
             return {"title": "", "slug": "", "summary": "", "tags": []}
 
     try:
         cleaned_text = re.sub(r"```json\s*|\s*```", "", response_text).strip()
         details = json.loads(cleaned_text)
-        
+
         if isinstance(details, dict):
             clean_details: dict[str, Union[str, list[str]]] = {}
             for k, v in details.items():
@@ -216,11 +239,18 @@ async def suggest_post_details(content: str, user_api_key: Optional[str] = None)
                                 clean_tags.append(t.strip().strip('"').strip("'"))
                         clean_details[k] = clean_tags[:5]
                     elif isinstance(v, str):
-                        clean_details[k] = [t.strip() for t in v.split(",") if t.strip()][:5]
+                        clean_details[k] = [
+                            t.strip() for t in v.split(",") if t.strip()
+                        ][:5]
                     else:
                         clean_details[k] = []
                 elif isinstance(v, str):
-                    v = re.sub(r"^(title|slug|summary|suggestion|description):\s*", "", v, flags=re.IGNORECASE)
+                    v = re.sub(
+                        r"^(title|slug|summary|suggestion|description):\s*",
+                        "",
+                        v,
+                        flags=re.IGNORECASE,
+                    )
                     clean_details[k] = v.strip().strip('"').strip("'")
                 else:
                     clean_details[k] = v
@@ -244,14 +274,18 @@ async def suggest_post_details(content: str, user_api_key: Optional[str] = None)
         return {
             "title": title_match.group(1) if title_match else "Suggested Title",
             "slug": slug_match.group(1) if slug_match else "suggested-slug",
-            "summary": summary_match.group(1) if summary_match else "Suggested summary...",
+            "summary": summary_match.group(1)
+            if summary_match
+            else "Suggested summary...",
             "tags": tags,
         }
 
     return {"title": "", "slug": "", "summary": "", "tags": []}
 
 
-async def suggest_field(content: str, field: str, user_api_key: Optional[str] = None) -> dict[str, str]:
+async def suggest_field(
+    content: str, field: str, user_api_key: Optional[str] = None
+) -> dict[str, str]:
     """
     Generate a suggestion for a single field using Gemini (primary) or Ollama (fallback).
     """
@@ -291,13 +325,19 @@ async def suggest_field(content: str, field: str, user_api_key: Optional[str] = 
             return {field: ""}
 
     suggestion = response_text.strip()
-    suggestion = re.sub(r"^(title|slug|summary|suggestion|description):\s*", "", suggestion, flags=re.IGNORECASE)
+    suggestion = re.sub(
+        r"^(title|slug|summary|suggestion|description):\s*",
+        "",
+        suggestion,
+        flags=re.IGNORECASE,
+    )
     suggestion = suggestion.strip().strip('"').strip("'")
     return {field: suggestion}
 
 
-
-async def chat_with_gemini(message: str, history: List[dict] = [], user_api_key: Optional[str] = None) -> str:
+async def chat_with_gemini(
+    message: str, history: List[dict] = [], user_api_key: Optional[str] = None
+) -> str:
     """
     Chat with Gemini model, maintaining conversation history.
     """
@@ -315,36 +355,35 @@ async def chat_with_gemini(message: str, history: List[dict] = [], user_api_key:
             content = msg.get("content", "")
             if content:
                 gemini_history.append({"role": role, "parts": [{"text": content}]})
-        
+
         # Use a model that supports chat
-        chat = client.chats.create(
-            model='gemini-2.0-flash',
-            history=gemini_history
-        )
-        
+        chat = client.chats.create(model="gemini-2.0-flash", history=gemini_history)
+
         response = chat.send_message(message)
         return response.text
     except Exception:
         # Fallback to 1.5
         try:
-             chat = client.chats.create(
-                model='gemini-1.5-flash',
-                history=gemini_history
-            )
-             response = chat.send_message(message)
-             return response.text
+            chat = client.chats.create(model="gemini-1.5-flash", history=gemini_history)
+            response = chat.send_message(message)
+            return response.text
         except Exception as e2:
             logger.error(f"Error in chat_with_gemini: {e2}", exc_info=True)
             return f"Error: {str(e2)}"
 
 
-async def generate_full_post(topic: str, keywords: List[str] = [], language: str = "en", user_api_key: Optional[str] = None) -> dict[str, Union[str, List[str]]]:
+async def generate_full_post(
+    topic: str,
+    keywords: List[str] = [],
+    language: str = "en",
+    user_api_key: Optional[str] = None,
+) -> dict[str, Union[str, List[str]]]:
     """
     Generate a complete blog post including title, slug, summary, tags, and markdown content.
     Returns a dictionary with these fields.
     """
     keywords_str = ", ".join(keywords) if keywords else "general tech topics"
-    
+
     prompt = f"""
     You are a professional technical blog writer.
     Write a comprehensive, engaging, and SEO-optimized blog post about: "{topic}".
@@ -373,7 +412,7 @@ async def generate_full_post(topic: str, keywords: List[str] = [], language: str
     # Try Gemini first
     gemini_response = await _generate_text_gemini(prompt)
     response_text = ""
-    
+
     if gemini_response:
         response_text = gemini_response
         logger.info("Using Gemini for generate_full_post")
@@ -385,7 +424,7 @@ async def generate_full_post(topic: str, keywords: List[str] = [], language: str
                 response = await client.post(
                     f"{settings.ollama_url}/api/generate",
                     json={
-                        "model": settings.fast_generation_model, # Might need a larger model for full posts
+                        "model": settings.fast_generation_model,  # Might need a larger model for full posts
                         "prompt": prompt,
                         "stream": False,
                         "format": "json",
@@ -403,29 +442,32 @@ async def generate_full_post(topic: str, keywords: List[str] = [], language: str
         # Robust extraction: find first { and last }
         start_idx = response_text.find("{")
         end_idx = response_text.rfind("}")
-        
+
         if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            cleaned_text = response_text[start_idx:end_idx+1]
+            cleaned_text = response_text[start_idx : end_idx + 1]
             post_data = json.loads(cleaned_text)
         else:
             # Fallback to regex if braces not found (unlikely for valid JSON)
             cleaned_text = re.sub(r"```json\s*|\s*```", "", response_text).strip()
             post_data = json.loads(cleaned_text)
-        
+
         # Validate structure
         required_keys = ["title", "slug", "summary", "tags", "content"]
         if all(k in post_data for k in required_keys):
-             # basic cleaning
-            post_data["tags"] = [str(t).strip() for t in post_data["tags"] if isinstance(t, str)][:5]
+            # basic cleaning
+            post_data["tags"] = [
+                str(t).strip() for t in post_data["tags"] if isinstance(t, str)
+            ][:5]
             return post_data
         else:
-             logger.warning(f"Generated post details missing keys: {post_data.keys()}")
-             return {}
-             
+            logger.warning(f"Generated post details missing keys: {post_data.keys()}")
+            return {}
+
     except json.JSONDecodeError:
-        logger.error(f"Failed to decode JSON from generate_full_post response: {response_text[:100]}...")
+        logger.error(
+            f"Failed to decode JSON from generate_full_post response: {response_text[:100]}..."
+        )
         return {}
     except Exception as e:
-         logger.error(f"Error processing generated post: {e}", exc_info=True)
-         return {}
-
+        logger.error(f"Error processing generated post: {e}", exc_info=True)
+        return {}

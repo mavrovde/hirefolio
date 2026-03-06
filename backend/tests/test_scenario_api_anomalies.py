@@ -63,7 +63,9 @@ async def test_get_draft_post_as_anon(client: AsyncClient, mock_embedding):
 
 @pytest.mark.asyncio
 async def test_update_post_not_found(client: AsyncClient):
-    response = await client.put(f"{settings.api_prefix}/posts/999999", json={"title": "New"})
+    response = await client.put(
+        f"{settings.api_prefix}/posts/999999", json={"title": "New"}
+    )
     assert response.status_code == 404
 
 
@@ -84,7 +86,9 @@ async def test_update_post_partial(client: AsyncClient, mock_embedding):
 
     # Update only title
     with patch("app.services.embeddings.get_embedding", return_value=mock_embedding):
-        response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json={"title": "New"})
+        response = await client.put(
+            f"{settings.api_prefix}/posts/{post_id}", json={"title": "New"}
+        )
 
     assert response.status_code == 200
     data = response.json()
@@ -142,7 +146,9 @@ async def test_semantic_search_with_results(client: AsyncClient, mock_embedding)
         )
 
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=query")
+        response = await client.get(
+            f"{settings.api_prefix}/posts/search/semantic?q=query"
+        )
 
     assert response.status_code == 200
     assert len(response.json()) > 0
@@ -151,7 +157,9 @@ async def test_semantic_search_with_results(client: AsyncClient, mock_embedding)
 @pytest.mark.asyncio
 async def test_semantic_search_no_language_filter(client: AsyncClient, mock_embedding):
     with patch("app.api.posts.get_embedding", return_value=mock_embedding):
-        response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=query&lang=")
+        response = await client.get(
+            f"{settings.api_prefix}/posts/search/semantic?q=query&lang="
+        )
 
     assert response.status_code == 200
 
@@ -195,7 +203,9 @@ async def test_update_post_too_many_tags(client: AsyncClient, mock_embedding):
 
     # Update with too many tags
     tags = [f"tag{i}" for i in range(6)]
-    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json={"tags": tags})
+    response = await client.put(
+        f"{settings.api_prefix}/posts/{post_id}", json={"tags": tags}
+    )
     assert response.status_code == 422
     assert "Max 5 tags allowed" in response.text
 
@@ -204,7 +214,9 @@ async def test_update_post_too_many_tags(client: AsyncClient, mock_embedding):
 async def test_semantic_search_embedding_unavailable(client: AsyncClient):
     """Test semantic search when embedding service fails (returns None)."""
     with patch("app.api.posts.get_embedding", return_value=None):
-        response = await client.get(f"{settings.api_prefix}/posts/search/semantic?q=query")
+        response = await client.get(
+            f"{settings.api_prefix}/posts/search/semantic?q=query"
+        )
 
     assert response.status_code == 200
     # Should return empty list (or keyword results if any match)

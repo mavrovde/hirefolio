@@ -25,7 +25,6 @@ async def test_list_posts_with_data(client: AsyncClient, mock_embedding, mocker)
         },
     ]
 
-
     for post in posts:
         await client.post(f"{settings.api_prefix}/posts", json=post)
 
@@ -40,7 +39,9 @@ async def test_list_posts_with_data(client: AsyncClient, mock_embedding, mocker)
     assert "created_at" in items[0]
 
     # Test with language filter
-    response = await client.get(f"{settings.api_prefix}/posts?lang=de&published_only=false")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?lang=de&published_only=false"
+    )
     assert response.status_code == 200
     data = response.json()
     items = data["items"]
@@ -59,7 +60,6 @@ async def test_get_post_full_response(client: AsyncClient, mock_embedding, mocke
         "language": "en",
         "published": True,
     }
-
 
     create_response = await client.post(f"{settings.api_prefix}/posts", json=post_data)
 
@@ -99,7 +99,6 @@ async def test_update_post_full_response(client: AsyncClient, mock_embedding, mo
         "published": False,
     }
 
-
     create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
     post_id = create_resp.json()["id"]
 
@@ -112,7 +111,9 @@ async def test_update_post_full_response(client: AsyncClient, mock_embedding, mo
         "published": True,
     }
 
-    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
+    response = await client.put(
+        f"{settings.api_prefix}/posts/{post_id}", json=update_data
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -155,7 +156,6 @@ async def test_similar_posts_with_results(client: AsyncClient, mock_embedding, m
             "published": True,
         },
     ]
-
 
     for post in posts:
         await client.post(f"{settings.api_prefix}/posts", json=post)

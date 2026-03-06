@@ -5,12 +5,13 @@ from app.models.user import User
 from sqlalchemy import select
 from app.config import settings
 
+
 async def check_create_admin():
     async for session in get_async_session():
         print("Checking for admin user...")
         result = await session.execute(select(User).where(User.username == "admin"))
         user = result.scalar_one_or_none()
-        
+
         if user:
             print(f"Admin user found: {user.username}")
             # Reset password to ensure it's admin123
@@ -26,12 +27,13 @@ async def check_create_admin():
                 hashed_password=get_password_hash("admin123"),
                 is_active=True,
                 is_admin=True,
-                gemini_api_key=settings.gemini_api_key or "test-key"
+                gemini_api_key=settings.gemini_api_key or "test-key",
             )
             session.add(new_admin)
             await session.commit()
             print("Admin user created.")
         break
+
 
 if __name__ == "__main__":
     asyncio.run(check_create_admin())

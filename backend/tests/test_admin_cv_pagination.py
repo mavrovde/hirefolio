@@ -46,13 +46,17 @@ async def test_cv_requests_search(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Search for "Docker"
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?search=Docker")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?search=Docker"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 2  # John Docker and bob@docker.io
 
     # Search for "Python"
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?search=Python")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?search=Python"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1  # Jane Python (Python in name and company)
@@ -80,14 +84,18 @@ async def test_cv_requests_sorting(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Sort by name ascending
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?sort_by=name&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?sort_by=name&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "Alpha User"
     assert data["items"][2]["name"] == "Zebra User"
 
     # Sort by name descending
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?sort_by=name&sort_order=desc")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?sort_by=name&sort_order=desc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "Zebra User"
@@ -112,7 +120,9 @@ async def test_cv_requests_pagination(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Get first page
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?page=1&page_size=10")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?page=1&page_size=10"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 15
@@ -120,7 +130,9 @@ async def test_cv_requests_pagination(client: AsyncClient, db_session):
     assert data["total_pages"] == 2
 
     # Get second page
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?page=2&page_size=10")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?page=2&page_size=10"
+    )
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 5
@@ -185,7 +197,9 @@ async def test_cv_versions_sorting(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Sort by version ascending
-    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?sort_by=version&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/versions?sort_by=version&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["version"] == "1.0"
@@ -219,7 +233,9 @@ async def test_cv_versions_pagination(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Get first page
-    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?page=1&page_size=5")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/versions?page=1&page_size=5"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 12
@@ -227,7 +243,9 @@ async def test_cv_versions_pagination(client: AsyncClient, db_session):
     assert data["total_pages"] == 3
 
     # Get last page
-    response = await client.get(f"{settings.api_prefix}/admin/cv/versions?page=3&page_size=5")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/versions?page=3&page_size=5"
+    )
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 2

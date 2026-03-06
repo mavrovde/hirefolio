@@ -129,9 +129,9 @@ class LinkedInService:
                     if isinstance(img, dict):
                         artifacts = img.get("attributes", [])
                         if artifacts:
-                            image_url = artifacts[0].get(
-                                "vectorImage", {}
-                            ).get("rootUrl", "")
+                            image_url = (
+                                artifacts[0].get("vectorImage", {}).get("rootUrl", "")
+                            )
 
             if not commentary:
                 return None

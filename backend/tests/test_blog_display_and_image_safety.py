@@ -2,6 +2,7 @@
 Tests for blog display: initial load 10, load more 5.
 These tests verify the pagination behavior expected by the frontend blog component.
 """
+
 from app.config import settings
 import pytest
 from httpx import AsyncClient
@@ -11,7 +12,9 @@ API_PREFIX = settings.api_prefix
 
 
 @pytest.mark.asyncio
-async def test_blog_initial_load_10_then_load_more_5(client: AsyncClient, mock_embedding):
+async def test_blog_initial_load_10_then_load_more_5(
+    client: AsyncClient, mock_embedding
+):
     """Test the blog visitor flow: load 10 initially, then 5 more at a time."""
     # Create 18 published posts
     for i in range(18):
@@ -28,7 +31,9 @@ async def test_blog_initial_load_10_then_load_more_5(client: AsyncClient, mock_e
         )
 
     # Initial load: page 1, page_size=10 (visitor opens the page)
-    response = await client.get(f"{API_PREFIX}/posts?page=1&page_size=10&published_only=true")
+    response = await client.get(
+        f"{API_PREFIX}/posts?page=1&page_size=10&published_only=true"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 18
@@ -38,7 +43,9 @@ async def test_blog_initial_load_10_then_load_more_5(client: AsyncClient, mock_e
     assert data["total_pages"] == 2
 
     # Load more: page 2, page_size=5 (visitor clicks "Load More")
-    response = await client.get(f"{API_PREFIX}/posts?page=2&page_size=5&published_only=true")
+    response = await client.get(
+        f"{API_PREFIX}/posts?page=2&page_size=5&published_only=true"
+    )
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 5
@@ -47,14 +54,18 @@ async def test_blog_initial_load_10_then_load_more_5(client: AsyncClient, mock_e
     assert data["total_pages"] == 4  # ceil(18/5) = 4
 
     # Load more again: page 3, page_size=5
-    response = await client.get(f"{API_PREFIX}/posts?page=3&page_size=5&published_only=true")
+    response = await client.get(
+        f"{API_PREFIX}/posts?page=3&page_size=5&published_only=true"
+    )
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 5
     assert data["page"] == 3
 
     # Load more: page 4, page_size=5 (last page)
-    response = await client.get(f"{API_PREFIX}/posts?page=4&page_size=5&published_only=true")
+    response = await client.get(
+        f"{API_PREFIX}/posts?page=4&page_size=5&published_only=true"
+    )
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 3  # 18 - 5*3 = 3 remaining

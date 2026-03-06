@@ -30,7 +30,6 @@ async def test_create_post(client: AsyncClient, mock_embedding, mocker):
     # Use mocker to patch like in test_api_tags.py
     # pytest-mock handles async/await for return_value automatically if target is async
 
-    
     response = await client.post(f"{settings.api_prefix}/posts", json=post_data)
 
     assert response.status_code == 200
@@ -54,7 +53,6 @@ async def test_get_post(client: AsyncClient, mock_embedding, mocker):
         "language": "en",
         "published": True,
     }
-
 
     await client.post(f"{settings.api_prefix}/posts", json=post_data)
 
@@ -86,7 +84,6 @@ async def test_update_post(client: AsyncClient, mock_embedding, mocker):
         "published": False,
     }
 
-
     resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
     post_id = resp.json()["id"]
 
@@ -96,7 +93,9 @@ async def test_update_post(client: AsyncClient, mock_embedding, mocker):
         "published": True,
     }
 
-    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
+    response = await client.put(
+        f"{settings.api_prefix}/posts/{post_id}", json=update_data
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -114,7 +113,6 @@ async def test_delete_post(client: AsyncClient, mock_embedding, mocker):
         "content": "This will be deleted",
         "language": "en",
     }
-
 
     resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
     post_id = resp.json()["id"]
@@ -156,7 +154,6 @@ async def test_list_posts_with_filters(client: AsyncClient, mock_embedding, mock
         },
     ]
 
-
     for post in posts:
         await client.post(f"{settings.api_prefix}/posts", json=post)
 
@@ -169,7 +166,9 @@ async def test_list_posts_with_filters(client: AsyncClient, mock_embedding, mock
     assert all(p["published"] for p in data["items"])
 
     # Test language filter
-    response = await client.get(f"{settings.api_prefix}/posts?lang=de&published_only=true")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?lang=de&published_only=true"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
@@ -198,7 +197,6 @@ async def test_similar_posts(client: AsyncClient, mock_embedding, mocker):
         },
     ]
 
-
     for post in posts:
         await client.post(f"{settings.api_prefix}/posts", json=post)
 
@@ -220,7 +218,6 @@ async def test_semantic_search(client: AsyncClient, mock_embedding, mocker):
         "language": "en",
         "published": True,
     }
-
 
     await client.post(f"{settings.api_prefix}/posts", json=post_data)
 
@@ -256,7 +253,6 @@ async def test_get_post_by_id(client: AsyncClient, mock_embedding, mocker):
         "published": True,
     }
 
-
     create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
     created_post = create_resp.json()
     post_id = created_post["id"]
@@ -287,13 +283,14 @@ async def test_update_post_by_id(client: AsyncClient, mock_embedding, mocker):
         "published": True,
     }
 
-
     create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
     post_id = create_resp.json()["id"]
 
     update_data = {"title": "Updated via ID", "content": "New Content"}
 
-    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
+    response = await client.put(
+        f"{settings.api_prefix}/posts/{post_id}", json=update_data
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -312,7 +309,6 @@ async def test_delete_post_by_id(client: AsyncClient, mock_embedding, mocker):
         "language": "en",
         "published": True,
     }
-
 
     create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
     post_id = create_resp.json()["id"]
@@ -344,7 +340,8 @@ async def test_suggest_details_endpoint_all(client: AsyncClient, mocker):
     mock_res = {"title": "T", "slug": "s", "summary": "Sum", "tags": []}
     mock = mocker.patch("app.services.ai.suggest_post_details", return_value=mock_res)
     response = await client.post(
-        f"{settings.api_prefix}/posts/suggest-details", json={"content": "C", "field": "all"}
+        f"{settings.api_prefix}/posts/suggest-details",
+        json={"content": "C", "field": "all"},
     )
     assert response.status_code == 200
     assert response.json() == mock_res
@@ -358,7 +355,8 @@ async def test_suggest_details_endpoint_single_field(client: AsyncClient, mocker
         "app.services.ai.suggest_field", return_value={"title": "Suggested"}
     )
     response = await client.post(
-        f"{settings.api_prefix}/posts/suggest-details", json={"content": "C", "field": "title"}
+        f"{settings.api_prefix}/posts/suggest-details",
+        json={"content": "C", "field": "title"},
     )
     assert response.status_code == 200
     assert response.json() == {"title": "Suggested"}

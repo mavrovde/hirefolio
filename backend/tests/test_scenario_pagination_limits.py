@@ -228,7 +228,9 @@ async def test_posts_sort_with_null_values(client: AsyncClient, db_session):
         db_session.add(p)
     await db_session.commit()
 
-    response = await client.get(f"{settings.api_prefix}/posts?sort_by=summary&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=summary&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 3

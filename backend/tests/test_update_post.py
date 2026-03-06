@@ -21,7 +21,9 @@ async def test_update_post_flow(client: AsyncClient):
 
     # 2. Update
     update_data = {"title": "Updated Title", "content": "Updated Content"}
-    resp_update = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
+    resp_update = await client.put(
+        f"{settings.api_prefix}/posts/{post_id}", json=update_data
+    )
     assert resp_update.status_code == 200
     updated_post = resp_update.json()
     assert updated_post["title"] == "Updated Title"

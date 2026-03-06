@@ -48,7 +48,11 @@ async def test_real_multi_chat_ollama_connection():
                         break
 
                     # If we got valid content from an agent, that's a huge success
-                    if data.get("agent") and data.get("agent") > 0 and len(data.get("content", "")) > 0:
+                    if (
+                        data.get("agent")
+                        and data.get("agent") > 0
+                        and len(data.get("content", "")) > 0
+                    ):
                         print(">> agent content received!")
                         # We can break early if we confirmed we got a real response
                         break
@@ -60,11 +64,15 @@ async def test_real_multi_chat_ollama_connection():
                     break
 
     except asyncio.TimeoutError:
-        print("Test timed out waiting for Ollama response. This might be due to model loading.")
+        print(
+            "Test timed out waiting for Ollama response. This might be due to model loading."
+        )
         # If we got at least some chunks (e.g. system init), we might still consider partial success,
         # but for now let's fail if we didn't get agent content.
         if not any("agent" in c for c in chunks):
-             pytest.skip("Test timed out: No agent content received from Ollama. Skipping to unblock release.")
+            pytest.skip(
+                "Test timed out: No agent content received from Ollama. Skipping to unblock release."
+            )
 
     except Exception as e:
         pytest.fail(f"Multi-chat execution failed with error: {e}")

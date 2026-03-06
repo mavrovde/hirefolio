@@ -144,7 +144,9 @@ async def test_download_cv_with_tracking(client, db_session):
     await db_session.commit()
 
     # Download with req_id
-    response = await client.get(f"{settings.api_prefix}/cv/download?req_id={str(req_id)}")
+    response = await client.get(
+        f"{settings.api_prefix}/cv/download?req_id={str(req_id)}"
+    )
     assert response.status_code == 200
     assert response.content == b"pdf data"
 

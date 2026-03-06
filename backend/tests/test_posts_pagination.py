@@ -105,7 +105,9 @@ async def test_sorting_by_field(client: AsyncClient, mock_embedding):
         await client.post(f"{settings.api_prefix}/posts", json=post)
 
     # Sort by title ascending
-    response = await client.get(f"{settings.api_prefix}/posts?sort_by=title&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=title&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["title"] == "Alpha"
@@ -113,7 +115,9 @@ async def test_sorting_by_field(client: AsyncClient, mock_embedding):
     assert data["items"][2]["title"] == "Zebra"
 
     # Sort by title descending
-    response = await client.get(f"{settings.api_prefix}/posts?sort_by=title&sort_order=desc")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=title&sort_order=desc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["title"] == "Zebra"
@@ -138,14 +142,18 @@ async def test_sorting_by_created_at(client: AsyncClient, mock_embedding):
         )
 
     # Default sort is created_at desc (newest first)
-    response = await client.get(f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=desc")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=desc"
+    )
     assert response.status_code == 200
     data = response.json()
     # Most recent post should be first
     assert data["items"][0]["title"] == "Post 2"
 
     # Sort ascending (oldest first)
-    response = await client.get(f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["title"] == "Post 0"
@@ -168,7 +176,9 @@ async def test_sorting_invalid_field(client: AsyncClient, mock_embedding):
         )
 
     # Try to sort by non-existent field
-    response = await client.get(f"{settings.api_prefix}/posts?sort_by=invalid_field&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=invalid_field&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     # Should fall back to created_at desc

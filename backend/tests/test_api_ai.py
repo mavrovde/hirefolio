@@ -14,7 +14,8 @@ async def test_chat_endpoint(mock_chat_service, client: AsyncClient):
     mock_chat_service.side_effect = mock_generator
 
     response = await client.post(
-        f"{settings.api_prefix}/ai/chat", json={"messages": [{"role": "user", "content": "hello"}]}
+        f"{settings.api_prefix}/ai/chat",
+        json={"messages": [{"role": "user", "content": "hello"}]},
     )
 
     assert response.status_code == 200
@@ -30,7 +31,8 @@ async def test_generate_name_success(mock_chat_service, client: AsyncClient):
     mock_chat_service.side_effect = mock_generator
 
     response = await client.post(
-        f"{settings.api_prefix}/ai/generate-name", json={"description": "A skeptic and philosopher"}
+        f"{settings.api_prefix}/ai/generate-name",
+        json={"description": "A skeptic and philosopher"},
     )
 
     assert response.status_code == 200
@@ -54,14 +56,16 @@ async def test_generate_name_exception_fallback(mock_chat_service, client: Async
 
 @pytest.mark.asyncio
 async def test_gemini_chat_endpoint(client: AsyncClient):
-    with patch("app.services.ai.chat_with_gemini", return_value="Chat Response") as mock_chat:
+    with patch(
+        "app.services.ai.chat_with_gemini", return_value="Chat Response"
+    ) as mock_chat:
         response = await client.post(
             f"{settings.api_prefix}/ai/gemini-chat",
-            json={"messages": [{"role": "user", "content": "Hello"}]}
+            json={"messages": [{"role": "user", "content": "Hello"}]},
         )
         assert response.status_code == 200
         assert response.json() == {"response": "Chat Response"}
-        
+
         # Verify call arguments
         # history should be empty list (slice [:-1] of 1 item is empty)
         # last message "Hello"
@@ -74,19 +78,19 @@ async def test_gemini_chat_endpoint_with_history(client: AsyncClient):
     messages = [
         {"role": "user", "content": "Hi"},
         {"role": "model", "content": "Hello"},
-        {"role": "user", "content": "How are you?"}
+        {"role": "user", "content": "How are you?"},
     ]
-    with patch("app.services.ai.chat_with_gemini", return_value="I am good") as mock_chat:
+    with patch(
+        "app.services.ai.chat_with_gemini", return_value="I am good"
+    ) as mock_chat:
         response = await client.post(
-            f"{settings.api_prefix}/ai/gemini-chat",
-            json={"messages": messages}
+            f"{settings.api_prefix}/ai/gemini-chat", json={"messages": messages}
         )
         assert response.status_code == 200
         assert response.json() == {"response": "I am good"}
-        
-        mock_chat.assert_called_with(
-            "How are you?", 
-            [{"role": "user", "content": "Hi"}, {"role": "model", "content": "Hello"}],
-            None
-        )
 
+        mock_chat.assert_called_with(
+            "How are you?",
+            [{"role": "user", "content": "Hi"}, {"role": "model", "content": "Hello"}],
+            None,
+        )

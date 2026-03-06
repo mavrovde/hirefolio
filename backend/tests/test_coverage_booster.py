@@ -4,8 +4,10 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from app.services.multi_chat import multi_agent_conversation, AgentConfig
 from httpx import AsyncClient
 
+
 def log(msg):
     print(f"DEBUG_BOOSTER: {msg}")
+
 
 @pytest.mark.asyncio
 async def test_multi_agent_conversation_infra_error():
@@ -22,28 +24,32 @@ async def test_multi_agent_conversation_infra_error():
             items = [i async for i in gen]
             assert any("Infrastructure Error" in i for i in items)
 
+
 class MockStreamResponse:
     def __init__(self, lines, status_code=200):
         self.lines = lines
         self.status_code = status_code
+
     async def aiter_lines(self):
         for line in self.lines:
             yield line
         # Explicit return to avoid any implicit StopIteration issues
         return
+
     async def __aenter__(self):
         return self
+
     async def __aexit__(self, exc_type, exc, tb):
         pass
+
 
 @pytest.mark.asyncio
 async def test_multi_agent_conversation_json_error():
     log("test_json_error")
     agents = [AgentConfig(id=1, description="D", role="R")]
-    mock_resp = MockStreamResponse([
-        "{bad json}", 
-        '{"message": {"content": "OK_JSON"}, "done": true}'
-    ])
+    mock_resp = MockStreamResponse(
+        ["{bad json}", '{"message": {"content": "OK_JSON"}, "done": true}']
+    )
     with patch("app.services.multi_chat.settings") as mock_settings:
         mock_settings.ollama_url = "http://ok"
         mock_settings.generation_model = "m"
@@ -57,6 +63,7 @@ async def test_multi_agent_conversation_json_error():
             log(f"JSON ERROR RESULTS: {results}")
             # Even with JSON error, the second line should work
             assert any("OK_JSON" in r for r in results)
+
 
 @pytest.mark.asyncio
 async def test_multi_agent_conversation_fallback():
@@ -76,24 +83,33 @@ async def test_multi_agent_conversation_fallback():
             log(f"FALLBACK RESULTS: {results}")
             assert any("REACH_FOR_THE_STARS" in r for r in results)
 
+
 @pytest.mark.asyncio
 async def test_admin_cv_all_sort_branches(client: AsyncClient):
     log("test_admin_cv_sorting")
     # Hit EVERY branch in admin_cv.py
     for sort_by in ["name", "email", "company", "status", "created_at", "invalid"]:
         for sort_order in ["asc", "desc"]:
-            await client.get(f"{settings.api_prefix}/admin/cv/requests?sort_by={sort_by}&sort_order={sort_order}&search=test")
+            await client.get(
+                f"{settings.api_prefix}/admin/cv/requests?sort_by={sort_by}&sort_order={sort_order}&search=test"
+            )
 
     for sort_by in ["version", "filename", "created_at", "invalid"]:
         for sort_order in ["asc", "desc"]:
-            await client.get(f"{settings.api_prefix}/admin/cv/versions?sort_by={sort_by}&sort_order={sort_order}&search=v1")
+            await client.get(
+                f"{settings.api_prefix}/admin/cv/versions?sort_by={sort_by}&sort_order={sort_order}&search=v1"
+            )
+
 
 @pytest.mark.asyncio
 async def test_posts_all_sort_branches(client: AsyncClient, mock_embedding):
     log("test_posts_sorting")
     for sort_by in ["title", "created_at", "views", "invalid"]:
         for sort_order in ["asc", "desc"]:
-            await client.get(f"{settings.api_prefix}/posts?sort_by={sort_by}&sort_order={sort_order}&published_only=false")
+            await client.get(
+                f"{settings.api_prefix}/posts?sort_by={sort_by}&sort_order={sort_order}&published_only=false"
+            )
+
 
 @pytest.mark.asyncio
 async def test_cv_extended(client: AsyncClient):
@@ -101,5 +117,13 @@ async def test_cv_extended(client: AsyncClient):
     # Hit line 75->84, 86-100 in admin_cv via different status filters if any
     # Actually cv.py (public) also needs coverage
     await client.get(f"{settings.api_prefix}/cv")
-    await client.post(f"{settings.api_prefix}/cv/request", json={"name": "Name", "email": "e@t.com", "company": "C", "message": "Message Content"})
+    await client.post(
+        f"{settings.api_prefix}/cv/request",
+        json={
+            "name": "Name",
+            "email": "e@t.com",
+            "company": "C",
+            "message": "Message Content",
+        },
+    )
     await client.get(f"{settings.api_prefix}/cv/status/e@t.com")

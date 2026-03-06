@@ -8,12 +8,14 @@ mock_admin_user = User(
     id=1, username="admin", email="admin@example.com", is_admin=True, is_active=True
 )
 
+
 @pytest.fixture(autouse=True)
 def mock_embedding_service(mock_embedding):
     """Automatically mock get_embedding for all tests in this module."""
     with patch("app.api.posts.get_embedding", new_callable=AsyncMock) as mock_emb:
         mock_emb.return_value = mock_embedding
         yield mock_emb
+
 
 @pytest.mark.asyncio
 async def test_complete_post_workflow(client: AsyncClient):

@@ -24,7 +24,6 @@ class MultiChatRequest(BaseModel):
     topic: str
 
 
-
 @router.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     """
@@ -37,8 +36,7 @@ async def chat_endpoint(request: ChatRequest):
 
 @router.post("/gemini-chat")
 async def gemini_chat_endpoint(
-    request: ChatRequest,
-    current_user: User = Depends(get_current_admin_user)
+    request: ChatRequest, current_user: User = Depends(get_current_admin_user)
 ):
     """
     Chat with Gemini (non-streaming for now as per service implementation).
@@ -46,11 +44,13 @@ async def gemini_chat_endpoint(
     # Extract history and last message
     history = request.messages[:-1]
     last_message = request.messages[-1]["content"] if request.messages else ""
-    
-    from app.services.ai import chat_with_gemini
-    response = await chat_with_gemini(last_message, history, current_user.gemini_api_key)
-    return {"response": response}
 
+    from app.services.ai import chat_with_gemini
+
+    response = await chat_with_gemini(
+        last_message, history, current_user.gemini_api_key
+    )
+    return {"response": response}
 
 
 async def _generate_agent_name(description: str) -> str:

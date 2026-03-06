@@ -23,14 +23,16 @@ class Post(Base):
     content: Mapped[str] = mapped_column(Text)
     summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    image_blob: Mapped[Optional[bytes]] = deferred(mapped_column(LargeBinary, nullable=True))
+    image_blob: Mapped[Optional[bytes]] = deferred(
+        mapped_column(LargeBinary, nullable=True)
+    )
     image_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     language: Mapped[str] = mapped_column(String(2), default="en", index=True)
 
     @property
     def display_image_url(self) -> Optional[str]:
         if self.image_type:
-             return f"{settings.api_prefix}/posts/{self.id}/image"
+            return f"{settings.api_prefix}/posts/{self.id}/image"
         return self.image_url
 
     published: Mapped[bool] = mapped_column(Boolean, default=False)

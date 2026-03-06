@@ -105,15 +105,15 @@ async def test_main_cv_seeding_fallback_warning():
 async def test_main_migrations_column_exists():
     """Test migration skip path when columns already exist."""
     app = FastAPI()
-    
+
     # Use simpler mocking to avoid loop issues
     mock_conn = AsyncMock()
     mock_result = MagicMock()
     mock_result.__iter__.return_value = [
-        ("downloaded_at",), 
-        ("download_count",), 
+        ("downloaded_at",),
+        ("download_count",),
         ("position_description",),
-        ("subscribe_to_updates",)
+        ("subscribe_to_updates",),
     ]
     mock_conn.execute.return_value = mock_result
 
@@ -127,20 +127,21 @@ async def test_main_migrations_column_exists():
     mock_session = AsyncMock()
     mock_session_factory = MagicMock()
     mock_session_factory.return_value.__aenter__.return_value = mock_session
-    
+
     # Ensure seeding queries don't fail
     mock_session.execute.return_value = MagicMock()
 
     with (
         patch("app.main.engine", mock_engine),
         patch("app.main.async_session", mock_session_factory),
-        patch("os.path.exists", return_value=False)
+        patch("os.path.exists", return_value=False),
     ):
         async with lifespan(app):
             pass
 
     # Verify no ALTER TABLE was called
     calls = mock_conn.execute.call_args_list
+
     def get_sql(call):
         args = call[0]
         return args[0].text if hasattr(args[0], "text") else str(args[0])

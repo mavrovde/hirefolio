@@ -102,20 +102,24 @@ async def lifespan(app: FastAPI):
             f"[{datetime.now(timezone.utc)}] DB MIGRATION ERROR: Migration check: {e}"
         )
 
-
     # Check and seed default admin user if no users exist
     print(f"[{datetime.now(timezone.utc)}] DB SEED: Checking default admin user...")
-    
+
     # Load local env for development seeding (ignored in git)
     local_env_path = os.path.join(os.path.dirname(__file__), "..", ".env.local")
     gemini_key_seed = None
     if os.path.exists(local_env_path):
-        print(f"[{datetime.now(timezone.utc)}] DB SEED: Found local env file at {local_env_path}")
+        print(
+            f"[{datetime.now(timezone.utc)}] DB SEED: Found local env file at {local_env_path}"
+        )
         from dotenv import load_dotenv
+
         load_dotenv(local_env_path)
         gemini_key_seed = os.getenv("GEMINI_API_KEY")
         if gemini_key_seed:
-            print(f"[{datetime.now(timezone.utc)}] DB SEED: Loaded GEMINI_API_KEY from local env for seeding.")
+            print(
+                f"[{datetime.now(timezone.utc)}] DB SEED: Loaded GEMINI_API_KEY from local env for seeding."
+            )
 
     async with async_session() as session:
         from sqlalchemy import select
@@ -143,11 +147,13 @@ async def lifespan(app: FastAPI):
                 f"[{datetime.now(timezone.utc)}] DB SEED: Default admin user 'admin' created successfully."
             )
         elif gemini_key_seed and not user.gemini_api_key:
-             # Optional: Update existing admin if key is missing and we have one locally
-             print(f"[{datetime.now(timezone.utc)}] DB SEED: Admin exists but has no key. Injecting from local env...")
-             user.gemini_api_key = gemini_key_seed
-             session.add(user)
-             await session.commit()
+            # Optional: Update existing admin if key is missing and we have one locally
+            print(
+                f"[{datetime.now(timezone.utc)}] DB SEED: Admin exists but has no key. Injecting from local env..."
+            )
+            user.gemini_api_key = gemini_key_seed
+            session.add(user)
+            await session.commit()
 
     # Check and seed default CV if no CVs exist
     from app.models.cv_document import CvDocument

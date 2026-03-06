@@ -38,7 +38,9 @@ async def test_rename_tag(client: AsyncClient, db_session):
     )
 
     # Rename
-    response = await client.put(f"{settings.api_prefix}/tags/old-tag", json={"new_name": "new-tag"})
+    response = await client.put(
+        f"{settings.api_prefix}/tags/old-tag", json={"new_name": "new-tag"}
+    )
     assert response.status_code == 200
 
     # Expire session to reflect DB changes in shared session
@@ -116,13 +118,17 @@ async def test_tags_search_and_sort(client: AsyncClient):
     assert items[0]["count"] == 2
 
     # Sort by name asc
-    response = await client.get(f"{settings.api_prefix}/tags?sort_by=name&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/tags?sort_by=name&sort_order=asc"
+    )
     names = [t["name"] for t in response.json()["items"]]
     assert "apple" in names
     assert names.index("apple") < names.index("banana")
 
     # Sort by count desc
-    response = await client.get(f"{settings.api_prefix}/tags?sort_by=count&sort_order=desc")
+    response = await client.get(
+        f"{settings.api_prefix}/tags?sort_by=count&sort_order=desc"
+    )
     items = response.json()["items"]
     assert items[0]["name"] == "apple"
     assert items[0]["count"] == 2

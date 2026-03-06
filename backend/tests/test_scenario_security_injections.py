@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
+
 @pytest.mark.asyncio
 async def test_sql_injection_attempt_in_search(client: AsyncClient):
     # SQLAlchemy handles this, but we verify response is handled gracefully
@@ -9,6 +10,7 @@ async def test_sql_injection_attempt_in_search(client: AsyncClient):
     assert resp.status_code == 200
     # Should return empty or valid list, NOT all posts if injection succeeded (though search logic might match literal)
     # The key is it doesn't 500 or error out
+
 
 @pytest.mark.asyncio
 async def test_xss_payload_persistence(client: AsyncClient):
@@ -21,18 +23,19 @@ async def test_xss_payload_persistence(client: AsyncClient):
         "summary": "Summary",
         "content": xss,
         "is_published": True,
-        "tags": ["test"]
+        "tags": ["test"],
     }
-    
+
     # Create
     resp = await client.post("/api/app/posts", json=post_data)
     assert resp.status_code == 200
     data = resp.json()
     assert data["content"] == xss
-    
+
     # Retrieve
     resp = await client.get(f"/api/app/posts/{data['id']}")
     assert resp.json()["content"] == xss
+
 
 @pytest.mark.asyncio
 async def test_large_payload_handling(client: AsyncClient):
@@ -40,18 +43,18 @@ async def test_large_payload_handling(client: AsyncClient):
     large_content = "a" * 100000
     post_data = {
         "title": "Large Post",
-        "slug": "large-post-unique", # Unique slug to prevent 400
+        "slug": "large-post-unique",  # Unique slug to prevent 400
         "summary": "Summary",
         "content": large_content,
         "is_published": True,
-        "description": "Desc", # Potentially required? No, PostCreate doesn't have description.
+        "description": "Desc",  # Potentially required? No, PostCreate doesn't have description.
         # Wait, let's check PostCreate schema in app/api/posts.py
         # Actually checking earlier view of posts.py, PostCreate has title, slug, summary, content, is_published, tags.
         # Maybe tags is required?
-        "tags": ["test"]
+        "tags": ["test"],
     }
     resp = await client.post("/api/app/posts", json=post_data)
-    # If 422, it might be due to field validation lengths. 
+    # If 422, it might be due to field validation lengths.
     # Summary, title, slug might have max_length.
     # Content usually doesn't.
     # Let's verify status code is 200.
@@ -59,6 +62,7 @@ async def test_large_payload_handling(client: AsyncClient):
         print(resp.json())
     assert resp.status_code == 200
     assert len(resp.json()["content"]) == 100000
+
 
 @pytest.mark.asyncio
 async def test_invalid_id_type_handling(client: AsyncClient):
@@ -69,15 +73,18 @@ async def test_invalid_id_type_handling(client: AsyncClient):
     # In this app, it seems to return 404
     assert resp.status_code == 404
 
+
 @pytest.mark.asyncio
 async def test_missing_required_fields_in_create(client: AsyncClient):
     resp = await client.post("/api/app/posts", json={"title": "Missing content"})
     assert resp.status_code == 422
 
+
 @pytest.mark.asyncio
 async def test_updating_non_existent_resource(client: AsyncClient):
     resp = await client.put("/api/app/posts/999999", json={"title": "New Title"})
     assert resp.status_code == 404
+
 
 @pytest.mark.asyncio
 async def test_concurrent_modification_simulation(client: AsyncClient, db_session):

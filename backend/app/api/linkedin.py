@@ -30,14 +30,13 @@ async def sync_linkedin_profile(
     except ValueError as e:
         logger.error(f"Configuration error checking LinkedIn: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
     except Exception as e:
         logger.error(f"Error syncing LinkedIn profile: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to sync LinkedIn profile. Please check server logs."
+            detail="Failed to sync LinkedIn profile. Please check server logs.",
         )
 
 
@@ -54,16 +53,14 @@ async def get_linkedin_posts(
     except ValueError as e:
         logger.error(f"Configuration error fetching LinkedIn posts: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
     except Exception as e:
         logger.error(f"Error fetching LinkedIn posts: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch LinkedIn posts. Please check server logs."
+            detail="Failed to fetch LinkedIn posts. Please check server logs.",
         )
-
 
 
 class TransferPostRequest(BaseModel):
@@ -87,12 +84,12 @@ async def transfer_linkedin_post(
         title = "LinkedIn Post"
         if post_data.content and len(post_data.content) > 50:
             title += "..."
-        
+
     # Generate a slug
 
-    slug_base = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+    slug_base = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     if not slug_base:
-         slug_base = "linkedin-post"
+        slug_base = "linkedin-post"
     slug = f"{slug_base}-{random.randint(1000, 9999)}"
 
     # Generate embedding
@@ -105,8 +102,8 @@ async def transfer_linkedin_post(
         content=post_data.content,
         summary="Imported from LinkedIn",
         image_url=post_data.image_url,
-        language="en", # Defaulting to English, could be changed in UI
-        published=False, # Save as draft by default
+        language="en",  # Defaulting to English, could be changed in UI
+        published=False,  # Save as draft by default
         tags=["LinkedIn"],
         embedding=embedding,
     )
@@ -121,6 +118,5 @@ async def transfer_linkedin_post(
         logger.error(f"Error transferring LinkedIn post: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save the post to the database."
+            detail="Failed to save the post to the database.",
         )
-

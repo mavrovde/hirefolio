@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/app"
     gemini_api_key: str = ""
     cv_version: str = "v1.0"
-    
+
     # LinkedIn
     linkedin_email: str = ""
     linkedin_password: str = ""

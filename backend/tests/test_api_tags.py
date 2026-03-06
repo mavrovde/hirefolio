@@ -10,6 +10,7 @@ def mock_embedding(mocker):
     # Patch the reference where it is USED
     mocker.patch("app.api.posts.get_embedding", return_value=[0.1] * 768)
 
+
 @pytest.mark.asyncio
 async def test_create_post_with_tags(client: AsyncClient):
     """Test creating a post with tags."""
@@ -50,7 +51,9 @@ async def test_update_post_tags(client: AsyncClient):
 
     # Update
     update_data = {"tags": ["new", "tags"]}
-    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
+    response = await client.put(
+        f"{settings.api_prefix}/posts/{post_id}", json=update_data
+    )
 
     assert response.status_code == 200
     data = response.json()

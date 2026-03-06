@@ -222,7 +222,10 @@ async def multi_agent_conversation(
                                                     full_text += chunk_text
                                                     streamed_any_content = True
                                                     queue.put_nowait(
-                                                        {"content": chunk_text, "agent_name": agent.role}
+                                                        {
+                                                            "content": chunk_text,
+                                                            "agent_name": agent.role,
+                                                        }
                                                     )
                                                 if data.get("done"):
                                                     break
@@ -258,11 +261,13 @@ async def multi_agent_conversation(
 
                     # Final aggressive quote stripping for the history/storage
                     # Matches starting quote, content, and ending quote if they surround the whole text
-                    clean_text = re.sub(r'^["\'](.*)["\']$', r'\1', clean_text.strip())
+                    clean_text = re.sub(r'^["\'](.*)["\']$', r"\1", clean_text.strip())
                     clean_text = clean_text.strip('"' + "'" + "()[]{}").strip()
 
                     if not streamed_any_content and clean_text:
-                        queue.put_nowait({"content": clean_text, "agent_name": agent.role})
+                        queue.put_nowait(
+                            {"content": clean_text, "agent_name": agent.role}
+                        )
 
                     history.append(f"{agent.role}: {clean_text}")
 

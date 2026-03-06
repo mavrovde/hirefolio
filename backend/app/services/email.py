@@ -6,8 +6,13 @@ from app.logger import logger
 
 class EmailService:
     def send_cv_request_notification(
-        self, name: str, email: str, company: str, message: str, 
-        position_description: str | None = None, subscribe_to_updates: bool = False
+        self,
+        name: str,
+        email: str,
+        company: str,
+        message: str,
+        position_description: str | None = None,
+        subscribe_to_updates: bool = False,
     ):
         if (
             not settings.smtp_host

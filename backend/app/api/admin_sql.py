@@ -10,27 +10,27 @@ from app.services.auth import get_current_admin_user
 from app.models.user import User
 
 router = APIRouter(
-    prefix="/admin/sql",
-    tags=["admin"],
-    dependencies=[Depends(get_current_admin_user)]
+    prefix="/admin/sql", tags=["admin"], dependencies=[Depends(get_current_admin_user)]
 )
+
 
 class SqlQuery(BaseModel):
     query: str
+
 
 @router.post("/execute", response_model=List[Dict[str, Any]])
 async def execute_sql(
     sql: SqlQuery,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_admin_user),
 ):
     start_time = time.time()
     try:
         # Check for forbidden keywords (very basic check, but test expects 400 on invalid query)
-        
+
         # Execute query
         result = await db.execute(text(sql.query))
-        
+
         if sql.query.strip().upper().startswith("SELECT"):
             # Fetch results as mappings (dictionaries)
             rows = result.mappings().all()
@@ -51,6 +51,7 @@ async def execute_sql(
 def _get_db_url():
     """Get the database URL with +asyncpg stripped for CLI tools."""
     from app.config import settings
+
     db_url = str(settings.database_url)
     if "+asyncpg" in db_url:
         db_url = db_url.replace("+asyncpg", "")
@@ -58,9 +59,7 @@ def _get_db_url():
 
 
 @router.get("/backup")
-async def backup_database(
-    current_user: User = Depends(get_current_admin_user)
-):
+async def backup_database(current_user: User = Depends(get_current_admin_user)):
     import asyncio
     import os
     from datetime import datetime
@@ -79,10 +78,12 @@ async def backup_database(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env={**os.environ}
+            env={**os.environ},
         )
     except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="pg_dump not found. Is postgresql-client installed?")
+        raise HTTPException(
+            status_code=500, detail="pg_dump not found. Is postgresql-client installed?"
+        )
 
     async def iter_backup():
         try:
@@ -105,22 +106,19 @@ async def backup_database(
     return StreamingResponse(
         iter_backup(),
         media_type="application/sql",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
-
-
 
 
 @router.post("/restore")
 async def restore_database(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_admin_user)
+    file: UploadFile = File(...), current_user: User = Depends(get_current_admin_user)
 ):
     import asyncio
     import os
 
-    if not file.filename.endswith('.sql'):
-         raise HTTPException(status_code=400, detail="Only .sql files are allowed")
+    if not file.filename.endswith(".sql"):
+        raise HTTPException(status_code=400, detail="Only .sql files are allowed")
 
     db_url = _get_db_url()
     cmd = ["psql", db_url]
@@ -131,7 +129,7 @@ async def restore_database(
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env={**os.environ}
+            env={**os.environ},
         )
 
         # Read uploaded file content
@@ -141,14 +139,13 @@ async def restore_database(
         # Communicate with timeout (5 minutes max for large dumps)
         try:
             stdout, stderr = await asyncio.wait_for(
-                proc.communicate(input=content),
-                timeout=300
+                proc.communicate(input=content), timeout=300
             )
         except asyncio.TimeoutError:
             proc.kill()
             raise HTTPException(
                 status_code=500,
-                detail=f"Restore timed out after 300s. File size: {file_size} bytes"
+                detail=f"Restore timed out after 300s. File size: {file_size} bytes",
             )
 
         stdout_text = stdout.decode() if stdout else ""
@@ -161,11 +158,17 @@ async def restore_database(
         if stdout_text:
             # Truncate very long output
             if len(stdout_text) > 2000:
-                stdout_text = stdout_text[:2000] + f"\n... ({len(stdout_text)} chars total, truncated)"
+                stdout_text = (
+                    stdout_text[:2000]
+                    + f"\n... ({len(stdout_text)} chars total, truncated)"
+                )
             log_lines.append(f"stdout:\n{stdout_text}")
         if stderr_text:
             if len(stderr_text) > 2000:
-                stderr_text = stderr_text[:2000] + f"\n... ({len(stderr_text)} chars total, truncated)"
+                stderr_text = (
+                    stderr_text[:2000]
+                    + f"\n... ({len(stderr_text)} chars total, truncated)"
+                )
             log_lines.append(f"stderr:\n{stderr_text}")
 
         log_output = "\n".join(log_lines)
@@ -173,14 +176,16 @@ async def restore_database(
         if proc.returncode != 0:
             raise HTTPException(
                 status_code=500,
-                detail=f"Restore failed (exit {proc.returncode}):\n{log_output}"
+                detail=f"Restore failed (exit {proc.returncode}):\n{log_output}",
             )
 
         return {"message": "Database restored successfully", "output": log_output}
 
     except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="psql not found. Is postgresql-client installed?")
+        raise HTTPException(
+            status_code=500, detail="psql not found. Is postgresql-client installed?"
+        )
     except HTTPException:
         raise
     except Exception as e:
-         raise HTTPException(status_code=500, detail=f"Restore error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Restore error: {str(e)}")

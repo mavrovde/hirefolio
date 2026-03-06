@@ -5,6 +5,7 @@ Covers uncovered error paths in:
 - app.services.chat (JSONDecodeError, empty content, stream errors)
 - app.services.multi_chat (infrastructure errors, empty agents)
 """
+
 import pytest
 import json
 from unittest.mock import MagicMock, patch, AsyncMock
@@ -34,6 +35,7 @@ def _make_stream_mock(lines):
 
 
 # --- Chat Service Error Handling ---
+
 
 @pytest.mark.asyncio
 async def test_chat_stream_json_decode_error():
@@ -93,6 +95,7 @@ async def test_chat_stream_connection_error():
 
 
 # --- Multi Chat Error Handling ---
+
 
 @pytest.mark.asyncio
 async def test_multi_chat_infrastructure_error():

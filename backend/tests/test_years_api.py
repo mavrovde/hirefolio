@@ -1,4 +1,5 @@
 """Tests for the CV years API endpoint."""
+
 import json
 import pytest
 from unittest.mock import patch
@@ -96,7 +97,10 @@ class TestExtractYearsFromProfile:
             "experience": [
                 {"title": "Dev", "startDate": "2020"},
                 {"title": "Dev", "startDate": "Jun 2004 - Aug 2005 · 1 yr 3 mos"},
-                {"title": "Dev", "startDate": "Tiraspol, Transnistria autonomous territorial unit, Moldova"},
+                {
+                    "title": "Dev",
+                    "startDate": "Tiraspol, Transnistria autonomous territorial unit, Moldova",
+                },
             ]
         }
         fp = tmp_path / "profile.json"

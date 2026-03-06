@@ -5,11 +5,13 @@ from app.main import app
 
 from app.config import settings
 
+
 @pytest.fixture
 async def unauthed_client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
 
 @pytest.mark.asyncio
 async def test_backup_database_unauthorized(unauthed_client: AsyncClient):
@@ -17,7 +19,9 @@ async def test_backup_database_unauthorized(unauthed_client: AsyncClient):
     assert response.status_code in [401, 403]
 
 
-def _make_async_proc(stdout_data: list[bytes], returncode: int = 0, stderr_data: bytes = b""):
+def _make_async_proc(
+    stdout_data: list[bytes], returncode: int = 0, stderr_data: bytes = b""
+):
     """Helper to create a mock async subprocess process."""
     mock_proc = AsyncMock()
     mock_proc.returncode = returncode
@@ -47,11 +51,15 @@ async def test_backup_database_success(client: AsyncClient):
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
         response = await client.get(f"{settings.api_prefix}/admin/sql/backup")
-        
+
         assert response.status_code == 200
         assert "application/sql" in response.headers["content-type"]
-        assert "attachment; filename=backup_mavrov_" in response.headers["content-disposition"]
+        assert (
+            "attachment; filename=backup_mavrov_"
+            in response.headers["content-disposition"]
+        )
         assert b"dump_chunk_1dump_chunk_2" in response.content
+
 
 @pytest.mark.asyncio
 async def test_backup_database_failure(client: AsyncClient):
@@ -62,22 +70,25 @@ async def test_backup_database_failure(client: AsyncClient):
         response = await client.get(f"{settings.api_prefix}/admin/sql/backup")
         assert response.status_code == 200
 
+
 @pytest.mark.asyncio
 async def test_restore_database_unauthorized(unauthed_client: AsyncClient):
     response = await unauthed_client.post(
-        f"{settings.api_prefix}/admin/sql/restore", 
-        files={"file": ("dump.sql", b"content")}
+        f"{settings.api_prefix}/admin/sql/restore",
+        files={"file": ("dump.sql", b"content")},
     )
     assert response.status_code in [401, 403]
+
 
 @pytest.mark.asyncio
 async def test_restore_database_invalid_file(client: AsyncClient):
     response = await client.post(
-        f"{settings.api_prefix}/admin/sql/restore", 
-        files={"file": ("dump.txt", b"content")}
+        f"{settings.api_prefix}/admin/sql/restore",
+        files={"file": ("dump.txt", b"content")},
     )
     assert response.status_code == 400
     assert "Only .sql files are allowed" in response.json()["detail"]
+
 
 @pytest.mark.asyncio
 async def test_restore_database_success(client: AsyncClient):
@@ -86,12 +97,13 @@ async def test_restore_database_success(client: AsyncClient):
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
         response = await client.post(
-            f"{settings.api_prefix}/admin/sql/restore", 
-            files={"file": ("backup.sql", b"sql content")}
+            f"{settings.api_prefix}/admin/sql/restore",
+            files={"file": ("backup.sql", b"sql content")},
         )
-        
+
         assert response.status_code == 200
         assert response.json()["message"] == "Database restored successfully"
+
 
 @pytest.mark.asyncio
 async def test_restore_database_failure(client: AsyncClient):
@@ -100,9 +112,9 @@ async def test_restore_database_failure(client: AsyncClient):
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
         response = await client.post(
-            f"{settings.api_prefix}/admin/sql/restore", 
-            files={"file": ("backup.sql", b"sql content")}
+            f"{settings.api_prefix}/admin/sql/restore",
+            files={"file": ("backup.sql", b"sql content")},
         )
-        
+
         assert response.status_code == 500
         assert "Restore failed" in response.json()["detail"]

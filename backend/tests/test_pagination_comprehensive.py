@@ -42,19 +42,25 @@ async def test_posts_sort_all_fields(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Test sort by title
-    response = await client.get(f"{settings.api_prefix}/posts?sort_by=title&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=title&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["title"] == "Alpha"
 
     # Test sort by slug
-    response = await client.get(f"{settings.api_prefix}/posts?sort_by=slug&sort_order=desc")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=slug&sort_order=desc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["slug"] == "z"
 
     # Test sort by created_at (newest first)
-    response = await client.get(f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=desc")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?sort_by=created_at&sort_order=desc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["title"] == "Beta"
@@ -90,13 +96,17 @@ async def test_cv_requests_sort_all_fields(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Sort by name
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?sort_by=name&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?sort_by=name&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "Alpha"
 
     # Sort by email
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?sort_by=email&sort_order=desc")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?sort_by=email&sort_order=desc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["email"] == "z@test.com"
@@ -274,14 +284,18 @@ async def test_tags_sort_by_name_and_count(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Sort by count desc (python should be first with count=2)
-    response = await client.get(f"{settings.api_prefix}/tags?sort_by=count&sort_order=desc")
+    response = await client.get(
+        f"{settings.api_prefix}/tags?sort_by=count&sort_order=desc"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["items"][0]["name"] == "python"
     assert data["items"][0]["count"] == 2
 
     # Sort by name asc
-    response = await client.get(f"{settings.api_prefix}/tags?sort_by=name&sort_order=asc")
+    response = await client.get(
+        f"{settings.api_prefix}/tags?sort_by=name&sort_order=asc"
+    )
     assert response.status_code == 200
     data = response.json()
     # "ai" should be first alphabetically
@@ -450,7 +464,9 @@ async def test_empty_search_with_pagination(client: AsyncClient, db_session):
     await db_session.commit()
 
     # Empty search with pagination params
-    response = await client.get(f"{settings.api_prefix}/posts?search=&page=1&page_size=10")
+    response = await client.get(
+        f"{settings.api_prefix}/posts?search=&page=1&page_size=10"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 15
@@ -473,7 +489,9 @@ async def test_cv_requests_pagination_edge_at_10(client: AsyncClient, db_session
         )
     await db_session.commit()
 
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?page=1&page_size=10")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?page=1&page_size=10"
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 10
@@ -481,7 +499,9 @@ async def test_cv_requests_pagination_edge_at_10(client: AsyncClient, db_session
     assert data["total_pages"] == 1
 
     # Page 2 should be empty
-    response = await client.get(f"{settings.api_prefix}/admin/cv/requests?page=2&page_size=10")
+    response = await client.get(
+        f"{settings.api_prefix}/admin/cv/requests?page=2&page_size=10"
+    )
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 0

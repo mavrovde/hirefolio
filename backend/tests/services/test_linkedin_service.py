@@ -76,7 +76,8 @@ async def test_fetch_posts_success(service, mocker):
     assert posts[0]["content"] == "Hello LinkedIn!"
     assert posts[0]["urn"] == "urn:123"
     mock_client.get_profile_posts.assert_called_once_with(
-        public_id="john-doe", post_count=10,
+        public_id="john-doe",
+        post_count=10,
     )
 
 
@@ -134,30 +135,36 @@ async def test_sync_profile_error(service, mocker):
 
 
 def test_parse_post_with_commentary():
-    post = LinkedInService._parse_post({
-        "commentary": {"text": "Test post content"},
-        "content": {},
-        "updateMetadata": {"urn": "urn:li:activity:123"},
-    })
+    post = LinkedInService._parse_post(
+        {
+            "commentary": {"text": "Test post content"},
+            "content": {},
+            "updateMetadata": {"urn": "urn:li:activity:123"},
+        }
+    )
     assert post is not None
     assert post["content"] == "Test post content"
     assert post["urn"] == "urn:li:activity:123"
 
 
 def test_parse_post_with_string_commentary():
-    post = LinkedInService._parse_post({
-        "commentary": "Direct text content",
-        "content": {},
-    })
+    post = LinkedInService._parse_post(
+        {
+            "commentary": "Direct text content",
+            "content": {},
+        }
+    )
     assert post is not None
     assert post["content"] == "Direct text content"
 
 
 def test_parse_post_empty_content_returns_none():
-    post = LinkedInService._parse_post({
-        "commentary": {"text": ""},
-        "content": {},
-    })
+    post = LinkedInService._parse_post(
+        {
+            "commentary": {"text": ""},
+            "content": {},
+        }
+    )
     assert post is None
 
 
@@ -168,82 +175,84 @@ def test_parse_post_malformed_data():
 
 def test_parse_post_with_star_urn():
     """Cover line 102: *updateMetadata URN format."""
-    post = LinkedInService._parse_post({
-        "*updateMetadata": "urn:li:activity:star123",
-        "commentary": {"text": "Post with star URN"},
-        "content": {},
-    })
+    post = LinkedInService._parse_post(
+        {
+            "*updateMetadata": "urn:li:activity:star123",
+            "commentary": {"text": "Post with star URN"},
+            "content": {},
+        }
+    )
     assert post is not None
     assert post["urn"] == "urn:li:activity:star123"
 
 
 def test_parse_post_with_article_title_fallback():
     """Cover line 121: article title fallback when no commentary."""
-    post = LinkedInService._parse_post({
-        "content": {
-            "article": {
-                "title": "Article Title Fallback"
-            }
-        },
-    })
+    post = LinkedInService._parse_post(
+        {
+            "content": {"article": {"title": "Article Title Fallback"}},
+        }
+    )
     assert post is not None
     assert post["content"] == "Article Title Fallback"
 
 
 def test_parse_post_with_text_field_fallback():
     """Cover line 113: text field fallback when no commentary."""
-    post = LinkedInService._parse_post({
-        "text": "Fallback text content",
-        "content": {},
-    })
+    post = LinkedInService._parse_post(
+        {
+            "text": "Fallback text content",
+            "content": {},
+        }
+    )
     assert post is not None
     assert post["content"] == "Fallback text content"
 
 
 def test_parse_post_with_image_extraction():
     """Cover lines 128-134: image extraction from attributes."""
-    post = LinkedInService._parse_post({
-        "commentary": {"text": "Post with image"},
-        "content": {
-            "images": [
-                {
-                    "attributes": [
-                        {
-                            "vectorImage": {
-                                "rootUrl": "https://media.licdn.com/image.jpg"
+    post = LinkedInService._parse_post(
+        {
+            "commentary": {"text": "Post with image"},
+            "content": {
+                "images": [
+                    {
+                        "attributes": [
+                            {
+                                "vectorImage": {
+                                    "rootUrl": "https://media.licdn.com/image.jpg"
+                                }
                             }
-                        }
-                    ]
-                }
-            ]
-        },
-    })
+                        ]
+                    }
+                ]
+            },
+        }
+    )
     assert post is not None
     assert post["image_url"] == "https://media.licdn.com/image.jpg"
 
 
 def test_parse_post_with_image_no_attributes():
     """Cover image branch with empty attributes."""
-    post = LinkedInService._parse_post({
-        "commentary": {"text": "Post with image but no attrs"},
-        "content": {
-            "images": [
-                {"attributes": []}
-            ]
-        },
-    })
+    post = LinkedInService._parse_post(
+        {
+            "commentary": {"text": "Post with image but no attrs"},
+            "content": {"images": [{"attributes": []}]},
+        }
+    )
     assert post is not None
     assert post["image_url"] is None
 
 
 def test_parse_post_with_image_non_dict():
     """Cover image branch where image is not a dict."""
-    post = LinkedInService._parse_post({
-        "commentary": {"text": "Post with weird image"},
-        "content": {
-            "images": ["not-a-dict"]
-        },
-    })
+    post = LinkedInService._parse_post(
+        {
+            "commentary": {"text": "Post with weird image"},
+            "content": {"images": ["not-a-dict"]},
+        }
+    )
     assert post is not None
     assert post["image_url"] is None
 
@@ -253,4 +262,3 @@ def test_parse_post_exception_handling():
     # Force an exception by passing a non-dict
     post = LinkedInService._parse_post(None)
     assert post is None
-

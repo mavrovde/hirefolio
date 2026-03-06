@@ -175,6 +175,7 @@ async def test_get_public_stats(client: AsyncClient):
     assert "visitor_ip" in data
     assert "uptime" in data
     from app.main import app
+
     assert data["backend_version"] == app.version
     assert data["visitor_ip"] == "127.0.0.1"
 
@@ -183,7 +184,8 @@ async def test_get_public_stats(client: AsyncClient):
 async def test_get_public_stats_with_forwarded_for(client: AsyncClient):
     """Test public stats with X-Forwarded-For header."""
     response = await client.get(
-        f"{settings.api_prefix}/stats/public", headers={"X-Forwarded-For": "1.2.3.4, 5.6.7.8"}
+        f"{settings.api_prefix}/stats/public",
+        headers={"X-Forwarded-For": "1.2.3.4, 5.6.7.8"},
     )
     assert response.status_code == 200
     assert response.json()["visitor_ip"] == "1.2.3.4"

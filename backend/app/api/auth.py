@@ -117,8 +117,8 @@ async def change_password(
     db.add(current_user)
     await db.commit()
     return
-    
-    
+
+
 class UpdateGeminiKeyRequest(BaseModel):
     api_key: str | None
 
@@ -134,7 +134,7 @@ async def update_gemini_key(
     db.add(current_user)
     await db.commit()
     await db.refresh(current_user)
-    
+
     return UserResponse(
         id=current_user.id,
         username=current_user.username,
