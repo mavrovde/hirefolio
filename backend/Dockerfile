@@ -44,10 +44,13 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install maturin
 
 # Install production dependencies
-# linkedin-api PyPI wheel has broken entry point (lint = black:None).
-# Force source distribution install for linkedin-api, then install the rest normally.
+# linkedin-api PyPI package has broken entry point (lint = black:None).
+# pip 25+ enforces entry point validation and rejects it.
+# Pin pip to 24.3.1 for linkedin-api install, then upgrade for remaining deps.
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-binary linkedin-api linkedin-api==2.2.1 && \
+    pip install pip==24.3.1 && \
+    pip install linkedin-api==2.2.1 && \
+    pip install --upgrade pip && \
     pip install -r requirements.txt
 
 # Final runtime stage inherits from base
