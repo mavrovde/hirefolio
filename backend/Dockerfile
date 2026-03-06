@@ -44,13 +44,19 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install maturin
 
 # Install production dependencies
-# linkedin-api PyPI package has broken entry point (lint = black:None).
-# pip 25+ enforces entry point validation and rejects it.
-# Pin pip to 24.3.1 for linkedin-api install, then upgrade for remaining deps.
+# linkedin-api PyPI wheel has broken entry point (lint = black:None) that pip rejects.
+# Fix: download wheel, patch out the broken entry point using Python, install patched wheel.
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install pip==24.3.1 && \
-    pip install linkedin-api==2.2.1 && \
-    pip install --upgrade pip && \
+    pip download linkedin-api==2.2.1 --no-deps -d /tmp/wheels && \
+    python -c "\
+    import zipfile, os, shutil; \
+    src='/tmp/wheels/linkedin_api-2.2.1-py3-none-any.whl'; \
+    dst='/tmp/wheels/patched.whl'; \
+    zin=zipfile.ZipFile(src,'r'); zout=zipfile.ZipFile(dst,'w'); \
+    [zout.writestr(item, zin.read(item.filename).replace(b'lint = black:None\n',b'')) if item.filename.endswith('entry_points.txt') else zout.writestr(item, zin.read(item.filename)) for item in zin.infolist()]; \
+    zin.close(); zout.close()" && \
+    pip install /tmp/wheels/patched.whl && \
+    rm -rf /tmp/wheels && \
     pip install -r requirements.txt
 
 # Final runtime stage inherits from base

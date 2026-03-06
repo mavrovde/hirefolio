@@ -31,7 +31,9 @@ jobs:
         working-directory: ./backend
         run: |
           python -m pip install --upgrade pip
-          pip install pip==24.3.1 && pip install linkedin-api==2.2.1 && pip install --upgrade pip
+          pip download linkedin-api==2.2.1 --no-deps -d /tmp/wheels
+          python -c "import zipfile; src='/tmp/wheels/linkedin_api-2.2.1-py3-none-any.whl'; dst='/tmp/wheels/patched.whl'; zin=zipfile.ZipFile(src,'r'); zout=zipfile.ZipFile(dst,'w'); [zout.writestr(i, zin.read(i.filename).replace(b'lint = black:None\n',b'')) if i.filename.endswith('entry_points.txt') else zout.writestr(i, zin.read(i.filename)) for i in zin.infolist()]; zin.close(); zout.close()"
+          pip install /tmp/wheels/patched.whl && rm -rf /tmp/wheels
           pip install -r requirements-dev.txt
       - name: Run Ruff (lint)
         working-directory: ./backend
@@ -54,7 +56,9 @@ jobs:
         working-directory: ./backend
         run: |
           python -m pip install --upgrade pip
-          pip install pip==24.3.1 && pip install linkedin-api==2.2.1 && pip install --upgrade pip
+          pip download linkedin-api==2.2.1 --no-deps -d /tmp/wheels
+          python -c "import zipfile; src='/tmp/wheels/linkedin_api-2.2.1-py3-none-any.whl'; dst='/tmp/wheels/patched.whl'; zin=zipfile.ZipFile(src,'r'); zout=zipfile.ZipFile(dst,'w'); [zout.writestr(i, zin.read(i.filename).replace(b'lint = black:None\n',b'')) if i.filename.endswith('entry_points.txt') else zout.writestr(i, zin.read(i.filename)) for i in zin.infolist()]; zin.close(); zout.close()"
+          pip install /tmp/wheels/patched.whl && rm -rf /tmp/wheels
           pip install -r requirements-dev.txt
       - name: Run MyPy
         working-directory: ./backend
@@ -74,7 +78,9 @@ jobs:
         working-directory: ./backend
         run: |
           python -m pip install --upgrade pip
-          pip install pip==24.3.1 && pip install linkedin-api==2.2.1 && pip install --upgrade pip
+          pip download linkedin-api==2.2.1 --no-deps -d /tmp/wheels
+          python -c "import zipfile; src='/tmp/wheels/linkedin_api-2.2.1-py3-none-any.whl'; dst='/tmp/wheels/patched.whl'; zin=zipfile.ZipFile(src,'r'); zout=zipfile.ZipFile(dst,'w'); [zout.writestr(i, zin.read(i.filename).replace(b'lint = black:None\n',b'')) if i.filename.endswith('entry_points.txt') else zout.writestr(i, zin.read(i.filename)) for i in zin.infolist()]; zin.close(); zout.close()"
+          pip install /tmp/wheels/patched.whl && rm -rf /tmp/wheels
           pip install -r requirements-dev.txt
       - name: Run Bandit (security)
         working-directory: ./backend
@@ -109,7 +115,9 @@ jobs:
         working-directory: ./backend
         run: |
           python -m pip install --upgrade pip
-          pip install pip==24.3.1 && pip install linkedin-api==2.2.1 && pip install --upgrade pip
+          pip download linkedin-api==2.2.1 --no-deps -d /tmp/wheels
+          python -c "import zipfile; src='/tmp/wheels/linkedin_api-2.2.1-py3-none-any.whl'; dst='/tmp/wheels/patched.whl'; zin=zipfile.ZipFile(src,'r'); zout=zipfile.ZipFile(dst,'w'); [zout.writestr(i, zin.read(i.filename).replace(b'lint = black:None\n',b'')) if i.filename.endswith('entry_points.txt') else zout.writestr(i, zin.read(i.filename)) for i in zin.infolist()]; zin.close(); zout.close()"
+          pip install /tmp/wheels/patched.whl && rm -rf /tmp/wheels
           pip install -r requirements-dev.txt
       - name: Run tests with coverage
         working-directory: ./backend
