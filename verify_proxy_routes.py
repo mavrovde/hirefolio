@@ -4,7 +4,7 @@ import asyncio
 import os
 
 async def verify_proxy_routes():
-    # Use 80 for prod env, 4200 for dev env
+    # Use 80 for prod env (set PROXY_PORT=80), 4200 for dev env (default)
     port = os.getenv("PROXY_PORT", "4200")
     base_url = f"http://localhost:{port}"
     ssl_base_url = "https://localhost"
