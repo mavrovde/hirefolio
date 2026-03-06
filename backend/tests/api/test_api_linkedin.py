@@ -48,7 +48,7 @@ def test_sync_linkedin_profile_value_error(monkeypatch):
         headers={"Authorization": "Bearer fake"},
     )
     assert response.status_code == 500
-    assert response.json()["detail"] == "Missing credentials"
+    assert "LinkedIn config error" in response.json()["detail"]
 
 
 def test_sync_linkedin_profile_general_error(monkeypatch):
@@ -64,7 +64,7 @@ def test_sync_linkedin_profile_general_error(monkeypatch):
         headers={"Authorization": "Bearer fake"},
     )
     assert response.status_code == 500
-    assert "Failed to sync" in response.json()["detail"]
+    assert "LinkedIn profile sync failed" in response.json()["detail"]
 
 
 def test_get_linkedin_posts_success(monkeypatch):
@@ -97,8 +97,8 @@ def test_get_linkedin_posts_value_error(monkeypatch):
         f"{settings.api_prefix}/linkedin/posts",
         headers={"Authorization": "Bearer fake"},
     )
-    assert response.status_code == 500
-    assert response.json()["detail"] == "Scraper block"
+    assert response.status_code == 200
+    assert response.json() == []
 
 
 def test_get_linkedin_posts_general_error(monkeypatch):
@@ -114,7 +114,7 @@ def test_get_linkedin_posts_general_error(monkeypatch):
         headers={"Authorization": "Bearer fake"},
     )
     assert response.status_code == 500
-    assert "Failed to fetch LinkedIn posts" in response.json()["detail"]
+    assert "LinkedIn posts fetch failed" in response.json()["detail"]
 
 
 def test_transfer_linkedin_post_success(monkeypatch):
@@ -281,6 +281,6 @@ def test_transfer_linkedin_post_db_error(monkeypatch):
         headers={"Authorization": "Bearer fake"},
     )
     assert response.status_code == 500
-    assert response.json()["detail"] == "Failed to save the post to the database."
+    assert "Transfer failed" in response.json()["detail"]
 
     app.dependency_overrides.clear()

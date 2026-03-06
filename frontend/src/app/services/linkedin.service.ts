@@ -16,6 +16,12 @@ export interface LinkedInTransferResponse {
     message: string;
 }
 
+export interface LinkedInBulkTransferResponse {
+    transferred: number;
+    ids: number[];
+    message: string;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -37,7 +43,10 @@ export class LinkedinService {
      */
     async syncProfile(): Promise<any> {
         const response = await fetch(`${this.apiUrl}/profile-sync`, { headers: this.getHeaders() });
-        if (!response.ok) throw new Error('Failed to sync profile');
+        if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            throw new Error(body?.detail || 'Failed to sync profile');
+        }
         return await response.json();
     }
 
@@ -46,13 +55,15 @@ export class LinkedinService {
      */
     async getPosts(): Promise<LinkedInPost[]> {
         const response = await fetch(`${this.apiUrl}/posts`, { headers: this.getHeaders() });
-        if (!response.ok) throw new Error('Failed to fetch posts');
+        if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            throw new Error(body?.detail || 'Failed to fetch posts');
+        }
         return await response.json();
     }
 
     /**
-     * Transfer a scraped LinkedIn post to the local system
-     * @param post The post to transfer
+     * Transfer a single scraped LinkedIn post to the local system
      */
     async transferPost(post: LinkedInPost): Promise<LinkedInTransferResponse> {
         const response = await fetch(`${this.apiUrl}/transfer-post`, {
@@ -64,7 +75,30 @@ export class LinkedinService {
                 urn: post.urn || null
             })
         });
-        if (!response.ok) throw new Error('Failed to transfer post');
+        if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            throw new Error(body?.detail || 'Failed to transfer post');
+        }
+        return await response.json();
+    }
+
+    /**
+     * Transfer multiple LinkedIn posts to the local system in bulk
+     */
+    async transferPosts(posts: LinkedInPost[]): Promise<LinkedInBulkTransferResponse> {
+        const response = await fetch(`${this.apiUrl}/transfer-posts`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify(posts.map(post => ({
+                content: post.content,
+                image_url: post.imageUrl || null,
+                urn: post.urn || null
+            })))
+        });
+        if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            throw new Error(body?.detail || 'Failed to transfer posts');
+        }
         return await response.json();
     }
 }
