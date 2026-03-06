@@ -12,6 +12,7 @@ from app.models.user import User
 from app.services.auth import get_current_admin_user
 from app.services.embeddings import get_embedding
 from app.services.linkedin import linkedin_service
+from app.config import settings
 
 router = APIRouter(prefix="/linkedin", tags=["linkedin"])
 logger = logging.getLogger(__name__)
@@ -24,17 +25,27 @@ async def sync_linkedin_profile(
     """
     Fetches the LinkedIn profile data using the Playwright scraper.
     """
+    logger.info(
+        "[LinkedIn] profile-sync requested by user=%s | creds_configured: email=%s, public_id=%s",
+        current_user.username,
+        bool(settings.linkedin_email),
+        bool(settings.linkedin_public_id),
+    )
     try:
         profile_data = await linkedin_service.sync_profile()
+        logger.info(
+            "[LinkedIn] profile-sync SUCCESS: returned %d fields",
+            len(profile_data) if isinstance(profile_data, dict) else 0,
+        )
         return profile_data
     except ValueError as e:
-        logger.error(f"Configuration error checking LinkedIn: {e}")
+        logger.error("[LinkedIn] profile-sync CONFIG ERROR: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"LinkedIn config error: {e}",
         )
     except Exception as e:
-        logger.error(f"Error syncing LinkedIn profile: {e}")
+        logger.error("[LinkedIn] profile-sync FAILED: %s (%s)", e, type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"LinkedIn profile sync failed: {e}",
@@ -48,14 +59,26 @@ async def get_linkedin_posts(
     """
     Fetches recent LinkedIn posts using the Playwright scraper.
     """
+    logger.info(
+        "[LinkedIn] /posts requested by user=%s | creds_configured: email=%s, public_id=%s",
+        current_user.username,
+        bool(settings.linkedin_email),
+        bool(settings.linkedin_public_id),
+    )
     try:
         posts = await linkedin_service.fetch_posts()
+        posts_with_images = sum(1 for p in posts if p.get("image_url"))
+        logger.info(
+            "[LinkedIn] /posts SUCCESS: %d posts fetched (%d with images)",
+            len(posts),
+            posts_with_images,
+        )
         return posts
     except ValueError as e:
-        logger.warning(f"LinkedIn not configured: {e}")
+        logger.warning("[LinkedIn] /posts NOT CONFIGURED: %s", e)
         return []
     except Exception as e:
-        logger.error(f"Error fetching LinkedIn posts: {e}")
+        logger.error("[LinkedIn] /posts FAILED: %s (%s)", e, type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"LinkedIn posts fetch failed: {e}",
@@ -84,6 +107,14 @@ async def _create_post_from_transfer(post_data: TransferPostRequest) -> Post:
     text_for_embedding = f"{title}\n\n{post_data.content}"
     embedding = await get_embedding(text_for_embedding)
 
+    logger.debug(
+        "[LinkedIn] _create_post: title=%r, slug=%s, image_url=%s, content_len=%d",
+        title,
+        slug,
+        post_data.image_url or "none",
+        len(post_data.content),
+    )
+
     return Post(
         title=title,
         slug=slug,
@@ -106,15 +137,25 @@ async def transfer_linkedin_post(
     """
     Transfers a single scraped LinkedIn post into the local database as a draft.
     """
+    logger.info(
+        "[LinkedIn] transfer-post: user=%s, content_len=%d, has_image=%s, urn=%s",
+        current_user.username,
+        len(post_data.content),
+        bool(post_data.image_url),
+        post_data.urn or "none",
+    )
     try:
         post = await _create_post_from_transfer(post_data)
         db.add(post)
         await db.commit()
         await db.refresh(post)
+        logger.info(
+            "[LinkedIn] transfer-post SUCCESS: id=%s, title=%r", post.id, post.title
+        )
         return {"id": post.id, "message": "Post transferred successfully"}
     except Exception as e:
         await db.rollback()
-        logger.error(f"Error transferring LinkedIn post: {e}")
+        logger.error("[LinkedIn] transfer-post FAILED: %s (%s)", e, type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Transfer failed: {e}",
@@ -130,15 +171,32 @@ async def transfer_linkedin_posts(
     """
     Transfers multiple LinkedIn posts into the local database as drafts.
     """
+    logger.info(
+        "[LinkedIn] transfer-posts BULK: user=%s, count=%d",
+        current_user.username,
+        len(posts_data),
+    )
     transferred = []
     try:
-        for post_data in posts_data:
+        for i, post_data in enumerate(posts_data):
+            logger.info(
+                "[LinkedIn] transfer-posts [%d/%d]: content_len=%d, has_image=%s",
+                i + 1,
+                len(posts_data),
+                len(post_data.content),
+                bool(post_data.image_url),
+            )
             post = await _create_post_from_transfer(post_data)
             db.add(post)
             transferred.append(post)
         await db.commit()
         for post in transferred:
             await db.refresh(post)
+        logger.info(
+            "[LinkedIn] transfer-posts SUCCESS: %d posts transferred, ids=%s",
+            len(transferred),
+            [p.id for p in transferred],
+        )
         return {
             "transferred": len(transferred),
             "ids": [p.id for p in transferred],
@@ -146,7 +204,12 @@ async def transfer_linkedin_posts(
         }
     except Exception as e:
         await db.rollback()
-        logger.error(f"Error transferring LinkedIn posts: {e}")
+        logger.error(
+            "[LinkedIn] transfer-posts FAILED at post %d: %s (%s)",
+            len(transferred) + 1,
+            e,
+            type(e).__name__,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Bulk transfer failed: {e}",
