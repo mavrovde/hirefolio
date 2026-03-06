@@ -141,7 +141,34 @@ async def verify_proxy_routes():
                 "headers": {"Host": "unknown.com"},
                 "expected_status": 444, # Nginx custom status for closed connection
                 "label": "Unknown Host -> Reject (444)"
-            }
+            },
+            # 8. LinkedIn API Routes (Auth-protected)
+            {
+                "url": f"{ssl_base_url}{api_prefix}/linkedin/posts",
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": 401,
+                "label": "LinkedIn Posts (401 Auth Check)"
+            },
+            {
+                "url": f"{ssl_base_url}{api_prefix}/linkedin/profile-sync",
+                "headers": {"Host": "mavrov.de"},
+                "expected_status": 401,
+                "label": "LinkedIn Profile Sync (401 Auth Check)"
+            },
+            {
+                "url": f"{ssl_base_url}{api_prefix}/linkedin/transfer-post",
+                "headers": {"Host": "mavrov.de"},
+                "method": "POST",
+                "expected_status": 401,
+                "label": "LinkedIn Transfer Post (401 Auth Check)"
+            },
+            {
+                "url": f"{ssl_base_url}{api_prefix}/linkedin/transfer-posts",
+                "headers": {"Host": "mavrov.de"},
+                "method": "POST",
+                "expected_status": 401,
+                "label": "LinkedIn Bulk Transfer (401 Auth Check)"
+            },
         ]
 
         failed = False
