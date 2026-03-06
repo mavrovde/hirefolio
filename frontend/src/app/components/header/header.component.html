@@ -1,18 +1,51 @@
 <header class="block w-full z-50 bg-black sticky top-0">
-  <div class="container mx-auto px-6 py-4 flex justify-between items-center">
-    <a href="#" class="text-xl font-bold text-primary hover:text-white transition-colors font-mono">
-      >_ SM
-    </a>
+  <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+    <div class="flex items-center gap-4 shrink-0">
+      <a href="#" class="text-xl font-bold text-primary hover:text-white transition-colors font-mono shrink-0">
+        >_ SM
+      </a>
+
+      <!-- Terminal-Style Year Slider -->
+      <div class="year-slider hidden md:flex items-center gap-0 font-mono shrink-0" *ngIf="years.length > 0">
+        <button
+          class="slider-arrow text-primary hover:text-white transition-colors bg-transparent border-none cursor-pointer text-sm px-1"
+          (click)="prevYear()" [class.opacity-30]="selectedYearIndex <= 0" [disabled]="selectedYearIndex <= 0"
+          aria-label="Previous year">◄</button>
+
+        <div class="slider-track flex items-center">
+          <ng-container *ngFor="let year of years; let i = index">
+            <button
+              class="slider-year bg-transparent border-none cursor-pointer font-mono transition-all duration-200 px-1"
+              [class.selected]="i === selectedYearIndex" [class.text-primary]="i === selectedYearIndex"
+              [class.text-secondary]="i !== selectedYearIndex" [class.opacity-100]="i === selectedYearIndex"
+              [class.opacity-30]="i !== selectedYearIndex && absDiff(i, selectedYearIndex) > 3"
+              [class.opacity-50]="i !== selectedYearIndex && absDiff(i, selectedYearIndex) <= 3"
+              (click)="selectYearByIndex(i)" [attr.data-index]="i">
+              <span *ngIf="i === selectedYearIndex" class="text-sm font-bold">[{{ year }}]</span>
+              <span *ngIf="i !== selectedYearIndex" class="text-xs">{{ year }}</span>
+            </button>
+            <span *ngIf="i < years.length - 1" class="text-xs transition-colors duration-200"
+              [class.text-primary]="i === selectedYearIndex || i + 1 === selectedYearIndex"
+              [class.text-secondary]="i !== selectedYearIndex && i + 1 !== selectedYearIndex"
+              [class.opacity-30]="absDiff(i, selectedYearIndex) > 3"
+              [class.opacity-50]="absDiff(i, selectedYearIndex) <= 3">─</span>
+          </ng-container>
+        </div>
+
+        <button
+          class="slider-arrow text-primary hover:text-white transition-colors bg-transparent border-none cursor-pointer text-sm px-1"
+          (click)="nextYear()" [class.opacity-30]="selectedYearIndex >= years.length - 1"
+          [disabled]="selectedYearIndex >= years.length - 1" aria-label="Next year">►</button>
+      </div>
+    </div>
 
     <!-- Desktop Menu -->
-    <nav class="hidden md:flex items-center gap-8">
+    <nav class="hidden md:flex items-center gap-8 shrink-0">
       <ng-container *ngFor="let item of navItems">
-        <!-- Internal Route -->
         <a *ngIf="item.href.startsWith('/')" [routerLink]="item.href" routerLinkActive="text-white bg-primary/20"
           class="text-sm font-bold text-secondary hover:text-white transition-colors font-mono px-3 py-1 rounded cursor-pointer">
           {{ item.labelKey | translate }}
         </a>
-        <!-- Anchor Link -->
         <a *ngIf="!item.href.startsWith('/')" [href]="item.href" (click)="scrollTo(item.href, $event)"
           class="text-sm font-bold text-secondary hover:text-white transition-colors font-mono px-3 py-1 rounded cursor-pointer">
           {{ item.labelKey | translate }}

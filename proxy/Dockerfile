@@ -1,7 +1,6 @@
-FROM nginx:1.26-alpine
+FROM nginx:latest
 
-RUN --mount=type=cache,target=/var/cache/apk \
-    apk add openssl curl
+RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
 
 COPY default.conf /etc/nginx/conf.d/default.conf
 COPY entrypoint.sh /entrypoint.sh

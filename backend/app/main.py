@@ -18,6 +18,7 @@ from app.api.cv import router as cv_router
 from app.api.admin_cv import router as admin_cv_router
 from app.api.admin_sql import router as admin_sql_router
 from app.api.linkedin import router as linkedin_router
+from app.api.years import router as years_router
 from app.config import settings
 
 
@@ -191,7 +192,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.2.0",
+    version="1.2.3",
     lifespan=lifespan,
 )
 
@@ -218,6 +219,7 @@ app.include_router(cv_router, prefix=settings.api_prefix)
 app.include_router(admin_cv_router, prefix=settings.api_prefix)
 app.include_router(admin_sql_router, prefix=settings.api_prefix)
 app.include_router(linkedin_router, prefix=settings.api_prefix)
+app.include_router(years_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

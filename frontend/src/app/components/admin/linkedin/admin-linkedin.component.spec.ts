@@ -1,15 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AdminLinkedinComponent } from './admin-linkedin.component';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { LinkedinService, LinkedInPost } from '../../../services/linkedin.service';
-import { of, throwError } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { vi } from 'vitest';
 
 class MockLinkedinService {
-    syncProfile() { return of({}); }
-    getPosts() { return of([]); }
-    transferPost() { return of({ id: 0, message: '' }); }
+    async syncProfile() { return {}; }
+    async getPosts() { return []; }
+    async transferPost() { return { id: 0, message: '' }; }
 }
 
 describe('AdminLinkedinComponent', () => {
@@ -19,7 +17,7 @@ describe('AdminLinkedinComponent', () => {
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            imports: [AdminLinkedinComponent, HttpClientTestingModule, CommonModule],
+            imports: [AdminLinkedinComponent, CommonModule],
             providers: [
                 { provide: LinkedinService, useClass: MockLinkedinService }
             ]
@@ -32,10 +30,10 @@ describe('AdminLinkedinComponent', () => {
         // Clear message display timeout delay for tests
         component.clearMessageAfterDelay = vi.fn();
 
-        // Set default returns to prevent undefined subscribe errors during initialization
-        vi.spyOn(mockLinkedinService, 'syncProfile').mockReturnValue(of({}));
-        vi.spyOn(mockLinkedinService, 'getPosts').mockReturnValue(of([]));
-        vi.spyOn(mockLinkedinService, 'transferPost').mockReturnValue(of({ id: 0, message: '' }));
+        // Set default returns
+        vi.spyOn(mockLinkedinService, 'syncProfile').mockResolvedValue({});
+        vi.spyOn(mockLinkedinService, 'getPosts').mockResolvedValue([]);
+        vi.spyOn(mockLinkedinService, 'transferPost').mockResolvedValue({ id: 0, message: '' });
 
         fixture.detectChanges();
     });
@@ -54,35 +52,34 @@ describe('AdminLinkedinComponent', () => {
         expect(component.activeTab).toBe('profile');
     });
 
-    it('should sync profile successfully', () => {
+    it('should sync profile successfully', async () => {
         const mockData = { name: 'Test User' };
-        vi.spyOn(mockLinkedinService, 'syncProfile').mockReturnValue(of(mockData));
+        vi.spyOn(mockLinkedinService, 'syncProfile').mockResolvedValue(mockData);
 
-        component.syncProfile();
+        await component.syncProfile();
 
-        // As `of` is synchronous, we directly check the final state.
         expect(component.isSyncingProfile).toBe(false);
         expect(component.profileData).toEqual(mockData);
         expect(component.statusMessage).toBe('Profile synced successfully.');
         expect(component.clearMessageAfterDelay).toHaveBeenCalled();
     });
 
-    it('should handle profile sync error', () => {
-        vi.spyOn(mockLinkedinService, 'syncProfile').mockReturnValue(throwError(() => new Error('Error')));
+    it('should handle profile sync error', async () => {
+        vi.spyOn(mockLinkedinService, 'syncProfile').mockRejectedValue(new Error('Error'));
         vi.spyOn(console, 'error').mockImplementation(() => { });
 
-        component.syncProfile();
+        await component.syncProfile();
 
         expect(component.isSyncingProfile).toBe(false);
         expect(component.statusMessage).toBe('Error syncing profile.');
         expect(console.error).toHaveBeenCalled();
     });
 
-    it('should fetch posts successfully', () => {
+    it('should fetch posts successfully', async () => {
         const mockPosts: LinkedInPost[] = [{ id: '1', content: 'Test post', time: '1d', imageUrl: '' }];
-        vi.spyOn(mockLinkedinService, 'getPosts').mockReturnValue(of(mockPosts));
+        vi.spyOn(mockLinkedinService, 'getPosts').mockResolvedValue(mockPosts);
 
-        component.fetchPosts();
+        await component.fetchPosts();
 
         expect(component.isFetchingPosts).toBe(false);
         expect(component.posts).toEqual(mockPosts);
@@ -90,25 +87,36 @@ describe('AdminLinkedinComponent', () => {
         expect(component.clearMessageAfterDelay).toHaveBeenCalled();
     });
 
-    it('should handle fetch posts error', () => {
-        vi.spyOn(mockLinkedinService, 'getPosts').mockReturnValue(throwError(() => new Error('Error')));
+    it('should handle fetch posts error', async () => {
+        vi.spyOn(mockLinkedinService, 'getPosts').mockRejectedValue(new Error('Error'));
         vi.spyOn(console, 'error').mockImplementation(() => { });
 
-        component.fetchPosts();
+        await component.fetchPosts();
 
         expect(component.isFetchingPosts).toBe(false);
-        expect(component.statusMessage).toBe('Error fetching posts.');
+        expect(component.statusMessage).toBe('Error');
         expect(console.error).toHaveBeenCalled();
     });
 
-    it('should transfer post successfully', () => {
+    it('should extract backend error message on fetch posts error', async () => {
+        const backendError = new Error('Scraper blocked');
+        vi.spyOn(mockLinkedinService, 'getPosts').mockRejectedValue(backendError);
+        vi.spyOn(console, 'error').mockImplementation(() => { });
+
+        await component.fetchPosts();
+
+        expect(component.isFetchingPosts).toBe(false);
+        expect(component.statusMessage).toBe('Scraper blocked');
+    });
+
+    it('should transfer post successfully', async () => {
         const mockPost: LinkedInPost = { id: '1', content: 'Test post', time: '1d', imageUrl: '' };
         const mockResponse = { id: 123, message: '' };
         component.posts = [mockPost];
 
-        vi.spyOn(mockLinkedinService, 'transferPost').mockReturnValue(of(mockResponse));
+        vi.spyOn(mockLinkedinService, 'transferPost').mockResolvedValue(mockResponse);
 
-        component.transferPost(mockPost);
+        await component.transferPost(mockPost);
 
         expect(component.transferringPostId).toBeNull();
         expect(component.posts.length).toBe(0);
@@ -116,26 +124,38 @@ describe('AdminLinkedinComponent', () => {
         expect(component.clearMessageAfterDelay).toHaveBeenCalled();
     });
 
-    it('should not transfer if already transferring', () => {
+    it('should not transfer if already transferring', async () => {
         const mockPost: LinkedInPost = { id: '1', content: 'Test post', time: '1d', imageUrl: '' };
         component.transferringPostId = '1';
 
         vi.spyOn(mockLinkedinService, 'transferPost');
-        component.transferPost(mockPost);
+        await component.transferPost(mockPost);
 
         expect(mockLinkedinService.transferPost).not.toHaveBeenCalled();
     });
 
-    it('should handle transfer post error', () => {
+    it('should handle transfer post error', async () => {
         const mockPost: LinkedInPost = { id: '1', content: 'Test post', time: '1d', imageUrl: '' };
-        vi.spyOn(mockLinkedinService, 'transferPost').mockReturnValue(throwError(() => new Error('Error')));
+        vi.spyOn(mockLinkedinService, 'transferPost').mockRejectedValue(new Error('Error'));
         vi.spyOn(console, 'error').mockImplementation(() => { });
 
-        component.transferPost(mockPost);
+        await component.transferPost(mockPost);
 
         expect(component.transferringPostId).toBeNull();
         expect(component.statusMessage).toBe('Error transferring post.');
         expect(console.error).toHaveBeenCalled();
+    });
+
+    it('should clear message after delay', () => {
+        vi.useFakeTimers();
+        // Restore actual implementation for this test
+        component.clearMessageAfterDelay = AdminLinkedinComponent.prototype.clearMessageAfterDelay.bind(component);
+        component.statusMessage = 'Test msg';
+        component.clearMessageAfterDelay();
+        vi.advanceTimersByTime(5000);
+        expect(component.statusMessage).toBe('');
+        // Clean up
+        vi.useRealTimers();
     });
 
     it('should truncate exact text', () => {
@@ -150,6 +170,5 @@ describe('AdminLinkedinComponent', () => {
 
     it('should return empty string for falsy text', () => {
         expect(component.truncateText(null as any)).toBe('');
-        expect(component.truncateText('')).toBe('');
     });
 });

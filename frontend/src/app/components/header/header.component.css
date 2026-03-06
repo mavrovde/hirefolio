@@ -6,3 +6,39 @@
   width: 100%;
   background-color: rgba(0, 0, 0, 0.95);
 }
+
+/* Terminal slider */
+.year-slider {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.slider-arrow {
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 2px 4px;
+  transition: all 0.2s ease;
+}
+
+.slider-arrow:hover:not(:disabled) {
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.8);
+}
+
+.slider-arrow:disabled {
+  cursor: default;
+}
+
+.slider-year {
+  line-height: 1;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.slider-year:hover {
+  opacity: 1 !important;
+  text-shadow: 0 0 6px rgba(0, 255, 65, 0.4);
+}
+
+.slider-year.selected {
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.7);
+}

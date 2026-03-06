@@ -53,6 +53,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./scraper:/scraper
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mavrov}
       - OLLAMA_URL=http://ollama:11434

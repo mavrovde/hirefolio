@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LinkedinService, LinkedInPost } from '../../../services/linkedin.service';
 
@@ -11,6 +11,7 @@ import { LinkedinService, LinkedInPost } from '../../../services/linkedin.servic
 })
 export class AdminLinkedinComponent implements OnInit {
     private linkedinService = inject(LinkedinService);
+    private cdr = inject(ChangeDetectorRef);
 
     isSyncingProfile = false;
     isFetchingPosts = false;
@@ -28,60 +29,62 @@ export class AdminLinkedinComponent implements OnInit {
         this.activeTab = tab;
     }
 
-    syncProfile(): void {
+    async syncProfile(): Promise<void> {
         this.isSyncingProfile = true;
         this.statusMessage = 'Scanning profile...';
-        this.linkedinService.syncProfile().subscribe({
-            next: (data) => {
-                this.profileData = data;
-                this.isSyncingProfile = false;
-                this.statusMessage = 'Profile synced successfully.';
-                this.clearMessageAfterDelay();
-            },
-            error: (err) => {
-                this.isSyncingProfile = false;
-                console.error('Error syncing profile:', err);
-                this.statusMessage = 'Error syncing profile.';
-            }
-        });
+        try {
+            const data = await this.linkedinService.syncProfile();
+            console.log('[DEBUG] PROFILE RECEIVED:', JSON.stringify(data));
+            this.profileData = data;
+            this.isSyncingProfile = false;
+            this.statusMessage = 'Profile synced successfully.';
+            this.clearMessageAfterDelay();
+        } catch (err: any) {
+            this.isSyncingProfile = false;
+            console.error('Error syncing profile:', err);
+            this.statusMessage = 'Error syncing profile.';
+        } finally {
+            this.cdr.detectChanges();
+        }
     }
 
-    fetchPosts(): void {
+    async fetchPosts(): Promise<void> {
         this.isFetchingPosts = true;
         this.statusMessage = 'Fetching posts...';
-        this.linkedinService.getPosts().subscribe({
-            next: (posts) => {
-                this.posts = posts;
-                this.isFetchingPosts = false;
-                this.statusMessage = `Fetched ${posts.length} posts.`;
-                this.clearMessageAfterDelay();
-            },
-            error: (err) => {
-                this.isFetchingPosts = false;
-                console.error('Error fetching posts:', err);
-                this.statusMessage = 'Error fetching posts.';
-            }
-        });
+        try {
+            const posts = await this.linkedinService.getPosts();
+            console.log('[DEBUG] POSTS RECEIVED:', JSON.stringify(posts));
+            this.posts = posts;
+            this.isFetchingPosts = false;
+            this.statusMessage = `Fetched ${posts.length} posts.`;
+            this.clearMessageAfterDelay();
+        } catch (err: any) {
+            this.isFetchingPosts = false;
+            console.error('Error fetching posts:', err);
+            this.statusMessage = err.message || 'Error fetching posts.';
+        } finally {
+            this.cdr.detectChanges();
+        }
     }
 
-    transferPost(post: LinkedInPost): void {
+    async transferPost(post: LinkedInPost): Promise<void> {
         if (this.transferringPostId) return;
 
         this.transferringPostId = post.id;
         this.statusMessage = `Transferring post...`;
-        this.linkedinService.transferPost(post).subscribe({
-            next: (res) => {
-                this.transferringPostId = null;
-                this.statusMessage = `Transferred as draft ${res.id}`;
-                this.posts = this.posts.filter(p => p.id !== post.id);
-                this.clearMessageAfterDelay();
-            },
-            error: (err) => {
-                this.transferringPostId = null;
-                console.error('Error transferring post:', err);
-                this.statusMessage = 'Error transferring post.';
-            }
-        });
+        try {
+            const res = await this.linkedinService.transferPost(post);
+            this.transferringPostId = null;
+            this.statusMessage = `Transferred as draft ${res.id}`;
+            this.posts = this.posts.filter(p => p.id !== post.id);
+            this.clearMessageAfterDelay();
+        } catch (err: any) {
+            this.transferringPostId = null;
+            console.error('Error transferring post:', err);
+            this.statusMessage = 'Error transferring post.';
+        } finally {
+            this.cdr.detectChanges();
+        }
     }
 
     clearMessageAfterDelay() {

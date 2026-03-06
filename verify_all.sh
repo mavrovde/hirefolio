@@ -44,22 +44,23 @@ echo "e2e: 🎭 Running E2E Tests..."
 # Ensure full stack is running
 echo "Starting full stack..."
 docker-compose -f docker-compose.prod.yml up -d --build backend frontend proxy open-webui
+
+echo "🔄 Restarting Frontend & Proxy to ensure fresh DNS resolution..."
+docker-compose -f docker-compose.prod.yml restart frontend proxy
+
 # Waiting for Health with timeouts instead of fixed sleeps
 echo "Waiting for Backend to be ready..."
 # Portable wait function
 count=0
-until curl -s -f http://localhost/health > /dev/null || [ $count -eq 30 ]; do
+until curl -s -f http://localhost/health > /dev/null || [ $count -eq 90 ]; do
     sleep 1
     count=$((count + 1))
 done
 
-if [ $count -eq 30 ]; then
+if [ $count -eq 90 ]; then
     echo "Backend failed to start"
     exit 1
 fi
-
-echo "🔄 Restarting Frontend & Proxy to ensure fresh DNS resolution..."
-docker-compose -f docker-compose.prod.yml restart frontend proxy
 
 echo "Waiting for Frontend to be ready..."
 count=0

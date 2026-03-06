@@ -17,11 +17,10 @@ COPY . .
 RUN npm run build
 
 # Production stage with nginx
-FROM nginx:alpine
+FROM node:24-slim
 
-# Install nodejs for SSR runtime with cache mount
-RUN --mount=type=cache,target=/var/cache/apk \
-    apk add nodejs
+# Install nginx and clear default config
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/* && rm -f /etc/nginx/sites-enabled/default
 
 # Clear default nginx assets
 RUN rm -rf /usr/share/nginx/html/*

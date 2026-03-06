@@ -42,7 +42,7 @@ services:
       - app-network
 
   backend:
-    image: maverickde/mavrov.de-backend:v1.2.0
+    image: maverickde/mavrov.de-backend:v1.2.3
     build: ./backend
     restart: always
     environment:
@@ -62,7 +62,7 @@ services:
       - app-network
 
   frontend:
-    image: maverickde/mavrov.de-frontend:v1.2.0
+    image: maverickde/mavrov.de-frontend:v1.2.3
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -92,7 +92,7 @@ services:
       - app-network
 
   proxy:
-    image: maverickde/mavrov.de-proxy:v1.2.0
+    image: maverickde/mavrov.de-proxy:v1.2.3
     build: ./proxy
     container_name: global_proxy
     restart: always

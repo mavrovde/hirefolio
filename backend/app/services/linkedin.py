@@ -43,7 +43,17 @@ class LinkedInService:
             env=env
         )
 
-        stdout, stderr = await process.communicate()
+        try:
+            # Enforce a 120-second timeout to prevent indefinite hanging if UI changes break the scraper
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=120.0)
+        except asyncio.TimeoutError:
+            logger.error(f"Scraper timed out after 120 seconds: {script_name}")
+            try:
+                process.kill()
+                await process.wait()
+            except ProcessLookupError:
+                pass
+            raise RuntimeError(f"LinkedIn scraper timed out. LinkedIn might have changed their UI or blocked the request.")
 
         if process.returncode != 0:
             error_msg = stderr.decode() if stderr else "Unknown error"
@@ -52,7 +62,7 @@ class LinkedInService:
 
         # Try to read the output file
         if not os.path.exists(output_path):
-            raise FileNotFoundError(f"Scraper output file not found: {output_path}")
+            raise FileNotFoundError(f"Scraper output file not found: {output_path}. Check server logs for details.")
 
         try:
             with open(output_path, "r", encoding="utf-8") as f:

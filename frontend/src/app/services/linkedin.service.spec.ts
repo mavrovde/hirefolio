@@ -1,77 +1,95 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
 import { LinkedinService, LinkedInPost } from './linkedin.service';
 import { environment } from '../../environments/environment';
+import { AuthService } from './auth.service';
+import { vi } from 'vitest';
 
 describe('LinkedinService', () => {
     let service: LinkedinService;
-    let httpMock: HttpTestingController;
+    let authServiceSpy: any;
 
     beforeEach(() => {
+        authServiceSpy = { getToken: vi.fn().mockReturnValue('test-token') };
+
         TestBed.resetTestingModule();
         TestBed.configureTestingModule({
             providers: [
                 LinkedinService,
-                provideHttpClient(),
-                provideHttpClientTesting()
+                { provide: AuthService, useValue: authServiceSpy }
             ]
         });
         service = TestBed.inject(LinkedinService);
-        httpMock = TestBed.inject(HttpTestingController);
+        globalThis.fetch = vi.fn();
     });
 
     afterEach(() => {
-        httpMock.verify();
+        vi.restoreAllMocks();
     });
 
     it('should be created', () => {
         expect(service).toBeTruthy();
     });
 
-    it('should sync profile data', () => {
+    it('should sync profile data', async () => {
         const mockProfileData = { name: 'Test User', skills: ['Angular'] };
-
-        service.syncProfile().subscribe(data => {
-            expect(data).toEqual(mockProfileData);
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve(mockProfileData)
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/linkedin/profile-sync`);
-        expect(req.request.method).toBe('GET');
-        req.flush(mockProfileData);
+        const data = await service.syncProfile();
+
+        expect(data).toEqual(mockProfileData);
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            `${environment.apiUrl}${environment.apiPrefix}/linkedin/profile-sync`,
+            { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer test-token' } }
+        );
     });
 
-    it('should fetch posts', () => {
+    it('should fetch posts', async () => {
         const mockPosts: LinkedInPost[] = [
-            { id: '1', content: 'Post 1', time: '1d' },
-            { id: '2', content: 'Post 2', time: '2d' }
+            { id: '1', content: 'Post 1', time: '1d', imageUrl: '' },
+            { id: '2', content: 'Post 2', time: '2d', imageUrl: '' }
         ];
 
-        service.getPosts().subscribe(posts => {
-            expect(posts).toEqual(mockPosts);
-            expect(posts.length).toBe(2);
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve(mockPosts)
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/linkedin/posts`);
-        expect(req.request.method).toBe('GET');
-        req.flush(mockPosts);
+        const posts = await service.getPosts();
+
+        expect(posts).toEqual(mockPosts);
+        expect(posts.length).toBe(2);
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            `${environment.apiUrl}${environment.apiPrefix}/linkedin/posts`,
+            expect.any(Object)
+        );
     });
 
-    it('should transfer a post', () => {
+    it('should transfer a post', async () => {
         const mockPost: LinkedInPost = { id: 'urn:li:activity:1234', content: 'Post 1', time: '1d', imageUrl: '', urn: '1234' };
         const mockResponse = { id: 123, message: 'Transfer successful' };
 
-        service.transferPost(mockPost).subscribe(res => {
-            expect(res).toEqual(mockResponse);
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve(mockResponse)
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}/linkedin/transfer-post`);
-        expect(req.request.method).toBe('POST');
-        expect(req.request.body).toEqual({
-            content: mockPost.content,
-            image_url: null,
-            urn: '1234'
-        });
-        req.flush(mockResponse);
+        const res = await service.transferPost(mockPost);
+
+        expect(res).toEqual(mockResponse);
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            `${environment.apiUrl}${environment.apiPrefix}/linkedin/transfer-post`,
+            {
+                method: 'POST',
+                headers: expect.any(Object),
+                body: JSON.stringify({
+                    content: mockPost.content,
+                    image_url: null,
+                    urn: '1234'
+                })
+            }
+        );
     });
 });
