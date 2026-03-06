@@ -28,7 +28,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     gcc \
     g++ \
     cargo \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Create and populate virtualenv
@@ -45,7 +44,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install maturin
 
 # Install production dependencies
+# linkedin-api PyPI wheel has broken entry point (lint = black:None).
+# Force source distribution install for linkedin-api, then install the rest normally.
 RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-binary linkedin-api linkedin-api==2.2.1 && \
     pip install -r requirements.txt
 
 # Final runtime stage inherits from base
