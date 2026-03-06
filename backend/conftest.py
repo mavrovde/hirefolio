@@ -240,3 +240,56 @@ def sample_post_data():
         "language": "en",
         "published": True,
     }
+
+
+@pytest.fixture
+def admin_token_headers():
+    """Return Authorization headers for admin user.
+    
+    Auth is already overridden in the client fixture, so any Bearer token works.
+    """
+    return {"Authorization": "Bearer test-admin-token"}
+
+
+@pytest.fixture(scope="function")
+async def clean_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Create a test client WITHOUT admin auth overrides.
+    
+    Used for testing permission denied scenarios where we need real auth checks.
+    """
+    from app.main import app
+    from app.database import get_db
+    from unittest.mock import patch
+    from datetime import datetime, timezone
+
+    if not hasattr(app.state, "start_time") or app.state.start_time is None:
+        app.state.start_time = datetime.now(timezone.utc)
+
+    test_session_maker = get_test_async_session()
+    p = patch("app.main.async_session", side_effect=test_session_maker)
+    p.start()
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    # No admin auth override — keeps real auth checks
+
+    from httpx import ASGITransport
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+    p.stop()
+
+
+@pytest.fixture
+def normal_user_token_headers():
+    """Return Authorization headers for a non-admin user.
+    
+    These headers will fail admin-only checks since clean_client doesn't override auth.
+    """
+    return {"Authorization": "Bearer non-admin-token"}
+
