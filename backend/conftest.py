@@ -242,13 +242,6 @@ def sample_post_data():
     }
 
 
-@pytest.fixture
-def admin_token_headers():
-    """Return Authorization headers for admin user.
-    
-    Auth is already overridden in the client fixture, so any Bearer token works.
-    """
-    return {"Authorization": "Bearer test-admin-token"}
 
 
 @pytest.fixture(scope="function")
@@ -273,7 +266,6 @@ async def clean_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    # No admin auth override — keeps real auth checks
 
     from httpx import ASGITransport
 
@@ -286,10 +278,16 @@ async def clean_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 
 
 @pytest.fixture
-def normal_user_token_headers():
-    """Return Authorization headers for a non-admin user.
+def admin_token_headers():
+    """Return Authorization headers for admin user.
     
-    These headers will fail admin-only checks since clean_client doesn't override auth.
+    Auth is already overridden in the client fixture, so any Bearer token works.
     """
+    return {"Authorization": "Bearer test-admin-token"}
+
+
+@pytest.fixture
+def normal_user_token_headers():
+    """Return Authorization headers for a non-admin user."""
     return {"Authorization": "Bearer non-admin-token"}
 
