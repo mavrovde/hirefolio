@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 import json
-from app.services.ai import generate_full_post, suggest_post_details
+from app.services.ai import generate_full_post
 
 @pytest.mark.asyncio
 async def test_ai_generate_full_post_http_error():
@@ -26,7 +26,7 @@ async def test_ai_generate_full_post_json_fallback_regex():
         # Actually code checks for { and }.
         # If we return text with markdown blocks:
         
-        json_content = json.dumps({
+        json.dumps({
             "title": "Regex Title", "slug": "regex-slug", 
             "summary": "Sum", "tags": ["t1"], "content": "Cont",
         })
@@ -34,7 +34,6 @@ async def test_ai_generate_full_post_json_fallback_regex():
         # Code: start_idx = response_text.find("{")
         # If we provide text with NO braces, it goes to `else` block (regex fallback)
         
-        malformed_response = "Here has no braces" # This fails json.loads though.
         
         # Code:
         # cleaned_text = re.sub(r"```json\s*|\s*```", "", response_text).strip()

@@ -2,8 +2,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.post import Post
-from app.models.user import User
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 @pytest.fixture
 async def test_posts(db_session: AsyncSession):

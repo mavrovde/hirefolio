@@ -3,9 +3,6 @@ import pytest
 from httpx import AsyncClient
 from unittest.mock import MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.models.user import User
-from app.services.auth import get_password_hash
 
 # Mark all tests in this module as async
 pytestmark = pytest.mark.asyncio

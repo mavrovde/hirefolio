@@ -42,15 +42,16 @@ def _extract_years_from_data(data: dict) -> set[int]:
 
 def _fetch_years_via_http() -> set[int]:
     """Fetch profile data via HTTP and extract years (for Docker environment)."""
-    import urllib.request
+    import httpx
 
     all_years: set[int] = set()
     for lang in ("en", "de"):
         url = f"{PROFILE_DATA_HTTP_BASE}/profile_data_{lang}.json"
         try:
-            with urllib.request.urlopen(url, timeout=5) as response:
-                data = json.loads(response.read().decode("utf-8"))
-                all_years |= _extract_years_from_data(data)
+            response = httpx.get(url, timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            all_years |= _extract_years_from_data(data)
         except Exception as e:
             logger.warning(f"Could not fetch profile data from {url}: {e}")
     return all_years

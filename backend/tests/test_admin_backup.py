@@ -7,7 +7,6 @@ from app.config import settings
 
 @pytest.fixture
 async def unauthed_client():
-    from app.services.auth import get_current_admin_user
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

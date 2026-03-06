@@ -2,8 +2,6 @@ import pytest
 from httpx import AsyncClient
 from unittest.mock import MagicMock, AsyncMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.admin_sql import execute_sql, SqlQuery
-from fastapi import HTTPException
 
 # Tests for missing branches in admin_sql.py
 

@@ -48,7 +48,6 @@ async def test_posts_scenario_vector_search_failure_fallback(client: AsyncClient
 
 @pytest.mark.asyncio
 async def test_posts_scenario_generation_service_returns_none(client: AsyncClient):
-    from tests.fixtures_auth_custom import admin_token_headers # We need admin token
     # But this is an external fixture. We can import or re-declare. 
     # Better to use the one from conftest or `fixtures_auth_custom` if implicitly available.
     # We will assume we can get it if we define it in args? No, need to import.

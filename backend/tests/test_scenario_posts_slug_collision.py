@@ -48,7 +48,7 @@ async def test_posts_scenario_slug_collision_auto_retry(client: AsyncClient):
                 instance.updated_at = datetime.now()
                 return None
 
-            refresh_mock = AsyncMock(side_effect=side_effect_refresh)
+            AsyncMock(side_effect=side_effect_refresh)
             
             with patch("sqlalchemy.ext.asyncio.AsyncSession.rollback", new_callable=AsyncMock), \
                  patch("sqlalchemy.ext.asyncio.AsyncSession.refresh", new_callable=AsyncMock, side_effect=side_effect_refresh):

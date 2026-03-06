@@ -2,7 +2,6 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock, PropertyMock
 from app.services import ai
-from app.config import settings
 
 @pytest.mark.asyncio
 async def test_get_gemini_client_no_key():
@@ -122,7 +121,7 @@ async def test_chat_with_gemini_error():
     mock_client.chats.create.side_effect = Exception("Total fail")
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
-        res = await ai.chat_with_gemini("hello")
+        await ai.chat_with_gemini("hello")
 
 @pytest.mark.asyncio
 async def test_suggest_tags_gemini_success():

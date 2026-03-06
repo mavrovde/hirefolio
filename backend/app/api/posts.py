@@ -49,7 +49,7 @@ class PostUpdate(BaseModel):
         return v
 
 
-from pydantic import BaseModel, field_validator, ConfigDict, Field
+from pydantic import BaseModel, field_validator, Field
 
 # ...
 
@@ -270,12 +270,11 @@ async def semantic_search(
             
             v_res = await db.execute(vector_query)
             vector_results = v_res.all()
-    except Exception as e:
+    except Exception:
         # Fallback to keyword search if vector fails
         pass
 
     # 2. Keyword Search
-    keyword_results = []
     keyword_query = select(Post).where(Post.published.is_(True))
     if lang:
         keyword_query = keyword_query.where(Post.language == lang)
@@ -391,7 +390,7 @@ async def create_post(
     try:
         db.add(post)
         await db.commit()
-    except Exception as e:
+    except Exception:
         await db.rollback()
         # Handle unique constraint on slug potentially
         import random
@@ -507,7 +506,6 @@ async def generate_post_endpoint(
     Generate a full blog post using AI and save it as a draft.
     """
     from app.services.ai import generate_full_post
-    from datetime import datetime
 
     generated_data = await generate_full_post(
         topic=request.topic, 

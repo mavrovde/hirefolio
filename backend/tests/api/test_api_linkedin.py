@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.config import settings
-from unittest.mock import AsyncMock
 
 client = TestClient(app)
 

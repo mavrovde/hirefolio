@@ -22,7 +22,7 @@ async def test_lifespan_seeds_cv(db_session, init_db):
     # But lifespan creates a NEW session using async_session() context manager
     # So we need to mock async_session to return a context manager that yields our db_session
     
-    from unittest.mock import MagicMock, AsyncMock
+    from unittest.mock import AsyncMock
 
     # Mock the async_session factory to return a Context Manager that yields db_session
     mock_session_factory = MagicMock()

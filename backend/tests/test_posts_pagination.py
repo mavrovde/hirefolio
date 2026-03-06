@@ -1,6 +1,5 @@
 from app.config import settings
 import pytest
-from unittest.mock import patch
 from httpx import AsyncClient
 
 

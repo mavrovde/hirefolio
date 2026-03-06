@@ -61,7 +61,7 @@ async def _generate_text_gemini(prompt: str, user_api_key: Optional[str] = None)
             contents=prompt
         )
         return response.text
-    except Exception as e:
+    except Exception:
         # Fallback to gemini-1.5-flash if 2.0 not available
         try:
              response = client.models.generate_content(
@@ -324,7 +324,7 @@ async def chat_with_gemini(message: str, history: List[dict] = [], user_api_key:
         
         response = chat.send_message(message)
         return response.text
-    except Exception as e:
+    except Exception:
         # Fallback to 1.5
         try:
              chat = client.chats.create(

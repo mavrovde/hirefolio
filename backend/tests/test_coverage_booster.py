@@ -1,13 +1,8 @@
 from app.config import settings
 import pytest
-import json
-import asyncio
-import io
-import re
 from unittest.mock import patch, MagicMock, AsyncMock
-from app.services.multi_chat import multi_agent_conversation, AgentConfig, ChatMessage, StopChatTool
-from httpx import AsyncClient, Response
-from fastapi import UploadFile
+from app.services.multi_chat import multi_agent_conversation, AgentConfig
+from httpx import AsyncClient
 
 def log(msg):
     print(f"DEBUG_BOOSTER: {msg}")

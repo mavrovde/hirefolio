@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 from app.services.ai import generate_full_post, suggest_post_details
 
 # Scenario: AI Generation Success

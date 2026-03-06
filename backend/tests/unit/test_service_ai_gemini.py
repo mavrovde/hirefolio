@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from app.services import ai
-from app.config import settings
 
 @pytest.mark.asyncio
 async def test_get_gemini_client_no_key():

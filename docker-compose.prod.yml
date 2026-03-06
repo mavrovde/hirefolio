@@ -53,6 +53,8 @@ services:
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./scraper:/scraper
     depends_on:
       db:
         condition: service_healthy

@@ -1,7 +1,6 @@
 
 import pytest
 from httpx import AsyncClient
-from tests.fixtures_auth_custom import admin_token_headers, admin_user
 from app.services.auth import verify_password
 from app.models.user import User
 from sqlalchemy import select

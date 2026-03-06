@@ -9,7 +9,7 @@ async def test_create_post_double_failure(client: AsyncClient, admin_token_heade
     """Test create_post when both initial commit and retry commit fail."""
     with patch("sqlalchemy.ext.asyncio.AsyncSession.commit", side_effect=Exception("DB Error")) as mock_commit:
         # We need to ensure add is called
-        with patch("sqlalchemy.ext.asyncio.AsyncSession.add") as mock_add:
+        with patch("sqlalchemy.ext.asyncio.AsyncSession.add"):
              with pytest.raises(Exception, match="DB Error"):
                  await client.post(
                     f"{settings.api_prefix}/posts",
@@ -65,8 +65,6 @@ async def test_semantic_search_low_relevance(client: AsyncClient):
         
         # We need to ensure DB returns some results but their distance is high (relevance low)
         # We can insert a post first
-        from app.database import get_db
-        from app.models.post import Post
         
         # This is tricky to mock purely with patches because of the SQL query structure.
         # But we can assume the query runs. If we mock `db.execute` to return results with high distance?
@@ -99,7 +97,7 @@ async def test_semantic_search_low_relevance_mocked(client: AsyncClient):
         MockRow = namedtuple("MockRow", ["Post", "relevance"])
         mock_post = Post(id=999, title="Low Relevance", published=True)
         # Setting relevance < 0.3 (default min_relevance)
-        mock_row = MockRow(Post=mock_post, relevance=0.1)
+        MockRow(Post=mock_post, relevance=0.1)
         
         # We also need to handle the keyword query which runs after.
         # Let's mock `db.execute` to return [mock_row] for first call, and [] for second.

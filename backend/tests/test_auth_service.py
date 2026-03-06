@@ -1,13 +1,11 @@
 import pytest
 from datetime import timedelta
 from unittest.mock import patch, MagicMock, AsyncMock
-from jose import jwt, JWTError
 from fastapi import HTTPException
 from app.services.auth import (
     verify_password, get_password_hash, create_access_token, decode_access_token,
     get_current_user, get_current_user_optional, get_current_admin_user
 )
-from app.config import settings
 from app.models.user import User
 
 def test_password_hashing():

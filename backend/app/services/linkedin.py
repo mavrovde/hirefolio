@@ -53,7 +53,7 @@ class LinkedInService:
                 await process.wait()
             except ProcessLookupError:
                 pass
-            raise RuntimeError(f"LinkedIn scraper timed out. LinkedIn might have changed their UI or blocked the request.")
+            raise RuntimeError("LinkedIn scraper timed out. LinkedIn might have changed their UI or blocked the request.")
 
         if process.returncode != 0:
             error_msg = stderr.decode() if stderr else "Unknown error"
@@ -75,12 +75,33 @@ class LinkedInService:
     async def fetch_posts(self) -> List[Dict[str, Any]]:
         """
         Fetches recent LinkedIn posts using the Node.js scraper.
+        Falls back to cached posts_data.json if credentials are not configured.
         """
-        posts = await self._run_scraper("scrape-posts.js", "posts_data.json")
-        if not isinstance(posts, list):
-            logger.warning("Expected a list of posts, got something else.")
-            return []
-        return posts
+        # If credentials are available, run the live scraper
+        if settings.linkedin_email and settings.linkedin_password:
+            posts = await self._run_scraper("scrape-posts.js", "posts_data.json")
+            if not isinstance(posts, list):
+                logger.warning("Expected a list of posts, got something else.")
+                return []
+            return posts
+
+        # Fallback: read cached posts file
+        cached_path = os.path.join(self.scraper_dir, "posts_data.json")
+        if os.path.exists(cached_path):
+            logger.info("LinkedIn credentials not configured, using cached posts data.")
+            try:
+                with open(cached_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    return data
+                logger.warning("Cached posts data is not a list.")
+                return []
+            except (json.JSONDecodeError, IOError) as e:
+                logger.error(f"Failed to read cached posts: {e}")
+                return []
+
+        logger.warning("No LinkedIn credentials and no cached posts file found.")
+        return []
 
     async def sync_profile(self) -> Dict[str, Any]:
         """

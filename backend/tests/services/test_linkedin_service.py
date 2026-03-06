@@ -1,8 +1,5 @@
 import pytest
 import asyncio
-import json
-import os
-from unittest.mock import MagicMock
 from app.services.linkedin import LinkedInService
 
 @pytest.fixture

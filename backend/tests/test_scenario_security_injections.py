@@ -1,6 +1,5 @@
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch
 
 @pytest.mark.asyncio
 async def test_sql_injection_attempt_in_search(client: AsyncClient):

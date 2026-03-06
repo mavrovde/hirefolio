@@ -21,7 +21,6 @@ async def clean_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 
     app.dependency_overrides.clear()
 
-from .fixtures_auth_custom import admin_user, admin_token_headers, normal_user, normal_user_token_headers
 
 @pytest.fixture
 def mock_embedding():

@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 import json
 from unittest.mock import patch, MagicMock, AsyncMock
 from app.services.multi_chat import multi_agent_conversation, AgentConfig

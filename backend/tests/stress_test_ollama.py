@@ -1,9 +1,6 @@
-from app.config import settings
 import asyncio
 import httpx
 import time
-import json
-import re
 
 async def login(client):
     print("Logging in as admin...")

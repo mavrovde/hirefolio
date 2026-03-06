@@ -11,10 +11,6 @@ mock_admin_user = User(
 @pytest.fixture(autouse=True)
 def mock_embedding_service(mock_embedding):
     """Automatically mock get_embedding for all tests in this module."""
-@pytest.fixture(autouse=True)
-def mock_embedding_service(mock_embedding):
-    """Automatically mock get_embedding for all tests in this module."""
-    # Use AsyncMock logic
     with patch("app.api.posts.get_embedding", new_callable=AsyncMock) as mock_emb:
         mock_emb.return_value = mock_embedding
         yield mock_emb

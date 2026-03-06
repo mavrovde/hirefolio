@@ -1,7 +1,5 @@
 import pytest
 from httpx import AsyncClient
-from unittest.mock import MagicMock, AsyncMock, patch
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # Tests for posts.py coverage
 # Missing lines: 29-31, 45-47, 126-175, 203-214, 235-246, 268-286, 307-333, 356-428, 447-452, 460-463, 481-533, 555-585, 606-615

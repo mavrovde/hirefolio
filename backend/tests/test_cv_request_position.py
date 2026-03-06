@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from app.models.cv_request import CvRequest
 from app.models.cv_document import CvDocument
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from app.config import settings
 
 @pytest.mark.asyncio
@@ -28,7 +28,7 @@ async def test_cv_request_with_position_description(client: AsyncClient, db_sess
     }
 
     with patch("app.services.email.email_service.send_cv_request_notification") as mock_notify, \
-         patch("app.services.email.email_service.send_requester_confirmation") as mock_confirm:
+         patch("app.services.email.email_service.send_requester_confirmation"):
         
         response = await client.post(f"{settings.api_prefix}/cv/request", json=payload)
         assert response.status_code == 200
@@ -79,7 +79,7 @@ async def test_admin_get_requests_with_description_search(client: AsyncClient, d
     # Search for it
     response = await client.get(f"{settings.api_prefix}/admin/cv/requests?search=Unique")
     assert response.status_code == 200
-    data = response.json()
+    response.json()
 @pytest.mark.asyncio
 async def test_cv_download_tracking(client: AsyncClient, db_session):
     # Setup

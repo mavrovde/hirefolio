@@ -1,5 +1,4 @@
 import pytest
-from httpx import AsyncClient
 
 # Scenario: Client sends an Authorization header with correct "Bearer" prefix but invalid token structure
 # Expected: 401 Unauthorized (not 500 Internal Server Error)

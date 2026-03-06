@@ -1,8 +1,7 @@
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch
 from app.models.cv_document import CvDocument
-from app.models.cv_request import CvRequest
 
 @pytest.fixture
 async def mock_db_cv(db_session):
@@ -83,6 +82,6 @@ async def test_admin_cv_endpoints(client: AsyncClient, mock_db_cv):
 @pytest.mark.asyncio
 async def test_cv_download_tracking_error(client: AsyncClient, mock_db_cv):
     # Test download with invalid UUID to trigger exception in tracking
-    resp = await client.get(f"/api/app/cv/download?req_id=invalid-uuid")
+    resp = await client.get("/api/app/cv/download?req_id=invalid-uuid")
     # Should still succeed download, just log warning
     assert resp.status_code == 200

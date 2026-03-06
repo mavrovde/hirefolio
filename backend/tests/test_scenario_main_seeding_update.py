@@ -1,7 +1,5 @@
 import pytest
-import asyncio
 from unittest.mock import MagicMock, patch, AsyncMock
-from sqlalchemy import select
 from app.models.user import User
 
 @pytest.mark.asyncio

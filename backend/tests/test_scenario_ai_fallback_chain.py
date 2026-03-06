@@ -1,5 +1,4 @@
 import pytest
-from httpx import AsyncClient
 from unittest.mock import patch, MagicMock
 
 # Scenario: AI Service Fallback Chain

@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from httpx import AsyncClient
 from app.models.cv_document import CvDocument
-from sqlalchemy.exc import SQLAlchemyError
 from app.config import settings
 
 @pytest.mark.asyncio

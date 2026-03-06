@@ -1,8 +1,7 @@
 """Tests for the CV years API endpoint."""
 import json
-import os
 import pytest
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
 
 
 # ─── Unit tests for _extract_years_from_profile ───

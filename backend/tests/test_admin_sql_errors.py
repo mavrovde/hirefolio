@@ -2,9 +2,7 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import AsyncClient
-from tests.fixtures_auth_custom import admin_token_headers, admin_user
 
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # Remove list_tables test as endpoint doesn't exist in admin_sql.py
 

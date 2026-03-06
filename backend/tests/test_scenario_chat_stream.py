@@ -1,7 +1,6 @@
 import pytest
-import asyncio
 import json
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 from app.services.chat import chat_with_llm
 
 # Scenario: Chat stream success
