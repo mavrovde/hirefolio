@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from typing import List, Dict, Any
@@ -109,7 +109,7 @@ async def backup_database(
     )
 
 
-from fastapi import UploadFile, File
+
 
 @router.post("/restore")
 async def restore_database(

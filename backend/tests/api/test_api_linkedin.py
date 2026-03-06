@@ -1,12 +1,11 @@
 import pytest
 from fastapi.testclient import TestClient
-from app.main import app
 from app.config import settings
+from app.main import app
+from app.models.user import User
+from app.services.auth import get_current_admin_user
 
 client = TestClient(app)
-
-from app.services.auth import get_current_admin_user
-from app.models.user import User
 
 @pytest.fixture(autouse=True)
 def override_auth_for_all():

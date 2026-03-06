@@ -10,8 +10,6 @@ from alembic import context
 from app.database import Base
 from app.config import settings
 # Import models to ensure they are registered
-from app.models.user import User
-from app.models.post import Post
 # from app.models.cv import CVRequest, CVDocument # Commented out until verified
 
 # this is the Alembic Config object, which provides

@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore", message="Mixing V1 models and V2 models")
 # Add the backend directory to sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app.services.multi_chat import multi_agent_conversation, AgentConfig
+from app.services.multi_chat import multi_agent_conversation, AgentConfig  # noqa: E402
 
 async def run_clean_transcript():
     agents = [
@@ -66,12 +66,12 @@ async def run_clean_transcript():
                     current_agent_id = agent_id
                 
                 print(content, end="", flush=True)
-            except:
+            except Exception:
                 pass
     except Exception as e:
         print(f"\nERROR: {e}")
     
-    print(f"\nTRANSCRIPT_END")
+    print("\nTRANSCRIPT_END")
 
 if __name__ == "__main__":
     asyncio.run(run_clean_transcript())

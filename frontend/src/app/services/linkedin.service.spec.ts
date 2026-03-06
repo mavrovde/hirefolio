@@ -92,4 +92,33 @@ describe('LinkedinService', () => {
             }
         );
     });
+
+    it('should throw on syncProfile failure', async () => {
+        (globalThis.fetch as any).mockResolvedValue({ ok: false, status: 500 });
+        await expect(service.syncProfile()).rejects.toThrow('Failed to sync profile');
+    });
+
+    it('should throw on getPosts failure', async () => {
+        (globalThis.fetch as any).mockResolvedValue({ ok: false, status: 500 });
+        await expect(service.getPosts()).rejects.toThrow('Failed to fetch posts');
+    });
+
+    it('should throw on transferPost failure', async () => {
+        const mockPost: LinkedInPost = { id: '1', content: 'Test post' };
+        (globalThis.fetch as any).mockResolvedValue({ ok: false, status: 500 });
+        await expect(service.transferPost(mockPost)).rejects.toThrow('Failed to transfer post');
+    });
+
+    it('should not include Authorization header when no token', () => {
+        authServiceSpy.getToken.mockReturnValue(null);
+        // Re-inject to use updated mock
+        const svc = TestBed.inject(LinkedinService);
+        // Trigger a call to verify headers are built without Authorization
+        (globalThis.fetch as any).mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+        svc.syncProfile();
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            expect.any(String),
+            { headers: { 'Content-Type': 'application/json' } }
+        );
+    });
 });

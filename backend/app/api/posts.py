@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from math import ceil
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import BaseModel, field_validator, ConfigDict, Field
 
 from app.database import get_db
 from app.models.post import Post
@@ -49,9 +49,6 @@ class PostUpdate(BaseModel):
         return v
 
 
-from pydantic import BaseModel, field_validator, Field
-
-# ...
 
 class PostResponse(BaseModel):
     id: int

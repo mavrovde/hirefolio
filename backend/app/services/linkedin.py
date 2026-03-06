@@ -1,6 +1,3 @@
-import os
-import json
-import asyncio
 import logging
 from typing import Dict, Any, List
 
@@ -10,105 +7,143 @@ logger = logging.getLogger(__name__)
 
 
 class LinkedInService:
+    """Pure Python LinkedIn service using linkedin-api library."""
+
     def __init__(self):
-        # We assume the scraper directory is at the root of the project
-        self.scraper_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../scraper"))
-        self.node_executable = "node"
+        self._client = None
 
-    async def _run_scraper(self, script_name: str, output_file: str) -> List | Dict[str, Any]:
-        """
-        Runs a Node.js scraper script and returns the parsed JSON output.
-        """
+    def _get_client(self):
+        """Lazy-initialize the LinkedIn API client."""
+        if self._client is not None:
+            return self._client
+
         if not settings.linkedin_email or not settings.linkedin_password:
-            raise ValueError("LinkedIn credentials are not configured in the environment.")
+            raise ValueError(
+                "LinkedIn credentials are not configured. "
+                "Set LINKEDIN_EMAIL and LINKEDIN_PASSWORD environment variables."
+            )
 
-        # Prepare environment variables for the Node.js script
-        env = os.environ.copy()
-        env["LINKEDIN_EMAIL"] = settings.linkedin_email
-        env["LINKEDIN_PASSWORD"] = settings.linkedin_password
-        env["HEADLESS"] = "true"
+        from linkedin_api import Linkedin
 
-        script_path = os.path.join(self.scraper_dir, script_name)
-        output_path = os.path.join(self.scraper_dir, output_file)
-
-        logger.info(f"Running LinkedIn scraper script: {script_name}")
-        
-        # We use asyncio.create_subprocess_exec to run the node script without blocking the event loop
-        process = await asyncio.create_subprocess_exec(
-            self.node_executable,
-            script_path,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=self.scraper_dir,
-            env=env
+        logger.info("Initializing LinkedIn API client...")
+        self._client = Linkedin(
+            settings.linkedin_email,
+            settings.linkedin_password,
         )
+        return self._client
+
+    def _get_public_id(self) -> str:
+        """Get the LinkedIn public ID from settings."""
+        if not settings.linkedin_public_id:
+            raise ValueError(
+                "LinkedIn public ID is not configured. "
+                "Set LINKEDIN_PUBLIC_ID environment variable."
+            )
+        return settings.linkedin_public_id
+
+    async def fetch_posts(self, count: int = 20) -> List[Dict[str, Any]]:
+        """
+        Fetches recent LinkedIn posts using the Python linkedin-api library.
+        Returns posts dynamically — no caching, no Node.js, no rebuild needed.
+        """
+        client = self._get_client()
+        public_id = self._get_public_id()
+
+        logger.info(f"Fetching {count} posts for LinkedIn user: {public_id}")
 
         try:
-            # Enforce a 120-second timeout to prevent indefinite hanging if UI changes break the scraper
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=120.0)
-        except asyncio.TimeoutError:
-            logger.error(f"Scraper timed out after 120 seconds: {script_name}")
-            try:
-                process.kill()
-                await process.wait()
-            except ProcessLookupError:
-                pass
-            raise RuntimeError("LinkedIn scraper timed out. LinkedIn might have changed their UI or blocked the request.")
+            raw_posts = client.get_profile_posts(
+                public_id=public_id,
+                post_count=count,
+            )
+        except Exception as e:
+            logger.error(f"Failed to fetch LinkedIn posts: {e}")
+            raise RuntimeError(f"Failed to fetch LinkedIn posts: {e}")
 
-        if process.returncode != 0:
-            error_msg = stderr.decode() if stderr else "Unknown error"
-            logger.error(f"Scraper failed with code {process.returncode}: {error_msg}")
-            raise RuntimeError(f"LinkedIn scraper failed: {error_msg}")
+        # Transform raw Voyager API data into a clean format
+        posts = []
+        for raw in raw_posts:
+            post = self._parse_post(raw)
+            if post:
+                posts.append(post)
 
-        # Try to read the output file
-        if not os.path.exists(output_path):
-            raise FileNotFoundError(f"Scraper output file not found: {output_path}. Check server logs for details.")
-
-        try:
-            with open(output_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return data
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse scraper output: {e}")
-            raise ValueError("Invalid JSON returned from scraper")
-
-    async def fetch_posts(self) -> List[Dict[str, Any]]:
-        """
-        Fetches recent LinkedIn posts using the Node.js scraper.
-        Falls back to cached posts_data.json if credentials are not configured.
-        """
-        # If credentials are available, run the live scraper
-        if settings.linkedin_email and settings.linkedin_password:
-            posts = await self._run_scraper("scrape-posts.js", "posts_data.json")
-            if not isinstance(posts, list):
-                logger.warning("Expected a list of posts, got something else.")
-                return []
-            return posts
-
-        # Fallback: read cached posts file
-        cached_path = os.path.join(self.scraper_dir, "posts_data.json")
-        if os.path.exists(cached_path):
-            logger.info("LinkedIn credentials not configured, using cached posts data.")
-            try:
-                with open(cached_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if isinstance(data, list):
-                    return data
-                logger.warning("Cached posts data is not a list.")
-                return []
-            except (json.JSONDecodeError, IOError) as e:
-                logger.error(f"Failed to read cached posts: {e}")
-                return []
-
-        logger.warning("No LinkedIn credentials and no cached posts file found.")
-        return []
+        logger.info(f"Fetched {len(posts)} posts from LinkedIn.")
+        return posts
 
     async def sync_profile(self) -> Dict[str, Any]:
         """
-        Fetches the complete LinkedIn profile data.
+        Fetches the complete LinkedIn profile data using Python.
         """
-        profile_data = await self._run_scraper("scrape-linkedin.js", "profile_data.json")
-        return profile_data
+        client = self._get_client()
+        public_id = self._get_public_id()
+
+        logger.info(f"Fetching profile for LinkedIn user: {public_id}")
+
+        try:
+            profile = client.get_profile(public_id=public_id)
+        except Exception as e:
+            logger.error(f"Failed to fetch LinkedIn profile: {e}")
+            raise RuntimeError(f"Failed to fetch LinkedIn profile: {e}")
+
+        return profile
+
+    @staticmethod
+    def _parse_post(raw: dict) -> dict | None:
+        """Parse a raw Voyager post into a clean dict."""
+        try:
+            commentary = ""
+            image_url = None
+            urn = None
+
+            # Extract URN
+            if "updateMetadata" in raw:
+                urn = raw.get("updateMetadata", {}).get("urn", "")
+            elif "*updateMetadata" in raw:
+                urn = raw.get("*updateMetadata", "")
+
+            # Extract text content from commentary
+            content = raw.get("commentary", {})
+            if isinstance(content, dict):
+                commentary = content.get("text", "")
+            elif isinstance(content, str):
+                commentary = content
+
+            # Try alternative text locations
+            if not commentary:
+                commentary = raw.get("text", "")
+
+            if not commentary:
+                # Some posts have nested structure
+                update_content = raw.get("content", {})
+                if isinstance(update_content, dict):
+                    article = update_content.get("article", {})
+                    if article:
+                        commentary = article.get("title", "")
+
+            # Extract image
+            content_obj = raw.get("content", {})
+            if isinstance(content_obj, dict):
+                images = content_obj.get("images", [])
+                if images and len(images) > 0:
+                    img = images[0]
+                    if isinstance(img, dict):
+                        artifacts = img.get("attributes", [])
+                        if artifacts:
+                            image_url = artifacts[0].get(
+                                "vectorImage", {}
+                            ).get("rootUrl", "")
+
+            if not commentary:
+                return None
+
+            return {
+                "content": commentary,
+                "image_url": image_url,
+                "urn": urn or "",
+            }
+        except Exception as e:
+            logger.warning(f"Failed to parse post: {e}")
+            return None
 
 
 linkedin_service = LinkedInService()

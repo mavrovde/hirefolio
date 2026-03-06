@@ -1,132 +1,256 @@
 import pytest
-import asyncio
+from unittest.mock import MagicMock, patch
 from app.services.linkedin import LinkedInService
+
 
 @pytest.fixture
 def service():
-    return LinkedInService()
+    svc = LinkedInService()
+    svc._client = None
+    return svc
+
 
 @pytest.mark.asyncio
-async def test_run_scraper_missing_credentials(service, mocker):
+async def test_get_client_missing_credentials(service, mocker):
     mocker.patch("app.services.linkedin.settings.linkedin_email", "")
     mocker.patch("app.services.linkedin.settings.linkedin_password", "")
 
     with pytest.raises(ValueError, match="LinkedIn credentials are not configured"):
-        await service._run_scraper("script.js", "out.json")
+        service._get_client()
+
 
 @pytest.mark.asyncio
-async def test_run_scraper_subprocess_failure(service, mocker):
+async def test_get_client_initializes_on_first_call(service, mocker):
     mocker.patch("app.services.linkedin.settings.linkedin_email", "test@test.com")
     mocker.patch("app.services.linkedin.settings.linkedin_password", "pass")
 
-    class MockProcess:
-        returncode = 1
-        async def communicate(self):
-            return b"", b"Fatal node error"
+    mock_linkedin = MagicMock()
+    with patch("linkedin_api.Linkedin", return_value=mock_linkedin) as mock_cls:
+        client = service._get_client()
+        assert client is mock_linkedin
+        mock_cls.assert_called_once_with("test@test.com", "pass")
 
-    mocker.patch("asyncio.create_subprocess_exec", return_value=MockProcess())
-
-    with pytest.raises(RuntimeError, match="LinkedIn scraper failed: Fatal node error"):
-        await service._run_scraper("script.js", "out.json")
 
 @pytest.mark.asyncio
-async def test_run_scraper_timeout(service, mocker):
-    mocker.patch("app.services.linkedin.settings.linkedin_email", "test@test.com")
-    mocker.patch("app.services.linkedin.settings.linkedin_password", "pass")
+async def test_get_client_reuses_existing(service, mocker):
+    mock_client = MagicMock()
+    service._client = mock_client
+    assert service._get_client() is mock_client
 
-    class MockProcess:
-        returncode = None
-        def kill(self):
-            pass
-        async def wait(self):
-            pass
-        async def communicate(self):
-            raise asyncio.TimeoutError()
-
-    async def mock_communicate():
-        raise asyncio.TimeoutError()
-
-    mocker.patch("asyncio.create_subprocess_exec", return_value=MockProcess())
-    mocker.patch("asyncio.wait_for", side_effect=asyncio.TimeoutError)
-
-    with pytest.raises(RuntimeError, match="LinkedIn scraper timed out"):
-        await service._run_scraper("script.js", "out.json")
 
 @pytest.mark.asyncio
-async def test_run_scraper_file_not_found(service, mocker):
-    mocker.patch("app.services.linkedin.settings.linkedin_email", "test@test.com")
-    mocker.patch("app.services.linkedin.settings.linkedin_password", "pass")
+async def test_get_public_id_missing(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_public_id", "")
 
-    class MockProcess:
-        returncode = 0
-        async def communicate(self):
-            return b"success", b""
+    with pytest.raises(ValueError, match="LinkedIn public ID is not configured"):
+        service._get_public_id()
 
-    mocker.patch("asyncio.create_subprocess_exec", return_value=MockProcess())
-    async def mock_wait_for(coro, timeout):
-        return await coro
-    mocker.patch("asyncio.wait_for", side_effect=mock_wait_for)
-    mocker.patch("app.services.linkedin.os.path.exists", return_value=False)
-
-    with pytest.raises(FileNotFoundError, match="Scraper output file not found"):
-        await service._run_scraper("script.js", "out.json")
 
 @pytest.mark.asyncio
-async def test_run_scraper_invalid_json(service, mocker):
-    mocker.patch("app.services.linkedin.settings.linkedin_email", "test@test.com")
-    mocker.patch("app.services.linkedin.settings.linkedin_password", "pass")
+async def test_get_public_id_configured(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_public_id", "john-doe")
+    assert service._get_public_id() == "john-doe"
 
-    class MockProcess:
-        returncode = 0
-        async def communicate(self):
-            return b"", b""
-
-    mocker.patch("asyncio.create_subprocess_exec", return_value=MockProcess())
-    async def mock_wait_for(coro, timeout):
-        return await coro
-    mocker.patch("asyncio.wait_for", side_effect=mock_wait_for)
-    mocker.patch("app.services.linkedin.os.path.exists", return_value=True)
-
-    mocker.patch("builtins.open", mocker.mock_open(read_data="invalid json"))
-
-    with pytest.raises(ValueError, match="Invalid JSON returned from scraper"):
-        await service._run_scraper("script.js", "out.json")
-
-@pytest.mark.asyncio
-async def test_run_scraper_success(service, mocker):
-    mocker.patch("app.services.linkedin.settings.linkedin_email", "test@test.com")
-    mocker.patch("app.services.linkedin.settings.linkedin_password", "pass")
-
-    class MockProcess:
-        returncode = 0
-        async def communicate(self):
-            return b"", b""
-
-    mocker.patch("asyncio.create_subprocess_exec", return_value=MockProcess())
-    async def mock_wait_for(coro, timeout):
-        return await coro
-    mocker.patch("asyncio.wait_for", side_effect=mock_wait_for)
-    mocker.patch("app.services.linkedin.os.path.exists", return_value=True)
-
-    mocker.patch("builtins.open", mocker.mock_open(read_data='{"status": "ok"}'))
-
-    result = await service._run_scraper("script.js", "out.json")
-    assert result == {"status": "ok"}
 
 @pytest.mark.asyncio
 async def test_fetch_posts_success(service, mocker):
-    mocker.patch.object(service, "_run_scraper", return_value=[{"post": 1}])
-    posts = await service.fetch_posts()
-    assert posts == [{"post": 1}]
+    mocker.patch("app.services.linkedin.settings.linkedin_public_id", "john-doe")
+
+    mock_client = MagicMock()
+    mock_client.get_profile_posts.return_value = [
+        {
+            "commentary": {"text": "Hello LinkedIn!"},
+            "content": {},
+            "updateMetadata": {"urn": "urn:123"},
+        },
+        {
+            "commentary": {"text": "Second post"},
+            "content": {},
+            "updateMetadata": {"urn": "urn:456"},
+        },
+    ]
+    service._client = mock_client
+
+    posts = await service.fetch_posts(count=10)
+    assert len(posts) == 2
+    assert posts[0]["content"] == "Hello LinkedIn!"
+    assert posts[0]["urn"] == "urn:123"
+    mock_client.get_profile_posts.assert_called_once_with(
+        public_id="john-doe", post_count=10,
+    )
+
 
 @pytest.mark.asyncio
-async def test_fetch_posts_invalid_return_type(service, mocker):
-    mocker.patch.object(service, "_run_scraper", return_value={"error": "not a list"})
+async def test_fetch_posts_filters_empty(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_public_id", "john-doe")
+
+    mock_client = MagicMock()
+    mock_client.get_profile_posts.return_value = [
+        {"commentary": {"text": ""}, "content": {}},
+        {"commentary": {"text": "Valid post"}, "content": {}},
+    ]
+    service._client = mock_client
+
     posts = await service.fetch_posts()
-    assert posts == []
+    assert len(posts) == 1
+    assert posts[0]["content"] == "Valid post"
+
+
+@pytest.mark.asyncio
+async def test_fetch_posts_api_error(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_public_id", "john-doe")
+
+    mock_client = MagicMock()
+    mock_client.get_profile_posts.side_effect = Exception("API down")
+    service._client = mock_client
+
+    with pytest.raises(RuntimeError, match="Failed to fetch LinkedIn posts"):
+        await service.fetch_posts()
+
 
 @pytest.mark.asyncio
 async def test_sync_profile_success(service, mocker):
-    mocker.patch.object(service, "_run_scraper", return_value={"profile": "data"})
+    mocker.patch("app.services.linkedin.settings.linkedin_public_id", "john-doe")
+
+    mock_client = MagicMock()
+    mock_client.get_profile.return_value = {"firstName": "John", "lastName": "Doe"}
+    service._client = mock_client
+
     profile = await service.sync_profile()
-    assert profile == {"profile": "data"}
+    assert profile["firstName"] == "John"
+    mock_client.get_profile.assert_called_once_with(public_id="john-doe")
+
+
+@pytest.mark.asyncio
+async def test_sync_profile_error(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_public_id", "john-doe")
+
+    mock_client = MagicMock()
+    mock_client.get_profile.side_effect = Exception("Network error")
+    service._client = mock_client
+
+    with pytest.raises(RuntimeError, match="Failed to fetch LinkedIn profile"):
+        await service.sync_profile()
+
+
+def test_parse_post_with_commentary():
+    post = LinkedInService._parse_post({
+        "commentary": {"text": "Test post content"},
+        "content": {},
+        "updateMetadata": {"urn": "urn:li:activity:123"},
+    })
+    assert post is not None
+    assert post["content"] == "Test post content"
+    assert post["urn"] == "urn:li:activity:123"
+
+
+def test_parse_post_with_string_commentary():
+    post = LinkedInService._parse_post({
+        "commentary": "Direct text content",
+        "content": {},
+    })
+    assert post is not None
+    assert post["content"] == "Direct text content"
+
+
+def test_parse_post_empty_content_returns_none():
+    post = LinkedInService._parse_post({
+        "commentary": {"text": ""},
+        "content": {},
+    })
+    assert post is None
+
+
+def test_parse_post_malformed_data():
+    post = LinkedInService._parse_post({})
+    assert post is None
+
+
+def test_parse_post_with_star_urn():
+    """Cover line 102: *updateMetadata URN format."""
+    post = LinkedInService._parse_post({
+        "*updateMetadata": "urn:li:activity:star123",
+        "commentary": {"text": "Post with star URN"},
+        "content": {},
+    })
+    assert post is not None
+    assert post["urn"] == "urn:li:activity:star123"
+
+
+def test_parse_post_with_article_title_fallback():
+    """Cover line 121: article title fallback when no commentary."""
+    post = LinkedInService._parse_post({
+        "content": {
+            "article": {
+                "title": "Article Title Fallback"
+            }
+        },
+    })
+    assert post is not None
+    assert post["content"] == "Article Title Fallback"
+
+
+def test_parse_post_with_text_field_fallback():
+    """Cover line 113: text field fallback when no commentary."""
+    post = LinkedInService._parse_post({
+        "text": "Fallback text content",
+        "content": {},
+    })
+    assert post is not None
+    assert post["content"] == "Fallback text content"
+
+
+def test_parse_post_with_image_extraction():
+    """Cover lines 128-134: image extraction from attributes."""
+    post = LinkedInService._parse_post({
+        "commentary": {"text": "Post with image"},
+        "content": {
+            "images": [
+                {
+                    "attributes": [
+                        {
+                            "vectorImage": {
+                                "rootUrl": "https://media.licdn.com/image.jpg"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+    })
+    assert post is not None
+    assert post["image_url"] == "https://media.licdn.com/image.jpg"
+
+
+def test_parse_post_with_image_no_attributes():
+    """Cover image branch with empty attributes."""
+    post = LinkedInService._parse_post({
+        "commentary": {"text": "Post with image but no attrs"},
+        "content": {
+            "images": [
+                {"attributes": []}
+            ]
+        },
+    })
+    assert post is not None
+    assert post["image_url"] is None
+
+
+def test_parse_post_with_image_non_dict():
+    """Cover image branch where image is not a dict."""
+    post = LinkedInService._parse_post({
+        "commentary": {"text": "Post with weird image"},
+        "content": {
+            "images": ["not-a-dict"]
+        },
+    })
+    assert post is not None
+    assert post["image_url"] is None
+
+
+def test_parse_post_exception_handling():
+    """Cover lines 144-146: exception in parse."""
+    # Force an exception by passing a non-dict
+    post = LinkedInService._parse_post(None)
+    assert post is None
+

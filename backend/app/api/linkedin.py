@@ -1,12 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 import logging
+import random
+import re
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.post import Post
 from app.models.user import User
 from app.services.auth import get_current_admin_user
+from app.services.embeddings import get_embedding
 from app.services.linkedin import linkedin_service
-from app.models.post import Post
 
 router = APIRouter(prefix="/linkedin", tags=["linkedin"])
 logger = logging.getLogger(__name__)
@@ -60,8 +65,6 @@ async def get_linkedin_posts(
         )
 
 
-from pydantic import BaseModel
-from app.services.embeddings import get_embedding
 
 class TransferPostRequest(BaseModel):
     content: str
@@ -86,8 +89,7 @@ async def transfer_linkedin_post(
             title += "..."
         
     # Generate a slug
-    import re
-    import random
+
     slug_base = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
     if not slug_base:
          slug_base = "linkedin-post"

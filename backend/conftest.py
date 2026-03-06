@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 
 # Global mocks for dependencies that require Rust/tiktoken or other system deps
 # Must be before any 'app' imports which might trigger nested imports of these
-from types import SimpleNamespace  # noqa: E402
 
 # Langchain and other external mocks
 def mock_module(name):
@@ -30,8 +29,8 @@ mock_numpy = mock_module("numpy")
 mock_numpy.ndarray = MagicMock
 
 # Create a mock that looks like a SQLAlchemy TypeEngine
-from sqlalchemy.types import UserDefinedType
-from sqlalchemy.sql import expression
+from sqlalchemy.types import UserDefinedType  # noqa: E402
+from sqlalchemy.sql import expression  # noqa: E402
 
 class MockVector(UserDefinedType):
     def __init__(self, dim=None):
@@ -58,7 +57,7 @@ class MockVector(UserDefinedType):
                 import json
                 try:
                     return json.loads(value)
-                except:
+                except Exception:
                     # Fallback for simple parsing if json fails (postgres format)
                     return [float(x) for x in value.strip("[]").split(",")]
             return value

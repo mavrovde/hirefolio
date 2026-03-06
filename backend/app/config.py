@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # LinkedIn
     linkedin_email: str = ""
     linkedin_password: str = ""
+    linkedin_public_id: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
