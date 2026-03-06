@@ -48,13 +48,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Fix: download wheel, patch out the broken entry point using Python, install patched wheel.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip download linkedin-api==2.2.1 --no-deps -d /tmp/wheels && \
-    python -c "\
-    import zipfile, os, shutil; \
-    src='/tmp/wheels/linkedin_api-2.2.1-py3-none-any.whl'; \
-    dst='/tmp/wheels/patched.whl'; \
-    zin=zipfile.ZipFile(src,'r'); zout=zipfile.ZipFile(dst,'w'); \
-    [zout.writestr(item, zin.read(item.filename).replace(b'lint = black:None\n',b'')) if item.filename.endswith('entry_points.txt') else zout.writestr(item, zin.read(item.filename)) for item in zin.infolist()]; \
-    zin.close(); zout.close()" && \
+    python -c "import zipfile; zin=zipfile.ZipFile('/tmp/wheels/linkedin_api-2.2.1-py3-none-any.whl','r'); zout=zipfile.ZipFile('/tmp/wheels/patched.whl','w'); [zout.writestr(i, zin.read(i.filename).replace(b'lint = black:None\n',b'')) if i.filename.endswith('entry_points.txt') else zout.writestr(i, zin.read(i.filename)) for i in zin.infolist()]; zin.close(); zout.close()" && \
     pip install /tmp/wheels/patched.whl && \
     rm -rf /tmp/wheels && \
     pip install -r requirements.txt
