@@ -28,6 +28,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     gcc \
     g++ \
     cargo \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Create and populate virtualenv
@@ -44,14 +45,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install maturin
 
 # Install production dependencies
-# linkedin-api==2.2.1 has a broken entry point (lint = black:None) in its PyPI package.
-# pip 26+ rejects this. Temporarily use pip 25 (which doesn't enforce entry point validation)
-# to install it, then upgrade pip back and install remaining requirements.
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install pip==25.0.1 && \
-    pip install linkedin-api==2.2.1 && \
-    pip install --upgrade pip && \
-    grep -v 'linkedin-api' requirements.txt | pip install -r /dev/stdin
+    pip install -r requirements.txt
 
 # Final runtime stage inherits from base
 FROM base AS runtime

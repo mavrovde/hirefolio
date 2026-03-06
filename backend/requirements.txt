@@ -20,5 +20,5 @@ langchain-openai==0.0.2
 
 google-genai==1.64.0
 respx==0.22.0
-linkedin-api==2.2.1
+linkedin-api @ git+https://github.com/tomquirk/linkedin-api.git@master
 
