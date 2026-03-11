@@ -8,8 +8,6 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
-timeout-minutes: 60
-
 permissions:
   contents: read
 
