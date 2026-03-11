@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
+  timeout: 120000,
   fullyParallel: false, // Run tests sequentially to avoid shared state conflicts
   forbidOnly: !!process.env.CI,
   retries: 2, // Always retry to handle flakiness

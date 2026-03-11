@@ -120,7 +120,7 @@ test.describe('Admin Profile - Change Password', () => {
                 await page.fill('input[name="oldPassword"]', 'newpass123');
                 await page.fill('input[name="newPassword"]', 'admin123');
                 await page.click('button[type="submit"]');
-                await expect(page.locator('.message-success')).toBeVisible({ timeout: 5000 });
+                await expect(page.locator('.success-message')).toBeVisible({ timeout: 5000 });
                 console.log('[E2E] CLEANUP: Password reverted successfully.');
             } catch (e) {
                 console.log('[E2E] CLEANUP: Could not login with new password (maybe already reverted?).');
