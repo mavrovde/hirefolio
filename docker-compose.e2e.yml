@@ -1,0 +1,11 @@
+services:
+  backend:
+    build: ./backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+  proxy:
+    build: ./proxy

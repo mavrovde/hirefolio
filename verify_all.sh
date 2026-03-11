@@ -43,10 +43,10 @@ echo ""
 echo "e2e: 🎭 Running E2E Tests..."
 # Ensure full stack is running
 echo "Starting full stack..."
-docker-compose -f docker-compose.prod.yml up -d --build backend frontend proxy open-webui
+docker-compose -f docker-compose.prod.yml -f docker-compose.e2e.yml up -d --build backend frontend proxy open-webui
 
 echo "🔄 Restarting Frontend & Proxy to ensure fresh DNS resolution..."
-docker-compose -f docker-compose.prod.yml restart frontend proxy
+docker-compose -f docker-compose.prod.yml -f docker-compose.e2e.yml restart frontend proxy
 
 # Waiting for Health with timeouts instead of fixed sleeps
 echo "Waiting for Backend to be ready..."
@@ -102,7 +102,7 @@ fi
 
 
 echo "🌱 Seeding E2E data..."
-docker-compose -f docker-compose.prod.yml exec -T backend python scripts/seed_e2e_user.py
+docker-compose -f docker-compose.prod.yml -f docker-compose.e2e.yml exec -T backend python scripts/seed_e2e_user.py
 
 # Run Playwright
 echo "🛡️  Verifying Proxy Routes..."
