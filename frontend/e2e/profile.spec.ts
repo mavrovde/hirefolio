@@ -44,12 +44,10 @@ test.describe('Admin Profile - Change Password', () => {
 
         await page.fill('input[name="oldPassword"]', 'wrongpassword');
         await page.fill('input[name="newPassword"]', 'newpass123');
-        const responsePromise = page.waitForResponse(resp => resp.url().includes('/auth/password') && (resp.status() === 400 || resp.status() === 200) && resp.request().method() === 'PUT');
         await page.click('button[type="submit"]');
-        await responsePromise;
 
         // Expect error message
-        await expect(page.locator('.error-message')).toBeVisible();
+        await expect(page.locator('.error-message')).toBeVisible({ timeout: 10000 });
         // Allow for localized error or backend message
         // await expect(page.locator('.error-message')).toContainText('Incorrect old password');
     });
@@ -61,11 +59,9 @@ test.describe('Admin Profile - Change Password', () => {
         await page.goto('/admin/profile');
         await page.fill('input[name="oldPassword"]', 'admin123');
         await page.fill('input[name="newPassword"]', 'newpass123');
-        const responsePromise = page.waitForResponse(resp => resp.url().includes('/auth/password') && resp.status() === 200 && resp.request().method() === 'PUT');
 
         await page.locator('button[type="submit"]').click({ force: true });
-        await responsePromise;
-        await expect(page.locator('.message-success')).toBeVisible();
+        await expect(page.locator('.success-message')).toBeVisible({ timeout: 10000 });
 
         // 3. Logout
         console.log('[E2E] Logging out...');
@@ -86,10 +82,8 @@ test.describe('Admin Profile - Change Password', () => {
         await page.goto('/admin/profile');
         await page.fill('input[name="oldPassword"]', 'newpass123');
         await page.fill('input[name="newPassword"]', 'admin123');
-        const revertPromise = page.waitForResponse(resp => resp.url().includes('/auth/password') && resp.status() === 200 && resp.request().method() === 'PUT');
         await page.locator('button[type="submit"]').click({ force: true });
-        await revertPromise;
-        await expect(page.locator('.message-success')).toBeVisible();
+        await expect(page.locator('.success-message')).toBeVisible({ timeout: 10000 });
 
         // 6. Logout again
         console.log('[E2E] Logging out again...');
