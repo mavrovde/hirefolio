@@ -45,7 +45,6 @@ services:
 
   backend:
     image: ${IMAGE_REPO:-maverickde/mavrov.de}-backend:${IMAGE_TAG:-1.2.10}
-    build: ./backend
     restart: always
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mavrov}
@@ -68,9 +67,6 @@ services:
 
   frontend:
     image: ${IMAGE_REPO:-maverickde/mavrov.de}-frontend:${IMAGE_TAG:-1.2.10}
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
     restart: always
     expose:
       - "80"
@@ -98,7 +94,6 @@ services:
 
   proxy:
     image: ${IMAGE_REPO:-maverickde/mavrov.de}-proxy:${IMAGE_TAG:-1.2.10}
-    build: ./proxy
     container_name: global_proxy
     restart: always
     ports:
