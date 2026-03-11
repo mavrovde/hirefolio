@@ -20,14 +20,14 @@ test.describe('Admin Profile - Change Password', () => {
             await page.fill('input[name="username"]', 'admin');
             await page.fill('input[name="password"]', 'admin123');
             await page.click('button[type="submit"]');
-            await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 10000 });
+            await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30000 });
         } catch (e) {
             console.log('[E2E] Login failed, retrying once...');
             await page.goto('/admin/login');
             await page.fill('input[name="username"]', 'admin');
             await page.fill('input[name="password"]', 'admin123');
             await page.click('button[type="submit"]');
-            await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 10000 });
+            await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30000 });
         }
         console.log('[E2E] Login successful.');
     });

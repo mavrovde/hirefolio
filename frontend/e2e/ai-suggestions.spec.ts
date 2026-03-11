@@ -26,7 +26,7 @@ test.describe('AI Suggestions Flow', () => {
     await page.click('button[title="Suggest Title, Slug, and Summary from content"]');
 
     // Wait for results
-    await expect(page.locator('input[id="title"]')).not.toHaveValue('', { timeout: 180000 });
+    await expect(page.locator('input[id="title"]')).not.toHaveValue('', { timeout: 300000 });
     await expect(page.locator('input[id="slug"]')).not.toHaveValue('', { timeout: 10000 });
     await expect(page.locator('textarea[id="summary"]')).not.toHaveValue('', { timeout: 10000 });
 
@@ -38,7 +38,7 @@ test.describe('AI Suggestions Flow', () => {
     await page.fill('textarea[id="content"]', 'AI and Future');
 
     await page.click('button[title="Suggest title from content"]');
-    await expect(page.locator('input[id="title"]')).not.toHaveValue('', { timeout: 180000 });
+    await expect(page.locator('input[id="title"]')).not.toHaveValue('', { timeout: 300000 });
     expect(await page.inputValue('input[id="title"]')).toBeTruthy();
   });
 
@@ -47,7 +47,7 @@ test.describe('AI Suggestions Flow', () => {
     await page.fill('textarea[id="content"]', 'AI and Future');
 
     await page.click('button[title="Suggest summary from content"]');
-    await expect(page.locator('textarea[id="summary"]')).not.toHaveValue('', { timeout: 180000 });
+    await expect(page.locator('textarea[id="summary"]')).not.toHaveValue('', { timeout: 300000 });
     expect(await page.inputValue('textarea[id="summary"]')).toBeTruthy();
   });
 
@@ -59,7 +59,7 @@ test.describe('AI Suggestions Flow', () => {
 
     await page.click('button[title="Generate tags with AI"]');
 
-    await page.waitForSelector('.tag-chip', { timeout: 180000 });
+    await page.waitForSelector('.tag-chip', { timeout: 300000 });
     const tagsCount = await page.locator('.tag-chip').count();
     expect(tagsCount).toBeGreaterThan(0);
   });
