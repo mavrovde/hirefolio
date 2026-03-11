@@ -6,8 +6,9 @@ import os
 async def verify_proxy_routes():
     # Use 80 for prod env (set PROXY_PORT=80), 4200 for dev env (default)
     port = os.getenv("PROXY_PORT", "4200")
+    ssl_port = os.getenv("PROXY_SSL_PORT", "10443")
     base_url = f"http://localhost:{port}"
-    ssl_base_url = "https://localhost"
+    ssl_base_url = f"https://localhost:{ssl_port}"
     
     api_prefix = os.getenv("API_PREFIX", "/api/app")
     

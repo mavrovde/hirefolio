@@ -8,7 +8,7 @@ def test_default_settings(monkeypatch):
     settings = Settings()
     assert (
         settings.database_url
-        == "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/mavrov"
+        == "postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/mavrov"
     )
     assert settings.ollama_url == "http://localhost:11434"
     assert settings.embedding_model == "nomic-embed-text"
@@ -18,7 +18,7 @@ def test_default_settings(monkeypatch):
 def test_settings_from_env(monkeypatch):
     """Test that settings can be overridden by environment variables."""
     monkeypatch.setenv(
-        "DATABASE_URL", "postgresql+asyncpg://custom:custom@custom:5432/custom"
+        "DATABASE_URL", "postgresql+asyncpg://custom:custom@custom:5433/custom"
     )
     monkeypatch.setenv("OLLAMA_URL", "http://custom-ollama:11434")
     monkeypatch.setenv("EMBEDDING_MODEL", "custom-model")
@@ -26,7 +26,7 @@ def test_settings_from_env(monkeypatch):
 
     settings = Settings()
     assert (
-        settings.database_url == "postgresql+asyncpg://custom:custom@custom:5432/custom"
+        settings.database_url == "postgresql+asyncpg://custom:custom@custom:5433/custom"
     )
     assert settings.ollama_url == "http://custom-ollama:11434"
     assert settings.embedding_model == "custom-model"

@@ -14,20 +14,20 @@ async def check_create_admin():
 
         if user:
             print(f"Admin user found: {user.username}")
-            # Reset password to ensure it's admin123
-            user.hashed_password = get_password_hash("admin123")
+            # Reset password to configured default
+            user.hashed_password = get_password_hash(settings.default_admin_password)
             session.add(user)
             await session.commit()
-            print("Admin password reset to 'admin123'")
+            print("Admin password reset to configured default")
         else:
             print("Admin user NOT found. Creating...")
             new_admin = User(
                 username="admin",
-                email="admin@mavrov.de",
-                hashed_password=get_password_hash("admin123"),
+                email=settings.default_admin_email,
+                hashed_password=get_password_hash(settings.default_admin_password),
                 is_active=True,
                 is_admin=True,
-                gemini_api_key=settings.gemini_api_key or "test-key",
+                gemini_api_key=settings.gemini_api_key or None,
             )
             session.add(new_admin)
             await session.commit()

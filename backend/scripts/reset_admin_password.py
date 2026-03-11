@@ -7,9 +7,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 # Ensure we can import app
 sys.path.append(os.getcwd())
 
+from app.config import settings
 from app.services.auth import get_password_hash
-
-DATABASE_URL = "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/mavrov"
 
 
 async def fixing_admin_hash():
@@ -17,7 +16,7 @@ async def fixing_admin_hash():
     hashed_pw = get_password_hash("admin123")
     print(f"Generated Hash: {hashed_pw}")
 
-    engine = create_async_engine(DATABASE_URL)
+    engine = create_async_engine(settings.database_url)
     async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session() as session:

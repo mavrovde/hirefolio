@@ -3,6 +3,7 @@ import os
 import re
 from fastapi import APIRouter, HTTPException
 from app.logger import logger
+from app.config import settings
 
 router = APIRouter(prefix="/cv", tags=["cv"])
 
@@ -15,9 +16,7 @@ PROFILE_DATA_DIR = os.environ.get(
 )
 
 # HTTP base URL for fetching profile data when files are not on disk (Docker mode)
-PROFILE_DATA_HTTP_BASE = os.environ.get(
-    "PROFILE_DATA_HTTP_BASE", "http://frontend:80/assets"
-)
+PROFILE_DATA_HTTP_BASE = settings.profile_data_http_base
 
 
 def _extract_years_from_profile(file_path: str) -> set[int]:

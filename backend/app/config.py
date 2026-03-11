@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/mavrov"
+    database_url: str = "postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/mavrov"
     ollama_url: str = "http://localhost:11434"
     embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = 768  # nomic-embed-text uses 768 dimensions
@@ -28,6 +28,16 @@ class Settings(BaseSettings):
     linkedin_email: str = ""
     linkedin_password: str = ""
     linkedin_public_id: str = ""
+
+    # CORS
+    cors_origins: str = "http://localhost:4200,https://mavrov.de,https://www.mavrov.de,http://mavrov.de,http://www.mavrov.de"
+
+    # Default admin seeding
+    default_admin_email: str = "admin@mavrov.de"
+    default_admin_password: str = "admin"
+
+    # Profile data (years API)
+    profile_data_http_base: str = "http://frontend:80/assets"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
