@@ -44,7 +44,7 @@ services:
       - app-network
 
   backend:
-    image: ${IMAGE_REPO:-maverickde/mavrov.de}-backend:${IMAGE_TAG:-v1.2.8}
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-backend:${IMAGE_TAG:-1.2.8}
     build: ./backend
     restart: always
     environment:
@@ -67,7 +67,7 @@ services:
       - app-network
 
   frontend:
-    image: ${IMAGE_REPO:-maverickde/mavrov.de}-frontend:${IMAGE_TAG:-v1.2.8}
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-frontend:${IMAGE_TAG:-1.2.8}
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -97,7 +97,7 @@ services:
       - app-network
 
   proxy:
-    image: ${IMAGE_REPO:-maverickde/mavrov.de}-proxy:${IMAGE_TAG:-v1.2.8}
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-proxy:${IMAGE_TAG:-1.2.8}
     build: ./proxy
     container_name: global_proxy
     restart: always

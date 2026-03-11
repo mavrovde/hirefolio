@@ -55,10 +55,10 @@ export IMAGE_TAG="$VERSION"
 echo "Target Version: v$VERSION"
 
 # 3b. Update production docker-compose with new version
-echo "Step 1b: Updating docker-compose.prod.yml with v$VERSION..."
-sed -i '' "s|}-backend:\${IMAGE_TAG:-v[0-9.]*}|}-backend:\${IMAGE_TAG:-v$VERSION}|g" docker-compose.prod.yml
-sed -i '' "s|}-frontend:\${IMAGE_TAG:-v[0-9.]*}|}-frontend:\${IMAGE_TAG:-v$VERSION}|g" docker-compose.prod.yml
-sed -i '' "s|}-proxy:\${IMAGE_TAG:-v[0-9.]*}|}-proxy:\${IMAGE_TAG:-v$VERSION}|g" docker-compose.prod.yml
+echo "Step 1b: Updating docker-compose.prod.yml with $VERSION..."
+sed -i '' "s|}-backend:\${IMAGE_TAG:-[0-9.]*}|}-backend:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
+sed -i '' "s|}-frontend:\${IMAGE_TAG:-[0-9.]*}|}-frontend:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
+sed -i '' "s|}-proxy:\${IMAGE_TAG:-[0-9.]*}|}-proxy:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
 
 
 
