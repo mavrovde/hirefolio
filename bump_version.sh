@@ -63,6 +63,11 @@ else
   echo "IMAGE_TAG=$new_version" > .env
 fi
 
+# Sync package-lock.json with updated package.json
+echo "Syncing frontend/package-lock.json..."
+(cd frontend && npm install --package-lock-only --legacy-peer-deps > /dev/null 2>&1)
+echo "package-lock.json synced."
+
 # Git operations
 if [ -d .git ]; then
     echo "Creating git tag v$new_version..."
