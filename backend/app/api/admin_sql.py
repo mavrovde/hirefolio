@@ -117,7 +117,7 @@ async def restore_database(
     import asyncio
     import os
 
-    if not file.filename.endswith(".sql"):
+    if not file.filename or not file.filename.endswith(".sql"):
         raise HTTPException(status_code=400, detail="Only .sql files are allowed")
 
     db_url = _get_db_url()

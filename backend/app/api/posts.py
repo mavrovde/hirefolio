@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from math import ceil
 from sqlalchemy import select, text
@@ -92,6 +92,7 @@ class SimilarPostResponse(BaseModel):
     title: str
     slug: str
     summary: Optional[str]
+    image_url: Optional[str] = None
     similarity: float
 
 
@@ -246,7 +247,7 @@ async def semantic_search(
         return []
 
     # 1. Vector Search
-    vector_results = []
+    vector_results: List[Any] = []
     try:
         query_embedding = await get_embedding(q)
         if query_embedding:
@@ -269,7 +270,7 @@ async def semantic_search(
             )
 
             v_res = await db.execute(vector_query)
-            vector_results = v_res.all()
+            vector_results = list(v_res.all())
     except Exception:
         # Fallback to keyword search if vector fails
         pass
