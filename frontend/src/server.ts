@@ -10,6 +10,12 @@ import { join } from 'node:path';
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
+
+// Configure SSR allowed hosts to avoid 400 Bad Request fallback
+if (!process.env['ALLOWED_HOSTS']) {
+  process.env['ALLOWED_HOSTS'] = 'localhost,mavrov.de,127.0.0.1';
+}
+
 const angularApp = new AngularNodeAppEngine();
 
 /**
