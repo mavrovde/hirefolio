@@ -3,8 +3,11 @@ import pytest
 from httpx import AsyncClient
 from app.models.post import Post
 
+
 @pytest.mark.asyncio
-async def test_get_draft_post_unauthenticated(clean_client: AsyncClient, mock_embedding, db_session):
+async def test_get_draft_post_unauthenticated(
+    clean_client: AsyncClient, mock_embedding, db_session
+):
     """Scenario: Accessing a draft post without admin privileges should return 404."""
     post = Post(
         title="Draft Post",

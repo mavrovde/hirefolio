@@ -2,6 +2,7 @@ from app.config import settings
 import pytest
 from httpx import AsyncClient
 
+
 @pytest.mark.asyncio
 async def test_get_image_with_no_blob_404(client: AsyncClient, db_session):
     """Scenario: Requesting an image for a post that has no image blob should return 404."""

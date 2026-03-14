@@ -21,13 +21,14 @@ requires_linkedin_creds = pytest.mark.skipif(
 def linkedin_service():
     """Create a real LinkedIn service instance for integration tests, with fallback."""
     svc = LinkedInService()
-    
+
     try:
         # Initialize client immediately so we can patch its methods
         client = svc._get_client()
-        
+
         # Patch get_profile_posts
         original_get_profile_posts = client.get_profile_posts
+
         def mocked_get_profile_posts(*args, **kwargs):
             try:
                 return original_get_profile_posts(*args, **kwargs)
@@ -42,31 +43,37 @@ def linkedin_service():
                             "images": [
                                 {
                                     "attributes": [
-                                        {"vectorImage": {"rootUrl": "https://media.licdn.com/dms/mock_image"}}
+                                        {
+                                            "vectorImage": {
+                                                "rootUrl": "https://media.licdn.com/dms/mock_image"
+                                            }
+                                        }
                                     ]
                                 }
                             ]
-                        }
-                    } for i in range(count)
+                        },
+                    }
+                    for i in range(count)
                 ]
-                
+
         client.get_profile_posts = mocked_get_profile_posts
-        
+
         # Patch get_profile
         original_get_profile = client.get_profile
+
         def mocked_get_profile(*args, **kwargs):
             try:
                 return original_get_profile(*args, **kwargs)
             except Exception:
                 return {"firstName": "Mock", "lastName": "User"}
-                
+
         client.get_profile = mocked_get_profile
-        
+
     except Exception:
         # If client initialization itself fails, we can't patch it this way,
         # but that would be caught by requires_linkedin_creds anyway
         pass
-        
+
     return svc
 
 
