@@ -74,14 +74,9 @@ export class HeaderComponent implements OnInit {
       return;
     }
 
-    const currentUrl = this.router.url.split('#')[0].split('?')[0];
-    if (currentUrl !== '/' && currentUrl !== '') {
-      this.router.navigate(['/'], { fragment: 'experience' }).then(() => {
-        setTimeout(() => this._scrollToYearElement(year), 500);
-      });
-    } else {
-      this._scrollToYearElement(year);
-    }
+    this.router.navigate(['/'], { fragment: 'experience' }).then(() => {
+      setTimeout(() => this._scrollToYearElement(year), 500);
+    });
   }
 
   private _scrollToYearElement(year: number): void {
@@ -109,20 +104,7 @@ export class HeaderComponent implements OnInit {
       return;
     }
 
-    if (!isPlatformBrowser(this.platformId)) {
-      this.router.navigate(['/'], { fragment: href.substring(1) });
-      return;
-    }
-
-    const element = document.querySelector(href);
-    if (element) {
-      const headerOffset = 80;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.scrollY - headerOffset;
-      window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
-    } else {
-      this.router.navigate(['/'], { fragment: href.substring(1) });
-    }
+    this.router.navigate(['/'], { fragment: href.substring(1) });
   }
 
   switchLanguage(lang: Language): void {

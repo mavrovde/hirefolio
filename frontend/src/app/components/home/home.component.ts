@@ -67,12 +67,28 @@ export class HomeComponent implements OnInit {
   ngOnInit() {
     this.profile$ = this.profileService.getProfile();
 
+    const sectionTitles: Record<string, string> = {
+      'blog': 'Blog',
+      'about': 'About',
+      'experience': 'Experience',
+      'skills': 'Skills',
+      'education': 'Education',
+      'contact': 'Contact'
+    };
+
     this.profile$.pipe(take(1)).subscribe((profile) => {
       if (profile) {
-        this.seoService.updateSeo({
-          title: 'Home',
-          description: profile.about || profile.headline || 'Professional portfolio of Sergii Mavrov, a Principal Software Engineer.',
-          keywords: `Software Development, ${profile.headline}, Cloud, AI, ${profile.skills.join(', ')}`
+        this.route.fragment.subscribe((fragment) => {
+          let titleStr = 'Home';
+          if (fragment && sectionTitles[fragment]) {
+            titleStr = sectionTitles[fragment];
+          }
+
+          this.seoService.updateSeo({
+            title: titleStr,
+            description: profile.about || profile.headline || 'Professional portfolio of Sergii Mavrov, a Principal Software Engineer.',
+            keywords: `Software Development, ${profile.headline}, Cloud, AI, ${profile.skills.join(', ')}`
+          });
         });
 
         if (isPlatformBrowser(this.platformId)) {

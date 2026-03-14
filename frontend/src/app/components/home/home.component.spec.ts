@@ -38,7 +38,8 @@ describe('HomeComponent', () => {
     mockActivatedRoute = {
       snapshot: {
         fragment: 'about'
-      }
+      },
+      fragment: of('about')
     };
 
     await TestBed.configureTestingModule({

@@ -54,32 +54,27 @@ Integration tests use a separate test database (`mavrov_test`). Create it:
 createdb mavrov_test
 ```
 
-## Frontend Tests (Angular/Vitest)
+## Frontend Tests (Angular/Vitest v4+)
 
 ### Prerequisites
 
 - Node.js 20+
 - Dependencies installed: `npm install`
 
-### Running Tests
-
 ```bash
 cd frontend
 
 # Run all tests
-npm test
+npm run test
 
-# Run with coverage
-npm test -- --coverage
+# Run with coverage (Vitest V8)
+npm run test:coverage
 
 # Run specific test file
-npm test -- header.component.spec.ts
+npx vitest header.component.spec.ts
 
-# Run in watch mode
-npm test -- --watch
-
-# Run with UI
-npm test -- --ui
+# Run with UI (Requires @vitest/ui)
+npx vitest --ui
 ```
 
 ### Coverage Reports

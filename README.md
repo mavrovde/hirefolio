@@ -16,10 +16,10 @@ Personal portfolio website with blog functionality powered by semantic search an
 
 ### Frontend
 
-- **Framework**: Angular 21 (Standalone Components, Signals)
-- **Styling**: TailwindCSS 4.2, Dark/Light mode
+- **Framework**: Angular 21 (Standalone Components, Signals, Native SSR `server.mjs`)
+- **Styling**: TailwindCSS 4.x, Dark/Light mode
 - **State Management**: RxJS 7.8 Observables
-- **Testing**: Vitest 4.x (Unit), Playwright 1.58 (E2E)
+- **Testing**: Vitest 4.0 (Unit, replaced Jasmine/Karma), Playwright 1.58 (E2E)
 - **i18n**: Custom translation service
 
 ### Backend
@@ -159,12 +159,12 @@ mavrov.de/
 ├── frontend/               # Angular frontend
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── components/ # UI components
-│   │   │   ├── services/   # Angular services
+│   │   │   ├── components/ # UI components (e.g., Header, HomeComponent, CV)
+│   │   │   ├── services/   # Angular services (SEO, API, State)
 │   │   │   ├── pipes/      # Custom pipes
 │   │   │   └── testing/    # Test utilities
-│   │   └── assets/         # Static assets
-│   └── package.json        # Node dependencies
+│   │   ├── environments/   # Configuration for Dev/Prod APIs
+│   │   └── server.ts       # Angular Universal SSR server handler
 ├── scraper/                # LinkedIn profile scraper
 ├── docker-compose.yml      # Service orchestration
 └── README.md              # This file
@@ -368,8 +368,9 @@ This project is private and proprietary.
 - [x] Cookie consent management
 - [x] Admin tag manager
 - [x] E2E test suite (Playwright)
-- [ ] RSS feed generation
-- [ ] Newsletter integration
+- [x] RSS feed generation
+- [x] Newsletter integration
+- [x] Native Angular fragment Anchor Scrolling for SEO Title Tracking
 
 ---
 

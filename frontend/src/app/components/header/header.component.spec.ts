@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { HeaderComponent } from './header.component';
 import { By } from '@angular/platform-browser';
 import { vi, afterEach } from 'vitest';
@@ -63,22 +63,14 @@ describe('HeaderComponent', () => {
     expect(terminalBorders.length).toBe(0);
   });
 
-  it('active scrollTo should prevent default behavior and scroll', () => {
+  it('active scrollTo should prevent default behavior and navigate', () => {
     const event = new Event('click');
     const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
-
-    const mockElement = document.createElement('div');
-    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 100 } as DOMRect);
-    vi.spyOn(document, 'querySelector').mockReturnValue(mockElement);
-    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => { });
 
     component.scrollTo('#test', event);
 
     expect(preventDefaultSpy).toHaveBeenCalled();
-    expect(scrollToSpy).toHaveBeenCalledWith({
-      top: 20,
-      behavior: 'smooth',
-    });
+    expect(router.navigate).toHaveBeenCalledWith(['/'], { fragment: 'test' });
   });
 
   it('scrollTo should navigate via router if href starts with /', () => {
@@ -87,13 +79,10 @@ describe('HeaderComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/llm']);
   });
 
-  it('scrollTo should not call window.scrollTo if element is not found', () => {
+  it('scrollTo should navigate even if element is not found in DOM yet', () => {
     const event = new Event('click');
-    vi.spyOn(document, 'querySelector').mockReturnValue(null);
-    const scrollToSpy = vi.spyOn(window, 'scrollTo');
-
     component.scrollTo('#non-existent', event);
-    expect(scrollToSpy).not.toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/'], { fragment: 'non-existent' });
   });
 
   it('switchLanguage should call setLanguage on LanguageService', () => {
@@ -184,32 +173,37 @@ describe('HeaderComponent', () => {
     expect(component.selectedYearIndex).toBe(4);
   });
 
-  it('selectYearByIndex should update index and scroll', () => {
+  it('selectYearByIndex should update index and scroll', fakeAsync(() => {
     const mockElement = document.createElement('div');
     vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 200 } as DOMRect);
     vi.spyOn(document, 'querySelector').mockImplementation((sel: string) => {
       if (sel === '[data-year="2021"]') return mockElement;
       return null;
     });
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => { });
 
     component.selectYearByIndex(2);
     expect(component.selectedYearIndex).toBe(2);
+    
+    tick(500);
     expect(scrollToSpy).toHaveBeenCalled();
-  });
+  }));
 
-  it('scrollToYear should fallback to experience section', () => {
+  it('scrollToYear should fallback to experience section', fakeAsync(() => {
     const expSection = document.createElement('section');
     vi.spyOn(expSection, 'getBoundingClientRect').mockReturnValue({ top: 500 } as DOMRect);
     vi.spyOn(document, 'querySelector').mockImplementation((sel: string) => {
       if (sel === '#experience') return expSection;
       return null;
     });
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => { });
 
     component.scrollToYear(9999);
+    tick(500);
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 420, behavior: 'smooth' });
-  });
+  }));
 
   it('should not show slider when years array is empty', () => {
     component.years = [];
