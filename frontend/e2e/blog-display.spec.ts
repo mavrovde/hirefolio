@@ -174,7 +174,7 @@ test.describe('Blog Display on Page Load', () => {
         const postTitleOnPage = page.locator('h1', { hasText: title });
         await expect(postTitleOnPage).toBeVisible({ timeout: 10000 });
         
-        const postContentOnPage = page.locator('p', { hasText: 'Direct URL load content' });
+        const postContentOnPage = page.locator('div', { hasText: 'Direct URL load content' });
         await expect(postContentOnPage).toBeVisible({ timeout: 10000 });
     });
 });

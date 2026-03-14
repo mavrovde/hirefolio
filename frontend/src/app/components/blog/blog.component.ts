@@ -115,7 +115,8 @@ export class BlogComponent implements OnInit {
       if (this.activeTag) {
         params.set('tag', this.activeTag);
       }
-      const resp = await fetch(`/api/app/posts?${params.toString()}`);
+      const baseUrl = typeof window !== 'undefined' && window.location.origin !== 'null' ? window.location.origin : 'http://localhost';
+      const resp = await fetch(`${baseUrl}/api/app/posts?${params.toString()}`);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}`);
       }
