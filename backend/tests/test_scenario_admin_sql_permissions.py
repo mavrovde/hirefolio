@@ -3,15 +3,12 @@ from httpx import AsyncClient
 from app.config import settings
 
 
-@pytest.mark.xfail(
-    reason="clean_client fixture needs real JWT auth setup — pre-existing issue"
-)
 @pytest.mark.asyncio
 async def test_admin_sql_execute_forbidden(
-    clean_client: AsyncClient, normal_user_token_headers
+    normal_client: AsyncClient, normal_user_token_headers
 ):
     """Test SQL execution with non-admin user returns 403."""
-    response = await clean_client.post(
+    response = await normal_client.post(
         f"{settings.api_prefix}/admin/sql/execute",
         headers=normal_user_token_headers,
         json={"query": "SELECT * FROM users"},
@@ -20,31 +17,25 @@ async def test_admin_sql_execute_forbidden(
     assert response.json()["detail"] == "Not enough permissions"
 
 
-@pytest.mark.xfail(
-    reason="clean_client fixture needs real JWT auth setup — pre-existing issue"
-)
 @pytest.mark.asyncio
 async def test_admin_sql_backup_forbidden(
-    clean_client: AsyncClient, normal_user_token_headers
+    normal_client: AsyncClient, normal_user_token_headers
 ):
     """Test backup with non-admin user returns 403."""
-    response = await clean_client.get(
+    response = await normal_client.get(
         f"{settings.api_prefix}/admin/sql/backup", headers=normal_user_token_headers
     )
     assert response.status_code == 403
     assert response.json()["detail"] == "Not enough permissions"
 
 
-@pytest.mark.xfail(
-    reason="clean_client fixture needs real JWT auth setup — pre-existing issue"
-)
 @pytest.mark.asyncio
 async def test_admin_sql_restore_forbidden(
-    clean_client: AsyncClient, normal_user_token_headers
+    normal_client: AsyncClient, normal_user_token_headers
 ):
     """Test restore with non-admin user returns 403."""
     # We need to simulate file upload even if it's forbidden, to hit the endpoint logic
-    response = await clean_client.post(
+    response = await normal_client.post(
         f"{settings.api_prefix}/admin/sql/restore",
         headers=normal_user_token_headers,
         files={"file": ("backup.sql", b"content", "application/sql")},

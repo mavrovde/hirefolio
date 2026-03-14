@@ -138,4 +138,43 @@ test.describe('Blog Display on Page Load', () => {
         const postWithTitle = page.locator('.group', { hasText: title });
         await expect(postWithTitle).toBeVisible({ timeout: 10000 });
     });
+
+    test('post is successfully displayed when navigated directly via slug URL', async ({ page }) => {
+        const uniqueId = Date.now();
+        const title = `Slug Direct Load Test ${uniqueId}`;
+        const slug = `slug-direct-load-${uniqueId}`;
+
+        // Create a post via admin
+        await page.goto('/admin/login');
+        await page.fill('input[name="username"]', 'admin');
+        await page.fill('input[name="password"]', 'admin123');
+        await page.click('button[type="submit"]');
+        await expect(page).toHaveURL(/\/admin\/dashboard/);
+
+        await page.goto('/admin/posts');
+        await page.click('.btn-new');
+        await page.fill('input[id="title"]', title);
+        await page.fill('input[id="slug"]', slug);
+        await page.selectOption('select[id="language"]', 'en');
+        await page.fill('textarea[id="content"]', 'Direct URL load content');
+        await page.fill('textarea[id="summary"]', 'Direct URL load summary');
+        await page.click('button:has-text("[ Publish ]")');
+        await page.waitForURL('/admin/posts');
+
+        await page.click('.logout-btn');
+
+        // Navigate directly to the slug URL to verify SSR/Routing fix
+        const response = await page.goto(`/blog/${slug}`);
+        await page.waitForLoadState('networkidle');
+
+        // Check it's a 2xx response, not a 404
+        expect(response?.ok()).toBeTruthy();
+
+        // The blog post content should be visible on the loaded page
+        const postTitleOnPage = page.locator('h1', { hasText: title });
+        await expect(postTitleOnPage).toBeVisible({ timeout: 10000 });
+        
+        const postContentOnPage = page.locator('p', { hasText: 'Direct URL load content' });
+        await expect(postContentOnPage).toBeVisible({ timeout: 10000 });
+    });
 });

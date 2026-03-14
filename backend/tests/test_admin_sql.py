@@ -21,15 +21,12 @@ async def test_admin_sql_execute_select(client: AsyncClient, admin_token_headers
     assert data[0]["name"] == "test"
 
 
-@pytest.mark.xfail(
-    reason="clean_client fixture needs real JWT auth setup — pre-existing issue"
-)
 @pytest.mark.asyncio
 async def test_admin_sql_execute_forbidden_non_admin(
-    clean_client: AsyncClient, normal_user_token_headers
+    normal_client: AsyncClient, normal_user_token_headers
 ):
-    # Use clean_client to avoid admin override
-    response = await clean_client.post(
+    # Use client to avoid admin override
+    response = await normal_client.post(
         "/api/app/admin/sql/execute",
         headers=normal_user_token_headers,
         json={"query": "SELECT 1"},

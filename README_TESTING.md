@@ -153,8 +153,9 @@ curl http://localhost:8000/api/posts/getting-started-ollama/similar
 
 ## Coverage Targets
 
-- **Backend**: >80% for services and API endpoints
-- **Frontend**: >75% for components and services
+- **Backend**: 100% for post routes and >80% for remaining services and API endpoints
+- **Frontend**: 100% for blog components and SSR routing, >75% for remaining components and services
+- **E2E**: 100% flow validation for blog display and rendering
 
 ## Continuous Integration
 

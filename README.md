@@ -313,8 +313,9 @@ isort app/
 
 ## 📊 Test Coverage
 
-- **Backend**: >80% coverage (services, API, models)
-- **Frontend**: >75% coverage (components, services, pipes)
+- **Backend**: 100% coverage for all posts logic, >80% coverage (services, API, models) globally
+- **Frontend**: 100% coverage for blog components and SSR, >75% coverage (components, services, pipes) globally
+- **E2E**: Full Playwright coverage for SSR routing and blog display endpoints
 
 Run coverage reports:
 

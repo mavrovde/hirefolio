@@ -100,6 +100,9 @@ check_status "http://localhost/api/app/posts" "GET" "200"
 # Check 4: Generate Name (Another AI public endpoint, expect 405 Method Not Allowed on GET)
 check_status "http://localhost/api/app/ai/generate-name" "GET" "405"
 
+# Check 5: Post display by slug URL (Frontend SSR Routing Test)
+check_status "http://localhost/blog/survivorship-bias-why-watching-the-winners-is-a-dangerous-strategy-in-the-ai-era" "GET" "200"
+
 # No network connectivity check requested ("do not test something, just successfully start")
 # Just confirming that it didn't crash and started up nicely in the prod env topology.
 

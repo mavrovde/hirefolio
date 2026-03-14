@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/* &&
 RUN rm -rf /usr/share/nginx/html/*
 
 # Copy built app from builder
-COPY --from=builder /app/dist/frontend/browser /usr/share/nginx/html
+COPY --from=builder /app/dist/frontend/browser /usr/share/nginx/browser
 COPY --from=builder /app/dist/frontend/server /usr/share/nginx/server
 
 # Copy nginx configuration

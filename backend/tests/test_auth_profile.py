@@ -5,19 +5,16 @@ from app.models.user import User
 from sqlalchemy import select
 
 
-@pytest.mark.xfail(
-    reason="clean_client fixture needs real JWT auth setup — pre-existing issue"
-)
 @pytest.mark.asyncio
 async def test_change_password_success(
-    clean_client: AsyncClient, admin_token_headers, db_session
+    client: AsyncClient, admin_token_headers, db_session
 ):
     # Setup: ensure admin has expected password "admin"
     admin_headers = admin_token_headers
 
     # Change password
     new_password = "newsecurepassword123"
-    response = await clean_client.put(
+    response = await client.put(
         "/api/app/auth/password",
         headers=admin_headers,
         json={"old_password": "admin", "new_password": new_password},
@@ -40,14 +37,11 @@ async def test_change_password_success(
     await db_session.commit()
 
 
-@pytest.mark.xfail(
-    reason="clean_client fixture needs real JWT auth setup — pre-existing issue"
-)
 @pytest.mark.asyncio
 async def test_change_password_wrong_old_password(
-    clean_client: AsyncClient, admin_token_headers
+    client: AsyncClient, admin_token_headers
 ):
-    response = await clean_client.put(
+    response = await client.put(
         "/api/app/auth/password",
         headers=admin_token_headers,
         json={"old_password": "wrongpassword", "new_password": "newpass"},

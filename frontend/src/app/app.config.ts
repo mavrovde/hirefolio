@@ -6,6 +6,8 @@ import { routes } from './app.routes';
 import { authInterceptor } from './interceptors/auth.interceptor';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 
+import { ssrInterceptor } from './interceptors/ssr.interceptor';
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -16,6 +18,6 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
       })
     ),
-    provideHttpClient(withInterceptors([authInterceptor])), provideClientHydration(withEventReplay()),
+    provideHttpClient(withInterceptors([authInterceptor, ssrInterceptor])), provideClientHydration(withEventReplay()),
   ],
 };

@@ -245,6 +245,56 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     p.stop()
 
 
+@pytest.fixture(scope="function")
+async def normal_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Create a test client overridden with a normal (non-admin) user."""
+    from app.main import app
+    from app.database import get_db
+    from app.services.auth import (
+        get_current_user_optional,
+        get_current_user,
+        get_password_hash,
+    )
+    from app.models.user import User
+    from datetime import datetime, timezone
+    from unittest.mock import patch
+
+    if not hasattr(app.state, "start_time") or app.state.start_time is None:
+        app.state.start_time = datetime.now(timezone.utc)
+
+    test_session_maker = get_test_async_session()
+    p = patch("app.main.async_session", side_effect=test_session_maker)
+    p.start()
+
+    async def override_get_db():
+        yield db_session
+
+    mock_user = User(
+        id=2,
+        username="normaluser",
+        email="user@example.com",
+        hashed_password=get_password_hash("userpass"),
+        is_admin=False,
+        is_active=True,
+    )
+
+    async def override_auth():
+        return mock_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user_optional] = override_auth
+    app.dependency_overrides[get_current_user] = override_auth
+
+    from httpx import ASGITransport
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+    p.stop()
+
+
 @pytest.fixture
 def mock_embedding():
     """Return a mock embedding vector (768 dimensions)."""
