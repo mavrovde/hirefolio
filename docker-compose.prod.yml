@@ -74,6 +74,7 @@ services:
       - "4000"
     environment:
       - NODE_ENV=production
+      - ALLOWED_HOSTS=localhost,mavrov.de,127.0.0.1
     depends_on:
       - backend
     networks:
