@@ -31,20 +31,20 @@ class LinkedInService:
         from linkedin_api import Linkedin
 
         logger.info("Initializing LinkedIn API client...")
-        
+
         cookies = None
         if settings.linkedin_cookie_li_at and settings.linkedin_cookie_jsessionid:
             cookies = {
                 "li_at": settings.linkedin_cookie_li_at,
-                "JSESSIONID": settings.linkedin_cookie_jsessionid
+                "JSESSIONID": settings.linkedin_cookie_jsessionid,
             }
 
         self._client = Linkedin(
             settings.linkedin_email,
             settings.linkedin_password,
             cookies=cookies,
-            authenticate=False, 
-            cookies_dir=COOKIES_DIR
+            authenticate=False,
+            cookies_dir=COOKIES_DIR,
         )
 
         # We manually authenticate so that if the environment variables aren't set
@@ -57,11 +57,13 @@ class LinkedInService:
                 # This will silently fail if there's no session in the directory and we pass no username/password
                 # However we want to attempt to load from the cookies_dir if it exists.
                 # `authenticate=False` prevents it from doing it automatically in the constructor which throws on missing params.
-                
+
                 # Check if cookies file exists in the directory
                 if os.listdir(COOKIES_DIR):
                     logger.info("Attempting to authenticate using saved cookies...")
-                    self._client = Linkedin("", "", authenticate=True, cookies_dir=COOKIES_DIR)
+                    self._client = Linkedin(
+                        "", "", authenticate=True, cookies_dir=COOKIES_DIR
+                    )
                     logger.info("Successfully authenticated using saved cookies.")
             except Exception as e:
                 logger.warning(f"Could not authenticate using existing cookies: {e}")
@@ -71,15 +73,16 @@ class LinkedInService:
     async def login(self, username, password) -> bool:
         """Dynamically logs into LinkedIn using the provided credentials and saves cookies to the volume."""
         from linkedin_api import Linkedin
+
         logger.info(f"Attempting manual dynamic login for user: {username}")
         try:
             # Setting authenticate=True tells the client to actually log in
             self._client = Linkedin(
-                username, 
-                password, 
-                authenticate=True, 
-                cookies_dir=COOKIES_DIR, 
-                refresh_cookies=True
+                username,
+                password,
+                authenticate=True,
+                cookies_dir=COOKIES_DIR,
+                refresh_cookies=True,
             )
             return True
         except Exception as e:
@@ -90,12 +93,12 @@ class LinkedInService:
         """Determines if there is a valid session available."""
         # Fast path 1: Env variabls are provided
         if settings.linkedin_cookie_li_at and settings.linkedin_cookie_jsessionid:
-             return True
-        
+            return True
+
         # Fast path 2: Has cookies stored in the directory
         if os.path.exists(COOKIES_DIR) and len(os.listdir(COOKIES_DIR)) > 0:
             return True
-        
+
         return False
 
     def _get_public_id(self) -> str:

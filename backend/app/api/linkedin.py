@@ -37,7 +37,7 @@ async def login_linkedin(
         if success:
             return {"message": "Successfully logged in and saved session."}
         else:
-             raise HTTPException(
+            raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Login failed. Check credentials and MFA.",
             )

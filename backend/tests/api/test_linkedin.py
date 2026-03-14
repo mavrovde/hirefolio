@@ -356,9 +356,13 @@ async def test_transfer_posts_bulk_db_error(override_get_current_admin_user):
 @pytest.mark.asyncio
 async def test_login_linkedin_success(override_get_current_admin_user):
     login_data = {"username": "test@test.com", "password": "password"}
-    with patch("app.api.linkedin.linkedin_service.login", new_callable=AsyncMock) as mock_login:
+    with patch(
+        "app.api.linkedin.linkedin_service.login", new_callable=AsyncMock
+    ) as mock_login:
         mock_login.return_value = True
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.post("/api/app/linkedin/login", json=login_data)
             assert response.status_code == 200
             assert "Successfully logged in" in response.json()["message"]
@@ -367,20 +371,30 @@ async def test_login_linkedin_success(override_get_current_admin_user):
 @pytest.mark.asyncio
 async def test_login_linkedin_failure(override_get_current_admin_user):
     login_data = {"username": "test@test.com", "password": "password"}
-    with patch("app.api.linkedin.linkedin_service.login", new_callable=AsyncMock) as mock_login:
+    with patch(
+        "app.api.linkedin.linkedin_service.login", new_callable=AsyncMock
+    ) as mock_login:
         mock_login.return_value = False
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.post("/api/app/linkedin/login", json=login_data)
             assert response.status_code == 401
-            assert "Login failed. Check credentials and MFA." in response.json()["detail"]
+            assert (
+                "Login failed. Check credentials and MFA." in response.json()["detail"]
+            )
 
 
 @pytest.mark.asyncio
 async def test_login_linkedin_exception(override_get_current_admin_user):
     login_data = {"username": "test@test.com", "password": "password"}
-    with patch("app.api.linkedin.linkedin_service.login", new_callable=AsyncMock) as mock_login:
+    with patch(
+        "app.api.linkedin.linkedin_service.login", new_callable=AsyncMock
+    ) as mock_login:
         mock_login.side_effect = Exception("Challenge required")
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.post("/api/app/linkedin/login", json=login_data)
             assert response.status_code == 400
             assert "Challenge required" in response.json()["detail"]
@@ -388,9 +402,13 @@ async def test_login_linkedin_exception(override_get_current_admin_user):
 
 @pytest.mark.asyncio
 async def test_get_linkedin_status(override_get_current_admin_user):
-    with patch("app.api.linkedin.linkedin_service.is_logged_in", new_callable=AsyncMock) as mock_status:
+    with patch(
+        "app.api.linkedin.linkedin_service.is_logged_in", new_callable=AsyncMock
+    ) as mock_status:
         mock_status.return_value = True
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/app/linkedin/status")
             assert response.status_code == 200
             assert response.json()["logged_in"] is True

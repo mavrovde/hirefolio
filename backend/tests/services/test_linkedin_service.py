@@ -25,12 +25,18 @@ async def test_get_client_initializes_on_first_call(service, mocker):
     mocker.patch("app.services.linkedin.settings.linkedin_password", "pass")
 
     mock_linkedin = MagicMock()
-    with patch("linkedin_api.Linkedin", return_value=mock_linkedin) as mock_cls, \
-         patch("os.listdir", return_value=[]):
+    with (
+        patch("linkedin_api.Linkedin", return_value=mock_linkedin) as mock_cls,
+        patch("os.listdir", return_value=[]),
+    ):
         client = service._get_client()
         assert client is mock_linkedin
         mock_cls.assert_called_once_with(
-            "test@test.com", "pass", cookies=None, authenticate=False, cookies_dir="/tmp/linkedin_cookies"
+            "test@test.com",
+            "pass",
+            cookies=None,
+            authenticate=False,
+            cookies_dir="/tmp/linkedin_cookies",
         )
 
 
