@@ -1,11 +1,12 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { LinkedinService, LinkedInPost } from '../../../services/linkedin.service';
 
 @Component({
     selector: 'app-admin-linkedin',
     standalone: true,
-    imports: [CommonModule],
+    imports: [CommonModule, FormsModule],
     templateUrl: './admin-linkedin.component.html',
     styleUrls: ['./admin-linkedin.component.css']
 })
@@ -18,11 +19,46 @@ export class AdminLinkedinComponent implements OnInit {
     transferringPostId: string | null = null;
     activeTab: 'profile' | 'posts' = 'posts';
 
+    isLoggedIn = false;
+    isLoggingIn = false;
+    linkedinUsername = '';
+    linkedinPassword = '';
+
     profileData: any = null;
     posts: LinkedInPost[] = [];
     statusMessage: string = '';
 
     ngOnInit(): void {
+        this.checkLoginStatus();
+    }
+
+    async checkLoginStatus() {
+        try {
+            const status = await this.linkedinService.getStatus();
+            this.isLoggedIn = status.logged_in;
+        } catch (e) {
+            console.error('Failed to get status', e);
+        }
+    }
+
+    async login() {
+        if (!this.linkedinUsername || !this.linkedinPassword) return;
+        
+        this.isLoggingIn = true;
+        this.statusMessage = 'Logging in to LinkedIn...';
+        
+        try {
+            await this.linkedinService.login(this.linkedinUsername, this.linkedinPassword);
+            this.isLoggedIn = true;
+            this.statusMessage = 'Successfully logged in and session saved.';
+            this.clearMessageAfterDelay();
+            this.linkedinPassword = ''; // Clear for security
+        } catch (e: any) {
+            this.statusMessage = e.message || 'Login failed. Note: MFA is not currently supported.';
+        } finally {
+            this.isLoggingIn = false;
+            this.cdr.detectChanges();
+        }
     }
 
     setTab(tab: 'profile' | 'posts') {

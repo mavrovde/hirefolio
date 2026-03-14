@@ -18,6 +18,50 @@ router = APIRouter(prefix="/linkedin", tags=["linkedin"])
 logger = logging.getLogger(__name__)
 
 
+class LinkedInLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@router.post("/login")
+async def login_linkedin(
+    login_data: LinkedInLoginRequest,
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    Dynamically authenticates with LinkedIn and saves session cookies to the server.
+    """
+    logger.info(f"[LinkedIn] Dynamic login requested by user: {current_user.username}")
+    try:
+        success = await linkedin_service.login(login_data.username, login_data.password)
+        if success:
+            return {"message": "Successfully logged in and saved session."}
+        else:
+             raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Login failed. Check credentials and MFA.",
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[LinkedIn] Dynamic login FAILED: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Login failed: {str(e)}",
+        )
+
+
+@router.get("/status")
+async def get_linkedin_status(
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    Checks if there is an active valid LinkedIn session available.
+    """
+    is_logged_in = await linkedin_service.is_logged_in()
+    return {"logged_in": is_logged_in}
+
+
 @router.get("/profile-sync")
 async def sync_linkedin_profile(
     current_user: User = Depends(get_current_admin_user),

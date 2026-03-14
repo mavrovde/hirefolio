@@ -60,14 +60,14 @@ async def _generate_text_gemini(
 
         # NOTE: The new SDK `google-genai` uses `client.models.generate_content`.
         response = client.models.generate_content(
-            model="gemini-2.0-flash", contents=prompt
+            model="gemini-3.1-pro", contents=prompt
         )
         return response.text
     except Exception:
         # Fallback to gemini-1.5-flash if 2.0 not available
         try:
             response = client.models.generate_content(
-                model="gemini-1.5-flash", contents=prompt
+                model="gemini-3.1-flash", contents=prompt
             )
             return response.text
         except Exception as e2:
@@ -357,14 +357,14 @@ async def chat_with_gemini(
                 gemini_history.append({"role": role, "parts": [{"text": content}]})
 
         # Use a model that supports chat
-        chat = client.chats.create(model="gemini-2.0-flash", history=gemini_history)
+        chat = client.chats.create(model="gemini-3.1-pro", history=gemini_history)
 
         response = chat.send_message(message)
         return response.text
     except Exception:
         # Fallback to 1.5
         try:
-            chat = client.chats.create(model="gemini-1.5-flash", history=gemini_history)
+            chat = client.chats.create(model="gemini-3.1-flash", history=gemini_history)
             response = chat.send_message(message)
             return response.text
         except Exception as e2:

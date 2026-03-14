@@ -1,9 +1,13 @@
 import logging
 from typing import Dict, Any, List
 
+import os
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+COOKIES_DIR = "/tmp/linkedin_cookies"
 
 
 class LinkedInService:
@@ -11,6 +15,7 @@ class LinkedInService:
 
     def __init__(self):
         self._client = None
+        os.makedirs(COOKIES_DIR, exist_ok=True)
 
     def _get_client(self):
         """Lazy-initialize the LinkedIn API client."""
@@ -26,11 +31,72 @@ class LinkedInService:
         from linkedin_api import Linkedin
 
         logger.info("Initializing LinkedIn API client...")
+        
+        cookies = None
+        if settings.linkedin_cookie_li_at and settings.linkedin_cookie_jsessionid:
+            cookies = {
+                "li_at": settings.linkedin_cookie_li_at,
+                "JSESSIONID": settings.linkedin_cookie_jsessionid
+            }
+
         self._client = Linkedin(
             settings.linkedin_email,
             settings.linkedin_password,
+            cookies=cookies,
+            authenticate=False, 
+            cookies_dir=COOKIES_DIR
         )
+
+        # We manually authenticate so that if the environment variables aren't set
+        # but the cookies directory has a valid session from the Admin UI, we can use it.
+        if cookies:
+            self._client.client._set_session_cookies(cookies)
+            logger.info("Using `.env` provided cookies.")
+        else:
+            try:
+                # This will silently fail if there's no session in the directory and we pass no username/password
+                # However we want to attempt to load from the cookies_dir if it exists.
+                # `authenticate=False` prevents it from doing it automatically in the constructor which throws on missing params.
+                
+                # Check if cookies file exists in the directory
+                if os.listdir(COOKIES_DIR):
+                    logger.info("Attempting to authenticate using saved cookies...")
+                    self._client = Linkedin("", "", authenticate=True, cookies_dir=COOKIES_DIR)
+                    logger.info("Successfully authenticated using saved cookies.")
+            except Exception as e:
+                logger.warning(f"Could not authenticate using existing cookies: {e}")
+
         return self._client
+
+    async def login(self, username, password) -> bool:
+        """Dynamically logs into LinkedIn using the provided credentials and saves cookies to the volume."""
+        from linkedin_api import Linkedin
+        logger.info(f"Attempting manual dynamic login for user: {username}")
+        try:
+            # Setting authenticate=True tells the client to actually log in
+            self._client = Linkedin(
+                username, 
+                password, 
+                authenticate=True, 
+                cookies_dir=COOKIES_DIR, 
+                refresh_cookies=True
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to authenticate dynamically: {e}")
+            raise Exception(f"Failed to authenticate: {e}")
+
+    async def is_logged_in(self) -> bool:
+        """Determines if there is a valid session available."""
+        # Fast path 1: Env variabls are provided
+        if settings.linkedin_cookie_li_at and settings.linkedin_cookie_jsessionid:
+             return True
+        
+        # Fast path 2: Has cookies stored in the directory
+        if os.path.exists(COOKIES_DIR) and len(os.listdir(COOKIES_DIR)) > 0:
+            return True
+        
+        return False
 
     def _get_public_id(self) -> str:
         """Get the LinkedIn public ID from settings."""

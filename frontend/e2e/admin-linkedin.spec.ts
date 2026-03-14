@@ -139,4 +139,63 @@ test.describe('Admin LinkedIn Integration Verification', () => {
         await expect(page.locator('.data-view')).toBeVisible({ timeout: 5000 });
         await expect(page.locator('pre', { hasText: '"name": "E2E Test User"' })).toBeVisible();
     });
+
+    test('LinkedIn Panel should handle dynamic login flow', async ({ page }) => {
+        // Mock the initial status API to return false to show login form
+        await page.route('**/api/app/linkedin/status', async route => {
+            if (route.request().method() === 'OPTIONS') {
+                return route.continue();
+            }
+            await route.fulfill({
+                status: 200,
+                headers: {
+                    'Access-Control-Allow-Origin': 'http://localhost:4200',
+                    'Access-Control-Allow-Credentials': 'true'
+                },
+                json: { logged_in: false }
+            });
+        });
+
+        // Navigate to the LinkedIn admin page
+        await page.goto('/admin/linkedin');
+        
+        // Wait for container to be visible and login form to render
+        await expect(page.locator('h1', { hasText: '> LinkedIn Sync' })).toBeVisible({ timeout: 15000 });
+        await expect(page.locator('input[placeholder="LinkedIn Email"]')).toBeVisible();
+
+        // Fill credentials
+        await page.fill('input[placeholder="LinkedIn Email"]', 'testuser@example.com');
+        await page.fill('input[placeholder="LinkedIn Password"]', 'securepass');
+
+        // Mock the login API to return success
+        await page.route('**/api/app/linkedin/login', async route => {
+            if (route.request().method() === 'OPTIONS') {
+                return route.continue();
+            }
+            // Add slight delay for realistic timing
+            await new Promise(r => setTimeout(r, 200));
+            await route.fulfill({
+                status: 200,
+                headers: {
+                    'Access-Control-Allow-Origin': 'http://localhost:4200',
+                    'Access-Control-Allow-Credentials': 'true'
+                },
+                json: { message: 'Successfully logged in' }
+            });
+        });
+
+        // Click login button
+        await page.locator('button', { hasText: 'Login & Save Session' }).click();
+
+        // Workaround for ZoneJS
+        await page.waitForTimeout(500);
+        await page.mouse.click(0, 0);
+
+        // Verify success status
+        await expect(page.locator('.status-bar')).toContainText('Successfully logged in', { timeout: 5000 });
+        
+        // Ensure form inputs are removed and connected state shows
+        await expect(page.locator('input[placeholder="LinkedIn Email"]')).toBeHidden();
+        await expect(page.locator('.success', { hasText: 'Connected' })).toBeVisible();
+    });
 });

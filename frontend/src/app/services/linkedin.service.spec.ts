@@ -202,4 +202,69 @@ describe('LinkedinService', () => {
             })
         );
     });
+
+    it('should check login status successfully', async () => {
+        const mockStatus = { logged_in: true };
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve(mockStatus)
+        });
+
+        const status = await service.getStatus();
+        expect(status).toEqual(mockStatus);
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            `${environment.apiUrl}${environment.apiPrefix}/linkedin/status`,
+            expect.any(Object)
+        );
+    });
+
+    it('should throw with API detail on getStatus failure', async () => {
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: false, status: 500,
+            json: () => Promise.resolve({ detail: 'Failed to access status' })
+        });
+        await expect(service.getStatus()).rejects.toThrow('Failed to access status');
+    });
+
+    it('should throw default message on getStatus when no detail provided', async () => {
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: false, status: 500,
+            json: () => Promise.reject(new Error('not json'))
+        });
+        await expect(service.getStatus()).rejects.toThrow('Failed to check status');
+    });
+
+    it('should login successfully', async () => {
+        const mockLoginResponse = { message: 'Successfully logged in' };
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve(mockLoginResponse)
+        });
+
+        const res = await service.login('testuser', 'testpass');
+        expect(res).toEqual(mockLoginResponse);
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            `${environment.apiUrl}${environment.apiPrefix}/linkedin/login`,
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({ username: 'testuser', password: 'testpass' })
+            })
+        );
+    });
+
+    it('should throw with API detail on login failure', async () => {
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: false, status: 401,
+            json: () => Promise.resolve({ detail: 'Invalid credentials' })
+        });
+        await expect(service.login('testuser', 'wrongpass')).rejects.toThrow('Invalid credentials');
+    });
+
+    it('should throw default message on login failure when no detail provided', async () => {
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: false, status: 500,
+            json: () => Promise.reject(new Error('not json'))
+        });
+        await expect(service.login('testuser', 'wrongpass')).rejects.toThrow('Login failed');
+    });
 });

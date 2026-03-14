@@ -39,6 +39,34 @@ export class LinkedinService {
     }
 
     /**
+     * Check if a valid LinkedIn session is available
+     */
+    async getStatus(): Promise<{ logged_in: boolean }> {
+        const response = await fetch(`${this.apiUrl}/status`, { headers: this.getHeaders() });
+        if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            throw new Error(body?.detail || 'Failed to check status');
+        }
+        return await response.json();
+    }
+
+    /**
+     * Dynamically login using username and password
+     */
+    async login(username: string, password: string):Promise<any> {
+        const response = await fetch(`${this.apiUrl}/login`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({ username, password })
+        });
+        if (!response.ok) {
+             const body = await response.json().catch(() => null);
+             throw new Error(body?.detail || 'Login failed');
+        }
+        return await response.json();
+    }
+
+    /**
      * Trigger a LinkedIn profile synchronization scan
      */
     async syncProfile(): Promise<any> {

@@ -50,7 +50,7 @@ async def test_generate_text_gemini_success():
         result = await ai._generate_text_gemini("prompt")
         assert result == "Generated Text"
         mock_client.models.generate_content.assert_called_with(
-            model="gemini-2.0-flash", contents="prompt"
+            model="gemini-3.1-pro", contents="prompt"
         )
 
 
@@ -108,7 +108,7 @@ async def test_chat_with_gemini_success():
         # Verify history conversion
         expected_history = [{"role": "user", "parts": [{"text": "hi"}]}]
         mock_client.chats.create.assert_called_with(
-            model="gemini-2.0-flash", history=expected_history
+            model="gemini-3.1-pro", history=expected_history
         )
 
 
@@ -128,7 +128,7 @@ async def test_chat_with_gemini_fallback():
         assert res == "Fallback Chat"
         assert mock_client.chats.create.call_count == 2
         args, kwargs = mock_client.chats.create.call_args_list[1]
-        assert kwargs["model"] == "gemini-1.5-flash"
+        assert kwargs["model"] == "gemini-3.1-flash"
 
 
 @pytest.mark.asyncio

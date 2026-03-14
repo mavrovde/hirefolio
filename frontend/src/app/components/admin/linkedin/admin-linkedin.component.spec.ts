@@ -8,6 +8,8 @@ class MockLinkedinService {
     async syncProfile() { return {}; }
     async getPosts() { return []; }
     async transferPost() { return { id: 0, message: '' }; }
+    async getStatus() { return { logged_in: false }; }
+    async login() { return {}; }
 }
 
 describe('AdminLinkedinComponent', () => {
@@ -170,5 +172,66 @@ describe('AdminLinkedinComponent', () => {
 
     it('should return empty string for falsy text', () => {
         expect(component.truncateText(null as any)).toBe('');
+    });
+
+    it('should check login status on init successfully', async () => {
+        vi.spyOn(mockLinkedinService, 'getStatus').mockResolvedValue({ logged_in: true });
+        await component.checkLoginStatus();
+        expect(component.isLoggedIn).toBe(true);
+    });
+
+    it('should handle login status check error gracefully', async () => {
+        vi.spyOn(mockLinkedinService, 'getStatus').mockRejectedValue(new Error('Network error'));
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        component.isLoggedIn = false;
+        await component.checkLoginStatus();
+        expect(component.isLoggedIn).toBe(false);
+        expect(console.error).toHaveBeenCalled();
+    });
+
+    it('should not login if credentials are missing', async () => {
+        component.linkedinUsername = '';
+        component.linkedinPassword = '';
+        vi.spyOn(mockLinkedinService, 'login');
+        await component.login();
+        expect(mockLinkedinService.login).not.toHaveBeenCalled();
+    });
+
+    it('should login successfully and clear password', async () => {
+        component.linkedinUsername = 'testuser';
+        component.linkedinPassword = 'mypassword';
+        vi.spyOn(mockLinkedinService, 'login').mockResolvedValue({ message: 'Success' });
+        
+        await component.login();
+        
+        expect(component.isLoggingIn).toBe(false);
+        expect(component.isLoggedIn).toBe(true);
+        expect(component.linkedinPassword).toBe('');
+        expect(component.statusMessage).toBe('Successfully logged in and session saved.');
+        expect(component.clearMessageAfterDelay).toHaveBeenCalled();
+    });
+
+    it('should handle login failure and surface error message', async () => {
+        component.linkedinUsername = 'testuser';
+        component.linkedinPassword = 'wrongpassword';
+        vi.spyOn(mockLinkedinService, 'login').mockRejectedValue(new Error('Invalid credentials'));
+        
+        await component.login();
+        
+        expect(component.isLoggingIn).toBe(false);
+        expect(component.isLoggedIn).toBe(false);
+        expect(component.linkedinPassword).toBe('wrongpassword'); // Password is not cleared on failure
+        expect(component.statusMessage).toBe('Invalid credentials');
+    });
+
+    it('should handle login failure with default fallback message', async () => {
+        component.linkedinUsername = 'testuser';
+        component.linkedinPassword = 'wrongpassword';
+        vi.spyOn(mockLinkedinService, 'login').mockRejectedValue({});
+        
+        await component.login();
+        
+        expect(component.isLoggingIn).toBe(false);
+        expect(component.statusMessage).toBe('Login failed. Note: MFA is not currently supported.');
     });
 });
