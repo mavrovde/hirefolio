@@ -1,5 +1,5 @@
 #!/bin/sh
 set -e
 
-echo "Starting Nginx in static SSL mode..."
+echo "Starting Nginx in HTTP mode..."
 exec "$@"

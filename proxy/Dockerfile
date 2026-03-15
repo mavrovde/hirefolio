@@ -6,7 +6,6 @@ RUN find /etc/nginx -type f -exec sed -i 's/aio threads;/aio off;/g' {} + || tru
 
 COPY default.conf /etc/nginx/conf.d/default.conf
 COPY entrypoint.sh /entrypoint.sh
-COPY certs /etc/nginx/ssl
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 80 443

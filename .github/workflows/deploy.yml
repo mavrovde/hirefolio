@@ -264,24 +264,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Prepare Certificates
-        env:
-          SSL_CRT: ${{ secrets.SSL_CRT }}
-          SSL_KEY: ${{ secrets.SSL_KEY }}
-        run: |
-          mkdir -p proxy/certs
-          # PRIORITY 1: Secrets
-          if [ -n "$SSL_CRT" ]; then
-            echo "$SSL_CRT" > proxy/certs/mavrov.de.bundle.cer
-            echo "$SSL_KEY" > proxy/certs/mavrov.de.key
-          # PRIORITY 2: Dummy (Fallback)
-          else
-            echo "⚠️  No certs found in secrets. Generating dummy certs..."
-            openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-              -keyout proxy/certs/mavrov.de.key \
-              -out proxy/certs/mavrov.de.bundle.cer \
-              -subj "/CN=mavrov.de"
-          fi
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
 
       # Build & Push Proxy
       - name: Build and Push Proxy
@@ -526,13 +511,6 @@ jobs:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ github.repository }}
           IMAGE_TAG: sha-${{ github.sha }}
         run: |
-          # Create dummy certs
-          mkdir -p certs
-          openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-            -keyout certs/mavrov.de.key \
-            -out certs/mavrov.de.bundle.cer \
-            -subj "/CN=mavrov.de"
-
           # Start proxy (Certbot is gone from compose.prod)
           docker compose -f docker-compose.prod.yml up -d proxy
 
@@ -547,19 +525,13 @@ jobs:
             exit 1
           fi
 
-      - name: Verify Static SSL Mode
+      - name: Verify Proxy Start
         run: |
           LOGS=$(docker logs global_proxy 2>&1)
 
           echo "=== PROXY LOGS ==="
           echo "$LOGS"
 
-          if echo "$LOGS" | grep -q "Starting Nginx in static SSL mode..."; then
-            echo "✅ Static SSL mode initialized"
-          else
-            echo "❌ Static SSL mode log missing"
-            exit 1
-          fi
           if echo "$LOGS" | grep -q "Starting Nginx..."; then
              echo "✅ Nginx started"
           else
