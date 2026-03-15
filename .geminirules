@@ -24,6 +24,22 @@ You are an expert AI software engineer powered by Gemini. You must prioritize ef
 - **E2E Testing (Playwright):**
   - Automated browsers execute actions faster than Angular's Client-Side Rendering hooks attach during SPA navigation. Prevent flaky tests by integrating micro-waits (e.g., `waitForTimeout(500)`) after route changes and before using `page.fill()`.
 
-## Operational Workflow
-- **Verify Locally:** Test your work locally! Run backend and frontend test suites completely before confirming a solution.
-- **Releases:** The release sequence is handled carefully via the `./release.sh` script (e.g., `./release.sh --patch`). Only trigger or advise this when the build is verifiably green.
+## Application Flow & Architecture
+- **Frontend-to-Backend**: The Angular frontend communicates exclusively with the FastAPI backend via REST APIs (or SSE for streaming like the LLM debate). Data models must remain strongly typed in TypeScript interfaces that cleanly match the Python Pydantic models.
+- **Component Design**: Angular components should strictly use established services for state mutation/API calls. Avoid writing direct `fetch` logic inside `.ts` component files. Keep presentation logic separate from domain logic. 
+
+## Testing Protocols (100% Coverage Enforced)
+1. **Backend**: Use `pytest`. Every new endpoint, service class, and utility function MUST have an associated test file. Ensure error states (e.g. 501, 500, 400) and edge cases are evaluated, not just the "happy path". Mock database connections (`asyncpg`) and external services to guarantee tests run isolated and fast.
+2. **Frontend**: Use `vitest`. Ensure `.spec.ts` files exist for every component and service. Angular UI logic should be verifiable in a JSDOM environment.
+3. **E2E Tests**: Use `Playwright`. UI flows that cover multiple components (e.g., login, submitting forms) must be automated. Since client-side rendering (CSR) can outpace test hooks, manually add brief `waitForTimeout(500)` calls before critical element interactions to ensure stability.
+
+## Release & Deployment Sequence
+- Avoid manually editing `package.json` version numbers or manually building images.
+- All deployments are handled exclusively by the central deployment script: `./release.sh`.
+- Use `./release.sh --patch` (or `--minor`, `--major`) to automatically:
+  1. Increment repository versions.
+  2. Initiate the rigid backend/frontend/E2E test suite.
+  3. Spin up a local production proxy network, verifying the UI and proxy routing.
+  4. Tag, commit, and push the verified changes to Git.
+  5. Build and distribute the multi-architecture AMD64 / ARM Docker images to the registry.
+- **Rule of Thumb**: Never advise running `./release.sh` unless the local pipeline is completely verified and 100% green.
