@@ -7,33 +7,16 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
-## [1.2.26] - 2026-03-15
+## [1.2.27] - 2026-03-15
 
 ### Added
 - Placeholder for next release.
 
 ## [1.2.26] - 2026-03-15
 
-## [1.2.26] - 2026-03-15
-
-### Added
-- Placeholder for next release.
-
-## [1.2.26] - 2026-03-15
-
-## [1.2.26] - 2026-03-15
-
-### Added
-- Placeholder for next release.
-
-## [1.2.26] - 2026-03-15
-
-## [1.2.25] - 2026-03-15
-
-### Added
-- Placeholder for next release.
-
-## [1.2.25] - 2026-03-15
+### Fixed
+- Fixed SQL injection vulnerability in `execute_sql` in admin API.
+- Fixed information exposure through exception stack traces in AI API.
 
 ## [1.2.25] - 2026-03-15
 
@@ -48,8 +31,6 @@ All notable changes to this project will be documented in this file.
 - Extended unit tests in Frontend to achieve 100% coverage on `blog-post.component.ts` and intercepted logic.
 - Extended unit tests in Backend `app/api/posts.py` to achieve full coverage on draft permissions, image uploading logic, and retry generation cases.
 - E2E Testing configuration adjusted to run Playwright tests against proper `BASE_URL` target inside local Docker environment.
-
-### Changed
 
 - Improved fallback SEO metadata handling in the blog component in case the post summary is missing.
 - Reorganized `APP_CONFIG` interceptors to include SSR functionality implicitly without manual code workarounds.

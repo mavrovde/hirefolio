@@ -57,8 +57,8 @@ test.describe('Admin SQL Panel', () => {
 
         await page.fill('#query', "SELECT * FROM non_existent_table_123");
         
-        // Wait for the 400 response specifically
-        const responsePromise = page.waitForResponse(resp => resp.url().includes('/sql/execute') && resp.status() === 400 && resp.request().method() === 'POST');
+        // Wait for the 501 response specifically
+        const responsePromise = page.waitForResponse(resp => resp.url().includes('/sql/execute') && resp.status() === 501 && resp.request().method() === 'POST');
         
         await page.click('button:has-text("Execute")');
         await responsePromise;
