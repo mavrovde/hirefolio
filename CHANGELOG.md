@@ -10,6 +10,13 @@ All notable changes to this project will be documented in this file.
 ## [1.2.25] - 2026-03-15
 
 ### Added
+- Placeholder for next release.
+
+## [1.2.25] - 2026-03-15
+
+## [1.2.25] - 2026-03-15
+
+### Added
 - Standardized AI Assistant global prompt configurations across all major cloud/desktop tools (`.cursorrules`, `.windsurfrules`, `.cline.md`, `AI.md`, etc.).
 - Embedded ultra-strict "Mission Command" directives for clean code, solid principles, and zero-tolerance bug resolutions.
 

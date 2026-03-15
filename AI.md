@@ -49,3 +49,4 @@ When encountering a bug or a failed test, you MUST adhere to the following stric
 - **Graceful Degradation:** NEVER expose a raw stack trace to the frontend. Catch all exceptions, log them with deep technical context securely in the backend, and return standard REST error models to the client.
 - **Commit Standards:** Git commits MUST follow Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`). Commits must be atomic.
 - **Documentation:** Inline comments must explain *why*, not *what*. Always update `README.md` and related docs synchronously with code changes, ensuring architecture maps remain perfectly accurate.
+- **Changelog Maintenance:** You MUST document every significant development or change in `CHANGELOG.md` under the `[Unreleased]` section. Update the changelog as an integral part of your coding task before completing it.
