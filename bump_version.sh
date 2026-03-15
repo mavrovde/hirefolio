@@ -76,6 +76,12 @@ if [ -d .git ]; then
     # For now, let's just output the status. Tagging usually happens after the release commit.
 fi
 
+# Update CHANGELOG.md automatically
+echo "Rotating CHANGELOG.md headers..."
+perl -0777 -pi -e "s/## \[Unreleased\]\n\n### Added\n- Placeholder for next release\./## [Unreleased]\n\n### Added\n- Placeholder for next release.\n\n## [$new_version] - $(date +%Y-%m-%d)/s" CHANGELOG.md || true
+# Fallback if specific placeholder is missing
+perl -pi -e "s/## \[Unreleased\]/## [Unreleased]\n\n### Added\n- Placeholder for next release.\n\n## [$new_version] - $(date +%Y-%m-%d)/" CHANGELOG.md
+
 echo "Version updated to $new_version"
 echo "Version updated to $new_version"
 echo "Ready for verification and tagging."
