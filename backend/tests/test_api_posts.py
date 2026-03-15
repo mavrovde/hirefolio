@@ -364,7 +364,9 @@ async def test_suggest_details_endpoint_single_field(client: AsyncClient, mocker
 
 
 @pytest.mark.asyncio
-async def test_semantic_search_low_relevance(client: AsyncClient, mock_embedding, mocker):
+async def test_semantic_search_low_relevance(
+    client: AsyncClient, mock_embedding, mocker
+):
     """Test filtering semantic results based on min_relevance threshold."""
     post_data = {
         "title": "Low Relevance Search",
@@ -398,7 +400,9 @@ async def test_update_post_image_url(client: AsyncClient, mock_embedding, mocker
     post_id = create_resp.json()["id"]
 
     update_data = {"image_url": "http://updated.com/img.jpg"}
-    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
-    
+    response = await client.put(
+        f"{settings.api_prefix}/posts/{post_id}", json=update_data
+    )
+
     assert response.status_code == 200
     assert response.json()["image_url"] == "http://updated.com/img.jpg"

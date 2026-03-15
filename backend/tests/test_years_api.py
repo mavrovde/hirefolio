@@ -177,11 +177,13 @@ class TestYearsEndpoint:
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
         mock_resp.json.return_value = {"experience": [{"startDate": "Mar 2023"}]}
-        
+
         with patch("httpx.get", return_value=mock_resp):
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                with patch("app.api.years.PROFILE_DATA_DIR", str(tmp_path / "nonexistent")):
+                with patch(
+                    "app.api.years.PROFILE_DATA_DIR", str(tmp_path / "nonexistent")
+                ):
                     response = await ac.get("/api/app/cv/years")
 
         assert response.status_code == 200

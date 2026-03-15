@@ -87,12 +87,12 @@ async def test_multi_chat_json_decode_error_and_done():
     # Mock stream response with Bad JSON, Good JSON, and Done JSON
     mock_response = AsyncMock()
     mock_response.status_code = 200
-    
+
     async def mock_aiter_lines():
         yield "not-json"
         yield '{"message": {"content": "good content"}}'
         yield '{"done": true}'
-    
+
     mock_response.aiter_lines = mock_aiter_lines
 
     mock_client_chat = AsyncMock()
@@ -100,6 +100,7 @@ async def test_multi_chat_json_decode_error_and_done():
     mock_client_chat.stream.return_value.__aenter__.return_value = mock_response
 
     call_count = 0
+
     def side_effect(*args, **kwargs):
         nonlocal call_count
         call_count += 1
@@ -109,7 +110,9 @@ async def test_multi_chat_json_decode_error_and_done():
         agents = [multi_chat.AgentConfig(id=1, description="desc", role="role")]
         # Only 1 turn max for test to finish fast
         chunks = []
-        async for chunk in multi_chat.multi_agent_conversation(agents, "topic", max_turns=1):
+        async for chunk in multi_chat.multi_agent_conversation(
+            agents, "topic", max_turns=1
+        ):
             chunks.append(chunk)
 
         assert True
@@ -121,16 +124,20 @@ async def test_multi_chat_moderator_stopped():
     mock_client_success = AsyncMock()
     mock_client_success.__aenter__.return_value = mock_client_success
     mock_client_success.get.return_value.status_code = 200
-    
+
     mock_client_fail = AsyncMock()
     mock_client_fail.__aenter__.return_value = mock_client_fail
-    
+
     from unittest.mock import MagicMock
+
     mock_stream_cm = AsyncMock()
-    mock_stream_cm.__aenter__.side_effect = Exception("STOPPED_BY_MODERATOR: Toxicity detected")
+    mock_stream_cm.__aenter__.side_effect = Exception(
+        "STOPPED_BY_MODERATOR: Toxicity detected"
+    )
     mock_client_fail.stream = MagicMock(return_value=mock_stream_cm)
-    
+
     call_count = 0
+
     def side_effect(*args, **kwargs):
         nonlocal call_count
         call_count += 1
@@ -139,7 +146,9 @@ async def test_multi_chat_moderator_stopped():
     with patch("httpx.AsyncClient", side_effect=side_effect):
         agents = [multi_chat.AgentConfig(id=1, description="desc", role="role")]
         chunks = []
-        async for chunk in multi_chat.multi_agent_conversation(agents, "topic", max_turns=1):
+        async for chunk in multi_chat.multi_agent_conversation(
+            agents, "topic", max_turns=1
+        ):
             chunks.append(chunk)
 
         assert any("Conversation Terminated: Toxicity detected" in c for c in chunks)
@@ -155,17 +164,19 @@ async def test_multi_chat_worker_cancelled_on_exit():
     # Let stream hang forever so worker_task doesn't finish
     mock_response = AsyncMock()
     mock_response.status_code = 200
+
     async def infinite_stream():
         while True:
             await asyncio.sleep(1)
             yield '{"message": {"content": "hang"}}'
-    
+
     mock_response.aiter_lines = infinite_stream
     mock_client_chat = AsyncMock()
     mock_client_chat.__aenter__.return_value = mock_client_chat
     mock_client_chat.stream.return_value.__aenter__.return_value = mock_response
 
     call_count = 0
+
     def side_effect(*args, **kwargs):
         nonlocal call_count
         call_count += 1
@@ -173,9 +184,9 @@ async def test_multi_chat_worker_cancelled_on_exit():
 
     with patch("httpx.AsyncClient", side_effect=side_effect):
         agents = [multi_chat.AgentConfig(id=1, description="desc", role="role")]
-        
+
         async_gen = multi_chat.multi_agent_conversation(agents, "topic")
         async for chunk in async_gen:
             break  # Triggers GeneratorExit and finally block inherently
-    
+
     assert True

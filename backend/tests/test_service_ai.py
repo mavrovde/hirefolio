@@ -292,7 +292,9 @@ async def test_suggest_tags_dict_no_list():
     """Test suggest_tags with JSON dict containing no lists."""
     with respx.mock(base_url=settings.ollama_url) as respx_mock:
         respx_mock.post("/api/generate").mock(
-            return_value=Response(200, json={"response": '{"message": "no tags array"}'})
+            return_value=Response(
+                200, json={"response": '{"message": "no tags array"}'}
+            )
         )
         tags = await suggest_tags("Target Title", "Target Content")
         assert "target" in tags
@@ -319,9 +321,7 @@ async def test_suggest_tags_filtering():
 async def test_suggest_tags_fallback_duplicate_words():
     """Test regex fallback with duplicate words."""
     with respx.mock(base_url=settings.ollama_url) as respx_mock:
-        respx_mock.post("/api/generate").mock(
-            return_value=Response(500)
-        )
+        respx_mock.post("/api/generate").mock(return_value=Response(500))
         tags = await suggest_tags("Duplicate Duplicate", "words words words words")
         assert "duplicate" in tags
         assert "words" in tags
@@ -333,7 +333,9 @@ async def test_suggest_post_details_tags_with_non_string():
     """Test suggest_post_details with non-string inside tags array."""
     with respx.mock(base_url=settings.ollama_url) as respx_mock:
         respx_mock.post("/api/generate").mock(
-            return_value=Response(200, json={"response": '{"title": "t", "tags": [123, "valid"]}'})
+            return_value=Response(
+                200, json={"response": '{"title": "t", "tags": [123, "valid"]}'}
+            )
         )
         details = await suggest_post_details("Content")
         assert details["tags"] == ["valid"]
@@ -345,7 +347,10 @@ async def test_suggest_post_details_regex_fallback_no_tags():
     with respx.mock(base_url=settings.ollama_url) as respx_mock:
         respx_mock.post("/api/generate").mock(
             return_value=Response(
-                200, json={"response": 'Here is "title": "T", "slug": "S", "summary": "sum"'}
+                200,
+                json={
+                    "response": 'Here is "title": "T", "slug": "S", "summary": "sum"'
+                },
             )
         )
         details = await suggest_post_details("Content")
@@ -357,14 +362,18 @@ async def test_chat_with_gemini_empty_content():
     """Test chat_with_gemini empty history content branch."""
     from app.services.ai import chat_with_gemini
     from unittest.mock import MagicMock
+
     with patch("app.services.ai._get_gemini_client") as mock_get:
         mock_client = MagicMock()
         mock_chat = MagicMock()
         mock_chat.send_message.return_value.text = "Response"
         mock_client.chats.create.return_value = mock_chat
         mock_get.return_value = mock_client
-        
-        history = [{"role": "user", "content": ""}, {"role": "model", "content": "hello"}]
+
+        history = [
+            {"role": "user", "content": ""},
+            {"role": "model", "content": "hello"},
+        ]
         res = await chat_with_gemini("hi", history)
         assert res == "Response"
 
@@ -373,6 +382,7 @@ async def test_chat_with_gemini_empty_content():
 async def test_generate_full_post_invalid_json():
     """Test generate_full_post when the JSON is completely unparseable."""
     from app.services.ai import generate_full_post
+
     with respx.mock(base_url=settings.ollama_url) as respx_mock:
         respx_mock.post("/api/generate").mock(
             return_value=Response(200, json={"response": '{"title": "incomplete'})
