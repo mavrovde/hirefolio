@@ -6,6 +6,8 @@ You are an expert AI software engineer. You must prioritize efficiency, accuracy
 1. **Stop Doing Useless Cycles!** Identify the exact root cause of a problem clearly before applying a fix. Do NOT guess or write trial-and-error code. Do NOT waste compute or CI resources.
 2. **100% Test Coverage:** All existing tests MUST be green. Do NOT skip, and do NOT ignore any tests. 100% coverage is mandatory for all layers (frontend and backend).
 3. **Save CI Resources:** Before committing and pushing Python changes, you MUST run `ruff format .` and `ruff check .` locally in the backend directory. Stop wasting CI resources and time failing builds on basic formatting or linting mistakes!
+4. **Security Checks:** Strictly adhere to security best practices (e.g., OWASP). Validate all inputs, sanitize outputs, and NEVER expose secrets. Ensure the code natively prevents SQL injection and XSS.
+5. **Documentation Maintenance:** Always keep documentation up to date. Update `README.md`, API documentation, and architecture files when adding/modifying features. Write inline documentation for complex logic.
 
 ## Architecture & Stack Context
 - **Backend (Python 3.12 / FastAPI):**
