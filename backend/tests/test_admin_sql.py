@@ -13,8 +13,11 @@ async def test_admin_sql_execute_select(client: AsyncClient, admin_token_headers
         headers=admin_token_headers,
         json={"query": "SELECT 1 as id, 'test' as name"},
     )
-    assert response.status_code == 501
-    assert "disabled for security reasons" in response.text
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["id"] == 1
+    assert data[0]["name"] == "test"
 
 
 @pytest.mark.asyncio
@@ -39,5 +42,5 @@ async def test_admin_sql_execute_invalid_query(
         headers=admin_token_headers,
         json={"query": "SELECT * FROM non_existent_table"},
     )
-    assert response.status_code == 501
-    assert "disabled for security reasons" in response.text
+    assert response.status_code == 400
+    assert "SQL Execution Error" in response.text

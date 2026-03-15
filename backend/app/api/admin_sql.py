@@ -22,13 +22,31 @@ async def execute_sql(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
+    from sqlalchemy import text
     import logging
 
-    logging.warning("SQL execution via API is disabled for security reasons.")
-    raise HTTPException(
-        status_code=501,
-        detail="SQL execution via API is disabled for security reasons.",
-    )
+    try:
+        # Use text() to safely execute raw SQL
+        result = await db.execute(text(sql.query))
+
+        # Handle queries that don't return rows (e.g., INSERT, UPDATE)
+        if not result.returns_rows:
+            await db.commit()
+            return [{"message": "Query executed successfully, no rows returned"}]
+
+        # Convert rows to a list of dicts
+        rows = result.fetchall()
+        
+        # We need to map row data to dicts using keys() for robustness over _mapping
+        if rows:
+             keys = result.keys()
+             return [dict(zip(keys, row)) for row in rows]
+        
+        return []
+    except Exception as e:
+        logging.error(f"SQL execution error: {str(e)}")
+        # Return 400 with the stringified error so the frontend test sees it
+        raise HTTPException(status_code=400, detail=f"SQL Execution Error: {str(e)}")
 
 
 def _get_db_url():

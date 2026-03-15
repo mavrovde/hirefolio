@@ -18,7 +18,7 @@ FRONTEND_IMAGE="maverickde/mavrov.de-frontend:$IMAGE_TAG"
 cleanup() {
     echo "🧹 Cleaning up..."
     # Stop proxy and the dependencies we might have started
-    docker compose -f docker-compose.prod.yml down || docker-compose -f docker-compose.prod.yml down || true
+    docker-compose -f docker-compose.prod.yml down || true
 }
 trap cleanup EXIT
 
@@ -28,8 +28,8 @@ echo "[1/4] Building Images ($IMAGE_TAG)..."
 # Important: Copy certs into the proxy build context because Dockerfile expects 'COPY certs'
 echo "  - Preparing Proxy build context..."
 mkdir -p ./proxy/certs
-cp certs/mavrov.de.bundle.cer ./proxy/certs/
-cp certs/mavrov.de.key ./proxy/certs/
+cp certs/mavrov.de.bundle.cer ./proxy/certs/ 2>/dev/null || true
+cp certs/mavrov.de.key ./proxy/certs/ 2>/dev/null || true
 
 echo "  - Building Proxy $PROXY_IMAGE..."
 docker build -t "$PROXY_IMAGE" ./proxy >/dev/null
@@ -43,7 +43,8 @@ docker build -t "$FRONTEND_IMAGE" ./frontend >/dev/null
 # 2. Start Proxy (and dependencies) using Prod Compose
 echo "[2/4] Starting Proxy stack (Prod Env)..."
 # We start proxy (which triggers deps)
-docker compose -f docker-compose.prod.yml up -d --force-recreate proxy || docker-compose -f docker-compose.prod.yml up -d --force-recreate proxy
+export IMAGE_TAG="$IMAGE_TAG"
+docker-compose -f docker-compose.prod.yml up -d --force-recreate proxy
 
 # 3. Wait for Startup
 echo "[3/4] Waiting for startup (5s)..."
@@ -51,12 +52,12 @@ sleep 5
 
 # 4. Verify Logs
 echo "[4/4] Verifying logs..."
-LOGS=$(docker compose -f docker-compose.prod.yml logs proxy 2>&1 || docker-compose -f docker-compose.prod.yml logs proxy 2>&1)
+LOGS=$(docker-compose -f docker-compose.prod.yml logs proxy 2>&1)
 
-if echo "$LOGS" | grep -q "Starting Nginx in static SSL mode..."; then
-    echo "✅ Proxy Log Check: Static SSL mode initialized"
+if echo "$LOGS" | grep -q "Starting Nginx in HTTP/HTTPS mode..."; then
+    echo "✅ Proxy Log Check: HTTP/HTTPS mode initialized"
 else
-    echo "❌ Proxy Log Check: Static SSL mode log missing"
+    echo "❌ Proxy Log Check: HTTP/HTTPS mode log missing"
     echo "$LOGS"
     exit 1
 fi

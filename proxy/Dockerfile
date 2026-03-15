@@ -1,8 +1,7 @@
-FROM nginx:latest
+FROM nginx:alpine
 
-RUN apt-get update && apt-get install -y openssl curl && rm -rf /var/lib/apt/lists/*
-RUN sed -i 's/worker_processes  1;/worker_processes  1;\n    aio off;/g' /etc/nginx/nginx.conf || true
-RUN find /etc/nginx -type f -exec sed -i 's/aio threads;/aio off;/g' {} + || true
+RUN apk add --no-cache openssl curl
+COPY nginx.conf /etc/nginx/nginx.conf
 
 COPY default.conf /etc/nginx/conf.d/default.conf
 COPY entrypoint.sh /entrypoint.sh

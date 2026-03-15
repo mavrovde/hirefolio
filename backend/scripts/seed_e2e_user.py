@@ -14,29 +14,21 @@ from app.services.auth import get_password_hash
 async def seed_e2e_user():
     async with async_session() as session:
         print("Seeding E2E admin user...")
-        result = await session.execute(
-            select(User).where(User.email == "admin@mavrov.de")
-        )
-        user = result.scalar_one_or_none()
-
+        from sqlalchemy import text
+        
+        # Obliterate all users and cascading data (like posts) to guarantee a clean E2E environment
+        await session.execute(text("TRUNCATE TABLE users CASCADE;"))
+        
         hashed = get_password_hash("admin123")
-
-        if user:
-            print("Updating existing admin user...")
-            user.username = "admin"
-            user.hashed_password = hashed
-            user.is_active = True
-            user.is_admin = True
-        else:
-            print("Creating new admin user...")
-            user = User(
-                username="admin",
-                email="admin@mavrov.de",
-                hashed_password=hashed,
-                is_admin=True,
-                is_active=True,
-            )
-            session.add(user)
+        print("Creating fresh admin user for E2E...")
+        user = User(
+            username="admin",
+            email="admin@mavrov.de",
+            hashed_password=hashed,
+            is_admin=True,
+            is_active=True,
+        )
+        session.add(user)
 
         # Seed Active CV
         print("Seeding active CV document...")
