@@ -53,9 +53,10 @@ async def gemini_chat_endpoint(
             last_message, history, current_user.gemini_api_key
         )
         return {"response": response}
-    except Exception as e:
+    except Exception:
         import logging
-        logging.error(f"Gemini API Error: {str(e)}")
+
+        logging.error("Gemini API Error occurred.")
         raise HTTPException(
             status_code=500, detail="Error communicating with AI service"
         )
