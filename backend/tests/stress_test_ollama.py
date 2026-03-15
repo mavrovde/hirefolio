@@ -18,7 +18,7 @@ async def login(client):
         return None
 
 
-async def send_request(client, user_id, content, all_secrets, headers):
+async def send_request(client, user_id, content, all_identifiers, headers):
     print(f"User {user_id}: Sending request...")
     start_time = time.time()
     try:
