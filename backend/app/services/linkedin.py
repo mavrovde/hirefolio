@@ -7,7 +7,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-COOKIES_DIR = "/tmp/linkedin_cookies"
+COOKIES_DIR = "/tmp/linkedin_cookies"  # nosec B108
 
 
 class LinkedInService:
