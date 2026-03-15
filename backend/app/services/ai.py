@@ -369,7 +369,7 @@ async def chat_with_gemini(
             return response.text
         except Exception as e2:
             logger.error(f"Error in chat_with_gemini: {e2}", exc_info=True)
-            return f"Error: {str(e2)}"
+            return "Error communicating with AI service."
 
 
 async def generate_full_post(

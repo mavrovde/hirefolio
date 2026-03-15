@@ -62,6 +62,11 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 ENV VIRTUAL_ENV="/opt/venv"
 
+# Patch setuptools vulnerability (CVE-2024-6345 / GHSA-cx63-2mw6-8hw5) in package_index.py
+# The vulnerable line is: name = name.replace('..', '.').replace('\\', '_')
+# We replace it with: name = name.replace('../', '').replace('..\\', '').replace('\\', '_')
+RUN find /opt/venv -name "package_index.py" -exec sed -i "s/name.replace('..', '.').replace('\\\\', '_')/name.replace('..\/', '').replace('..\\\\\\\\', '').replace('\\\\', '_')/g" {} +
+
 # Copy application code
 COPY . .
 

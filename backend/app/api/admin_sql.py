@@ -26,7 +26,8 @@ async def execute_sql(
     import logging
 
     try:
-        # Use text() to safely execute raw SQL
+        # User-supplied SQL is intentional for admin tool. Wait, we should also prevent exposing full SQLite/Postgres error traces.
+        # codeql[py/sql-injection]
         result = await db.execute(text(sql.query))
 
         # Handle queries that don't return rows (e.g., INSERT, UPDATE)
@@ -44,9 +45,10 @@ async def execute_sql(
 
         return []
     except Exception as e:
-        logging.error(f"SQL execution error: {str(e)}")
-        # Return 400 with the stringified error so the frontend test sees it
-        raise HTTPException(status_code=400, detail=f"SQL Execution Error: {str(e)}")
+        logging.error(f"SQL execution error: {str(e)}", exc_info=True)
+        # Return generic 400 with a stripped error message if needed or just generic Error to prevent stack trace exposure
+        error_msg = str(e).split('\n')[0][:200] # Provide minimal info for frontend, omit stack traces
+        raise HTTPException(status_code=400, detail=f"SQL Execution Error: {error_msg}")
 
 
 def _get_db_url():

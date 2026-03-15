@@ -352,8 +352,8 @@ This project is private and proprietary.
 ## 📞 Contact
 
 - **Website**: <https://mavrov.de>
-- **LinkedIn**: [Your LinkedIn Profile]
-- **Email**: [Your Email]
+- **LinkedIn**: [Sergii Mavrov](https://www.linkedin.com/in/smavrov/)
+- **Email**: [sergii.mavrov@gmail.com](mailto:sergii.mavrov@gmail.com)
 
 ## 🗺️ Roadmap
 
