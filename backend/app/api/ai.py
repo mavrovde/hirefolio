@@ -46,11 +46,15 @@ async def gemini_chat_endpoint(
     last_message = request.messages[-1]["content"] if request.messages else ""
 
     from app.services.ai import chat_with_gemini
+    from fastapi import HTTPException
 
-    response = await chat_with_gemini(
-        last_message, history, current_user.gemini_api_key
-    )
-    return {"response": response}
+    try:
+        response = await chat_with_gemini(
+            last_message, history, current_user.gemini_api_key
+        )
+        return {"response": response}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error communicating with AI service")
 
 
 async def _generate_agent_name(description: str) -> str:

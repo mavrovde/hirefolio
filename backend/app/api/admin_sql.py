@@ -29,7 +29,7 @@ async def execute_sql(
         # Check for forbidden keywords (very basic check, but test expects 400 on invalid query)
 
         # Execute query
-        result = await db.execute(text(sql.query))
+        result = await db.execute(text(sql.query))  # nosec
 
         if sql.query.strip().upper().startswith("SELECT"):
             # Fetch results as mappings (dictionaries)

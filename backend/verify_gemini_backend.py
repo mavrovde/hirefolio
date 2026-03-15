@@ -9,7 +9,7 @@ async def main():
         print("❌ GEMINI_API_KEY is missing!")
         exit(1)
 
-    print(f"✅ GEMINI_API_KEY found: {api_key[:5]}...")
+    print("✅ GEMINI_API_KEY found")
 
     try:
         print("⏳ Sending test request to Gemini (via chat_with_gemini)...")

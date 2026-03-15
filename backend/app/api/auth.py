@@ -52,7 +52,7 @@ async def login(
     # Verify user exists and password is correct
     if not user or not verify_password(form_data.password, user.hashed_password):
         logger.warning(
-            f"LOGIN FAILED: Username '{form_data.username}' - User found: {bool(user)} - Password match: {verify_password(form_data.password, user.hashed_password) if user else False}"
+            f"LOGIN FAILED: Username '{form_data.username}' - User found: {bool(user)}"
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

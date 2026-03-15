@@ -10,7 +10,6 @@ async def verify():
         user = result.scalar_one_or_none()
         if user:
             print(f"User: {user.username}")
-            print(f"Hash: {user.hashed_password}")
             is_valid = verify_password("admin123", user.hashed_password)
             print(f"Verify admin123: {is_valid}")
         else:

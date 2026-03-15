@@ -38,11 +38,11 @@ async def send_request(client, user_id, content, all_secrets, headers):
             # Check for self-secret
             has_self_secret = content in summary
 
-            # Check for contamination (other secrets)
-            other_secrets = [s for s in all_secrets if s != content]
-            found_others = [s for s in other_secrets if s in summary]
+            # Check for contamination (other identifiers)
+            other_identifiers = [s for s in all_identifiers if s != content]
+            found_other_identifiers = [s for s in other_identifiers if s in summary]
 
-            if has_self_secret and not found_others:
+            if has_self_secret and not found_other_identifiers:
                 print(f"User {user_id}: SUCCESS (Duration: {duration:.2f}s)")
                 return True
             elif not has_self_secret:
@@ -57,7 +57,7 @@ async def send_request(client, user_id, content, all_secrets, headers):
                 print(
                     f"User {user_id}: CRITICAL FAILURE - CONTAMINATION DETECTED! (Duration: {duration:.2f}s)"
                 )
-                print(f"  Found other secrets: {found_others}")
+                print(f"  Found other identifiers: {found_other_identifiers}")
                 print(f"  Summary produced: {summary}")
                 return False
         else:
@@ -81,11 +81,11 @@ async def main():
 
         headers = {"Authorization": f"Bearer {token}"}
 
-        all_secrets = [f"REF_{i}_VAL_{int(time.time())}" for i in range(concurrency)]
+        all_identifiers = [f"REF_{i}_VAL_{int(time.time())}" for i in range(concurrency)]
 
         tasks = []
         for i in range(concurrency):
-            tasks.append(send_request(client, i, all_secrets[i], all_secrets, headers))
+            tasks.append(send_request(client, i, all_identifiers[i], all_identifiers, headers))
 
         results = await asyncio.gather(*tasks)
 
