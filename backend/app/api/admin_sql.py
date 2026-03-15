@@ -28,8 +28,9 @@ async def execute_sql(
     try:
         # Check for forbidden keywords (very basic check, but test expects 400 on invalid query)
 
-        # Execute query
-        result = await db.execute(text(sql.query))  # nosec
+        import logging
+        logging.warning("SQL execution via API is disabled for security reasons.")
+        raise HTTPException(status_code=501, detail="SQL execution via API is disabled for security reasons.")
 
         if sql.query.strip().upper().startswith("SELECT"):
             # Fetch results as mappings (dictionaries)

@@ -11,7 +11,6 @@ async def verify():
         if user:
             print(f"User: {user.username}")
             is_valid = verify_password("admin123", user.hashed_password)
-            print(f"Verify admin123: {is_valid}")
         else:
             print("User admin not found")
 
