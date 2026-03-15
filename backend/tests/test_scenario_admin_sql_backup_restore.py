@@ -14,8 +14,8 @@ async def test_admin_sql_execute_invalid_query_type(
         response = await client.post(
             "/api/app/admin/sql/execute", json={"query": "SELECT * FROM users"}
         )
-        assert response.status_code == 400
-        assert "SQL Execution Error" in response.json()["detail"]
+        assert response.status_code == 501
+        assert "disabled for security reasons" in response.text
 
 
 @pytest.mark.asyncio
