@@ -12,6 +12,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+## [1.2.27] - 2026-03-15
+
+## [1.2.27] - 2026-03-15
+
+### Added
+- Placeholder for next release.
+
 ## [1.2.26] - 2026-03-15
 
 ### Fixed
