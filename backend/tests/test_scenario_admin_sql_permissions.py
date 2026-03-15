@@ -60,10 +60,5 @@ async def test_admin_sql_execute_commit_path(client: AsyncClient, admin_token_he
         headers=admin_token_headers,
         json={"query": query},
     )
-    assert response.status_code == 200
-    data = response.json()
-    # Expect [{"message": ..., "duration_ms": ...}]
-    assert isinstance(data, list)
-    assert len(data) == 1
-    assert "message" in data[0]
-    assert data[0]["message"] == "Query executed successfully"
+    assert response.status_code == 501
+    assert "disabled for security reasons" in response.text

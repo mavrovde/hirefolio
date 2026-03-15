@@ -13,12 +13,8 @@ async def test_admin_sql_execute_select(client: AsyncClient, admin_token_headers
         headers=admin_token_headers,
         json={"query": "SELECT 1 as id, 'test' as name"},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert isinstance(data, list)
-    assert len(data) == 1
-    assert data[0]["id"] == 1
-    assert data[0]["name"] == "test"
+    assert response.status_code == 501
+    assert "disabled for security reasons" in response.text
 
 
 @pytest.mark.asyncio

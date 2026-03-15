@@ -17,9 +17,8 @@ async def test_admin_sql_execute_error(client: AsyncClient, admin_token_headers)
             json={"query": "SELECT *"},
             headers=admin_token_headers,
         )
-        assert resp.status_code == 400
-        assert "Query Error" in resp.json()["detail"]
-        assert "SQL Execution Error" in resp.json()["detail"]
+        assert resp.status_code == 501
+        assert "disabled for security reasons" in resp.text
 
 
 @pytest.mark.asyncio
