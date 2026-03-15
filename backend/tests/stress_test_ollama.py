@@ -81,11 +81,15 @@ async def main():
 
         headers = {"Authorization": f"Bearer {token}"}
 
-        all_identifiers = [f"REF_{i}_VAL_{int(time.time())}" for i in range(concurrency)]
+        all_identifiers = [
+            f"REF_{i}_VAL_{int(time.time())}" for i in range(concurrency)
+        ]
 
         tasks = []
         for i in range(concurrency):
-            tasks.append(send_request(client, i, all_identifiers[i], all_identifiers, headers))
+            tasks.append(
+                send_request(client, i, all_identifiers[i], all_identifiers, headers)
+            )
 
         results = await asyncio.gather(*tasks)
 

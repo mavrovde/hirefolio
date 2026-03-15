@@ -54,7 +54,9 @@ async def gemini_chat_endpoint(
         )
         return {"response": response}
     except Exception:
-        raise HTTPException(status_code=500, detail="Error communicating with AI service")
+        raise HTTPException(
+            status_code=500, detail="Error communicating with AI service"
+        )
 
 
 async def _generate_agent_name(description: str) -> str:
