@@ -165,6 +165,29 @@ async def test_download_cv_with_tracking(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_download_cv_with_invalid_req_id(client, db_session):
+    from app.models.cv_document import CvDocument
+    import uuid
+
+    doc = CvDocument(
+        id=uuid.uuid4(),
+        filename="track.pdf",
+        data=b"pdf data",
+        version="v1.3",
+        is_active=True,
+    )
+    db_session.add(doc)
+    await db_session.commit()
+
+    invalid_id = uuid.uuid4()
+    response = await client.get(
+        f"{settings.api_prefix}/cv/download?req_id={str(invalid_id)}"
+    )
+    assert response.status_code == 200
+    assert response.content == b"pdf data"
+
+
+@pytest.mark.asyncio
 async def test_process_email_notifications_calls_both(db_session):
     from app.api.cv import process_email_notifications
     import uuid

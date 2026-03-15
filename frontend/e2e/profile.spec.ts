@@ -69,6 +69,7 @@ test.describe('Admin Profile - Change Password', () => {
         await expect(logoutBtn).toBeVisible();
         await logoutBtn.click();
         await expect(page).toHaveURL(/\/admin\/login/);
+        await page.waitForTimeout(500); // Give Angular time to bind NgModel
 
         // 4. Login with NEW password 'newpass123'
         console.log('[E2E] Logging in with new password...');
@@ -90,6 +91,7 @@ test.describe('Admin Profile - Change Password', () => {
         await expect(logoutBtn).toBeVisible();
         await logoutBtn.click();
         await expect(page).toHaveURL(/\/admin\/login/);
+        await page.waitForTimeout(500); // Give Angular time to bind NgModel
 
         // 7. Login with OLD password 'admin'
         console.log('[E2E] logging in with old password...');

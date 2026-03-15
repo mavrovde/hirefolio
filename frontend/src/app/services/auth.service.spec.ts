@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { PLATFORM_ID } from '@angular/core';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 
@@ -156,6 +157,23 @@ describe('AuthService', () => {
     });
   });
 
+  describe('updateGeminiKey', () => {
+    it('should call api/auth/gemini-key with PUT method and update current user', () => {
+      service = TestBed.inject(AuthService);
+      const mockUser = { id: 1, username: 'test', email: 't@t.com', is_admin: true, gemini_api_key: 'new-key' };
+      
+      service.updateGeminiKey('new-key').subscribe(user => {
+        expect(user).toEqual(mockUser as any);
+        expect(service.getCurrentUser()).toEqual(mockUser as any);
+      });
+
+      const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/auth/gemini-key`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ api_key: 'new-key' });
+      req.flush(mockUser);
+    });
+  });
+
   describe('helpers', () => {
     it('isAuthenticated should return true if token exists', () => {
       (window.localStorage.getItem as any).mockReturnValue('token');
@@ -201,6 +219,25 @@ describe('AuthService', () => {
         is_admin: false,
       });
       expect(service.isAdmin()).toBe(false);
+    });
+
+    it('should gracefully skip browser-only functions during SSR', () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          AuthService,
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: PLATFORM_ID, useValue: 'server' }
+        ]
+      });
+      const serverService = TestBed.inject(AuthService);
+      
+      expect(serverService.getToken()).toBeNull();
+      
+      serverService['setToken']('dummy');
+      serverService['removeToken']();
+      expect(window.localStorage.setItem).not.toHaveBeenCalledWith('auth_token', 'dummy');
     });
   });
 });

@@ -66,6 +66,13 @@ describe('TagManagerComponent', () => {
         expect(component.loading).toBe(false);
     });
 
+    it('should fall back to count when sortBy is falsy in params', () => {
+        vi.spyOn(component.table, 'getParams').mockReturnValue({ page: 1, pageSize: 10, sortBy: undefined as any, sortOrder: 'desc', search: '' });
+        component.loadTags();
+        // It should use 'count' as fallback for sortBy
+        expect(tagsServiceSpy.getAllTags).toHaveBeenCalledWith(1, 10, 'count', 'desc', '');
+    });
+
     it('should start edit', () => {
         fixture.detectChanges();
         const tagName = 'Angular';

@@ -86,4 +86,15 @@ describe('SSRInterceptor', () => {
     expect(calledReq.url).toBe('http://127.0.0.1:4000/assets/data.json');
   });
 
+  it('should prefix absolute-path non-API URLs with local SSR container DNS in server', () => {
+    const runInterceptor = setupInterceptor(true);
+    const req = new HttpRequest('GET', '/assets/data.json');
+    
+    runInterceptor(req);
+    
+    // the interceptor will use prefix '' instead of '/' since req.url starts with /
+    const calledReq = vi.mocked(nextMock).mock.calls[0][0] as HttpRequest<any>;
+    expect(calledReq.url).toBe('http://127.0.0.1:4000/assets/data.json');
+  });
+
 });

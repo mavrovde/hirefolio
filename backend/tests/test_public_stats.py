@@ -34,4 +34,46 @@ async def test_public_stats_returns_uptime(client: AsyncClient):
     assert response.status_code == 200
     data = response.json()
     assert "uptime" in data
-    assert data["uptime"]  # non-empty
+
+
+@pytest.mark.asyncio
+async def test_public_stats_uptime_without_start_time(client: AsyncClient):
+    """Test that /stats/public returns Unknown when start_time is not set."""
+    from app.main import app
+    
+    # Temporarily remove start_time if it exists
+    original = None
+    if hasattr(app.state, "start_time"):
+        original = app.state.start_time
+        delattr(app.state, "start_time")
+        
+    try:
+        response = await client.get(f"{settings.api_prefix}/stats/public")
+        assert response.status_code == 200
+        assert response.json()["uptime"] == "Unknown"
+    finally:
+        if original is not None:
+            app.state.start_time = original
+
+
+@pytest.mark.asyncio
+async def test_public_stats_uptime_with_start_time(client: AsyncClient):
+    """Test that /stats/public returns uptime when start_time is set."""
+    from app.main import app
+    from datetime import datetime, timezone
+    
+    # Temporarily set start_time
+    original = getattr(app.state, "start_time", None)
+    app.state.start_time = datetime.now(timezone.utc)
+        
+    try:
+        response = await client.get(f"{settings.api_prefix}/stats/public")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["uptime"] != "Unknown"
+        assert "start_time" in data
+    finally:
+        if original is not None:
+            app.state.start_time = original
+        else:
+            delattr(app.state, "start_time")

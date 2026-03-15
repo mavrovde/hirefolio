@@ -48,6 +48,100 @@ async def test_get_client_reuses_existing(service, mocker):
 
 
 @pytest.mark.asyncio
+async def test_get_client_with_env_cookies(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_email", "a@a.com")
+    mocker.patch("app.services.linkedin.settings.linkedin_password", "p")
+    mocker.patch("app.services.linkedin.settings.linkedin_cookie_li_at", "li_at_val")
+    mocker.patch("app.services.linkedin.settings.linkedin_cookie_jsessionid", "jsession_val")
+
+    mock_linkedin = MagicMock()
+    with patch("linkedin_api.Linkedin", return_value=mock_linkedin):
+        client = service._get_client()
+        assert client is mock_linkedin
+        mock_linkedin.client._set_session_cookies.assert_called_once_with({
+            "li_at": "li_at_val",
+            "JSESSIONID": "jsession_val"
+        })
+
+
+@pytest.mark.asyncio
+async def test_get_client_fallback_to_cookie_dir(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_email", "a@a.com")
+    mocker.patch("app.services.linkedin.settings.linkedin_password", "p")
+    mocker.patch("app.services.linkedin.settings.linkedin_cookie_li_at", "")
+    
+    mock_linkedin = MagicMock()
+    with (
+        patch("os.listdir", return_value=["cookie.txt"]),
+        patch("linkedin_api.Linkedin", return_value=mock_linkedin) as mock_cls
+    ):
+        client = service._get_client()
+        assert client is mock_linkedin
+        mock_cls.assert_any_call("", "", authenticate=True, cookies_dir="/tmp/linkedin_cookies")
+
+
+@pytest.mark.asyncio
+async def test_get_client_fallback_to_cookie_dir_fails(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_email", "a@a.com")
+    mocker.patch("app.services.linkedin.settings.linkedin_password", "p")
+    mocker.patch("app.services.linkedin.settings.linkedin_cookie_li_at", "")
+    
+    mock_linkedin = MagicMock()
+    def mock_linkedin_init(*args, **kwargs):
+        if kwargs.get("authenticate"):
+            raise Exception("Auth Error")
+        return mock_linkedin
+
+    with (
+        patch("os.listdir", return_value=["cookie.txt"]),
+        patch("linkedin_api.Linkedin", side_effect=mock_linkedin_init)
+    ):
+        client = service._get_client()
+        assert client is mock_linkedin
+
+
+@pytest.mark.asyncio
+async def test_login_success(service):
+    with patch("linkedin_api.Linkedin") as mock_cls:
+        res = await service.login("u", "p")
+        assert res is True
+        mock_cls.assert_called_once_with("u", "p", authenticate=True, cookies_dir="/tmp/linkedin_cookies", refresh_cookies=True)
+
+
+@pytest.mark.asyncio
+async def test_login_exception(service):
+    with patch("linkedin_api.Linkedin", side_effect=Exception("LinkedIn Error")):
+        with pytest.raises(Exception, match="Failed to authenticate: LinkedIn Error"):
+            await service.login("u", "p")
+
+
+@pytest.mark.asyncio
+async def test_is_logged_in_env(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_cookie_li_at", "val")
+    mocker.patch("app.services.linkedin.settings.linkedin_cookie_jsessionid", "val")
+    assert await service.is_logged_in() is True
+
+
+@pytest.mark.asyncio
+async def test_is_logged_in_dir(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_cookie_li_at", "")
+    with (
+        patch("os.path.exists", return_value=True),
+        patch("os.listdir", return_value=["cookie.txt"])
+    ):
+        assert await service.is_logged_in() is True
+
+
+@pytest.mark.asyncio
+async def test_is_logged_in_false(service, mocker):
+    mocker.patch("app.services.linkedin.settings.linkedin_cookie_li_at", "")
+    with (
+        patch("os.path.exists", return_value=False),
+    ):
+        assert await service.is_logged_in() is False
+
+
+@pytest.mark.asyncio
 async def test_get_public_id_missing(service, mocker):
     mocker.patch("app.services.linkedin.settings.linkedin_public_id", "")
 
@@ -271,3 +365,59 @@ def test_parse_post_exception_handling():
     # Force an exception by passing a non-dict
     post = LinkedInService._parse_post(None)
     assert post is None
+
+
+def test_parse_post_commentary_is_str():
+    """Cover line 177: commentary is string"""
+    post = LinkedInService._parse_post({
+        "commentary": "String content here",
+        "updateMetadata": {"urn": "urn:123"}
+    })
+    assert post["content"] == "String content here"
+
+
+def test_parse_post_missing_commentary_nested_article():
+    """Cover line 187: nested article fallback"""
+    post = LinkedInService._parse_post({
+        "content": {"article": {"title": "nested title"}},
+        "updateMetadata": {"urn": "urn:123"}
+    })
+    assert post["content"] == "nested title"
+
+
+def test_parse_post_nested_article_empty():
+    """Cover line 187: nested article fallback empty"""
+    post = LinkedInService._parse_post({
+        "content": {"article": {}},
+        "updateMetadata": {"urn": "urn:123"}
+    })
+    assert post is None
+
+
+def test_parse_post_image_extraction_valid():
+    """Cover lines 194-205: Image extraction logic branches"""
+    post = LinkedInService._parse_post({
+        "text": "Some text",
+        "content": {
+            "images": [
+                {
+                    "attributes": [
+                        {
+                            "vectorImage": {"rootUrl": "img1.png"}
+                        }
+                    ]
+                }
+            ]
+        }
+    })
+    assert post["image_url"] == "img1.png"
+
+
+def test_parse_post_image_extraction_no_attributes_or_empty_attributes():
+    post = LinkedInService._parse_post({
+        "text": "Some text",
+        "content": {
+            "images": [{"attributes": []}]
+        }
+    })
+    assert post["image_url"] is None

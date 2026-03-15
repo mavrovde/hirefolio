@@ -105,3 +105,11 @@ async def test_change_password_invalid_old(client: AsyncClient, db_session):
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Incorrect old password"
+
+
+@pytest.mark.asyncio
+async def test_get_me(client: AsyncClient):
+    response = await client.get(f"{settings.api_prefix}/auth/me")
+    assert response.status_code == 200
+    data = response.json()
+    assert "username" in data

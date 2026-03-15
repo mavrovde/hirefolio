@@ -164,10 +164,7 @@ async def multi_agent_conversation(
                     callback.current_agent_name = agent.role
                     context_str = "\n".join(history[-3:])
                     # COMPLETION STYLE PROMPT: Act like we are already in the middle of a script
-                    if not history:
-                        context_str = f"System: {agent.role}, please start the discussion on {topic}."
-                    else:
-                        context_str = "\n".join(history[-3:])
+                    context_str = "\n".join(history[-3:])
 
                     # ULTRA-MINIMAL PROMPT: No headers, no structure, just completion.
                     system_prompt = (
@@ -232,6 +229,8 @@ async def multi_agent_conversation(
                                             except json.JSONDecodeError:
                                                 continue
                     except Exception as e:
+                        if "STOPPED_BY_MODERATOR" in str(e):
+                            raise e
                         full_text = f"[Error: {e}]"
 
                     # AGGRESSIVE POST-PROCESS: Regex to strip ANY leading labels

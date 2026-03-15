@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { PLATFORM_ID } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
 import { SeoService } from './seo.service';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -55,5 +56,20 @@ describe('SeoService', () => {
         service.jsonLdSchema$.subscribe(val => {
             expect(val).toEqual(schema);
         });
+    });
+
+    it('should not update canonical url in server environment', () => {
+        document.head.innerHTML = ''; // reset DOM
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({
+            providers: [
+                SeoService, Title, Meta,
+                { provide: PLATFORM_ID, useValue: 'server' }
+            ]
+        });
+        const serverService = TestBed.inject(SeoService);
+        serverService.updateSeo({ url: '/server-test' });
+        
+        expect(document.querySelector("link[rel='canonical']")).toBeNull();
     });
 });

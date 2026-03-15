@@ -3,7 +3,7 @@ import { provideRouter, Router } from '@angular/router';
 import { BlogComponent } from './blog.component';
 import { BlogService } from '../../services/blog.service';
 import { LanguageService } from '../../services/language.service';
-import { of, Observable } from 'rxjs';
+import { of, Observable, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -281,6 +281,68 @@ describe('BlogComponent', () => {
     expect(fetchSpy).toHaveBeenCalled();
   });
 
+  it('should use blogService.getPosts in non-browser SSR environments', async () => {
+    // Re-create the component with 'server' instead of an object to trigger SSR logic path
+    const serverComponent = new BlogComponent(blogServiceSpy, {} as any, {} as any, {} as any, {} as any, 'server');
+    serverComponent.loadPosts();
+    expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 10);
+  });
+
+  it('should fall back to using static posts when SSR blogService.getPosts fails', async () => {
+    const serverComponent = new BlogComponent(blogServiceSpy, {} as any, {} as any, {} as any, {} as any, 'server');
+    blogServiceSpy.getPosts.mockReturnValueOnce(throwError(() => new Error('SSR load error')));
+    serverComponent.loadPosts();
+    expect(blogServiceSpy.getStaticPosts).toHaveBeenCalledWith(1, 10);
+  });
+
+  it('should handle onSearch and debounce with timeout', () => {
+    vi.useFakeTimers();
+    const event = { target: { value: 'search query' } };
+    component.onSearch(event);
+    vi.advanceTimersByTime(10);
+    expect(component.isSearching).toBe(true);
+    expect(blogServiceSpy.searchPosts).toHaveBeenCalledWith('search query');
+
+    component.searchResults$?.subscribe(); // Trigger the pipe mapping
+    expect(component.isSearching).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('should handle onSearch early exit if query is small', () => {
+    vi.useFakeTimers();
+    const event = { target: { value: 'xy' } };
+    component.onSearch(event);
+    vi.advanceTimersByTime(10);
+    expect(component.isSearching).toBe(false);
+    expect(component.searchResults$).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('should handle clearSearch correctly with timeouts', () => {
+    vi.useFakeTimers();
+    const inputMock = { value: 'search text' } as HTMLInputElement;
+    component.clearSearch(inputMock);
+    vi.advanceTimersByTime(10);
+    expect(inputMock.value).toBe('');
+    expect(component.currentQuery).toBe('');
+    expect(component.searchResults$).toBeNull();
+    expect(component.isSearching).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('should collapse an already expanded post when toggled again', async () => {
+    fixture.detectChanges();
+    await flushPromises();
+    const post = { ...mockPosts[0], slug: 'test-post' } as any;
+
+    component.toggleOrNavigate(post);
+    expect(component.isExpanded(post.id)).toBe(true);
+
+    // Call internal togglePost manually with same ID to trigger collapse logic
+    component.togglePost(post.id);
+    expect(component.expandedPostId).toBeNull();
+  });
+
   it('should expand post on first click via toggleOrNavigate', async () => {
     fixture.detectChanges();
     await flushPromises();
@@ -323,8 +385,33 @@ describe('BlogComponent', () => {
       writable: true,
       configurable: true,
     });
+    // Ensure navigator.share is undefined to fallback to clipboard
+    Object.defineProperty(navigator, 'share', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
 
     await component.sharePost(post);
     expect(writeTextSpy).toHaveBeenCalledWith(expect.stringContaining('/blog/test-post'));
+  });
+
+  it('should use navigator.share if available', async () => {
+    fixture.detectChanges();
+    await flushPromises();
+    const post = { ...mockPosts[0], slug: 'test-post', title: 'Test Post' } as any;
+
+    const shareSpy = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', {
+      value: shareSpy,
+      writable: true,
+      configurable: true,
+    });
+
+    await component.sharePost(post);
+    expect(shareSpy).toHaveBeenCalledWith({
+      title: 'Test Post',
+      url: expect.stringContaining('/blog/test-post'),
+    });
   });
 });

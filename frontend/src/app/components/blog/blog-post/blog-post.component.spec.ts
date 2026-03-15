@@ -96,6 +96,12 @@ describe('BlogPostComponent', () => {
         });
     });
 
+    it('should handle undefined post gracefully', () => {
+        blogServiceSpy.getPost.mockReturnValue(of(undefined));
+        fixture.detectChanges();
+        expect(seoServiceSpy.updateSeo).not.toHaveBeenCalled();
+    });
+
     it('should handle SEO description fallback to content substring if summary is empty', () => {
         const postWithoutSummary = { ...mockPost, summary: undefined, content: 'A very long content that exceeds 160 characters ideally to test the substring fallback logic inside the component correctly' };
         blogServiceSpy.getPost.mockReturnValue(of(postWithoutSummary));

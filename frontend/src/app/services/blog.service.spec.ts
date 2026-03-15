@@ -99,6 +99,24 @@ describe('BlogService', () => {
       );
       req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
     });
+
+    it('should filter by search query when provided', () => {
+      service.getPosts(true, null, null, 1, 10, 'created_at', 'desc', 'test search').subscribe();
+
+      const req = httpMock.expectOne(
+        (req) => req.url.endsWith(environment.apiPrefix + '/posts') && req.params.get('search') === 'test search'
+      );
+      req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
+    });
+
+    it('should handle search in fallback language mode', () => {
+      service.getPosts(true, undefined, null, 1, 10, 'created_at', 'desc', 'test fallback').subscribe();
+
+      const req = httpMock.expectOne(
+        (req) => req.url.endsWith(environment.apiPrefix + '/posts') && req.params.get('search') === 'test fallback'
+      );
+      req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 1 });
+    });
   });
 
   describe('suggestTags', () => {
@@ -133,6 +151,27 @@ describe('BlogService', () => {
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({ content, field });
       req.flush(mockResponse);
+    });
+  });
+
+  describe('getStaticPosts', () => {
+    it('should fetch static posts from assets and paginate', () => {
+      languageServiceSpy.getCurrentLanguage = vi.fn().mockReturnValue('en');
+      
+      service.getStaticPosts(1, 2).subscribe(response => {
+        expect(response.total).toBe(3);
+        expect(response.items.length).toBe(2);
+        expect(response.items[0].slug).toBe('1');
+        expect(response.items[1].created_at).toBeDefined();
+      });
+
+      const req = httpMock.expectOne('/assets/blog_data_en.json');
+      expect(req.request.method).toBe('GET');
+      req.flush([
+        { id: '1', title: 'Post 1' },
+        { id: 0, slug: 'post-2', title: 'Post 2' },
+        { id: '', slug: '', title: 'Post 3' }
+      ]);
     });
   });
 

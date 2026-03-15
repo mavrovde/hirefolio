@@ -4,6 +4,8 @@ import { StatsService } from '../../services/stats.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
 import { PLATFORM_ID } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
+import { Subject } from 'rxjs';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('SystemStatsComponent - Browser', () => {
@@ -12,10 +14,19 @@ describe('SystemStatsComponent - Browser', () => {
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    const routerEventsSubject = new Subject<any>();
+
     await TestBed.configureTestingModule({
       imports: [SystemStatsComponent],
       providers: [
         { provide: PLATFORM_ID, useValue: 'browser' },
+        {
+          provide: Router,
+          useValue: {
+            url: '/home',
+            events: routerEventsSubject.asObservable()
+          }
+        },
         {
           provide: StatsService,
           useValue: {
@@ -41,6 +52,9 @@ describe('SystemStatsComponent - Browser', () => {
         add: { imports: [MockTranslatePipe] },
       })
       .compileComponents();
+      
+    // Expose subject for tests
+    (TestBed as any).routerEventsSubject = routerEventsSubject;
 
     fixture = TestBed.createComponent(SystemStatsComponent);
     component = fixture.componentInstance;
@@ -141,6 +155,18 @@ describe('SystemStatsComponent - Browser', () => {
 
     (component as any).fetchPublicStats();
     expect(component.uptime).toBe('100 days');
+  });
+
+  it('should evaluate visibility on NavigationEnd events', () => {
+    const eventsSubject: Subject<any> = (TestBed as any).routerEventsSubject;
+    
+    // Emit navigation to /admin
+    eventsSubject.next(new NavigationEnd(1, '/admin/login', '/admin/login'));
+    expect(component.isVisible).toBe(false);
+
+    // Emit navigation to home
+    eventsSubject.next(new NavigationEnd(2, '/', '/'));
+    expect(component.isVisible).toBe(true);
   });
 });
 

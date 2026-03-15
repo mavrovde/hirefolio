@@ -101,6 +101,14 @@ describe('LinkedinService', () => {
         await expect(service.syncProfile()).rejects.toThrow('LinkedIn config error: credentials missing');
     });
 
+    it('should throw default message on syncProfile failure when no detail provided', async () => {
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: false, status: 500,
+            json: () => Promise.reject(new Error('not json'))
+        });
+        await expect(service.syncProfile()).rejects.toThrow('Failed to sync profile');
+    });
+
     it('should throw with API detail on getPosts failure', async () => {
         (globalThis.fetch as any).mockResolvedValue({
             ok: false, status: 500,
@@ -124,6 +132,15 @@ describe('LinkedinService', () => {
             json: () => Promise.resolve({ detail: 'Transfer failed: DB Error' })
         });
         await expect(service.transferPost(mockPost)).rejects.toThrow('Transfer failed: DB Error');
+    });
+
+    it('should throw default message on transferPost failure when no detail provided', async () => {
+        const mockPost: LinkedInPost = { id: '1', content: 'Test post' };
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: false, status: 500,
+            json: () => Promise.reject(new Error('not json'))
+        });
+        await expect(service.transferPost(mockPost)).rejects.toThrow('Failed to transfer post');
     });
 
     it('should not include Authorization header when no token', () => {
@@ -173,6 +190,15 @@ describe('LinkedinService', () => {
             json: () => Promise.resolve({ detail: 'Bulk transfer failed: DB Error' })
         });
         await expect(service.transferPosts(mockPosts)).rejects.toThrow('Bulk transfer failed: DB Error');
+    });
+
+    it('should throw default message on transferPosts failure when no detail provided', async () => {
+        const mockPosts: LinkedInPost[] = [{ id: '1', content: 'Test post' }];
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: false, status: 500,
+            json: () => Promise.reject(new Error('not json'))
+        });
+        await expect(service.transferPosts(mockPosts)).rejects.toThrow('Failed to transfer posts');
     });
 
     it('should transfer post with image URL preserved', async () => {

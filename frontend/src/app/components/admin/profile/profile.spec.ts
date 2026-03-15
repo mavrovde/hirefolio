@@ -46,6 +46,18 @@ describe('ProfileComponent', () => {
     expect(component.geminiApiKey).toBe('initial-key');
   });
 
+  it('should handle null user from auth stream smoothly', () => {
+    currentUserSubject.next(null);
+    fixture.detectChanges();
+    expect(component.geminiApiKey).toBe('initial-key'); // Was already set, or handles silently.
+  });
+
+  it('should handle user without gemini_api_key successfully', () => {
+    currentUserSubject.next({ username: 'test', is_admin: true });
+    fixture.detectChanges();
+    expect(component.geminiApiKey).toBe('');
+  });
+
   it('should start with key hidden', () => {
     expect(component.showKey).toBe(false);
   });
@@ -65,7 +77,8 @@ describe('ProfileComponent', () => {
     expect(component.showNewPassword).toBe(false);
   });
 
-  it('should call updateGeminiKey when saving', () => {
+  it('should call updateGeminiKey when saving and clear message on timeout', () => {
+    vi.useFakeTimers();
     const newKey = 'new-api-key';
     component.geminiApiKey = newKey;
     const mockUser = {
@@ -78,7 +91,6 @@ describe('ProfileComponent', () => {
       hashed_password: 'hash',
       created_at: new Date().toISOString()
     };
-    // Fix: mockReturnValue needs to return an observable that matches the expected type
     authServiceSpy.updateGeminiKey.mockReturnValue(of(mockUser));
 
     component.onSaveKey();
@@ -86,6 +98,10 @@ describe('ProfileComponent', () => {
     expect(component.loading).toBe(false);
     expect(component.message).toBe('API Key saved successfully');
     expect(authServiceSpy.updateGeminiKey).toHaveBeenCalledWith(newKey);
+    
+    vi.advanceTimersByTime(3000);
+    expect(component.message).toBe('');
+    vi.useRealTimers();
   });
 
   it('should handle save error', () => {
@@ -121,6 +137,20 @@ describe('ProfileComponent', () => {
     // Test auto-clear message
     vi.advanceTimersByTime(5000);
     expect(component.message).toBe('');
+    vi.useRealTimers();
+  });
+
+  it('should not clear message if it was changed by something else before timeout', () => {
+    vi.useFakeTimers();
+    component.oldPassword = 'old';
+    component.newPassword = 'new-strong-password';
+    authServiceSpy.changePassword.mockReturnValue(of({}));
+
+    component.onSubmit();
+    component.message = 'OTHER';
+
+    vi.advanceTimersByTime(5000);
+    expect(component.message).toBe('OTHER');
     vi.useRealTimers();
   });
 

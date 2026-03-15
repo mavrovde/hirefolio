@@ -106,6 +106,11 @@ describe('LlmService', () => {
 
             expect(result).toBe(mockName);
         });
+
+        it('should throw error on generateName API failure', async () => {
+            (globalThis.fetch as any).mockResolvedValue({ ok: false, status: 500 });
+            await expect(service.generateName('test')).rejects.toThrow('Failed to generate name');
+        });
     });
 
     describe('multiChat', () => {
@@ -152,13 +157,15 @@ describe('LlmService', () => {
             expect(onDone).toHaveBeenCalled();
         });
 
-        it('should handle JSON parse errors in stream', async () => {
+        it('should handle JSON parse errors, empty lines, and done signals in stream', async () => {
             const onChunk = vi.fn();
             const spy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
             const mockValues = [
+                { done: false, value: new TextEncoder().encode('\n\n') },
                 { done: false, value: new TextEncoder().encode('invalid json\n') },
                 { done: false, value: new TextEncoder().encode(JSON.stringify({ agent: 1, content: 'Valid' }) + '\n') },
+                { done: false, value: new TextEncoder().encode(JSON.stringify({ done: true }) + '\n') },
                 { done: true, value: undefined }
             ];
 
@@ -216,6 +223,16 @@ describe('LlmService', () => {
             await service.multiChat(agents, topic, onChunk, onDone);
             expect(onDone).toHaveBeenCalled();
         });
+
+        it('should throw error on multiChat API failure (non-ok response)', async () => {
+            (globalThis.fetch as any).mockResolvedValue({ ok: false, status: 500 });
+            await expect(service.multiChat(agents, 'topic', vi.fn())).rejects.toThrow('Failed to start multi-agent chat');
+        });
+
+        it('should throw error on multiChat failure (null body)', async () => {
+            (globalThis.fetch as any).mockResolvedValue({ ok: true, body: null });
+            await expect(service.multiChat(agents, 'topic', vi.fn())).rejects.toThrow('Failed to start multi-agent chat');
+        });
     });
 
     describe('chatGemini', () => {
@@ -263,6 +280,11 @@ describe('LlmService', () => {
                     }
                 })
             );
+        });
+
+        it('should throw error on chatGemini API failure', async () => {
+            (globalThis.fetch as any).mockResolvedValue({ ok: false, status: 500 });
+            await expect(service.chatGemini([])).rejects.toThrow('Failed to chat with Gemini');
         });
     });
 });

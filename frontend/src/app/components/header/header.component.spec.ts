@@ -205,6 +205,14 @@ describe('HeaderComponent', () => {
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 420, behavior: 'smooth' });
   }));
 
+  it('scrollToYear should navigate directly and return if not in browser environment', () => {
+    const langService = TestBed.inject(LanguageService);
+    const yearsService = TestBed.inject(YearsService);
+    const serverComponent = new HeaderComponent(langService, yearsService, router, 'server');
+    serverComponent.scrollToYear(2020);
+    expect(router.navigate).toHaveBeenCalledWith(['/'], { fragment: 'experience' });
+  });
+
   it('should not show slider when years array is empty', () => {
     component.years = [];
     fixture.changeDetectorRef.detectChanges();

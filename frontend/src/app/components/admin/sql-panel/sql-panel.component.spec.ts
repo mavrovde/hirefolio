@@ -127,16 +127,38 @@ describe('SqlPanelComponent', () => {
         httpMock.expectNone(`${environment.apiPrefix}/admin/sql/restore`);
     });
 
-    it('should handle restore error', () => {
+    it('should handle restore error without generic detail property', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         const file = new File([''], 'backup.sql');
         component.restore(file);
 
         const req = httpMock.expectOne(`${environment.apiPrefix}/admin/sql/restore`);
-        req.flush({ detail: 'Restore Failed' }, { status: 500, statusText: 'Error' });
+        // Test fallback message if err.error.detail is not provided
+        req.flush({ message: 'Crash' }, { status: 500, statusText: 'Error' });
 
-        expect(component.error).toBe('Restore Failed');
+        expect(component.error).toBe('Restore failed');
         expect(component.loading).toBe(false);
+    });
+
+    it('should handle backup downloading without Content-Disposition', () => {
+        const createObjUrlSpy = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:url');
+        const revokeObjUrlSpy = vi.spyOn(window.URL, 'revokeObjectURL');
+        const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click');
+
+        component.backup();
+
+        const req = httpMock.expectOne(`${environment.apiPrefix}/admin/sql/backup`);
+
+        const mockBlob = new Blob(['SQL DUMP'], { type: 'application/sql' });
+        req.flush(mockBlob, {
+            headers: {},
+            status: 200,
+            statusText: 'OK'
+        });
+
+        // The default fallback filename is backup.sql
+        expect(clickSpy).toHaveBeenCalled();
+        expect(component.result?.[0]?.filename).toBe('backup.sql');
     });
 
     it('should call restore when file selected', () => {

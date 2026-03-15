@@ -4,6 +4,7 @@ import { ViewportScroller } from '@angular/common';
 import { vi } from 'vitest';
 import { HomeComponent } from './home.component';
 import { ProfileService } from '../../services/profile.service';
+import { SeoService } from '../../services/seo.service';
 import { LanguageService } from '../../services/language.service';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { of } from 'rxjs';
@@ -68,6 +69,17 @@ describe('HomeComponent', () => {
     fixture.detectChanges();
     expect(component.profile$).toBeTruthy();
   });
+
+  it('should update SEO and JSON-LD on init when profile is loaded', fakeAsync(() => {
+    const seoService = TestBed.inject(SeoService) as unknown as any;
+    seoService.updateSeo = vi.fn();
+    seoService.setJsonLd = vi.fn();
+
+    fixture.detectChanges();
+    tick(); // resolve the pipe(take(1)) observable and fragment subscription
+    expect(seoService.updateSeo).toHaveBeenCalled();
+    expect(seoService.setJsonLd).toHaveBeenCalled();
+  }));
 
   it('should attempt scrolling if fragment exists', fakeAsync(() => {
     // We mocked 'about' in providers

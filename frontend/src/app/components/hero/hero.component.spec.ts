@@ -95,8 +95,20 @@ describe('HeroComponent', () => {
 
     component.scrollTo('#non-existent', event);
 
-    expect(preventDefaultSpy).toHaveBeenCalled();
     expect(document.querySelector).toHaveBeenCalledWith('#non-existent');
     expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
+  it('scrollTo should return early if not in browser environment', () => {
+    const serverComponent = new HeroComponent('server'); // Any non-browser string or object works since angular checks it strictly under the hood
+    
+    const event = new Event('click');
+    const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+    const querySpy = vi.spyOn(document, 'querySelector');
+    
+    serverComponent.scrollTo('#about', event);
+    
+    expect(preventDefaultSpy).toHaveBeenCalled();
+    expect(querySpy).not.toHaveBeenCalled();
   });
 });

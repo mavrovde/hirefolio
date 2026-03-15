@@ -168,6 +168,25 @@ class TestYearsEndpoint:
 
         assert response.status_code == 404
 
+    async def test_fallback_to_http_success(self, tmp_path):
+        """Should fetch years via HTTP if local files are missing."""
+        from app.main import app
+        from httpx import AsyncClient, ASGITransport
+        from unittest.mock import MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = {"experience": [{"startDate": "Mar 2023"}]}
+        
+        with patch("httpx.get", return_value=mock_resp):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                with patch("app.api.years.PROFILE_DATA_DIR", str(tmp_path / "nonexistent")):
+                    response = await ac.get("/api/app/cv/years")
+
+        assert response.status_code == 200
+        assert 2023 in response.json()["years"]
+
     async def test_years_are_integers(self, tmp_path):
         """All returned years should be integers."""
         from app.main import app

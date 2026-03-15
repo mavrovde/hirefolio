@@ -416,6 +416,43 @@ describe('LlmComponent', () => {
             expect(component.conversationStatus).toBe('Connection Error');
         });
 
+        it('should handle turnComplete signal with currentMessage set', async () => {
+            component.conversationTopic = 'Test';
+            component.agents = [{ id: 1, name: 'A1', description: 'D1' }, { id: 2, name: 'A2', description: 'D2' }];
+            llmService.multiChat.mockImplementation((agents, topic, onChunk) => {
+                onChunk(1, 'Part 1', false);
+                onChunk(1, '', true);
+                return Promise.resolve();
+            });
+            await component.startMultiConversation();
+            
+            // Expected effect: the existing message gets pushed
+            expect(component.multiMessages.some(m => m.content === 'Part 1')).toBe(true);
+        });
+
+        it('should update conversationStatus safely if missing agent or description', async () => {
+            component.conversationTopic = 'Test';
+            component.agents = [{ id: 1, name: '', description: 'Desc' }, { id: 2, name: 'A2', description: 'D2' }];
+            let statusDuringChunk = '';
+            
+            llmService.multiChat.mockImplementation((agents, topic, onChunk) => {
+                onChunk(1, 'Chunk', false);
+                statusDuringChunk = component.conversationStatus;
+                return Promise.resolve();
+            });
+            await component.startMultiConversation();
+            expect(statusDuringChunk).toBe('Agent 1 is speaking...');
+            
+            // Missing Agent
+            llmService.multiChat.mockImplementation((agents, topic, onChunk) => {
+                onChunk(99, 'Chunk', false);
+                statusDuringChunk = component.conversationStatus;
+                return Promise.resolve();
+            });
+            await component.startMultiConversation();
+            expect(statusDuringChunk).toBe('Agent 99 is speaking...');
+        });
+
         it('should format agent name with role', () => {
             component.agents = [
                 { id: 1, name: 'Alice', description: 'Desc', role: 'Wife' },
@@ -745,6 +782,13 @@ describe('LlmComponent', () => {
                 });
                 // Should not throw
                 expect(() => component['saveState']()).not.toThrow();
+            });
+
+            it('SSR should return early in saveState, loadState, clearState', () => {
+                const serverComponent = new LlmComponent({} as any, {} as any, {} as any, {} as any, 'server');
+                expect(() => serverComponent.clearState()).not.toThrow();
+                expect(() => (serverComponent as any).saveState()).not.toThrow();
+                expect(() => (serverComponent as any).loadState()).not.toThrow();
             });
         });
     });

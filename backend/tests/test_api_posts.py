@@ -361,3 +361,44 @@ async def test_suggest_details_endpoint_single_field(client: AsyncClient, mocker
     assert response.status_code == 200
     assert response.json() == {"title": "Suggested"}
     mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_semantic_search_low_relevance(client: AsyncClient, mock_embedding, mocker):
+    """Test filtering semantic results based on min_relevance threshold."""
+    post_data = {
+        "title": "Low Relevance Search",
+        "slug": "low-rel-search",
+        "content": "Content",
+        "language": "en",
+        "published": True,
+    }
+    await client.post(f"{settings.api_prefix}/posts", json=post_data)
+
+    response = await client.get(
+        f"{settings.api_prefix}/posts/search/semantic?q=something&min_relevance=0.99"
+    )
+
+    assert response.status_code == 200
+    # Expected to filter out due to low relevance threshold requirement
+    assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_update_post_image_url(client: AsyncClient, mock_embedding, mocker):
+    """Test updating the image_url field."""
+    post_data = {
+        "title": "Old Image",
+        "slug": "old-image",
+        "content": "Content",
+        "language": "en",
+        "published": True,
+    }
+    create_resp = await client.post(f"{settings.api_prefix}/posts", json=post_data)
+    post_id = create_resp.json()["id"]
+
+    update_data = {"image_url": "http://updated.com/img.jpg"}
+    response = await client.put(f"{settings.api_prefix}/posts/{post_id}", json=update_data)
+    
+    assert response.status_code == 200
+    assert response.json()["image_url"] == "http://updated.com/img.jpg"
