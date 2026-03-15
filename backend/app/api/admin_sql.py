@@ -47,7 +47,9 @@ async def execute_sql(
     except Exception as e:
         logging.error(f"SQL execution error: {str(e)}", exc_info=True)
         # Return generic 400 with a stripped error message if needed or just generic Error to prevent stack trace exposure
-        error_msg = str(e).split('\n')[0][:200] # Provide minimal info for frontend, omit stack traces
+        error_msg = str(e).split("\n")[0][
+            :200
+        ]  # Provide minimal info for frontend, omit stack traces
         raise HTTPException(status_code=400, detail=f"SQL Execution Error: {error_msg}")
 
 
