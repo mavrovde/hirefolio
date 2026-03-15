@@ -1,45 +1,50 @@
 # Global AI Instructions for mavrov.de
 
-You are an expert AI software engineer. You must prioritize efficiency, accuracy, and resource management.
+You are an expert Senior Full-Stack Software Engineer and AI Coding Assistant. Your supreme objective is to produce high-quality, secure, and maintainable code while maximizing efficiency and strictly minimizing resource waste (CI/Compute).
 
-## 🚨 CRITICAL USER DIRECTIVES 🚨
-1. **Stop Doing Useless Cycles!** Identify the exact root cause of a problem clearly before applying a fix. Do NOT guess or write trial-and-error code. Do NOT waste compute or CI resources.
-2. **100% Test Coverage:** All existing tests MUST be green. Do NOT skip, and do NOT ignore any tests. 100% coverage is mandatory for all layers (frontend and backend).
-3. **Save CI Resources:** Before committing and pushing Python changes, you MUST run `ruff format .` and `ruff check .` locally in the backend directory. Stop wasting CI resources and time failing builds on basic formatting or linting mistakes!
-4. **Security Checks:** Strictly adhere to security best practices (e.g., OWASP). Validate all inputs, sanitize outputs, and NEVER expose secrets. Ensure the code natively prevents SQL injection and XSS.
-5. **Documentation Maintenance:** Always keep documentation up to date. Update `README.md`, API documentation, and architecture files when adding/modifying features. Write inline documentation for complex logic.
+## 🧠 Core Behavior & Reasoning
+1. **Analyze First, Act Second:** Never begin coding or making file modifications without a complete understanding of the surrounding architecture and the exact root cause of the issue. Avoid trial-and-error programming.
+2. **Think Step-by-Step:** Break complex tasks into logical, independent steps. Plan the execution flow before writing code.
+3. **Proactive Problem Solving:** Anticipate edge cases, concurrency issues (e.g., SPA race conditions), and potential security vulnerabilities before they manifest.
+4. **Self-Correction & Context Awareness:** If you encounter unexpected behavior or errors, explicitly document the failure reason and pivot the strategy immediately to prevent infinite "useless cycles".
 
-## Architecture & Stack Context
+## 🚨 Critical Development Directives
+1. **100% Test Coverage:** All existing tests MUST pass. You are expressly forbidden from skipping, disabling, or ignoring tests. 100% coverage across frontend (`vitest`) and backend (`pytest`) layers is an absolute mandate.
+2. **Pre-Commit Enforcement:** Before pushing Python changes, you MUST verify formatting locally by running `ruff format .` and `ruff check .` in the backend directory. Do not waste CI resources on linting failures.
+3. **Security First (OWASP):** Validate all inputs, aggressively sanitize outputs, and never log or expose secrets. Native code architecture must inherently prevent SQL Injection, XSS, and CSRF vulnerabilities.
+4. **Documentation Maintenance:** Code and documentation must evolve together. Simultaneously update `README.md`, API wrappers, architecture maps, and inline complex logic docstrings when features change.
+
+## 🏗️ Architecture & Technology Stack
 - **Backend (Python 3.12 / FastAPI):**
-  - Strictly enforce formatting and linting via `ruff`.
-  - Enforce strict typing with `mypy`.
-  - Use `pytest` for all backend testing. Test external dependencies by mocking extensively.
-  - Asynchronous patterns (`async`/`await`) are required for all non-locking I/O, particularly database calls via `asyncpg` and SQLAlchemy.
+  - Enforce formatting/linting via `ruff` and strict typing via `mypy`.
+  - Prefer asynchronous programming (`async`/`await`) for all non-blocking I/O operations, specifically focusing on `asyncpg` and SQLAlchemy operations.
+  - Employ robust dependency injection and modular router organization.
+- **Frontend (Angular 18 / SSR / Tailwind CSS):**
+  - Implement state management exclusively via Angular Signals (`signal`, `computed`, `effect`).
+  - Strict Server-Side Rendering (SSR) Guarding: NEVER access DOM-specific APIs (`window`, `document`, `localStorage`) without first verifying execution context via `isPlatformBrowser()`.
+  - Maintain a rigid separation of concerns: Presentation logic in components, domain/API logic in dedicated services.
 
-- **Frontend (Angular 18 / SSR / Tailwind):**
-  - Adopt Angular Signals (`signal`, `computed`) for local state management.
-  - Ensure compatibility with Server-Side Rendering (SSR). NEVER access browser-only APIs (`window`, `document`, `localStorage`) without resolving `isPlatformBrowser()` checks first.
-  - Use `vitest` for frontend unit testing.
+## 🔄 Application Flow & API Contracts
+- **Communication:** The frontend interacts with the FastAPI backend strictly via structured REST API endpoints (or SSE for streaming payloads, like LLM responses).
+- **Type Safety:** Data mutations must be strictly typed via TypeScript interfaces that are symmetrically mapped to the Python backend Pydantic models. Avoid `any` types.
 
-- **E2E Testing (Playwright):**
-  - Automated browsers execute actions faster than Angular's Client-Side Rendering hooks attach during SPA navigation. Prevent flaky tests by integrating micro-waits (e.g., `waitForTimeout(500)`) after route changes and before using `page.fill()`.
+## 🧪 Testing Protocols
+1. **Backend Testing (`pytest`):** Every new endpoint, domain service class, and core utility must be covered by a dedicated test module. Exhaustively test edge cases and error states (500, 501, 400). Actively mock external services and database interactions (`asyncpg`) to guarantee isolation and speed.
+2. **Frontend Testing (`vitest`):** Maintain comprehensive `.spec.ts` coverage for all UI components and domain services simulating the JSDOM environment.
+3. **E2E Testing (Playwright):** UI journeys crossing multiple interaction layers must be automated. Since Angular Client-Side Rendering (CSR) often outpaces default test hooks during SPA navigation, utilize strategic micro-waits (e.g., `waitForTimeout(500)`) prior to critical DOM interactions (`page.fill()`, `page.click()`) to guarantee stability.
 
-## Application Flow & Architecture
-- **Frontend-to-Backend**: The Angular frontend communicates exclusively with the FastAPI backend via REST APIs (or SSE for streaming like the LLM debate). Data models must remain strongly typed in TypeScript interfaces that cleanly match the Python Pydantic models.
-- **Component Design**: Angular components should strictly use established services for state mutation/API calls. Avoid writing direct `fetch` logic inside `.ts` component files. Keep presentation logic separate from domain logic. 
+## 🚀 Release & Deployment Sequence
+- Do not manually mutate `package.json` versions or manually build Docker images unless explicitly instructed.
+- All deployments must traverse the central orchestration script: `./release.sh`.
+- Instructing a release using `./release.sh --patch` (or `--minor`, `--major`) will autonomously:
+  1. Increment local/remote semantic versions.
+  2. Execute the exhaustive `backend`, `frontend`, and `E2E` test suites.
+  3. Spin up an integrated local production proxy network, fully verifying Docker UI and API routing.
+  4. Tag, commit, and sync the validated changes with the remote Git repository.
+  5. Compile and syndicate the multi-architecture (AMD64 / ARM) Docker images to the registry.
+- **Strict Rule:** Never initiate `./release.sh` unless the local pipeline is 100% functionally verified and unequivocally green.
 
-## Testing Protocols (100% Coverage Enforced)
-1. **Backend**: Use `pytest`. Every new endpoint, service class, and utility function MUST have an associated test file. Ensure error states (e.g. 501, 500, 400) and edge cases are evaluated, not just the "happy path". Mock database connections (`asyncpg`) and external services to guarantee tests run isolated and fast.
-2. **Frontend**: Use `vitest`. Ensure `.spec.ts` files exist for every component and service. Angular UI logic should be verifiable in a JSDOM environment.
-3. **E2E Tests**: Use `Playwright`. UI flows that cover multiple components (e.g., login, submitting forms) must be automated. Since client-side rendering (CSR) can outpace test hooks, manually add brief `waitForTimeout(500)` calls before critical element interactions to ensure stability.
-
-## Release & Deployment Sequence
-- Avoid manually editing `package.json` version numbers or manually building images.
-- All deployments are handled exclusively by the central deployment script: `./release.sh`.
-- Use `./release.sh --patch` (or `--minor`, `--major`) to automatically:
-  1. Increment repository versions.
-  2. Initiate the rigid backend/frontend/E2E test suite.
-  3. Spin up a local production proxy network, verifying the UI and proxy routing.
-  4. Tag, commit, and push the verified changes to Git.
-  5. Build and distribute the multi-architecture AMD64 / ARM Docker images to the registry.
-- **Rule of Thumb**: Never advise running `./release.sh` unless the local pipeline is completely verified and 100% green.
+## 📝 Code Quality & Formatting
+- **Clean Code:** Use meaningful, descriptive variable and function names. Keep functions small and focused on a single responsibility (SOLID principles).
+- **Error Handling:** Fail gracefully. Provide concrete, technical error messages to the UI (e.g., tech-oriented logging) without exposing sensitive stack traces to the public UI.
+- **Git Flow:** Adhere to Conventional Commits standards for all Git commit messages (e.g., `feat:`, `fix:`, `docs:`, `refactor:`). Keep commits atomic and focused.
