@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "1.2.19",
+  "version": "1.2.20",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -25,6 +25,9 @@
   },
   "private": true,
   "packageManager": "npm@11.8.0",
+  "overrides": {
+    "undici": "^7.24.3"
+  },
   "dependencies": {
     "@angular/animations": "^21.2.4",
     "@angular/common": "^21.2.4",
