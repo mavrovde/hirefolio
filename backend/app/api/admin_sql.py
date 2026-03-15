@@ -24,16 +24,13 @@ async def execute_sql(
     current_user: User = Depends(get_current_admin_user),
 ):
     start_time = time.time()
-    try:
-        # Check for forbidden keywords (very basic check, but test expects 400 on invalid query)
+    import logging
 
-        import logging
-
-        logging.warning("SQL execution via API is disabled for security reasons.")
-        raise HTTPException(
-            status_code=501,
-            detail="SQL execution via API is disabled for security reasons.",
-        )
+    logging.warning("SQL execution via API is disabled for security reasons.")
+    raise HTTPException(
+        status_code=501,
+        detail="SQL execution via API is disabled for security reasons.",
+    )
 
 
 def _get_db_url():
