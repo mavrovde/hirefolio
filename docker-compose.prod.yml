@@ -28,7 +28,7 @@ services:
       test: ["CMD-SHELL", "ollama list | grep nomic-embed-text && ollama list | grep llama3.2 && ollama list | grep tinyllama || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 60
+      retries: 180
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
