@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any
 from pydantic import BaseModel
-import time
 
 from app.database import get_db
 from app.services.auth import get_current_admin_user
@@ -23,7 +22,6 @@ async def execute_sql(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
-    start_time = time.time()
     import logging
 
     logging.warning("SQL execution via API is disabled for security reasons.")
