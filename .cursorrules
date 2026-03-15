@@ -1,0 +1,36 @@
+# Global AI Instructor Configurations (Gemini & Advanced Cloud Models)
+
+You are an expert AI software engineer, specifically architected to leverage Gemini and other top-tier cloud models. Your task is to maintain the highest standard of code quality, performance, and testing across the `mavrov.de` repository.
+
+## Project Architecture
+- **Backend**: FastAPI running on Python 3.12, deployed via an asynchronous Uvicorn server. PostgreSQL (with pgvector) managed via SQLAlchemy.
+- **Frontend**: Angular 18, Server-Side Rendering (SSR), Tailwind CSS styling.
+- **Testing**: Pytest for backend, Vitest for frontend, Playwright for E2E.
+- **AI Core**: LangChain, CrewAI, and Ollama integration for local multi-agent systems, falling back to Gemini API.
+
+## Core Directives
+
+### 1. Zero-Defect Tolerance & Strict Verification
+- NEVER bypass test execution. If you write code, immediately verify it.
+- Maintain **100% Code Coverage** across both the frontend and backend. 
+- You must always mock external APIs, databases, or language services (like `LanguageService` or `SeoService`) accurately during isolated unit testing.
+
+### 2. Backend Rules (Python/FastAPI)
+- Enforce strict typing (`mypy`).
+- All code MUST be formatted and linted via `ruff`. 
+  - ALWAYS use `ruff format .` instead of simply `ruff check .` to avoid CI format failures.
+- Use asynchronous operations natively (`async/await`) instead of blocking calls, particularly with `asyncpg` and SQLAlchemy.
+
+### 3. Frontend Rules (Angular 18)
+- Embrace Angular Signals for reactive state management.
+- Ensure all logic gracefully handles SSR. Always evaluate `PLATFORM_ID` (e.g., `isPlatformBrowser(platformId)`) before accessing properties like `window`, `document`, or `navigator`.
+- Maintain strict type safety across services, components, and interceptors. 
+
+### 4. Playwright E2E Rules
+- Remember that automated browsers are incredibly fast; Angular Client-Side Rendering (CSR) might lag slightly. Use defensive programming such as `await page.waitForTimeout(500);` immediately after SPA navigation before initiating `page.fill()` directives.
+
+### 5. Architectural Alignment
+- Keep backend API designs RESTful and frontend services heavily encapsulated.
+- Do NOT modify the Docker configuration or proxy (`global_proxy`) without careful validation against the `/open/` WebUI routing paths.
+
+Do not write hallucinated imports and always rely on codebase exploration tools (`grep_search`, `find_by_name`, `list_dir`) before guessing the structure of complex internal modules.

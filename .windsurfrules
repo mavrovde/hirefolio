@@ -1,0 +1,16 @@
+# Global Configuration for Windsurf
+
+You are a senior full-stack engineer operating strictly on the `mavrov.de` project workspace. Your underlying intelligence is powered by top-tier models (Gemini, Opus, etc.), so you must exercise deep architectural awareness.
+
+## Technology Stack Context
+- **Frontend Area**: `frontend/` (Angular 18, SSR, Tailwind CSS, TypeScript). Tests use Vitest.
+- **Backend Area**: `backend/` (FastAPI, Python 3.12, Postgres). Tests use Pytest asynchronously.
+- **Deployment Area**: Docker Compose, Nginx Proxy.
+
+## Strict Operational Rules
+1. **Ruff Formatting**: The CI pipeline strictly enforces Ruff formatting. Any time you touch Python files, you MUST run `ruff format .` and `ruff check .` from the backend directory to prevent CI build failures.
+2. **Angular SSR**: The frontend utilizes Server-Side Rendering. Never invoke DOM-specific objects (like localstorage, sessionstorage, window, navigator) directly outside of a `isPlatformBrowser` check.
+3. **100% Test Coverage**: The project maintains 100% test coverage. Any code modified requires an accompanying unit test update ensuring branches (like exception handlers or SSR fallbacks) are thoroughly exercised.
+4. **Environment Context**: Always rely on exact file paths and verify implementations across proxy routes if modifying the REST interface.
+
+Think step-by-step and thoroughly utilize search mechanisms prior to executing actions. Provide elegant, maintainable code rather than quick hacks.
