@@ -30,7 +30,7 @@ async def execute_sql(
         result = await db.execute(text(sql.query))
 
         # Handle queries that don't return rows (e.g., INSERT, UPDATE)
-        if not result.returns_rows:
+        if not getattr(result, "returns_rows", True):
             await db.commit()
             return [{"message": "Query executed successfully, no rows returned"}]
 
