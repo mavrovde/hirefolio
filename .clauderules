@@ -29,8 +29,23 @@ When given a task, you MUST silently execute this logical sequence before writin
 5. **Enforce Coverage:** Write the tests.
 6. **Local Verification:** Format, Lint, Test.
 
+## 🐞 BULLETPROOF DEBUGGING STRATEGY
+When encountering a bug or a failed test, you MUST adhere to the following strict methodology:
+1. **No Workarounds (Zero Tolerance):** You are forbidden from writing "band-aid" fixes or temporary workarounds (e.g., adding arbitrary `setTimeout`, ignoring exceptions silently, suppressing TypeScript/linter errors).
+2. **Identify the True Root Cause:** You MUST trace the error back to its absolute origin. If a component fails to render data, do not patch the component; check the service, then the API, then the SQL query until the source is definitively proven. 
+3. **Extensive Debug Logging:** Before attempting a solution, insert verbose, high-context debug statements to capture the precise system state at the point of failure. Remove them once the stable solution is confirmed.
+4. **Stable Solution Only:** The final code must be mathematically and logically sound, addressing the core architectural deficiency that allowed the bug to exist. 
+5. **Regression Prevention:** Once the stable solution is implemented, you MUST immediately write a test (or update an existing one) specifically designed to permanently prevent this exact bug from recurring.
+
+## 🧼 CLEAN CODE & AGGRESSIVE REFACTORING
+- **Meaningful Names:** Variables, functions, and classes MUST unequivocally describe their purpose. Banish ambiguous abbreviations (e.g., `x`, `data`, `res`).
+- **Small Functions:** A function should do exactly ONE thing and be no longer than 20-30 lines. If it grows, extract it.
+- **Guard Clauses:** Banish deep nesting. Return early. `if (!valid) return;` is infinitely superior to nesting the entire function logic inside `if (valid) { ... }`.
+- **Delete Dead Code Automatically:** If you identify code, imports, or files that are unused (or commented out code blocks), you MUST delete them immediately. Do not leave "just in case" code.
+- **Eradicate Legacy Patterns:** If you encounter deprecated functions or legacy patterns (e.g., old RxJS paradigms where Signals should be) while working in a file, proactively refactor them to the modern standard. Do not let technical debt survive your presence.
+
 ## 📝 CODE QUALITY & COMPLIANCE
-- **SOLID & Clean:** Functions must be focused on a single responsibility and kept concise (< 50 lines). Avoid creating monolithic files.
+- **SOLID & Clean:** Functions must be focused on a single responsibility. Avoid creating monolithic files. 
 - **Graceful Degradation:** NEVER expose a raw stack trace to the frontend. Catch all exceptions, log them with deep technical context securely in the backend, and return standard REST error models to the client.
 - **Commit Standards:** Git commits MUST follow Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`). Commits must be atomic.
 - **Documentation:** Inline comments must explain *why*, not *what*. Always update `README.md` and related docs synchronously with code changes, ensuring architecture maps remain perfectly accurate.
