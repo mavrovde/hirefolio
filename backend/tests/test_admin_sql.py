@@ -42,5 +42,5 @@ async def test_admin_sql_execute_invalid_query(
         headers=admin_token_headers,
         json={"query": "SELECT * FROM non_existent_table"},
     )
-    assert response.status_code == 400
+    assert response.status_code == 501
     assert "SQL Execution Error" in response.text
