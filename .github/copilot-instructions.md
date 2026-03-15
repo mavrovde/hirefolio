@@ -1,22 +1,27 @@
-# GitHub Copilot / Workspace Instructions for mavrov.de
+# GitHub Copilot / Workspace Global Instructions for mavrov.de
 
-You are completing code for `mavrov.de`, acting as an elite software engineer. This project leverages Gemini, Claude, and other advanced cloud models; your output must match top-tier architectural logic perfectly.
+You are an expert AI software engineer. You must prioritize efficiency, accuracy, and resource management.
 
-## Standard Directives
+## 🚨 CRITICAL USER DIRECTIVES 🚨
+1. **Stop Doing Useless Cycles!** Identify the exact root cause of a problem clearly before applying a fix. Do NOT guess or write trial-and-error code. Do NOT waste compute or CI resources.
+2. **100% Test Coverage:** All existing tests MUST be green. Do NOT skip, and do NOT ignore any tests. 100% coverage is mandatory for all layers (frontend and backend).
+3. **Save CI Resources:** Before committing and pushing Python changes, you MUST run `ruff format .` and `ruff check .` locally in the backend directory. Stop wasting CI resources and time failing builds on basic formatting or linting mistakes!
 
-1. **Zero-Defect Goal:**
-   - Both the frontend and backend require 100% test coverage. Do not write feature code without accompanying tests (`pytest` for backend, `vitest` for frontend).
+## Architecture & Stack Context
+- **Backend (Python 3.12 / FastAPI):**
+  - Strictly enforce formatting and linting via `ruff`.
+  - Enforce strict typing with `mypy`.
+  - Use `pytest` for all backend testing. Test external dependencies by mocking extensively.
+  - Asynchronous patterns (`async`/`await`) are required for all non-locking I/O, particularly database calls via `asyncpg` and SQLAlchemy.
 
-2. **Backend Framework (Python 3.12 / FastAPI):**
-   - Strictly follow `ruff` rules. Format your output to mirror `ruff check` and `ruff format` specifications. Single violations will crash the CI build.
-   - Employ `async`/`await` for all non-locking I/O operations, particularly interactions with `asyncpg` within SQLALchemy bindings.
-   - Utilize standard type hints across all functions checked rigorously by `mypy`.
+- **Frontend (Angular 18 / SSR / Tailwind):**
+  - Adopt Angular Signals (`signal`, `computed`) for local state management.
+  - Ensure compatibility with Server-Side Rendering (SSR). NEVER access browser-only APIs (`window`, `document`, `localStorage`) without resolving `isPlatformBrowser()` checks first.
+  - Use `vitest` for frontend unit testing.
 
-3. **Frontend Framework (Angular 18):**
-   - Default to using Angular Signals for local state management (e.g., `signal()`, `computed()`).
-   - Accommodate SSR constraints. Ensure that code referencing the DOM elements or `window` objects first checks against the Angular `isPlatformBrowser` utility.
+- **E2E Testing (Playwright):**
+  - Automated browsers execute actions faster than Angular's Client-Side Rendering hooks attach during SPA navigation. Prevent flaky tests by integrating micro-waits (e.g., `waitForTimeout(500)`) after route changes and before using `page.fill()`.
 
-4. **Testing Context:**
-   - E2E scripts are governed by Playwright. Because UI changes trigger quickly on CSR but might take a moment to initialize after Angular routes, implement micro-waits (`waitForTimeout`) prior to fast `fill` behaviors.
-   
-Take a step-by-step approach when generating code. Provide robust, production-grade solutions.
+## Operational Workflow
+- **Verify Locally:** Test your work locally! Run backend and frontend test suites completely before confirming a solution.
+- **Releases:** The release sequence is handled carefully via the `./release.sh` script (e.g., `./release.sh --patch`). Only trigger or advise this when the build is verifiably green.

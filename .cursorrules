@@ -1,36 +1,27 @@
-# Global AI Instructor Configurations (Gemini & Advanced Cloud Models)
+# Cursor AI Global Instructions for mavrov.de
 
-You are an expert AI software engineer, specifically architected to leverage Gemini and other top-tier cloud models. Your task is to maintain the highest standard of code quality, performance, and testing across the `mavrov.de` repository.
+You are an expert AI software engineer. You must prioritize efficiency, accuracy, and resource management.
 
-## Project Architecture
-- **Backend**: FastAPI running on Python 3.12, deployed via an asynchronous Uvicorn server. PostgreSQL (with pgvector) managed via SQLAlchemy.
-- **Frontend**: Angular 18, Server-Side Rendering (SSR), Tailwind CSS styling.
-- **Testing**: Pytest for backend, Vitest for frontend, Playwright for E2E.
-- **AI Core**: LangChain, CrewAI, and Ollama integration for local multi-agent systems, falling back to Gemini API.
+## 🚨 CRITICAL USER DIRECTIVES 🚨
+1. **Stop Doing Useless Cycles!** Identify the exact root cause of a problem clearly before applying a fix. Do NOT guess or write trial-and-error code. Do NOT waste compute or CI resources.
+2. **100% Test Coverage:** All existing tests MUST be green. Do NOT skip, and do NOT ignore any tests. 100% coverage is mandatory for all layers (frontend and backend).
+3. **Save CI Resources:** Before committing and pushing Python changes, you MUST run `ruff format .` and `ruff check .` locally in the backend directory. Stop wasting CI resources and time failing builds on basic formatting or linting mistakes!
 
-## Core Directives
+## Architecture & Stack Context
+- **Backend (Python 3.12 / FastAPI):**
+  - Strictly enforce formatting and linting via `ruff`.
+  - Enforce strict typing with `mypy`.
+  - Use `pytest` for all backend testing. Test external dependencies by mocking extensively.
+  - Asynchronous patterns (`async`/`await`) are required for all non-locking I/O, particularly database calls via `asyncpg` and SQLAlchemy.
 
-### 1. Zero-Defect Tolerance & Strict Verification
-- NEVER bypass test execution. If you write code, immediately verify it.
-- Maintain **100% Code Coverage** across both the frontend and backend. 
-- You must always mock external APIs, databases, or language services (like `LanguageService` or `SeoService`) accurately during isolated unit testing.
+- **Frontend (Angular 18 / SSR / Tailwind):**
+  - Adopt Angular Signals (`signal`, `computed`) for local state management.
+  - Ensure compatibility with Server-Side Rendering (SSR). NEVER access browser-only APIs (`window`, `document`, `localStorage`) without resolving `isPlatformBrowser()` checks first.
+  - Use `vitest` for frontend unit testing.
 
-### 2. Backend Rules (Python/FastAPI)
-- Enforce strict typing (`mypy`).
-- All code MUST be formatted and linted via `ruff`. 
-  - ALWAYS use `ruff format .` instead of simply `ruff check .` to avoid CI format failures.
-- Use asynchronous operations natively (`async/await`) instead of blocking calls, particularly with `asyncpg` and SQLAlchemy.
+- **E2E Testing (Playwright):**
+  - Automated browsers execute actions faster than Angular's Client-Side Rendering hooks attach during SPA navigation. Prevent flaky tests by integrating micro-waits (e.g., `waitForTimeout(500)`) after route changes and before using `page.fill()`.
 
-### 3. Frontend Rules (Angular 18)
-- Embrace Angular Signals for reactive state management.
-- Ensure all logic gracefully handles SSR. Always evaluate `PLATFORM_ID` (e.g., `isPlatformBrowser(platformId)`) before accessing properties like `window`, `document`, or `navigator`.
-- Maintain strict type safety across services, components, and interceptors. 
-
-### 4. Playwright E2E Rules
-- Remember that automated browsers are incredibly fast; Angular Client-Side Rendering (CSR) might lag slightly. Use defensive programming such as `await page.waitForTimeout(500);` immediately after SPA navigation before initiating `page.fill()` directives.
-
-### 5. Architectural Alignment
-- Keep backend API designs RESTful and frontend services heavily encapsulated.
-- Do NOT modify the Docker configuration or proxy (`global_proxy`) without careful validation against the `/open/` WebUI routing paths.
-
-Do not write hallucinated imports and always rely on codebase exploration tools (`grep_search`, `find_by_name`, `list_dir`) before guessing the structure of complex internal modules.
+## Operational Workflow
+- **Verify Locally:** Test your work locally! Run backend and frontend test suites completely before confirming a solution.
+- **Releases:** The release sequence is handled carefully via the `./release.sh` script (e.g., `./release.sh --patch`). Only trigger or advise this when the build is verifiably green.
