@@ -15,10 +15,10 @@ async def seed_e2e_user():
     async with async_session() as session:
         print("Seeding E2E admin user...")
         from sqlalchemy import text
-        
+
         # Obliterate all users and cascading data (like posts) to guarantee a clean E2E environment
         await session.execute(text("TRUNCATE TABLE users CASCADE;"))
-        
+
         hashed = get_password_hash("admin123")
         print("Creating fresh admin user for E2E...")
         user = User(

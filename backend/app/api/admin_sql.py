@@ -36,12 +36,12 @@ async def execute_sql(
 
         # Convert rows to a list of dicts
         rows = result.fetchall()
-        
+
         # We need to map row data to dicts using keys() for robustness over _mapping
         if rows:
-             keys = result.keys()
-             return [dict(zip(keys, row)) for row in rows]
-        
+            keys = result.keys()
+            return [dict(zip(keys, row)) for row in rows]
+
         return []
     except Exception as e:
         logging.error(f"SQL execution error: {str(e)}")
