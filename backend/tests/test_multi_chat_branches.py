@@ -1,4 +1,5 @@
 """Edge-case coverage for app/services/multi_chat.py."""
+
 import json
 import asyncio
 import pytest
@@ -95,14 +96,17 @@ async def test_multi_agent_stream_line_variants():
     lines = [
         "",  # empty line -> 215->214 (falsy line, skip)
         "not-json",  # JSONDecodeError -> continue (229-230)
-        json.dumps({"message": {"content": ""}, "done": False}),  # empty content 221->227
+        json.dumps(
+            {"message": {"content": ""}, "done": False}
+        ),  # empty content 221->227
         json.dumps({"message": {"content": "Hello there friend"}, "done": False}),
         # no done:True -> loop finishes naturally (227->214)
     ]
 
     factory = _make_client_factory(_make_stream_resp(lines))
-    with patch("app.services.multi_chat.Agent"), patch(
-        "httpx.AsyncClient", side_effect=factory
+    with (
+        patch("app.services.multi_chat.Agent"),
+        patch("httpx.AsyncClient", side_effect=factory),
     ):
         gen = multi_agent_conversation(agents, "Topic", max_turns=1)
         chunks = [json.loads(c) async for c in gen]
@@ -118,8 +122,9 @@ async def test_multi_agent_stream_non_200():
     agents = [AgentConfig(id=1, description="d", role="R", goal="g")]
 
     factory = _make_client_factory(_make_stream_resp([], status_code=500))
-    with patch("app.services.multi_chat.Agent"), patch(
-        "httpx.AsyncClient", side_effect=factory
+    with (
+        patch("app.services.multi_chat.Agent"),
+        patch("httpx.AsyncClient", side_effect=factory),
     ):
         gen = multi_agent_conversation(agents, "Topic", max_turns=1)
         chunks = [json.loads(c) async for c in gen]
@@ -142,8 +147,9 @@ async def test_multi_agent_history_trim():
     factory = _make_client_factory(
         None, stream_factory=lambda: _make_stream_resp(list(lines))
     )
-    with patch("app.services.multi_chat.Agent"), patch(
-        "httpx.AsyncClient", side_effect=factory
+    with (
+        patch("app.services.multi_chat.Agent"),
+        patch("httpx.AsyncClient", side_effect=factory),
     ):
         gen = multi_agent_conversation(agents, "Topic", max_turns=11)
         chunks = [json.loads(c) async for c in gen]
@@ -170,9 +176,11 @@ async def test_multi_agent_moderator_stop():
             raise Exception("STOPPED_BY_MODERATOR: 'toxic content'")
         return real_sub(*args, **kwargs)
 
-    with patch("app.services.multi_chat.Agent"), patch(
-        "httpx.AsyncClient", side_effect=factory
-    ), patch("app.services.multi_chat.re.sub", side_effect=fake_sub):
+    with (
+        patch("app.services.multi_chat.Agent"),
+        patch("httpx.AsyncClient", side_effect=factory),
+        patch("app.services.multi_chat.re.sub", side_effect=fake_sub),
+    ):
         gen = multi_agent_conversation(agents, "Topic", max_turns=1)
         chunks = [json.loads(c) async for c in gen]
 
@@ -200,9 +208,11 @@ async def test_multi_agent_generic_error():
             raise ValueError("boom generic")
         return real_sub(*args, **kwargs)
 
-    with patch("app.services.multi_chat.Agent"), patch(
-        "httpx.AsyncClient", side_effect=factory
-    ), patch("app.services.multi_chat.re.sub", side_effect=fake_sub):
+    with (
+        patch("app.services.multi_chat.Agent"),
+        patch("httpx.AsyncClient", side_effect=factory),
+        patch("app.services.multi_chat.re.sub", side_effect=fake_sub),
+    ):
         gen = multi_agent_conversation(agents, "Topic", max_turns=1)
         chunks = [json.loads(c) async for c in gen]
 
@@ -215,8 +225,9 @@ async def test_multi_agent_stream_no_lines():
     """Branch 214->235: status 200 but stream yields zero lines -> loop falls through."""
     agents = [AgentConfig(id=1, description="d", role="R", goal="g")]
     factory = _make_client_factory(_make_stream_resp([], status_code=200))
-    with patch("app.services.multi_chat.Agent"), patch(
-        "httpx.AsyncClient", side_effect=factory
+    with (
+        patch("app.services.multi_chat.Agent"),
+        patch("httpx.AsyncClient", side_effect=factory),
     ):
         gen = multi_agent_conversation(agents, "Topic", max_turns=1)
         chunks = [json.loads(c) async for c in gen]
@@ -228,11 +239,14 @@ async def test_multi_agent_preflight_non_200():
     """Line 143: pre-flight Ollama returns non-200 -> logs error, continues."""
     agents = [AgentConfig(id=1, description="d", role="R", goal="g")]
     factory = _make_client_factory(
-        _make_stream_resp([json.dumps({"message": {"content": "ok fine here"}, "done": True})]),
+        _make_stream_resp(
+            [json.dumps({"message": {"content": "ok fine here"}, "done": True})]
+        ),
         tags_status=503,
     )
-    with patch("app.services.multi_chat.Agent"), patch(
-        "httpx.AsyncClient", side_effect=factory
+    with (
+        patch("app.services.multi_chat.Agent"),
+        patch("httpx.AsyncClient", side_effect=factory),
     ):
         gen = multi_agent_conversation(agents, "Topic", max_turns=1)
         chunks = [json.loads(c) async for c in gen]
@@ -257,8 +271,9 @@ async def test_multi_agent_preflight_connection_error():
         async def __aexit__(self, *a):
             return False
 
-    with patch("app.services.multi_chat.Agent"), patch(
-        "httpx.AsyncClient", side_effect=lambda *a, **k: ClientCM()
+    with (
+        patch("app.services.multi_chat.Agent"),
+        patch("httpx.AsyncClient", side_effect=lambda *a, **k: ClientCM()),
     ):
         gen = multi_agent_conversation(agents, "Topic", max_turns=1)
         chunks = [json.loads(c) async for c in gen]
@@ -281,8 +296,9 @@ async def test_multi_agent_stream_body_exception():
     resp.aiter_lines = raising_aiter_lines
     factory = _make_client_factory(resp)
 
-    with patch("app.services.multi_chat.Agent"), patch(
-        "httpx.AsyncClient", side_effect=factory
+    with (
+        patch("app.services.multi_chat.Agent"),
+        patch("httpx.AsyncClient", side_effect=factory),
     ):
         gen = multi_agent_conversation(agents, "Topic", max_turns=1)
         chunks = [json.loads(c) async for c in gen]
@@ -314,8 +330,9 @@ async def test_multi_agent_worker_cancel():
     resp.aiter_lines = slow_aiter_lines
     factory = _make_client_factory(resp)
 
-    with patch("app.services.multi_chat.Agent"), patch(
-        "httpx.AsyncClient", side_effect=factory
+    with (
+        patch("app.services.multi_chat.Agent"),
+        patch("httpx.AsyncClient", side_effect=factory),
     ):
         gen = multi_agent_conversation(agents, "Topic", max_turns=5)
 

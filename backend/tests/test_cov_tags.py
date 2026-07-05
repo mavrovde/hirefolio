@@ -66,7 +66,10 @@ async def test_list_tags_search_filter_case_insensitive(db_session: AsyncSession
     )
 
     names = [t.name for t in result.items]
-    assert names == ["docker-compose", "Docker"] or names == ["Docker", "docker-compose"]
+    assert names == ["docker-compose", "Docker"] or names == [
+        "Docker",
+        "docker-compose",
+    ]
     assert result.total == 2
     assert "Python" not in names
 

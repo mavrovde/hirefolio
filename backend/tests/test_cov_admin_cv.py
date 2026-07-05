@@ -74,7 +74,9 @@ class FailingScalarDB(FakeDB):
 
 
 class FakeUploadFile:
-    def __init__(self, content_type="application/pdf", filename="cv.pdf", content=b"%PDF-1.4"):
+    def __init__(
+        self, content_type="application/pdf", filename="cv.pdf", content=b"%PDF-1.4"
+    ):
         self.content_type = content_type
         self.filename = filename
         self._content = content
@@ -241,7 +243,9 @@ async def test_get_cv_requests_error_returns_500():
 
 
 def _make_doc(filename="cv.pdf", version="1.0", is_active=False):
-    doc = CvDocument(filename=filename, version=version, data=b"data", is_active=is_active)
+    doc = CvDocument(
+        filename=filename, version=version, data=b"data", is_active=is_active
+    )
     doc.id = 42
     from datetime import datetime, timezone
 

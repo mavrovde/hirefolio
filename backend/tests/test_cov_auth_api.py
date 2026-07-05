@@ -147,9 +147,7 @@ async def test_change_password_wrong_old_direct(db_session):
 
     payload = ChangePasswordRequest(old_password="not-real", new_password="whatever")
     with pytest.raises(HTTPException) as exc:
-        await change_password(
-            password_data=payload, current_user=user, db=db_session
-        )
+        await change_password(password_data=payload, current_user=user, db=db_session)
     assert exc.value.status_code == 400
     assert exc.value.detail == "Incorrect old password"
 
@@ -190,9 +188,7 @@ async def test_update_gemini_key_direct(db_session):
     await db_session.commit()
 
     payload = UpdateGeminiKeyRequest(api_key="new-gemini-key")
-    result = await update_gemini_key(
-        key_data=payload, current_user=user, db=db_session
-    )
+    result = await update_gemini_key(key_data=payload, current_user=user, db=db_session)
 
     assert isinstance(result, UserResponse)
     assert result.gemini_api_key == "new-gemini-key"

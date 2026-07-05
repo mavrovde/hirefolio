@@ -248,9 +248,7 @@ async def test_similar_posts_found(db_session):
     """get_similar_posts found + query execute + response (438-463)."""
     await _make_post(db_session, slug="source", title="Source", language="en")
     await _make_post(db_session, slug="neighbor", title="Neighbor", language="en")
-    results = await posts_api.get_similar_posts(
-        slug="source", limit=5, db=db_session
-    )
+    results = await posts_api.get_similar_posts(slug="source", limit=5, db=db_session)
     assert len(results) == 1
     assert results[0].slug == "neighbor"
     # similarity = 1 - mock_distance(0.5)
@@ -261,9 +259,7 @@ async def test_similar_posts_found(db_session):
 async def test_similar_posts_no_embedding(db_session):
     """Post without embedding returns empty list (443-444)."""
     await _make_post(db_session, slug="no-embed", embedding=None)
-    results = await posts_api.get_similar_posts(
-        slug="no-embed", limit=5, db=db_session
-    )
+    results = await posts_api.get_similar_posts(slug="no-embed", limit=5, db=db_session)
     assert results == []
 
 
@@ -360,9 +356,7 @@ async def test_delete_post_by_id_not_found(db_session):
 @pytest.mark.asyncio
 async def test_upload_post_image(db_session):
     """upload_post_image found path + blob storage + response (678-695)."""
-    post = await _make_post(
-        db_session, slug="img-upload", image_url="http://old/x.png"
-    )
+    post = await _make_post(db_session, slug="img-upload", image_url="http://old/x.png")
     raw = b"\x89PNG\r\n\x1a\n binarydata"
     upload = UploadFile(
         filename="pic.png",
@@ -435,9 +429,7 @@ async def test_generate_post_slug_collision_retry(db_session, mocker):
 
     mocker.patch("app.services.ai.generate_full_post", side_effect=fake_generate)
 
-    request = posts_api.PostGenerationRequest(
-        topic="T", keywords=["k"], language="en"
-    )
+    request = posts_api.PostGenerationRequest(topic="T", keywords=["k"], language="en")
     resp = await posts_api.generate_post_endpoint(
         request=request, db=db_session, current_user=_admin_user()
     )
