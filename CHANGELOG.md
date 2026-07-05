@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+## [1.2.29] - 2026-07-05
+
+### Fixed
+- Security: bumped pillow, pydantic-settings, python-dotenv, python-multipart, pytest; remediated npm advisories (43 -> 3) via audit fix + Angular 21.x patch bumps.
+- CI: fixed ruff lint/format on new coverage tests; excluded SSR server entry from coverage (100% maintained).
+- Dismissed by-design SQL-console CodeQL alert and compat-pinned setuptools/langchain-openai advisories.
+
 ## [1.2.28] - 2026-07-05
 
 ### Added
