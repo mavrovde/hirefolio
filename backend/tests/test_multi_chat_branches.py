@@ -2,7 +2,7 @@
 import json
 import asyncio
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, MagicMock
 
 from app.services.multi_chat import (
     multi_agent_conversation,
