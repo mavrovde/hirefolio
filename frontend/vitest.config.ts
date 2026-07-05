@@ -14,7 +14,8 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.spec.ts', 'src/test-setup.ts', 'src/main.ts'],
+      // Exclude framework-generated bootstrap entry points (client + SSR server)
+      exclude: ['src/**/*.spec.ts', 'src/test-setup.ts', 'src/main.ts', 'src/server.ts'],
     },
   },
   resolve: {
