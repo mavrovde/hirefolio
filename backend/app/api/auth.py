@@ -1,6 +1,9 @@
 from datetime import timedelta
+from collections import defaultdict
+import time as _time
+import threading
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
@@ -14,9 +17,44 @@ from app.services.auth import (
     get_current_user,
 )
 from app.config import settings
+from app.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# ── In-memory sliding-window rate limiter for /login ────────────────────────
+# Tracks (ip → list of attempt timestamps). Thread-safe via a simple lock.
+_login_attempts: dict[str, list[float]] = defaultdict(list)
+_rate_lock = threading.Lock()
+_MAX_ATTEMPTS = 10        # max login attempts
+_WINDOW_SECONDS = 60      # within this sliding window (seconds)
+
+
+def _check_rate_limit(ip: str) -> None:
+    """Raise 429 if the IP has exceeded the login rate limit."""
+    now = _time.monotonic()
+    with _rate_lock:
+        attempts = _login_attempts[ip]
+        # Drop attempts outside the window
+        _login_attempts[ip] = [t for t in attempts if now - t < _WINDOW_SECONDS]
+        if len(_login_attempts[ip]) >= _MAX_ATTEMPTS:
+            logger.warning(f"Login rate limit exceeded for IP={ip}")
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many login attempts. Try again in {_WINDOW_SECONDS} seconds.",
+                headers={"Retry-After": str(_WINDOW_SECONDS)},
+            )
+        _login_attempts[ip].append(now)
+
+
+def _clear_rate_limit(ip: str) -> None:
+    """Clear rate-limit counter on successful login."""
+    with _rate_lock:
+        _login_attempts.pop(ip, None)
+
+
+# ── Schema ───────────────────────────────────────────────────────────────────
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -33,14 +71,22 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ── Endpoints ────────────────────────────────────────────────────────────────
+
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Login endpoint that accepts username and password.
     Returns JWT access token on success.
+    Rate-limited to 10 attempts per 60 seconds per IP.
     """
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip)
+
     # Find user by username
     result = await db.execute(select(User).where(User.username == form_data.username))
     user = result.scalar_one_or_none()
@@ -58,6 +104,10 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
         )
+
+    # Successful login — clear rate limit counter
+    _clear_rate_limit(client_ip)
+    logger.info(f"Successful login for username={user.username} from IP={client_ip}")
 
     # Create access token
     access_token_expires = timedelta(minutes=settings.jwt_expiration_minutes)

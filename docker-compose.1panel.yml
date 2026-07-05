@@ -42,7 +42,7 @@ services:
       - app-network
 
   backend:
-    image: maverickde/mavrov.de-backend:v1.1.13
+    image: maverickde/mavrov.de-backend:v1.1.14
     restart: always
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mavrov}
@@ -52,6 +52,8 @@ services:
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     depends_on:
       db:
         condition: service_healthy
@@ -61,7 +63,7 @@ services:
       - app-network
 
   frontend:
-    image: maverickde/mavrov.de-frontend:v1.1.13
+    image: maverickde/mavrov.de-frontend:v1.1.14
     restart: always
     expose:
       - "80"
@@ -88,7 +90,7 @@ services:
       - app-network
 
   proxy:
-    image: maverickde/mavrov.de-proxy:v1.1.13
+    image: maverickde/mavrov.de-proxy:v1.1.14
     container_name: global_proxy
     restart: always
     ports:

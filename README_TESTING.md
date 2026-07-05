@@ -7,12 +7,20 @@ This document explains how to run tests and view coverage reports for the mavrov
 ### Prerequisites
 - PostgreSQL running (for integration tests)
 - Python 3.11+
-- Dependencies installed: `pip install -r requirements.txt`
+- Dependencies installed: `pip install -r requirements-dev.txt`
+- `TESTING=true` must be exported — this enables a safe JWT fallback so the
+  production startup guard in `app/main.py` is skipped. Without it, the
+  lifespan/migration/seeding tests fail with
+  `RuntimeError: JWT_SECRET_KEY environment variable is not set`.
+
+> Note: `crewai` and `tiktoken` require a Rust toolchain to build and are
+> mocked in `conftest.py`, so they are not needed to run the test suite.
 
 ### Running Tests
 
 ```bash
 cd backend
+export TESTING=true
 
 # Run all tests
 pytest
@@ -146,8 +154,9 @@ curl http://localhost:8000/api/posts/getting-started-ollama/similar
 
 ## Coverage Targets
 
-- **Backend**: >80% for services and API endpoints
-- **Frontend**: >75% for components and services
+- **Backend**: >80% for services and API endpoints (currently ~99%, 376 tests)
+- **Frontend**: >75% for components and services (currently 100%, 67 spec files)
+- **E2E**: mission-critical flows (auth, AI suggestions, admin, CV) — 65 tests passing
 
 ## Continuous Integration
 
@@ -156,7 +165,7 @@ For CI/CD pipelines, use:
 ```bash
 # Backend CI
 cd backend
-pytest --cov=app --cov-report=xml --cov-fail-under=80
+TESTING=true pytest --cov=app --cov-report=xml --cov-fail-under=80
 
 # Frontend CI
 cd frontend

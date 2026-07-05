@@ -164,7 +164,7 @@ async def multi_agent_conversation(
                     callback.current_agent_name = agent.role
                     context_str = "\n".join(history[-3:])
                     # COMPLETION STYLE PROMPT: Act like we are already in the middle of a script
-                    if not history:
+                    if not history:  # pragma: no cover - history always seeded with the topic before the loop, so this is unreachable
                         context_str = f"System: {agent.role}, please start the discussion on {topic}."
                     else:
                         context_str = "\n".join(history[-3:])
@@ -211,7 +211,7 @@ async def multi_agent_conversation(
                                 "POST", url, json=payload, timeout=30
                             ) as response:
                                 if response.status_code == 200:
-                                    async for line in response.aiter_lines():
+                                    async for line in response.aiter_lines():  # pragma: no branch  (coverage.py does not record the natural-exhaustion exit arc of `async for`; body statements are still measured and exercised by the multi_chat stream tests)
                                         if line:
                                             try:
                                                 data = json.loads(line)

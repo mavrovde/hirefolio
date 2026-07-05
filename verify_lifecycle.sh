@@ -3,7 +3,12 @@ set -e
 
 BASE_URL="http://localhost:8000/api"
 USERNAME="admin"
-PASSWORD="MavrovSecure2026!"
+PASSWORD="${ADMIN_PASSWORD:-}"
+
+if [ -z "$PASSWORD" ]; then
+  echo "ERROR: ADMIN_PASSWORD environment variable is not set."
+  exit 1
+fi
 
 echo "1. Authenticating..."
 TOKEN=$(curl -s -X POST "$BASE_URL/auth/login" \

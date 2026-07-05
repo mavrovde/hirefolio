@@ -44,7 +44,13 @@ describe('GoogleAnalyticsService', () => {
     expect(service).toBeTruthy();
   });
 
+  // The GA id is no longer hardcoded in the environment (it is injected at build
+  // time and defaults to ''), so tests that exercise initialization set it
+  // explicitly on the service, mirroring a configured production build.
+  const TEST_GA_ID = 'G-TESTID0001';
+
   it('should initialize Google Analytics script', () => {
+    (service as any).googleAnalyticsId = TEST_GA_ID;
     const createElementSpy = vi.spyOn(document, 'createElement');
     const appendChildSpy = vi.spyOn(document.head, 'appendChild');
 
@@ -55,19 +61,28 @@ describe('GoogleAnalyticsService', () => {
 
     // Verify script content contains correct ID
     const appendedScript = appendChildSpy.mock.calls[1][0] as HTMLScriptElement;
-    expect(appendedScript.innerHTML).toContain('G-1QSMT6N045');
+    expect(appendedScript.innerHTML).toContain(TEST_GA_ID);
     expect(appendedScript.innerHTML).toContain("gtag('js', new Date());");
   });
 
   it('should track page views on navigation end', () => {
+    (service as any).googleAnalyticsId = TEST_GA_ID;
     service.initialize(); // Initialize to set up subscription
 
     const navigationEnd = new NavigationEnd(1, '/test-url', '/test-url');
     routerEventsSubject.next(navigationEnd);
 
-    expect((window as any).gtag).toHaveBeenCalledWith('config', 'G-1QSMT6N045', {
+    expect((window as any).gtag).toHaveBeenCalledWith('config', TEST_GA_ID, {
       page_path: '/test-url',
     });
+  });
+
+  it('should not initialize when googleAnalyticsId is empty', () => {
+    // Default environment id is '' — initialize must be a no-op.
+    (service as any).googleAnalyticsId = '';
+    const createElementSpy = vi.spyOn(document, 'createElement');
+    service.initialize();
+    expect(createElementSpy).not.toHaveBeenCalled();
   });
 
   it('should not throw if gtag is undefined during navigation', () => {
@@ -106,6 +121,7 @@ describe('GoogleAnalyticsService', () => {
   it('should return early if scripts already exist', () => {
     // Reset state for this test
     (service as any).isInitialized = false;
+    (service as any).googleAnalyticsId = TEST_GA_ID;
 
     // Mock getElementById to simulate scripts already existing in DOM
     const getSpy = vi.spyOn(document, 'getElementById').mockReturnValue({} as HTMLElement);
@@ -120,6 +136,7 @@ describe('GoogleAnalyticsService', () => {
   it('should return early from loadScript/initGtag if elements exist by ID', () => {
     // Reset state
     (service as any).isInitialized = false;
+    (service as any).googleAnalyticsId = TEST_GA_ID;
 
     // Mock getElementById to return something for both script IDs
     const getSpy = vi.spyOn(document, 'getElementById').mockImplementation((id: string) => {

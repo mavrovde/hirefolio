@@ -1,4 +1,10 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# When running under pytest, allow a fallback JWT secret so tests work without
+# requiring the env var. In production the startup guard in main.py enforces it.
+_TESTING = os.getenv("TESTING", "false").lower() == "true"
+_JWT_FALLBACK = "test-secret-key-for-pytest" if _TESTING else ""
 
 
 class Settings(BaseSettings):
@@ -10,7 +16,7 @@ class Settings(BaseSettings):
     fast_generation_model: str = "tinyllama"
 
     # Authentication
-    jwt_secret_key: str = "your-secret-key-change-in-production"
+    jwt_secret_key: str = _JWT_FALLBACK  # Set via JWT_SECRET_KEY env var (required in production)
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 1440  # 24 hours
 

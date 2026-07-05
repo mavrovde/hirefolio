@@ -8,7 +8,7 @@ from app.logger import get_logger
 try:
     from google import genai
     HAS_GEMINI = True
-except ImportError:
+except ImportError:  # pragma: no cover - google-genai is installed in all supported/test envs
     HAS_GEMINI = False
 
 logger = get_logger(__name__)

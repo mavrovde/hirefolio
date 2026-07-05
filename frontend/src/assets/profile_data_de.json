@@ -1,8 +1,8 @@
 {
   "name": "Sergii Mavrov",
-  "headline": "Principal Software Engineer | Architect | Java Developer | Clean Code | AI Enthusiast & Innovation Believer",
-  "location": "Germany",
-  "about": "I am an experienced Software Engineer with a strong architectural background, working with modern JVM technologies (Java 11–21, Kotlin), Spring Boot, and cloud‑native microservices. I design and implement scalable distributed systems, contribute to architecture evolution, and drive modernization initiatives across industries including gaming, construction, logistics, tourism, and public‑sector integrations.\n\nTechnically, I work with Java, Spring, Docker, Kubernetes, AWS, Kafka, and event‑driven architectures. I focus on clean architecture, system reliability, performance optimization, and maintainable codebases. I enjoy mentoring engineers and contributing to engineering best practices within agile teams.\n\nAs an AI enthusiast, I explore how AI‑assisted development, intelligent automation, and modern architectural patterns can enhance system scalability, developer productivity, and long‑term platform evolution. I am particularly interested in roles with architectural responsibilities and opportunities to influence technical direction.",
+  "headline": "Principal Software Engineer @ adesso SE | Driving Software Development Excellence",
+  "location": "Aachen, North Rhine-Westphalia, Germany",
+  "about": "With over a decade of experience in software engineering, I serve as a Principal Software Engineer at adesso SE, leveraging my expertise in DevOps, Retrieval-Augmented Generation (RAG), and Agentic AI Development. My focus lies in crafting resilient, scalable software solutions that address modern business challenges while integrating intelligent automation to enhance operational efficiency.  At adesso SE, I contribute to technical innovation, enabling teams to adopt advanced development practices and technologies. My career spans diverse industries, including logistics, gaming, and construction, where I have consistently collaborated with teams to deliver impactful solutions. Passionate about designing future-proof systems, I focus on empowering organizations with advanced architectures and development methodologies.",
   "contact": {
     "email": "serg.mavrov@gmail.com",
     "linkedin": "https://www.linkedin.com/in/smavrov"
@@ -16,7 +16,13 @@
       "endDate": "Present",
       "duration": "11 mos",
       "workType": "Hybrid",
-      "skills": ["Kubernetes", "Microservices", "Java", "Docker", "Agile Methodologies"],
+      "skills": [
+        "Kubernetes",
+        "Microservices",
+        "Java",
+        "Docker",
+        "Agile Methodologies"
+      ],
       "companyLinkedInUrl": "https://www.linkedin.com/company/41629/"
     },
     {
@@ -29,7 +35,12 @@
       "location": "Hamburg, Germany",
       "workType": "Remote",
       "description": "Freight Information System (FIS3) under Adesso as the contractor.\n\nProject: The Freight Information System (FIS) is Hapag-Lloyd’s central IT platform. It supports all key business processes in container shipping. FIS manages bookings, transport planning, documentation, and billing. The system ensures end-to-end transparency and operational efficiency. It replaces fragmented legacy systems with a unified digital solution. FIS is cloud-ready and designed for scalability and resilience. It integrates internal systems and external partners. DevOps and Continuous Delivery accelerate further development. AI and automation improve decision-making and customer service. FIS is the digital backbone of Hapag-Lloyd’s global logistics.\n\nResponsibilities: \n\nDrive and support the transition toward a microservice‑based architecture, including decomposition of legacy components, definition of service boundaries, and alignment with cloud‑native principles.\n\nLead the implementation of core system capabilities, ensuring scalability, resilience, and adherence to architectural standards.\n\nContribute to the design and evolution of the overall system architecture, participating in solution design, technology selection, and definition of best practices.\n\nAnalyze, troubleshoot, and resolve complex software defects, ensuring system stability and continuous improvement of code quality.\n\nPerform DevOps‑related activities, including CI/CD pipeline optimization, infrastructure automation, and operational reliability improvements.\n\nConduct code reviews and promote Clean Code principles\n\nPostgres,CDI,Liberty Server,SQL,AWS CLI,Podman,JPA,Java 11-17,Maven,Kubernetes,Jenkins,Mockito,Serverless,JSON,Grafana,AWS,Docker Compose,Microservices,Kibana,Python,BDD,Wiremock,Docker",
-      "skills": ["DevOps", "Microservices", "Java", "Amazon Web Services (AWS)"],
+      "skills": [
+        "DevOps",
+        "Microservices",
+        "Java",
+        "Amazon Web Services (AWS)"
+      ],
       "companyLinkedInUrl": "https://www.linkedin.com/company/133790/"
     },
     {
@@ -88,7 +99,7 @@
       "endDate": "Dec 2020",
       "duration": "6 yrs 9 mos",
       "location": "Aachen, North Rhine-Westphalia, Germany",
-      "description": "Project: Central Configuration Database\n\nThe group of projects and databases which are the infrastructure of the company: all dictionary (geo, price, etc.) information, an import-export data, etc. \n\nResponsibilities: \n- Work on requirements, understand and resolve dependencies\n- Worked as part and the key player of the Agile team reviewing detailed design and key technical areas\n- Implementing the key functionality\n- Investigation and applying any tools/libraries\n- Configuring and support all DEV and STAGING environment via DevOps \n- Performance and Stress testing\n- Code review and mentoring\n\nTechnologies: J2EE, REST, SOAP, CDI, Weld, Tomcat, JPA, Hibernate, MySQL, MariaDB, SQL, MongoDB, Maven, SpringBoot, Microservices, Java 11, Docker, Kubernetes, PHP, Angular, JavaScript, Nginx\n\nProject: Dynamix Config Packaging Tool v2.0 in Traveltainment\n\nThe application is an important part of the Amadeus Company ecosystem. The system will be used to configure the search result from the global travel distribution system (flight tickets, hotel booking) depending on the business goals of b2b partners. The web application provides for travel operators agile ability to configure their systems and to provide the product maximally close to the client's wishes. The application works under very high loading and must provide very fast reaction for big size data.\n\nResponsibilities: \n- Work on requirements, understand and resolve dependencies from the first idea \n- Worked as part and the key player of the Agile team reviewing detailed design and key technical areas\n- Implementing the key functionality\n- Investigation and applying any tools/libraries\n- Configuring and support all DEV and STAGING environment via DevOps \n- Performance and Stress testing\n- Code review and mentoring\n- Communication and support QA and FE teams\n\nTechnologies: J2EE, Multi-Threading, REST, SOAP, CDI, Weld, Tomcat, Wildfly 8.2-10, JMS, JPA, Hibernate, MySQL, MariaDB, Galera, SQL, Maven",
+      "description": "Project: Central Configuration Database\n\nThe group of projects and databases which are the infrastructure of the company: all dictionary (geo, price, etc.) information, an import-export data, etc.  \n\nResponsibilities:\t\n- Work on requirements, understand and resolve dependencies\n- Worked as part and the key player of the Agile team reviewing detailed design and key technical areas\n- Implementing the key functionality\n- Investigation and applying any tools/libraries\n- Configuring and support all DEV and STAGING environment via DevOps \n- Performance and Stress testing\n- Code review and mentoring\n\nTechnologies:\tJ2EE, REST, SOAP, CDI, Weld, Tomcat, JPA, Hibernate, MySQL, MariaDB, SQL, MongoDB, Maven, SpringBoot, Microservices, Java 11, Docker, Kubernetes, PHP, Angular, JavaScript, Nginx\n\nProject: Dynamix Config Packaging Tool v2.0 in Traveltainment\n\nThe application is an important part of the  Amadeus Company ecosystem. The system will be used to configure the search result from the global travel distribution system (flight tickets, hotel booking) depending on the business goals of b2b partners. The web application provides for travel operators agile ability to configure their systems and to provide the product maximally close to the client's wishes. The application works under very high loading and must provide very fast reaction for big size data.\n\nResponsibilities:\t\n- Work on requirements, understand and resolve dependencies from the first idea \n- Worked as part and the key player of the Agile team reviewing detailed design and key technical areas\n- Implementing the key functionality\n- Investigation and applying any tools/libraries\n- Configuring and support all DEV and STAGING environment via DevOps \n- Performance and Stress testing\n- Code review and mentoring\n- Communication and support QA and FE teams\n\nTechnologies:\tJ2EE, Multi-Threading, REST, SOAP, CDI, Weld, Tomcat, Wildfly 8.2-10, JMS, JPA, Hibernate, MySQL, MariaDB, Galera, SQL, Maven",
       "skills": [
         "Leadership",
         "Maven",
@@ -109,8 +120,10 @@
       "endDate": "Mar 2014",
       "duration": "1 yr 1 mo",
       "location": "Kyiv, Ukraine",
-      "description": "Project: Vast\n\nVast is the premier provider of big data solutions for life’s biggest purchases. Vast’s industry-leading big data platform and applications are currently in use at many of the largest automotive, real estate and travel businesses in the world. Vast clients include AOL, Southwest Airlines and USAA.\n\nThe main project is Agent Portal. The web application is being used for organisation links between possible clients, brokers and real estate agents.\n\nResponsibilities: \n- Work on requirements, understand and resolve dependencies\n- Worked as part of the team reviewing detailed design and key technical areas\n\nTechnologies: J2EE, Scala, Guice, Spray, REST web-services, Maven, Git",
-      "skills": ["Problem Solving"],
+      "description": "Project: Vast\n\nVast is the premier provider of big data solutions for life’s biggest purchases. Vast’s industry-leading big data platform and applications are currently in use at many of the largest automotive, real estate and travel businesses in the world. Vast clients include AOL, Southwest Airlines and USAA.\n\nThe main project is Agent Portal. The web application is being used for organisation links between possible clients, brokers and real estate agents.\n\nResponsibilities:\t\n- Work on requirements, understand and resolve dependencies\n- Worked as part of the team reviewing detailed design and key technical areas\n\nTechnologies:\t J2EE, Scala, Guice, Spray, REST web-services, Maven, Git",
+      "skills": [
+        "Problem Solving"
+      ],
       "companyLinkedInUrl": "https://www.linkedin.com/company/164008/"
     },
     {
@@ -120,8 +133,10 @@
       "endDate": "Mar 2013",
       "duration": "5 mos",
       "location": "Odessa, Ukraine",
-      "description": "Project: Teamonline – Bosted/Incorp\n\nThe Bosted System is an IT solution for providers helping people with developmental disabilities. Bosted is the Danish word for 'residential homes'. Providing temporary use of on-line non-downloadable software for collecting, monitoring and analyzing data indicative of the health or condition of an individual for treatment and diagnostic purposes\n\nResponsibilities: \n- Work on requirements, understand and resolve dependencies\n- Code review\n- Worked as part of the team reviewing detailed design and key technical areas\n\nTechnologies: J2EE, Tomcat, Spring MVC, JSP, JavaScript, SQL, Ant, Maven, JUnit, Eclipse, SVN, Agile",
-      "skills": ["Problem Solving"],
+      "description": "Project: Teamonline – Bosted/Incorp\n\nThe Bosted System is an IT solution for providers helping people with developmental disabilities. Bosted is the Danish word for 'residential homes'. Providing temporary use of on-line non-downloadable software for collecting, monitoring and analyzing data indicative of the health or condition of an individual for treatment and diagnostic purposes\n\nResponsibilities:\t\n- Work on requirements, understand and resolve dependencies\n- Code review\n- Worked as part of the team reviewing detailed design and key technical areas\n\nTechnologies:\t\tJ2EE, Tomcat, Spring MVC, JSP, JavaScript, SQL, Ant, Maven, JUnit, Eclipse, SVN, Agile",
+      "skills": [
+        "Problem Solving"
+      ],
       "companyLinkedInUrl": "https://www.linkedin.com/company/9183/"
     },
     {
@@ -132,8 +147,13 @@
       "endDate": "Sep 2012",
       "duration": "3 yrs 1 mo",
       "location": "Odessa, Ukraine",
-      "skills": ["Leadership", "Software Development Methodologies", "Problem Solving"],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/12127/"
+      "skills": [
+        "Leadership",
+        "Software Development Methodologies",
+        "Problem Solving"
+      ],
+      "companyLinkedInUrl": "https://www.linkedin.com/company/12127/",
+      "description": "HP Contractor, see below."
     },
     {
       "title": "Senior Java Developer, Activity Leader",
@@ -143,7 +163,7 @@
       "endDate": "Sep 2012",
       "duration": "3 yrs 1 mo",
       "location": "Odessa, Ukraine",
-      "description": "Activity leader of an R&D team working for HP (HP SiteScope CPE & Content Team, BSM Core2 Team)\n\nHP SiteScope is an agentless monitoring solution designed to ensure the availability and performance of distributed IT infrastructures — for example, servers, operating systems, network devices, network services, applications, and application components. Quickly collect server and application health across physical, virtual and cloud infrastructures - including HP Cloud Services. SiteScope provides a simple yet powerful way to monitor a broad set of different technologies. This Web-based infrastructure monitoring solution is lightweight, highly customizable, and does not require that data collection agents be installed on your production systems. SiteScope empowers users to automate monitoring for today’s dynamic cloud environments via APIs.\n\nEnvironment:\n- J2SE, Multi-Threading, Memory management/memory optimization/fragmentation, Swing, Spring (IoC), JavaScript, SQL(Oracle), JMS, JMX, Ant, Maven, JProfiler, JUnit, QC, Eclipse, SVN, Agile\n\nResponsibilities & achievements:\n\n- lead CPE process within a team\n- Team is owning the development/enhancement/support of all the SiteScope monitors (120 monitors) - feature development, new monitor development , integration with other HP products & Cloud solutions\n- Help in recruitment and training new members of the team\n- Work on requirements, understand and resolve dependencies\n- Task related to CPE assigning, manage priorities, manage risks\n- CPE result tracking, issues and scope changes\n- Code review\n- Worked as part of the team reviewing detailed design and key technical areas\n- Direct communication with SiteScope customers",
+      "description": "Activity leader of an R&D team working for HP (HP SiteScope CPE & Content Team,  BSM Core2 Team)\n\nHP SiteScope is an agentless monitoring solution designed to ensure the availability and performance of distributed IT infrastructures — for example, servers, operating systems, network devices, network services, applications, and application components. Quickly collect server and application health across physical, virtual and cloud infrastructures - including HP Cloud Services. SiteScope provides a simple yet powerful way to monitor a broad set of different technologies. This Web-based infrastructure monitoring solution is lightweight, highly customizable, and does not require that data collection agents be installed on your production systems. SiteScope empowers users to automate monitoring for today’s dynamic cloud environments via APIs.\n\nEnvironment:\n- J2SE, Multi-Threading, Memory management/memory optimization/fragmentation, Swing, Spring (IoC), JavaScript, SQL(Oracle), JMS, JMX, Ant, Maven, JProfiler, JUnit, QC, Eclipse, SVN, Agile\n\nResponsibilities & achievements:\n\n- lead CPE process within a team\n- Team is owning the development/enhancement/support of all the SiteScope monitors (120 monitors) - feature development, new monitor development , integration with other HP products & Cloud solutions\n- Help in recruitment and training new members of the team\n- Work on requirements, understand and resolve dependencies\n- Task related to CPE assigning, manage priorities, manage risks\n- CPE result tracking, issues and scope changes\n- Code review\n- Worked as part of the team reviewing detailed design and key technical areas\n- Direct communication with SiteScope customers",
       "skills": [
         "Leadership",
         "Architectural Design",
@@ -160,7 +180,7 @@
       "duration": "11 mos",
       "location": "Odessa, Ukraine",
       "workType": "Remote",
-      "description": "Qmeety is full-hosted service, which provides live chat solution for mini-sites within site groups. The application can be introduced to any customers site and provides the service of dialog for visitor-to-visitor, visitor-to-group.\n\nResponsibilities: \n\n- Work on requirements, understand and resolve dependencies\n- Task related with planning, design, manage priorities, manage risks\n- Implementation back-end of the application based on web-services\n\nTechnologies: J2EE, JBoss, Hibernate, SOAP, Rest, SQL(postgres), Ant, Maven, Eclipse, SVN, Agile",
+      "description": "Qmeety is full-hosted service, which provides live chat solution for mini-sites within site groups. The application can be introduced to any customers site and provides the service of dialog for visitor-to-visitor, visitor-to-group.\n\nResponsibilities:   \n\n- Work on requirements, understand and resolve dependencies\n- Task related with planning, design, manage priorities, manage risks\n- Implementation back-end of the application based on web-services\n\nTechnologies:        J2EE, JBoss, Hibernate, SOAP, Rest, SQL(postgres), Ant, Maven, Eclipse, SVN, Agile",
       "skills": [
         "Leadership",
         "Architectural Design",
@@ -175,8 +195,11 @@
       "endDate": "Aug 2009",
       "duration": "1 yr",
       "location": "Odessa, Ukraine",
-      "description": "Projects:\nComodo's Two Factor Authentication Solution.\nThe project is authorized service for signing of private clients to secure Internet resources. The most popular solution is protection for online management system of bank accounts. The application checks the online user authentication and registers all users activity on the site in real time mode and blocks all unsecure actions. The solution is transparent for users, it looks like a part of the main system. \n\nCertificate Manager for Secure SSL Certificate Administration.\nThe project is the service to enroll and control of states of certificates for large customers. The application is an intermediary between Comodo company and customer's management to provide the necessary ordering information. The service interacts with the Comodo auth center server for ordering and maintenance of certificates on the basis of the customer's arrangements.\n\nResponsibilities: \n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas\n- Code review\n- Help in recruitment and training new members of the team\n\nTechnologies: J2SE, J2EE, GWT, JSP, HTML, CSS, JavaScript, SQL(MySQL), Ant, JUnit, Idea, SVN, Agile.",
-      "skills": ["Software Development Methodologies", "Problem Solving"],
+      "description": "Projects:\nComodo's Two Factor Authentication Solution.\nThe project is authorized service for signing of private clients to secure Internet resources. The most popular solution is protection for online management system of bank accounts. The application checks the online user authentication and registers all users activity on the site in real time mode and blocks all unsecure actions. The solution is transparent for users, it looks like a part of the main system. \n\nCertificate Manager for Secure SSL Certificate Administration.\nThe project is the service to enroll and control of states of certificates for large customers. The application is an intermediary between Comodo company and customer's management to provide the necessary ordering information. The service interacts with the Comodo auth center server for ordering and maintenance of certificates on the basis of the customer's arrangements.\n\nResponsibilities:   \n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas\n- Code review\n- Help in recruitment and training new members of the team\n\nTechnologies: J2SE, J2EE, GWT, JSP, HTML, CSS, JavaScript, SQL(MySQL), Ant, JUnit, Idea, SVN, Agile.",
+      "skills": [
+        "Software Development Methodologies",
+        "Problem Solving"
+      ],
       "companyLinkedInUrl": "https://www.linkedin.com/company/163167/"
     },
     {
@@ -186,37 +209,39 @@
       "endDate": "Aug 2008",
       "duration": "3 yrs",
       "location": "Tiraspol, Transnistria autonomous territorial unit, Moldova",
-      "description": "Projects:\nFew large and medium projects related to customs clearance (the main application related with the area was in my full responsibility), staff service, accounting, etc. They were created as \"thick\" Delphi clients + (DB stored procedures + triggers).\n\nTechnologies: Delphi, SQL(MS SQL), Foxpro, DBF, SVN. \n\nNew system based on J2EE should be replaced all previous projects. Many parts of the system have been created and integrated with old systems. The system was designed as few WEB applications with one authentication center for officers and clients. \n\nTechnologies: J2EE, Applets, JavaScript, JSF, EJB, Hibernate, SQL(MS SQL), JBoss, GlassFish, Netbeans, SVN, Agile.\n \nResponsibilities:\n- Main designing\n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas\n- Code review\n- Help in recruitment and training new members of the team",
-      "skills": ["Leadership", "Software Development Methodologies", "Problem Solving"]
-    },
-    {
-      "title": "Tirotex",
-      "company": "3 yrs 1 mo",
-      "startDate": "Tiraspol, Transnistria autonomous territorial unit, Moldova",
-      "location": "Jun 2004 - Aug 2005 · 1 yr 3 mos",
-      "description": "I coordinated several teams responsible to support the IT environment of the factory. The main tasks were:\n- The introduction of a new ERP system \"Tirotex Max\";\n- The integration of data from the old existing systems to new \"Tirotex Max\" based on SOA architecture using any possible protocols;\n- The development systems based on the two or three-tier applications (Delphi, FoxPro, Informix DB) in places where it was impossible to implement \"Tirotex Max\" way.\n\nMAX+ is an integrated business management system intended for manufacturing, commercial and service companies. The main purpose of this system is to provide the whole range of IT services required for production, sales, procurement and finance management in compliance with strategy, policy and relationship between different business units of the enterprise.\n\nWhile integrating enhanced capabilities in a basic product, MAX+ combines wide functionality with low cost of ownership and enables to easily upgrade the system that makes MAX+ an ideal ERP solution for both small and larger companies. \n\nMAX+ System is designed for fast implementation, and supports different types of production including ‘make to contract’, ‘make to order’, ‘make to store’ and ‘assemble to order’. The modular structure of the system, advanced and high-performance development tools, and the interfaces compliant with industry standards make it possible to flexibly adapt the system to fit the business processes of a company as well as to expand and upgrade the system as the company business grows.\n\nResponsibilities:\n- Coordination teams of developers for fast integration the new system\n- Work on requirements, understand and resolve dependencies\n- Searching ways to combinated old information system with new one\n- Searching ways to optimize the people managment\n- Help in recruitment and training new members of the team\n- Worked as part of the team reviewing detailed design and key technical areas",
-      "skills": ["Leadership", "Software Development Methodologies"],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/6869043/"
+      "description": "Projects:\nFew large and medium projects related to customs clearance (the main application related with the area was in my full responsibility), staff service, accounting, etc. They were created as \"thick\" Delphi clients + (DB stored procedures + triggers).\n\nTechnologies: Delphi, SQL(MS SQL), Foxpro, DBF, SVN. \n\nNew system based on J2EE should be replaced all previous projects. Many parts of the system have been created and integrated with old systems. The system was designed as few WEB applications with one authentication center for officers and clients.  \n\nTechnologies: J2EE, Applets, JavaScript, JSF, EJB, Hibernate, SQL(MS SQL), JBoss, GlassFish, Netbeans, SVN, Agile.\n \nResponsibilities:\n- Main designing\n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas\n- Code review\n- Help in recruitment and training new members of the team",
+      "skills": [
+        "Leadership",
+        "Software Development Methodologies",
+        "Problem Solving"
+      ]
     },
     {
       "title": "R&D manager",
-      "company": "Jun 2004 - Aug 2005",
-      "employmentType": "1 yr 3 mos",
+      "company": "Tirotex",
       "startDate": "Jun 2004",
       "endDate": "Aug 2005",
       "duration": "1 yr 3 mos",
       "description": "I coordinated several teams responsible to support the IT environment of the factory. The main tasks were:\n- The introduction of a new ERP system \"Tirotex Max\";\n- The integration of data from the old existing systems to new \"Tirotex Max\" based on SOA architecture using any possible protocols;\n- The development systems based on the two or three-tier applications (Delphi, FoxPro, Informix DB) in places where it was impossible to implement \"Tirotex Max\" way.\n\nMAX+ is an integrated business management system intended for manufacturing, commercial and service companies. The main purpose of this system is to provide the whole range of IT services required for production, sales, procurement and finance management in compliance with strategy, policy and relationship between different business units of the enterprise.\n\nWhile integrating enhanced capabilities in a basic product, MAX+ combines wide functionality with low cost of ownership and enables to easily upgrade the system that makes MAX+ an ideal ERP solution for both small and larger companies. \n\nMAX+ System is designed for fast implementation, and supports different types of production including ‘make to contract’, ‘make to order’, ‘make to store’ and ‘assemble to order’. The modular structure of the system, advanced and high-performance development tools, and the interfaces compliant with industry standards make it possible to flexibly adapt the system to fit the business processes of a company as well as to expand and upgrade the system as the company business grows.\n\nResponsibilities:\n- Coordination teams of developers for fast integration the new system\n- Work on requirements, understand and resolve dependencies\n- Searching ways to combinated old information system with new one\n- Searching ways to optimize the people managment\n- Help in recruitment and training new members of the team\n- Worked as part of the team reviewing detailed design and key technical areas",
-      "skills": ["Leadership", "Software Development Methodologies", "Problem Solving"]
+      "skills": [
+        "Leadership",
+        "Software Development Methodologies",
+        "Problem Solving"
+      ],
+      "location": "Tiraspol, Moldova"
     },
     {
       "title": "Software Developer, Activity leader",
-      "company": "Aug 2002 - May 2004",
-      "employmentType": "1 yr 10 mos",
+      "company": "Tirotex",
       "startDate": "Aug 2002",
       "endDate": "May 2004",
       "duration": "1 yr 10 mos",
       "description": "Tirotex is the largest textile company in the southeast of CIS. It is a unique production complex with a strong infrastructure, advanced technical, organizational and scientific basis. It is an export sales oriented company. The volume of export deliveries is about 70% of the whole sales volume. The products of Tirotex are exported to 30 countries all over the world.\n\nI have been involved as software developer in many places critical important to main processes. We were forced to change old data system based on MS DOS and Foxpro to new created oriented to more comfortable Windows design and modern data base servers. I was able to make the main process of the production and the control much more faster, simplest and cheapest in places which have been in my responsibility.\n\nThe main goal was step-by-step migration to new data system. It is an infomedia called “Tirotex MAX” combining all into one line: fiscal accounting, economic process of sale, production, materials management, support of all kinds of production.\n\nTechnologies: Foxpro, DBF, Delphi, Informix, MS SQL.\n\nResponsibilities:\n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas",
-      "skills": ["Leadership", "Software Development Methodologies"]
+      "skills": [
+        "Leadership",
+        "Software Development Methodologies"
+      ],
+      "location": "Tiraspol, Moldova"
     }
   ],
   "education": [
@@ -233,186 +258,286 @@
     }
   ],
   "skills": [
-    "Retrieval-Augmented Generation (RAG)",
     "Agentic AI Development",
-    "DevOps",
-    "Amazon Web Services (AWS)",
-    "Code Review",
-    "Representational State Transfer (REST)",
-    "Elasticsearch",
-    "Python (Programming Language)",
-    "MongoDB",
     "Swagger API",
-    "Software Development Methodologies",
-    "Leadership",
     "Agile Methodologies",
-    "Solution Architecture",
-    "Mathematics",
-    "Problem Solving",
-    "Architectural Design",
-    "Spring",
-    "Spring Framework",
-    "SOAP",
-    "Spring Boot",
-    "Web Services",
-    "OOP",
-    "Design Patterns",
-    "Web Applications",
-    "Multithreading",
-    "Performance Tuning",
-    "Debugging",
-    "JUnit",
-    "Continuous Integration",
-    "C++",
-    "Java Enterprise Edition",
-    "Core Java",
-    "Java",
-    "Kotlin",
-    "Tomcat",
-    "Hibernate",
-    "JDBC",
-    "SQL",
-    "Maven",
-    "Gradle",
-    "JIRA",
+    "Elasticsearch",
+    "Amazon Web Services (AWS)",
+    "Retrieval-Augmented Generation (RAG)",
+    "Software Development Methodologies",
+    "Multithreaded Development",
+    "Model Context Protocol (MCP)",
+    "DevOps",
+    "LangGraph",
+    "Leadership",
+    "ACP",
+    "Code Review",
+    "MongoDB",
+    "A2A",
+    "Representational State Transfer (REST)",
+    "Python (Programming Language)",
+    "Spring Security",
+    "Software Development",
     "XML",
-    "Linux",
-    "JBoss Application Server",
-    "Servlets",
-    "JMS",
-    "EJB",
-    "MySQL",
-    "JavaScript",
-    "Docker",
     "PHP",
-    "JAXB",
-    "JAX-WS",
-    "Microservices",
-    "Java Web Services",
+    "Java Enterprise Edition",
+    "SOAP",
+    "Core Java",
+    "SQL",
+    "JDBC",
+    "Maven",
+    "Kubernetes",
+    "Gradle",
+    "Spring",
+    "Spring Boot",
+    "Design Patterns",
+    "Linux",
+    "EJB",
+    "Architectural Design",
+    "Servlets",
+    "Web Applications",
+    "C++",
+    "JBoss Application Server",
+    "Kotlin",
+    "Docker",
+    "Debugging",
+    "Problem Solving",
+    "Multithreading",
+    "JavaScript",
+    "Spring Framework",
+    "JMS",
     "Java Concurrency",
+    "Java Web Services",
+    "Mathematics",
+    "JAX-WS",
+    "Continuous Integration",
+    "OOP",
+    "Solution Architecture",
+    "JIRA",
+    "Microservices",
+    "Web Services",
+    "Java",
+    "JUnit",
+    "Tomcat",
+    "JAXB",
+    "Hibernate",
     "Refactoring",
-    "Kubernetes"
+    "Performance Tuning",
+    "MySQL"
   ],
   "certifications": [
     {
-      "name": "Advanced Data Handling and Reactive Programming Concepts",
-      "issuer": "Edureka",
+      "name": "Connect and Protect: Networks and Network Security",
+      "issuer": "Google",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/59CZZOW9TE8U"
-    },
-    {
-      "name": "Advanced Multi-Agent AI System",
-      "issuer": "Coursera",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/ZKHFP9M6FQYT"
-    },
-    {
-      "name": "Advanced RAG with Vector Databases and Retrievers",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/IX4W9UVOO8I0"
-    },
-    {
-      "name": "Agentic AI with LangChain and LangGraph",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/J6SFAIW21BDB"
-    },
-    {
-      "name": "Agentic AI with LangGraph, CrewAI, AutoGen and BeeAI",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/P5V43HE5BAT4"
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/1TEZPIPRXEW5",
+      "credentialId": "1TEZPIPRXEW5"
     },
     {
       "name": "Assets, Threats, and Vulnerabilities",
       "issuer": "Google",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/PMOVRSWX1CMS"
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/PMOVRSWX1CMS",
+      "credentialId": "PMOVRSWX1CMS"
     },
     {
-      "name": "Build Multimodal Generative AI Applications",
+      "name": "Agentic AI with LangChain and LangGraph",
       "issuer": "IBM",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/NUP1LBN5ITUZ"
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/J6SFAIW21BDB",
+      "credentialId": "J6SFAIW21BDB"
     },
     {
-      "name": "Building AI Agents and Agentic Workflows",
-      "issuer": "IBM",
+      "name": "Advanced Data Handling and Reactive Programming Concepts",
+      "issuer": "Edureka",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/P4MO673OAQN6"
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/59CZZOW9TE8U",
+      "credentialId": "59CZZOW9TE8U"
     },
     {
-      "name": "Building AI Agents and Agentic Workflows Specialization",
-      "issuer": "Coursera",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.credly.com/badges/97982d30-8b3f-48e8-b6de-570b39645f2c/linked_in_profile"
-    },
-    {
-      "name": "Connect and Protect: Networks and Network Security",
-      "issuer": "Google",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/1TEZPIPRXEW5"
+      "name": "Claude Code in Action",
+      "issuer": "Anthropic",
+      "date": "Issued Jun 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/3A9USJSCVA80",
+      "credentialId": "3A9USJSCVA80"
     },
     {
       "name": "Foundations of Cybersecurity",
       "issuer": "Google",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/44FZL4AOPHX3"
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/44FZL4AOPHX3",
+      "credentialId": "44FZL4AOPHX3"
+    },
+    {
+      "name": "Model Context Protocol: Advanced Topics",
+      "issuer": "Anthropic",
+      "date": "Issued Jun 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/verify/ZCPEWW2EIE3N",
+      "credentialId": "ZCPEWW2EIE3N"
+    },
+    {
+      "name": "Building AI Agents and Agentic Workflows",
+      "issuer": "IBM",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/P4MO673OAQN6",
+      "credentialId": "P4MO673OAQN6"
+    },
+    {
+      "name": "Agentic AI Protocols (MCP, A2A, ACP)",
+      "issuer": "Coursera",
+      "date": "Issued Jul 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/4FLOGNHT2KIS",
+      "credentialId": "4FLOGNHT2KIS"
+    },
+    {
+      "name": "Advanced Multi-Agent AI System",
+      "issuer": "Coursera",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/ZKHFP9M6FQYT",
+      "credentialId": "ZKHFP9M6FQYT"
+    },
+    {
+      "name": "LangGraph Framework",
+      "issuer": "Coursera",
+      "date": "Issued Jul 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/71KPORZAR4TS",
+      "credentialId": "71KPORZAR4TS"
+    },
+    {
+      "name": "Agentic AI with LangGraph, CrewAI, AutoGen and BeeAI",
+      "issuer": "IBM",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/P5V43HE5BAT4",
+      "credentialId": "P5V43HE5BAT4"
+    },
+    {
+      "name": "Introduction to Model Context Protocol",
+      "issuer": "Anthropic",
+      "date": "Issued Jun 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/A74J7L5R5C5B",
+      "credentialId": "A74J7L5R5C5B"
+    },
+    {
+      "name": "Advanced RAG with Vector Databases and Retrievers",
+      "issuer": "IBM",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/IX4W9UVOO8I0",
+      "credentialId": "IX4W9UVOO8I0"
+    },
+    {
+      "name": "AI Agents: Multi-Agent Design & Governance",
+      "issuer": "Coursera",
+      "date": "Issued Jul 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/OHN3C0P765C9",
+      "credentialId": "OHN3C0P765C9"
     },
     {
       "name": "Fundamentals of Building AI Agents",
       "issuer": "IBM",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/N2LTS77NRN1I"
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/N2LTS77NRN1I",
+      "credentialId": "N2LTS77NRN1I"
+    },
+    {
+      "name": "MCP - Model Content Protocol",
+      "issuer": "Coursera",
+      "date": "Issued Jun 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/KVEF4QKMY09V",
+      "credentialId": "KVEF4QKMY09V"
+    },
+    {
+      "name": "Automate Cybersecurity Tasks with Python",
+      "issuer": "Google",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/G82PMVTGACZ8",
+      "credentialId": "G82PMVTGACZ8"
+    },
+    {
+      "name": "Building AI Agents and Agentic Workflows Specialization",
+      "issuer": "IBM",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.credly.com/badges/97982d30-8b3f-48e8-b6de-570b39645f2c/linked_in_profile"
+    },
+    {
+      "name": "Build Multimodal Generative AI Applications",
+      "issuer": "IBM",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/NUP1LBN5ITUZ",
+      "credentialId": "NUP1LBN5ITUZ"
+    },
+    {
+      "name": "Mastering Angular Development  Specialization",
+      "issuer": "Edureka",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/P6THW5QG7DBW",
+      "credentialId": "P6THW5QG7DBW"
     },
     {
       "name": "IBM RAG and Agentic AI Specialization",
       "issuer": "IBM",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/GNEGN5XZ69M5"
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/GNEGN5XZ69M5",
+      "credentialId": "GNEGN5XZ69M5"
     },
     {
-      "name": "Kubernetes in AWS: Create Cluster in EKS in your own VPC",
-      "issuer": "Coursera",
+      "name": "Vector Databases: An Introduction with Chroma DB",
+      "issuer": "IBM",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/JYXV4N8RRP8P"
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/MWOFM6MWYFUL",
+      "credentialId": "MWOFM6MWYFUL"
     },
     {
-      "name": "Mastering Angular Development Specialization",
-      "issuer": "Edureka",
+      "name": "Google Cybersecurity Professional Certificate(v.2)",
+      "issuer": "Google",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/P6THW5QG7DBW"
+      "credentialUrl": "https://www.credly.com/badges/36c614d5-bd3c-4ca2-8f55-0c2dda24720c/linked_in_profile"
+    },
+    {
+      "name": "IBM RAG and Agentic AI Specialization",
+      "issuer": "IBM",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/GNEGN5XZ69M5",
+      "credentialId": "GNEGN5XZ69M5"
+    },
+    {
+      "name": "Enterprise Architecture in Practice",
+      "issuer": "LinkedIn",
+      "date": "Issued Nov 2023",
+      "credentialUrl": "https://www.linkedin.com/learning/certificates/0c5ac5b00336b9d631d383a54829090611a12a2bd4e472e3dd34df15b55a0101?trk=flagship-lil_details_certification"
     },
     {
       "name": "Play It Safe: Manage Security Risks",
       "issuer": "Google",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/8WMJNSEGMYXY"
-    },
-    {
-      "name": "RAG for Generative AI Applications",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/XNC79EVWSYFK"
-    },
-    {
-      "name": "Sound the Alarm: Detection and Response",
-      "issuer": "Google",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/XWG9SXPY6BZG"
-    },
-    {
-      "name": "Test your Angular web application using Jasmine and Karma",
-      "issuer": "Coursera",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/KPJIW9I76GAX"
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/8WMJNSEGMYXY",
+      "credentialId": "8WMJNSEGMYXY"
     },
     {
       "name": "Testing and Deploying Angular Applications",
       "issuer": "Edureka",
       "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/X9Y44ZXVDM23"
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/X9Y44ZXVDM23",
+      "credentialId": "X9Y44ZXVDM23"
+    },
+    {
+      "name": "Learning Kubernetes",
+      "issuer": "LinkedIn",
+      "date": "Issued Mar 2024",
+      "credentialUrl": "https://www.linkedin.com/learning/certificates/0b9d7c7a05adc91587fd5f2a3d1e8023e5383721beeff2425bd90c4802157cd9?trk=flagship-lil_details_certification"
+    },
+    {
+      "name": "Sound the Alarm: Detection and Response",
+      "issuer": "Google",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/XWG9SXPY6BZG",
+      "credentialId": "XWG9SXPY6BZG"
+    },
+    {
+      "name": "IBM RAG and Agentic AI Specialization",
+      "issuer": "IBM",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/GNEGN5XZ69M5",
+      "credentialId": "GNEGN5XZ69M5"
     },
     {
       "name": "Top Features Java 21",
@@ -421,34 +546,49 @@
       "credentialUrl": "https://www.linkedin.com/learning/certificates/b5cb9d38ebc6944bd7ef8ed0275418220b3b025d8491c2aa2cc69b63eaa377d6?trk=share_certificate"
     },
     {
-      "name": "Elasticsearch in Depth",
-      "issuer": "LinkedIn",
-      "date": "Issued Mar 2024",
-      "credentialUrl": "https://www.linkedin.com/learning/certificates/49353277438509dc8b2ef58524571d21ce5c961c2b3562ce4a5c755f99ba60ca"
+      "name": "Vector Database Essentials: Setup, Configuration and Operations",
+      "issuer": "Coursera",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.credly.com/badges/7d4c33df-163b-41f4-baeb-14c095cca714/linked_in_profile"
     },
     {
-      "name": "Learning Kubernetes",
-      "issuer": "LinkedIn",
-      "date": "Issued Mar 2024",
-      "credentialUrl": "https://www.linkedin.com/learning/certificates/0b9d7c7a05adc91587fd5f2a3d1e8023e5383721beeff2425bd90c4802157cd9"
+      "name": "Test your Angular web application using Jasmine and Karma",
+      "issuer": "Coursera",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/KPJIW9I76GAX",
+      "credentialId": "KPJIW9I76GAX"
     },
     {
-      "name": "Enterprise Architecture Foundations",
-      "issuer": "LinkedIn",
-      "date": "Issued Jan 2024",
-      "credentialUrl": "https://www.linkedin.com/learning/certificates/38792bd42c201ed3acdbd4b30dbe42e93d8008391155ef61bcb4d94e015dc1b0"
-    },
-    {
-      "name": "Enterprise Architecture in Practice",
-      "issuer": "LinkedIn",
-      "date": "Issued Nov 2023",
-      "credentialUrl": "https://www.linkedin.com/learning/certificates/0c5ac5b00336b9d631d383a54829090611a12a2bd4e472e3dd34df15b55a0101"
+      "name": "Kubernetes in AWS: Create Cluster in EKS in your own VPC",
+      "issuer": "Coursera",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/JYXV4N8RRP8P",
+      "credentialId": "JYXV4N8RRP8P"
     },
     {
       "name": "Communicating about Culturally Sensitive Issues",
       "issuer": "LinkedIn",
       "date": "Issued Dec 2020",
       "credentialUrl": "https://www.linkedin.com/learning/certificates/a5eca55773aa56cfac9cfb2af5e2c3b9a0d330f6754b4777a5451b71784b15b1?trk=backfilled_certificate"
+    },
+    {
+      "name": "Elasticsearch in Depth",
+      "issuer": "LinkedIn",
+      "date": "Issued Mar 2024",
+      "credentialUrl": "https://www.linkedin.com/learning/certificates/49353277438509dc8b2ef58524571d21ce5c961c2b3562ce4a5c755f99ba60ca?trk=flagship-lil_details_certification"
+    },
+    {
+      "name": "Vector Search with NoSQL Databases using MongoDB & Cassandra",
+      "issuer": "SkillUp Online",
+      "date": "Issued Jan 2026",
+      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/A5W6THT9LC0B",
+      "credentialId": "A5W6THT9LC0B"
+    },
+    {
+      "name": "Enterprise Architecture Foundations",
+      "issuer": "LinkedIn",
+      "date": "Issued Jan 2024",
+      "credentialUrl": "https://www.linkedin.com/learning/certificates/38792bd42c201ed3acdbd4b30dbe42e93d8008391155ef61bcb4d94e015dc1b0?trk=flagship-lil_details_certification"
     }
   ],
   "languages": [

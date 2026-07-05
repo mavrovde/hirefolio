@@ -10,7 +10,7 @@ from app.services.auth import (
     decode_access_token,
 )
 from datetime import timedelta
-from jose import JWTError
+import jwt as _jwt
 from app.models.user import User
 from app.services.auth import get_password_hash
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -164,7 +164,7 @@ async def test_create_access_token_with_delta():
 
 @pytest.mark.asyncio
 async def test_decode_access_token_error():
-    with patch("jose.jwt.decode", side_effect=JWTError("Invalid token")):
+    with patch("jwt.decode", side_effect=_jwt.InvalidTokenError("Invalid token")):
         result = decode_access_token("some_token")
         assert result is None
 

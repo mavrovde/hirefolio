@@ -2,5 +2,5 @@ export const environment = {
   production: false,
   apiUrl: '',
   apiPrefix: '/api/app',
-  googleAnalyticsId: 'G-1QSMT6N045',
+  googleAnalyticsId: '',  // Set via build-time env: NG_APP_GA_ID
 };

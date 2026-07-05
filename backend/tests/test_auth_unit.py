@@ -30,9 +30,8 @@ def test_access_token_expiration():
     # Create token expiring immediately
     token = create_access_token(data, expires_delta=timedelta(seconds=-1))
     decoded = decode_access_token(token)
-    # verify expiration logic depends on library, usually decode fails if expired?
-    # jose.jwt.decode raises ExpiredSignatureError if verify_exp=True (default)
-    # Our decode_access_token catches JWTError and returns None
+    # PyJWT raises ExpiredSignatureError since we require the "exp" claim.
+    # Our decode_access_token catches it and returns None.
     assert decoded is None
 
 

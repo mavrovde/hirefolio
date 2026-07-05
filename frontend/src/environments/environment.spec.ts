@@ -7,8 +7,15 @@ describe('Environment', () => {
         expect(prodEnvironment.production).toBe(true);
     });
 
-    it('should have googleAnalyticsId', () => {
-        expect(environment.googleAnalyticsId).toBe('G-1QSMT6N045');
-        expect(prodEnvironment.googleAnalyticsId).toBe('G-1QSMT6N045');
+    it('should expose a googleAnalyticsId string (injected at build time)', () => {
+        // The ID is no longer hardcoded — it is injected from build-time env
+        // (NG_APP_GA_ID / GA_MEASUREMENT_ID), so it defaults to an empty string.
+        expect(typeof environment.googleAnalyticsId).toBe('string');
+        expect(typeof prodEnvironment.googleAnalyticsId).toBe('string');
+    });
+
+    it('should share the same api configuration across environments', () => {
+        expect(environment.apiPrefix).toBe('/api/app');
+        expect(prodEnvironment.apiPrefix).toBe('/api/app');
     });
 });

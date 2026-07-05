@@ -25,6 +25,16 @@ async def lifespan(app: FastAPI):
     print(f"[{datetime.now(timezone.utc)}] LIFESPAN START: Mavrov.de API")
     app.state.start_time = datetime.now(timezone.utc)
 
+    # Security guard: refuse to start without a real JWT secret
+    # (Skip in test mode where TESTING=true provides a safe fallback)
+    from app.config import settings as _s
+    import os as _os
+    if not _s.jwt_secret_key and _os.getenv("TESTING", "false").lower() != "true":
+        raise RuntimeError(
+            "FATAL: JWT_SECRET_KEY environment variable is not set. "
+            "Set it to a strong random secret before starting the application."
+        )
+
     # Check Ollama connection
     from app.config import settings
     import httpx
@@ -170,22 +180,21 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.1.13",
+    version="1.1.14",
     lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:4200",  # Angular dev server
+        "http://localhost:4200",   # Angular dev server (local only)
+        "http://localhost:3000",   # SSR dev
         "https://mavrov.de",
         "https://www.mavrov.de",
-        "http://mavrov.de",
-        "http://www.mavrov.de",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 app.include_router(auth_router, prefix=settings.api_prefix)

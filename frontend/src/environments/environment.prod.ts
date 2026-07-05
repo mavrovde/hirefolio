@@ -2,5 +2,5 @@ export const environment = {
   production: true,
   apiUrl: '',
   apiPrefix: '/api/app',
-  googleAnalyticsId: 'G-1QSMT6N045',
+  googleAnalyticsId: '',  // Injected at build time — set GA_MEASUREMENT_ID in CI secrets
 };

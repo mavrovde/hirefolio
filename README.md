@@ -28,7 +28,7 @@ Personal portfolio website with blog functionality powered by semantic search an
     - Embeddings: `nomic-embed-text`
     - Logic/Text: `tinyllama`
 - **ORM**: SQLAlchemy 2.0 (async)
-- **Testing**: pytest (High coverage >89%)
+- **Testing**: pytest (High coverage ~99%)
 
 ### CI/CD Pipeline
 - **Platform**: GitHub Actions
@@ -298,8 +298,11 @@ isort app/
 
 ## 📊 Test Coverage
 
-- **Backend**: >80% coverage (services, API, models)
-- **Frontend**: >75% coverage (components, services, pipes)
+All three layers are verified green on every release:
+
+- **Backend**: ~99% coverage — 376 pytest tests (services, API, models)
+- **Frontend**: 100% coverage — 67 Vitest spec files (components, services, pipes, guards)
+- **E2E**: 65 Playwright tests passing (full stack with real Ollama integration)
 
 Run coverage reports:
 

@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+PYTHON_CMD="./backend/venv/bin/python"
+
 echo "========================================"
 echo "🚀 STARTING FULL VERIFICATION SUITE 🚀"
 echo "========================================"
@@ -23,7 +25,9 @@ echo "backend: 🐍 Running Static Analysis & Tests..."
 docker-compose -f docker-compose.yml up -d --force-recreate db
 # Run checks
 cd backend
-GEMINI_API_KEY="" /Users/sergii.mavrov/miniconda3/envs/workspace/bin/python3 -m pytest tests
+# TESTING=true enables the JWT fallback so the production startup guard in
+# main.py is skipped during tests (lifespan/migration/seeding tests need it).
+TESTING=true ${GEMINI_API_KEY:+GEMINI_API_KEY="$GEMINI_API_KEY"} $PYTHON_CMD -m pytest tests
 cd ..
 
 # 2. Frontend Checks
@@ -105,8 +109,8 @@ docker-compose exec -T backend python scripts/seed_e2e_user.py
 
 # Run Playwright
 echo "🛡️  Verifying Proxy Routes..."
-python3 -m pip install httpx --quiet --break-system-packages || true
-python3 verify_proxy_routes.py
+$PYTHON_CMD -m pip install httpx --quiet --break-system-packages || true
+$PYTHON_CMD verify_proxy_routes.py
 
 echo "Running Playwright..."
 cd frontend
