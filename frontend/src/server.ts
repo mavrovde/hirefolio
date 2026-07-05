@@ -10,7 +10,12 @@ import { join } from 'node:path';
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
-const angularApp = new AngularNodeAppEngine();
+// Angular SSR (>=21.2) validates the incoming Host header against an allowlist
+// as SSRF protection. Any unlisted host (e.g. the reverse proxy in Docker/CI, or
+// localhost during e2e) is rejected and the engine silently falls back to
+// client-side rendering, breaking pre-rendered SSR output. This public site is
+// served behind trusted infrastructure, so allow all hosts to restore SSR.
+const angularApp = new AngularNodeAppEngine({ allowedHosts: ['*'] });
 
 /**
  * Example Express Rest API endpoints can be defined here.
