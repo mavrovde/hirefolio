@@ -10,12 +10,51 @@ import { join } from 'node:path';
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
-// Angular SSR (>=21.2) validates the incoming Host header against an allowlist
-// as SSRF protection. Any unlisted host (e.g. the reverse proxy in Docker/CI, or
-// localhost during e2e) is rejected and the engine silently falls back to
-// client-side rendering, breaking pre-rendered SSR output. This public site is
-// served behind trusted infrastructure, so allow all hosts to restore SSR.
-const angularApp = new AngularNodeAppEngine({ allowedHosts: ['*'] });
+
+// Angular SSR (>=21.2) hardens the Node engine against SSRF in two ways, and
+// BOTH of them silently break pre-rendered SSR behind a reverse proxy unless
+// configured explicitly:
+//
+//  1. Host allowlist: the incoming `Host` / `X-Forwarded-Host` header is checked
+//     against `allowedHosts`. Our Docker/CI topology chains two nginx layers
+//     (outer proxy -> frontend nginx -> node), and the Host that actually
+//     reaches node is the internal service name `frontend`, not the public
+//     `localhost`/`mavrov.de`. An unlisted host makes the engine return a CSR
+//     shell (or a 400), so `<title>`, `<h1>` and body content go missing.
+//
+//  2. Proxy-header trust: any `x-forwarded-*` header that is NOT in
+//     `trustProxyHeaders` (default trusts only `x-forwarded-host` and
+//     `x-forwarded-proto`) is treated as untrusted and forces a deopt to CSR.
+//     Our proxy adds `x-forwarded-for`, which alone triggers that CSR fallback
+//     even when the host passes validation.
+//
+// This site is only ever served behind trusted reverse-proxy infrastructure
+// that already validates the public Host header, so we allow all hosts and
+// trust the forwarded headers to keep SSR working end-to-end. `*` is a
+// first-class allow-all value in @angular/ssr's `isHostAllowed`.
+//
+// The host allowlist can still be pinned per-deployment via `NG_ALLOWED_HOSTS`
+// (comma-separated). When it is unset — or set to `*` — we allow all hosts.
+function resolveAllowedHosts(): readonly string[] {
+  const fromEnv = (process.env['NG_ALLOWED_HOSTS'] ?? '')
+    .split(',')
+    .map((host) => host.trim())
+    .filter((host) => host.length > 0);
+
+  if (fromEnv.length === 0 || fromEnv.includes('*')) {
+    return ['*'];
+  }
+
+  return fromEnv;
+}
+
+const angularApp = new AngularNodeAppEngine({
+  allowedHosts: resolveAllowedHosts(),
+  // Trust the standard forwarded headers our proxy injects (incl.
+  // `x-forwarded-for`) so proxied requests are not deopted to client-side
+  // rendering.
+  trustProxyHeaders: true,
+});
 
 /**
  * Example Express Rest API endpoints can be defined here.

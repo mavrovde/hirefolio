@@ -74,7 +74,11 @@ services:
       - "4000"
     environment:
       - NODE_ENV=production
-      - NG_ALLOWED_HOSTS=localhost,mavrov.de,127.0.0.1
+      # Allow all hosts: node SSR sits behind two trusted nginx layers, and the
+      # Host that reaches it is the internal service name (e.g. "frontend"), not
+      # the public host. The reverse proxy already validates the public Host, so
+      # host validation here would only break pre-rendered SSR. See server.ts.
+      - NG_ALLOWED_HOSTS=*
     depends_on:
       - backend
     networks:
