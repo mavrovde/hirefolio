@@ -1,66 +1,64 @@
 # LinkedIn Scraper Workflow
 
-This directory contains a robust LinkedIn profile scraper designed to extract a user's full profile data into a structured JSON format.
+Extracts a LinkedIn profile into structured JSON (`profile_data.json`).
+
+**v4** reads LinkedIn's internal **Voyager API** (clean JSON) instead of scraping the
+page DOM — LinkedIn now serves obfuscated, hashed CSS class names that make DOM
+scraping unreliable. The API approach returns complete, un-capped lists.
 
 ## 🚀 Quick Start
 
-1.  **Install Dependencies**
-    ```bash
-    npm install
-    ```
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-2.  **Configure Credentials**
-    Create a `.env` file in this directory with your LinkedIn login:
-    ```ini
-    LINKEDIN_EMAIL=your_email@example.com
-    LINKEDIN_PASSWORD=your_password
-    ```
+2. **Configure** — create `.env` in this directory:
+   ```ini
+   LINKEDIN_EMAIL=your_email@example.com
+   LINKEDIN_PASSWORD=your_password
+   PROFILE_URL=https://www.linkedin.com/in/your-handle/
+   ```
 
-3.  **Run Scraper**
-    ```bash
-    npm run scrape
-    ```
-    *This runs in "headless" mode (invisible browser).*
+3. **First run — log in once (visible browser)**
+   ```bash
+   npm run scrape:debug
+   ```
+   A Chromium window opens. Log in (auto-fill is attempted; if LinkedIn changes
+   the form or shows MFA/CAPTCHA, just log in manually in that window). The
+   session is saved to a persistent browser profile (`.chrome-profile/`), so
+   subsequent runs are already authenticated.
 
-4.  **View Results**
-    The data is saved to `profile_data.json`.
+4. **Later runs — headless, no login needed**
+   ```bash
+   npm run scrape
+   ```
 
----
+Results are written to `profile_data.json`.
 
-## 🛠️ Debugging
+## 🔐 Authentication
 
-If you encounter issues (e.g., login challenges, CAPTCHA), you can run the scraper with the browser visible:
+- Login state lives in `.chrome-profile/` (a persistent Chromium profile) and is
+  detected via LinkedIn's `li_at` session cookie — the definitive signal.
+- `.chrome-profile/` is git-ignored (it contains your live session — never commit it).
+- If the session expires, re-run `npm run scrape:debug` and log in again.
 
-```bash
-npm run scrape:debug
-```
+## 📦 Data Structure (`profile_data.json`)
 
-This allows you to manually intervene (e.g., solve a CAPTCHA) if necessary.
+| Section          | Fields |
+| :--------------- | :----- |
+| **Identity**     | `name`, `headline`, `location`, `about` |
+| **Experience**   | `title`, `company`, `location`, `startDate`, `endDate`, `description`, `companyLinkedInUrl` |
+| **Education**    | `school`, `degree`, `fieldOfStudy`, `startDate`, `endDate`, `description` |
+| **Skills**       | full list of skill names |
+| **Certifications** | `name`, `issuer`, `issueDate`, `credentialId`, `credentialUrl` |
+| **Languages**    | `name`, `proficiency` |
 
----
+## ⚙️ How it works
 
-## 📦 Data Structure
-
-The `profile_data.json` file contains:
-
-| Section | Fields |
-| :--- | :--- |
-| **Identity** | `name`, `headline`, `location`, `about` (full text) |
-| **Experience** | `company`, `title`, `employmentType`, `location`, `workType` (Remote/Hybrid), `startDate`, `endDate`, `duration`, `skills` (array), `companyLinkedInUrl` |
-| **Education** | `school`, `degree`, `date` |
-| **Skills** | Full list of skills |
-| **Certifications** | `name`, `issuer`, `date`, `credentialUrl` |
-| **Recommendations** | **Received Only**. Includes `author`, `authorTitle`, `authorLinkedInUrl`, and `text`. *Given* recommendations and *Pending requests* are automatically filtered out. |
-
----
-
-## 🔄 Workflow for Updates
-
-To update your profile data in the future:
-1.  Ensure your LinkedIn profile is up to date on the website.
-2.  Run `npm run scrape`.
-3.  Use the generated `profile_data.json` in your portfolio or application.
-
-## ⚠️ Notes
--   **Session Handling**: The scraper saves your session cookies to `session.json` to avoid repeated logins.
--   **Safety**: The scraper adds random delays and scrolls naturally to mimic human behavior.
+1. `login()` — reuses the persistent profile; falls back to manual login.
+2. Fetches the `FullProfileWithEntities` dash entity for identity + reference data.
+3. Calls the per-section dash finders (`profilePositions`, `profileEducations`,
+   `profileSkills`, `profileCertifications`, `profileLanguages`) with `count=100`
+   to get the **complete** lists (the FullProfile dash caps each section at ~20).
+4. Merges all `included` entities, resolves company/geo references, and writes JSON.

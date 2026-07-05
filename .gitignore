@@ -34,7 +34,10 @@ build/
 # SSL
 certs/*.key
 certs/*.pem
-!certs/mavrov.de.bundle.cer
-!certs/mavrov.de.key
 proxy/certs/
+
+# Scraper — persistent browser profile holds the live LinkedIn login session
+scraper/.chrome-profile/
+scraper/session.json
+scraper/session.json.stale-*
 
