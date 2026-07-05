@@ -13,7 +13,8 @@ Thumbs.db
 *.swp
 *.swo
 *.swn
-.claude/
+.claude/*
+!.claude/agents/
 
 # Environment variables
 .env
