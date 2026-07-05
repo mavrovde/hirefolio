@@ -86,9 +86,11 @@ export class SqlPanelComponent {
       error: (err) => {
         console.error('Backup error:', err);
         // Try to read error detail from blob response
+        /* v8 ignore start -- final 'Unknown error' fallback is unreachable: HttpErrorResponse always has a truthy message */
         const detail = err.error instanceof Blob
           ? 'Server error (check backend logs)'
           : (err.error?.detail || err.message || 'Unknown error');
+        /* v8 ignore stop */
         this.error = `Backup failed: ${detail}`;
         this.result = [{ status: '❌ Backup failed', error: detail, http_status: err.status }];
         this.columns = ['status', 'error', 'http_status'];

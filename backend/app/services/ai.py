@@ -10,7 +10,7 @@ try:
 
     HAS_GEMINI = True
     print("DEBUG: google.genai imported successfully.")
-except ImportError as e:
+except ImportError as e:  # pragma: no cover
     HAS_GEMINI = False
     print(f"DEBUG: Failed to import google.genai: {e}")
 

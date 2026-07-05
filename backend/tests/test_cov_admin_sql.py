@@ -1,0 +1,143 @@
+import asyncio
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from app.api import admin_sql
+
+
+# ---------------------------------------------------------------------------
+# execute_sql: row / no-row / no-return branches (lines 34, 36-46)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_execute_sql_no_rows_returned_commits(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """A statement that does not return rows should commit and report success."""
+    # returns_rows == False forces the commit + "no rows returned" branch.
+    mock_result = MagicMock()
+    mock_result.returns_rows = False
+
+    with patch.object(db_session, "execute", AsyncMock(return_value=mock_result)):
+        with patch.object(db_session, "commit", AsyncMock()) as commit_mock:
+            response = await client.post(
+                "/api/app/admin/sql/execute",
+                json={"query": "UPDATE users SET username = username"},
+            )
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {"message": "Query executed successfully, no rows returned"}
+    ]
+    commit_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_execute_sql_returns_rows(client: AsyncClient, db_session: AsyncSession):
+    """A SELECT with rows should map keys->values into dicts."""
+    mock_result = MagicMock()
+    mock_result.returns_rows = True
+    mock_result.fetchall.return_value = [(42, "hi")]
+    mock_result.keys.return_value = ["answer", "greeting"]
+
+    with patch.object(db_session, "execute", AsyncMock(return_value=mock_result)):
+        response = await client.post(
+            "/api/app/admin/sql/execute",
+            json={"query": "SELECT 42 AS answer, 'hi' AS greeting"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == [{"answer": 42, "greeting": "hi"}]
+
+
+@pytest.mark.asyncio
+async def test_execute_sql_returns_empty_rows(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """A rows-capable result with zero rows should yield []."""
+    mock_result = MagicMock()
+    mock_result.returns_rows = True
+    mock_result.fetchall.return_value = []
+
+    with patch.object(db_session, "execute", AsyncMock(return_value=mock_result)):
+        response = await client.post(
+            "/api/app/admin/sql/execute",
+            json={"query": "SELECT 1 AS x WHERE 1 = 0"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+# ---------------------------------------------------------------------------
+# _get_db_url: both branches of the +asyncpg strip (lines 61-63)
+# ---------------------------------------------------------------------------
+
+
+def test_get_db_url_strips_asyncpg():
+    fake_settings = MagicMock()
+    fake_settings.database_url = "postgresql+asyncpg://u:p@host:5432/db"
+    with patch("app.config.settings", fake_settings):
+        assert admin_sql._get_db_url() == "postgresql://u:p@host:5432/db"
+
+
+def test_get_db_url_without_asyncpg_untouched():
+    fake_settings = MagicMock()
+    fake_settings.database_url = "postgresql://u:p@host:5432/db"
+    with patch("app.config.settings", fake_settings):
+        assert admin_sql._get_db_url() == "postgresql://u:p@host:5432/db"
+
+
+# ---------------------------------------------------------------------------
+# restore_database: timeout branch (lines 149-151)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_restore_timeout(client: AsyncClient):
+    mock_proc = AsyncMock()
+    mock_proc.returncode = 0
+    mock_proc.kill = MagicMock()
+
+    async def raise_timeout(*args, **kwargs):
+        raise asyncio.TimeoutError()
+
+    files = {"file": ("backup.sql", b"SELECT 1;", "application/sql")}
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        patch("asyncio.wait_for", side_effect=raise_timeout),
+    ):
+        response = await client.post("/api/app/admin/sql/restore", files=files)
+
+    assert response.status_code == 500
+    assert "Restore timed out" in response.json()["detail"]
+    mock_proc.kill.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# restore_database: stdout & stderr truncation branches (lines 166, 173)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_restore_truncates_long_stdout_and_stderr(client: AsyncClient):
+    long_stdout = ("A" * 2500).encode()
+    long_stderr = ("B" * 2500).encode()
+
+    mock_proc = AsyncMock()
+    mock_proc.returncode = 0
+    mock_proc.communicate = AsyncMock(return_value=(long_stdout, long_stderr))
+
+    files = {"file": ("backup.sql", b"SELECT 1;", "application/sql")}
+    with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
+        response = await client.post("/api/app/admin/sql/restore", files=files)
+
+    assert response.status_code == 200
+    output = response.json()["output"]
+    assert "chars total, truncated" in output
+    # Both stdout and stderr sections should have been truncated.
+    assert output.count("truncated") == 2

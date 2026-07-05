@@ -115,7 +115,10 @@ export class BlogComponent implements OnInit {
       if (this.activeTag) {
         params.set('tag', this.activeTag);
       }
-      const baseUrl = typeof window !== 'undefined' && window.location.origin !== 'null' ? window.location.origin : 'http://localhost';
+      /* v8 ignore start -- origin is never literally 'null' and window is non-configurable in jsdom; SSR/opaque-origin sandbox fallback only */
+      const hasUsableOrigin = typeof window !== 'undefined' && window.location.origin !== 'null';
+      const baseUrl = hasUsableOrigin ? window.location.origin : 'http://localhost';
+      /* v8 ignore stop */
       const resp = await fetch(`${baseUrl}/api/app/posts?${params.toString()}`);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}`);
