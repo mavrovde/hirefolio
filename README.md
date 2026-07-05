@@ -110,6 +110,24 @@ npm start
 - **API Docs**: <http://localhost:8000/docs>
 - **Ollama**: <http://localhost:11434>
 
+## 🤖 MCP Servers (Claude Code)
+
+A project-scoped `.mcp.json` configures Model Context Protocol servers to speed up development with Claude Code. On first use, Claude Code will ask you to approve the project's MCP servers.
+
+| Server | Purpose | Requirements |
+| --- | --- | --- |
+| `postgres` | Read-only SQL queries against the `pgvector` database (inspect posts, embeddings, CV data) | DB running on `127.0.0.1:5433`; override URL via `MCP_POSTGRES_URL` |
+| `playwright` | Drive a real browser for interactive UI debugging / E2E authoring | none (browser auto-installed) |
+| `github` | Manage PRs, issues and Dependabot alerts | export `GITHUB_PERSONAL_ACCESS_TOKEN` (never committed) |
+
+```bash
+# Optional overrides before launching Claude Code
+export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx        # for the github server
+export MCP_POSTGRES_URL=postgresql://user:pass@host:5433/mavrov  # non-default DB
+```
+
+Secrets are supplied only via environment variables — `.mcp.json` contains no credentials.
+
 ## 🧪 Testing
 
 We verify the application at multiple levels:
