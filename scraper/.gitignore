@@ -9,3 +9,10 @@ yarn-error.log
 # Data
 session.json
 profile_data.json
+
+# Browser runtime artifacts (Chrome/Playwright user-data dirs, debug dumps)
+.chrome-profile/
+.cache/
+debug_profile.html
+*.png
+*.log
