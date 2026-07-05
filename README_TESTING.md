@@ -148,9 +148,9 @@ curl http://localhost:8000/api/posts/getting-started-ollama/similar
 
 ## Coverage Targets
 
-- **Backend**: 100% for post routes and >80% for remaining services and API endpoints
-- **Frontend**: 100% for blog components and SSR routing, >75% for remaining components and services
-- **E2E**: 100% flow validation for blog display and rendering
+- **Backend**: 100% line & branch coverage across all services, API endpoints and models (605 tests)
+- **Frontend**: 100% coverage (statements, branches, functions, lines) across all components, services & pipes (687 tests)
+- **E2E**: all critical flows validated — 81 Playwright tests (auth, admin, AI suggestions, blog, CV, LLM, SSR)
 
 ## Continuous Integration
 
@@ -159,7 +159,7 @@ For CI/CD pipelines, use:
 ```bash
 # Backend CI
 cd backend
-pytest --cov=app --cov-report=xml --cov-fail-under=80
+pytest --cov=app --cov-report=xml --cov-fail-under=100
 
 # Frontend CI
 cd frontend

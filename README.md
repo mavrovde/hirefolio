@@ -30,7 +30,7 @@ Personal portfolio website with blog functionality powered by semantic search an
   - Embeddings: `nomic-embed-text`
   - Logic/Text: `tinyllama`
 - **ORM**: SQLAlchemy 2.0.46 (async)
-- **Testing**: pytest + Vitest (High coverage >89%)
+- **Testing**: pytest + Vitest (100% line & branch coverage)
 
 ### CI/CD Pipeline
 
@@ -313,9 +313,9 @@ isort app/
 
 ## 📊 Test Coverage
 
-- **Backend**: 100% coverage for all posts logic, >80% coverage (services, API, models) globally
-- **Frontend**: 100% coverage for blog components and SSR, >75% coverage (components, services, pipes) globally
-- **E2E**: Full Playwright coverage for SSR routing and blog display endpoints
+- **Backend**: 100% line & branch coverage (1862 statements / 374 branches; 605 tests)
+- **Frontend**: 100% coverage across statements, branches, functions & lines (687 tests)
+- **E2E**: 81 Playwright tests passing against the full stack (real Ollama integration)
 
 Run coverage reports:
 
