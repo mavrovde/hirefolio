@@ -1,8 +1,8 @@
 fastapi==0.129.0
 uvicorn[standard]==0.41.0
 pydantic>=2.12.5
-pydantic-settings==2.13.1
-python-dotenv==1.2.1
+pydantic-settings==2.14.2
+python-dotenv==1.2.2
 sqlalchemy[asyncio]==2.0.46
 asyncpg==0.31.0
 pgvector==0.4.2
@@ -11,8 +11,8 @@ httpx==0.28.1
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 email-validator==2.3.0
-python-multipart==0.0.22
-Pillow==12.1.1
+python-multipart==0.0.26
+Pillow==12.2.0
 setuptools==69.5.1
 crewai==0.11.0
 langchain-openai==0.0.2
