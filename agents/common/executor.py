@@ -32,7 +32,10 @@ class RoleExecutor(AgentExecutor):
         try:
             sys_prompt = effective_system_prompt(self.spec)
             if self.spec.tools:
-                result = await think_with_tools(sys_prompt, query, role_title=self.spec.title)
+                result = await think_with_tools(
+                    sys_prompt, query, role_title=self.spec.title,
+                    allowed_tools=self.spec.allowed_tools(),
+                )
             else:
                 result = await think(sys_prompt, query, role_title=self.spec.title)
             await updater.add_artifact(

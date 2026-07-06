@@ -28,7 +28,15 @@ class RoleSpec:
     port: int
     system_prompt: str
     skills: list[Skill]
-    tools: bool = True   # may use repo tools (read/write/run/tests) via the tool-calling brain
+    tools: bool = True          # may use repo tools via the tool-calling brain
+    write_access: bool = False  # may also write files / run commands (devs, integration)
+
+    def allowed_tools(self) -> set[str]:
+        from .tools import READONLY_TOOLS, WRITE_TOOLS
+        names = set(READONLY_TOOLS)
+        if self.write_access:
+            names |= WRITE_TOOLS
+        return names
 
     def host(self) -> str:
         """Base URL other agents use to reach this one.
@@ -192,7 +200,7 @@ BACKEND_DEV = _add(RoleSpec(
         Skill("implement-backend", "Implement backend", "Plan/implement a FastAPI backend change.",
               ["python", "fastapi", "backend"],
               ["Add POST /api/app/linkedin/sync."]),
-    ],
+    ],    write_access=True,
 ))
 
 FRONTEND_DEV = _add(RoleSpec(
@@ -210,7 +218,7 @@ FRONTEND_DEV = _add(RoleSpec(
         Skill("implement-frontend", "Implement frontend", "Plan/implement an Angular change.",
               ["angular", "typescript", "frontend"],
               ["Add a LinkedIn sync button to the admin dashboard."]),
-    ],
+    ],    write_access=True,
 ))
 
 QA = _add(RoleSpec(
@@ -420,7 +428,7 @@ INTEGRATION_ENGINEER = _add(RoleSpec(
         Skill("integrate", "Integrate & verify", "Run the full suite and drive it green.",
               ["integration", "testing", "ci"],
               ["Run the full suite and report what's failing."]),
-    ],
+    ],    write_access=True,
 ))
 
 # Specialist roles the PM orchestrates, in a sensible SDLC order.

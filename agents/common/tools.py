@@ -25,7 +25,20 @@ ALLOWED_CMDS = {
 }
 # Hard-blocked substrings (defense-in-depth against destructive/exfil commands).
 BLOCKED = ("rm -rf", "rm -r /", "sudo", ":(){", "mkfs", "dd if=", "> /dev/",
-           "chmod -R 777", "curl -X POST", "git push --force", "shutdown", "reboot")
+           "chmod -R 777", "curl -X POST", "shutdown", "reboot")
+
+# Mutating git subcommands are NEVER allowed via tools. Commits/tags/pushes and
+# the release happen only through the gated orchestration layer, never ad-hoc by
+# an agent mid-reasoning (an agent once impulsively committed a hallucinated file).
+MUTATING_GIT = {"commit", "push", "tag", "reset", "checkout", "switch", "merge",
+                "rebase", "clean", "add", "rm", "mv", "stash", "cherry-pick",
+                "revert", "restore", "apply", "am", "update-ref", "pull", "fetch",
+                "gc", "prune", "config"}
+
+# Tool permission tiers. Read-only roles (researcher, analysts, reviewers, PM...)
+# get READONLY_TOOLS only; write-capable roles (devs, integration) also get WRITE_TOOLS.
+READONLY_TOOLS = {"read_file", "list_dir", "grep", "fetch_url", "run_tests"}
+WRITE_TOOLS = {"write_file", "run_command"}
 
 
 def _safe_path(path: str) -> Path:
@@ -74,6 +87,10 @@ def run_command(command: str) -> str:
         return "ERROR: could not parse command"
     if first not in ALLOWED_CMDS:
         return (f"BLOCKED: '{first}' is not allowed. Allowed: {', '.join(sorted(ALLOWED_CMDS))}")
+    parts = shlex.split(command)
+    if first == "git" and len(parts) > 1 and parts[1] in MUTATING_GIT:
+        return (f"BLOCKED: 'git {parts[1]}' is not permitted via tools. Commits, tags, pushes and "
+                f"releases happen only through the gated orchestration layer, not ad-hoc.")
     try:
         proc = subprocess.run(
             command, shell=True, cwd=WORKDIR, capture_output=True, text=True,
@@ -156,7 +173,14 @@ TOOL_SCHEMAS = [
 ]
 
 
-def execute_tool(name: str, arguments: dict) -> str:
+def schemas_for(names: set[str]) -> list[dict]:
+    """The subset of tool schemas a role is allowed to use."""
+    return [s for s in TOOL_SCHEMAS if s["function"]["name"] in names]
+
+
+def execute_tool(name: str, arguments: dict, allowed: set[str] | None = None) -> str:
+    if allowed is not None and name not in allowed:
+        return f"BLOCKED: tool '{name}' is not permitted for this role."
     fn = REGISTRY.get(name)
     if fn is None:
         return f"ERROR: unknown tool '{name}'"

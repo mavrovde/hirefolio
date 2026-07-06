@@ -39,6 +39,26 @@ def test_fetch_url_rejects_non_http():
     assert tools.fetch_url("file:///etc/passwd").startswith("ERROR")
 
 
+def test_mutating_git_blocked_for_everyone():
+    for sub in ("commit", "push", "tag", "reset", "checkout", "add"):
+        assert tools.run_command(f"git {sub} x").startswith("BLOCKED"), sub
+    # read-only git still works
+    assert tools.run_command("git status").startswith("exit=")
+
+
+def test_readonly_role_cannot_write_or_run():
+    ro = ROSTER["researcher"].allowed_tools()
+    assert "write_file" not in ro and "run_command" not in ro
+    assert {"read_file", "grep", "fetch_url", "run_tests"} <= ro
+    # even if the model tries, execute_tool enforces the allowed set
+    assert tools.execute_tool("write_file", {"path": "x", "content": "y"}, ro).startswith("BLOCKED")
+
+
+def test_write_role_has_write_tools():
+    for key in ("backend-dev", "frontend-dev", "integration-engineer"):
+        assert {"write_file", "run_command"} <= ROSTER[key].allowed_tools()
+
+
 def test_playbook_injected_into_every_agent():
     for spec in ROSTER.values():
         eff = effective_system_prompt(spec)

@@ -57,23 +57,28 @@ async def think(system_prompt: str, user_text: str, *, role_title: str = "agent"
 
 
 async def think_with_tools(system_prompt: str, user_text: str, *, role_title: str = "agent",
-                           model: str | None = None, max_iters: int = 10) -> str:
-    """Like think(), but the model can call repo tools (read/write/run) in a
-    ReAct loop. Ollama-backed (function-calling); falls back to plain think()
+                           model: str | None = None, max_iters: int = 10,
+                           allowed_tools: set[str] | None = None) -> str:
+    """Like think(), but the model can call repo tools (scoped to allowed_tools)
+    in a ReAct loop. Ollama-backed (function-calling); falls back to plain think()
     for non-Ollama providers or if the tool loop errors."""
+    from .tools import READONLY_TOOLS
+
+    allowed = allowed_tools if allowed_tools is not None else set(READONLY_TOOLS)
     order = _order()
     if "ollama" in order:
         try:
-            return await _ollama_tools(system_prompt, user_text, model, max_iters)
+            return await _ollama_tools(system_prompt, user_text, model, max_iters, allowed)
         except Exception:  # noqa: BLE001 - fall back to tool-less reasoning
             pass
     return await think(system_prompt, user_text, role_title=role_title, model=model)
 
 
 async def _ollama_tools(system_prompt: str, user_text: str, model: str | None,
-                        max_iters: int) -> str:
-    from .tools import TOOL_SCHEMAS, execute_tool
+                        max_iters: int, allowed: set[str]) -> str:
+    from .tools import execute_tool, schemas_for
 
+    schemas = schemas_for(allowed)
     mdl = model or os.getenv("A2A_MODEL") or DEFAULT_OLLAMA_MODEL
     messages = [
         {"role": "system", "content": system_prompt
@@ -86,7 +91,7 @@ async def _ollama_tools(system_prompt: str, user_text: str, model: str | None,
         for _ in range(max_iters):
             r = await client.post(
                 f"{OLLAMA_URL}/api/chat",
-                json={"model": mdl, "messages": messages, "tools": TOOL_SCHEMAS,
+                json={"model": mdl, "messages": messages, "tools": schemas,
                       "stream": False, "options": {"temperature": 0.2}},
             )
             r.raise_for_status()
@@ -102,7 +107,7 @@ async def _ollama_tools(system_prompt: str, user_text: str, model: str | None,
             messages.append(msg)
             for tc in calls:
                 fn = tc.get("function", {})
-                result = execute_tool(fn.get("name", ""), fn.get("arguments", {}) or {})
+                result = execute_tool(fn.get("name", ""), fn.get("arguments", {}) or {}, allowed)
                 messages.append({"role": "tool", "content": str(result)[:8000]})
         # Out of iterations — ask for a final answer without tools.
         r = await client.post(
