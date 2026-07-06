@@ -104,14 +104,30 @@ def remove_worktree(path: str, branch: str, keep: bool = False) -> None:
 # --- deterministic gate (trusts exit codes, not the LLM) --------------------
 
 def run_gate(workdir: str) -> tuple[bool, str]:
-    be = sh("TESTING=true /Users/maverick/Projects/mavrov.de/backend/venv/bin/python -m pytest "
-            "backend/tests -q -p no:cacheprovider --cov=app --cov-report= --cov-fail-under=100",
-            cwd=workdir)
-    fe = sh("bash -lc 'cd frontend && npx vitest run'", cwd=workdir)
-    ok = be.returncode == 0 and fe.returncode == 0
-    report = (f"[backend] {'PASS' if be.returncode == 0 else 'FAIL'}\n{(be.stdout or be.stderr)[-1200:]}\n\n"
-              f"[frontend] {'PASS' if fe.returncode == 0 else 'FAIL'}\n{(fe.stdout or fe.stderr)[-900:]}")
-    return ok, report
+    """Run the real suites for the layer(s) that changed, at 100% coverage.
+    A fresh worktree lacks gitignored deps, so we reuse the main checkout's venv
+    (absolute path) and symlink its node_modules when the frontend is tested."""
+    changed = sh("git diff --name-only HEAD", cwd=workdir).stdout
+    be_changed = "backend/" in changed
+    fe_changed = "frontend/" in changed
+    if not be_changed and not fe_changed:
+        be_changed = True  # sanity default
+    ok = True
+    reports = []
+    if be_changed:
+        be = sh("TESTING=true /Users/maverick/Projects/mavrov.de/backend/venv/bin/python -m pytest "
+                "backend/tests -q -p no:cacheprovider --cov=app --cov-report= --cov-fail-under=100",
+                cwd=workdir)
+        ok &= be.returncode == 0
+        reports.append(f"[backend] {'PASS' if be.returncode == 0 else 'FAIL'}\n{(be.stdout or be.stderr)[-1400:]}")
+    if fe_changed:
+        nm = os.path.join(workdir, "frontend", "node_modules")
+        if not os.path.exists(nm):
+            sh(f"ln -s {REPO}/frontend/node_modules {nm}")
+        fe = sh("bash -lc 'cd frontend && npx vitest run'", cwd=workdir)
+        ok &= fe.returncode == 0
+        reports.append(f"[frontend] {'PASS' if fe.returncode == 0 else 'FAIL'}\n{(fe.stdout or fe.stderr)[-1000:]}")
+    return ok, "\n\n".join(reports) or "no app layers changed"
 
 
 # --- agent process management (pointed at the worktree) ---------------------
