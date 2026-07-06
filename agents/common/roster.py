@@ -28,6 +28,7 @@ class RoleSpec:
     port: int
     system_prompt: str
     skills: list[Skill]
+    tools: bool = True   # may use repo tools (read/write/run/tests) via the tool-calling brain
 
     def host(self) -> str:
         """Base URL other agents use to reach this one.
@@ -46,7 +47,66 @@ class RoleSpec:
         return os.getenv("A2A_HOST") or f"http://localhost:{self.port}"
 
 
-# --- The full roster (10 roles) -------------------------------------------
+# --- Team playbook: our actual working flow, injected into every agent -----
+# Distilled from how this project is really built and released. Prepended to
+# every agent's system prompt so the whole team follows the same discipline.
+PROJECT_PLAYBOOK = """\
+You are part of the mavrov.de delivery team. Follow this shared working flow:
+
+GROUND EVERYTHING IN REALITY
+- Never guess file contents, test results, versions or CI state. Use your tools:
+  read the actual files, grep the code, run the commands/tests, fetch real docs.
+- Cite what you actually observed (paths, command output, URLs).
+
+STACK FACTS
+- Backend: FastAPI (Python 3.13), SQLAlchemy async, Postgres+pgvector (dev DB on
+  :5433), Ollama+Gemini. Tests: `TESTING=true ... pytest` (conftest mocks
+  crewai/tiktoken/langchain); MUST stay at 100% coverage; lint ruff, types mypy.
+- Frontend: Angular 21 SSR, Vitest (100% coverage), ESLint; SSR needs
+  NG_ALLOWED_HOSTS + trustProxyHeaders behind the proxy.
+- CI: GitHub Actions "Prod Deployment" (ruff, mypy, bandit, pytest, vitest,
+  E2E docker stack, image publish). A release is only DONE when CI is green.
+
+QUALITY BAR (non-negotiable)
+- Prefer minimal, correct changes; match surrounding style.
+- Keep coverage at 100%. NEVER disable/skip tests or lower thresholds to go
+  green — fix the root cause, or use a justified pragma/ignore for truly
+  unreachable defensive code and say why.
+
+VERIFY, DON'T ASSUME
+- Run the real suites (run_tests) and read the output before claiming pass/fail.
+- Use isolated resources (e.g. a separate test DB) so you never clobber shared
+  state that another step depends on.
+
+CI RECOVERY LOOP (when the pipeline is red)
+- Read the failing job's logs, pinpoint the exact error, classify it
+  backend/frontend/infra, fix the ROOT CAUSE, re-run, and re-check until green.
+
+SECURITY
+- Triage Dependabot/CodeQL: remediate, or dismiss with an explicit reason
+  (tolerable-risk / by-design), never silently. Never expose secrets. Flag
+  ToS/ban risks (e.g. the unofficial linkedin-api).
+
+RELEASE (SemVer)
+- Bump VERSION, backend/app/main.py, frontend package.json + version.ts,
+  docker-compose.prod.yml image tags, and CHANGELOG together; commit; tag;
+  push; CI builds & publishes images. Release Manager gives the Go/No-Go.
+
+HONESTY
+- Report failures with the real output. Surface contradictions. Distinguish
+  "recommended/proposed" from "done" — only claim done for what you verified.
+
+Now perform YOUR role below with this discipline.
+---
+"""
+
+
+def effective_system_prompt(spec: "RoleSpec") -> str:
+    """The system prompt an agent actually runs with: playbook + role prompt."""
+    return PROJECT_PLAYBOOK + "\n" + spec.system_prompt
+
+
+# --- The full roster -------------------------------------------------------
 
 ROSTER: dict[str, RoleSpec] = {}
 
@@ -245,6 +305,65 @@ SECURITY_REVIEWER = _add(RoleSpec(
     ],
 ))
 
+RESEARCHER = _add(RoleSpec(
+    key="researcher",
+    name="Researcher",
+    title="Flexible research",
+    port=8025,
+    description="Investigates open questions flexibly — across the codebase and the web — and "
+                "returns cited findings.",
+    system_prompt=(
+        "You are a Researcher for mavrov.de. Given a question, investigate flexibly: read the repo "
+        "(read_file/grep/list_dir/run_command) AND fetch external references with fetch_url (library "
+        "docs, changelogs, CVE/advisory pages, framework guides) when useful. Synthesize concise, "
+        "CITED findings (file paths, URLs, command output) and call out uncertainty. Never invent "
+        "facts — everything must trace to something you actually read or fetched."
+    ),
+    skills=[
+        Skill("research", "Research a question", "Investigate across code and web; return cited findings.",
+              ["research", "investigation", "web"],
+              ["Research the safest way to upgrade CrewAI without breaking setuptools."]),
+    ],
+))
+
+SPEC_ANALYST = _add(RoleSpec(
+    key="spec-analyst",
+    name="Spec Analyst",
+    title="Requirements analysis",
+    port=8022,
+    description="Analyzes a spec, issue or request into clear, testable requirements and scope.",
+    system_prompt=(
+        "You are a Requirements/Spec Analyst for mavrov.de. Given a spec, GitHub issue or feature "
+        "request, use your tools to read the relevant code/docs, then produce: the concrete "
+        "requirements, in/out-of-scope items, affected areas of the codebase (cite real files you "
+        "read), open questions, and testable acceptance criteria. Ground every claim by reading the repo."
+    ),
+    skills=[
+        Skill("analyze-spec", "Analyze a spec", "Turn a spec/issue into requirements + scope.",
+              ["requirements", "analysis", "spec"],
+              ["Analyze: 'let admins pin a blog post to the top'."]),
+    ],
+))
+
+PLANNER = _add(RoleSpec(
+    key="planner",
+    name="Planner / Tech Lead",
+    title="Task planning",
+    port=8023,
+    description="Decomposes requirements into a sequenced, dependency-aware implementation plan.",
+    system_prompt=(
+        "You are a Tech Lead / Planner. Given requirements and the current codebase (inspect it with "
+        "your tools), produce a concrete, ordered implementation plan: the tasks, their sequence and "
+        "dependencies, which role/layer owns each (backend/frontend), the files likely to change, and "
+        "the tests to add. Keep it actionable and minimal."
+    ),
+    skills=[
+        Skill("plan-tasks", "Plan tasks", "Decompose requirements into an ordered task plan.",
+              ["planning", "tech-lead", "decomposition"],
+              ["Plan the tasks to add a 'pin post' feature."]),
+    ],
+))
+
 DOCUMENTATION_WRITER = _add(RoleSpec(
     key="documentation-writer",
     name="Documentation Writer",
@@ -285,12 +404,35 @@ RELEASE_MANAGER = _add(RoleSpec(
     ],
 ))
 
+INTEGRATION_ENGINEER = _add(RoleSpec(
+    key="integration-engineer",
+    name="Integration Engineer",
+    title="Integrate & verify",
+    port=8024,
+    description="Integrates the specialists' changes, runs the full test suite, and drives it green.",
+    system_prompt=(
+        "You are an Integration Engineer for mavrov.de. After the developers propose changes, use your "
+        "tools to apply/verify them, run the full backend and frontend test suites (run_tests), report "
+        "pass/fail with the real output, and identify exactly what must be fixed to reach green + 100% "
+        "coverage. Never claim success without running the tests."
+    ),
+    skills=[
+        Skill("integrate", "Integrate & verify", "Run the full suite and drive it green.",
+              ["integration", "testing", "ci"],
+              ["Run the full suite and report what's failing."]),
+    ],
+))
+
 # Specialist roles the PM orchestrates, in a sensible SDLC order.
 DELIVERY_PIPELINE: list[str] = [
+    "researcher",
+    "spec-analyst",
+    "planner",
     "architect",
     "story-writer",
     "backend-dev",
     "frontend-dev",
+    "integration-engineer",
     "qa-engineer",
     "code-reviewer",
     "security-reviewer",
@@ -303,17 +445,21 @@ DELIVERY_PIPELINE: list[str] = [
 # The orchestrator uses this to give every agent focused context (better A2A
 # hand-offs than blindly forwarding the last few messages).
 DEPENDENCIES: dict[str, list[str]] = {
-    "architect": [],
-    "story-writer": ["architect"],
-    "backend-dev": ["architect", "story-writer"],
-    "frontend-dev": ["architect", "story-writer"],
-    "qa-engineer": ["story-writer", "backend-dev", "frontend-dev"],
+    "researcher": [],
+    "spec-analyst": ["researcher"],
+    "planner": ["spec-analyst"],
+    "architect": ["spec-analyst", "planner"],
+    "story-writer": ["spec-analyst", "architect"],
+    "backend-dev": ["planner", "architect", "story-writer"],
+    "frontend-dev": ["planner", "architect", "story-writer"],
+    "integration-engineer": ["backend-dev", "frontend-dev"],
+    "qa-engineer": ["story-writer", "integration-engineer"],
     "code-reviewer": ["backend-dev", "frontend-dev"],
     "security-reviewer": ["backend-dev", "code-reviewer"],
     "documentation-writer": ["architect", "story-writer", "backend-dev", "frontend-dev"],
-    "devops": ["code-reviewer", "security-reviewer"],
-    "release-manager": ["qa-engineer", "code-reviewer", "security-reviewer",
-                        "documentation-writer", "devops"],
+    "devops": ["integration-engineer", "code-reviewer", "security-reviewer"],
+    "release-manager": ["qa-engineer", "integration-engineer", "code-reviewer",
+                        "security-reviewer", "documentation-writer", "devops"],
 }
 
 WORKERS = [k for k in ROSTER if k != "project-manager"]

@@ -70,9 +70,11 @@ async def test_message_send_completes_with_artifact(role_key):
 
 @pytest.mark.asyncio
 async def test_roster_is_complete():
-    # 12 roles incl. the PM orchestrator, release manager and doc writer.
-    assert len(ROSTER) == 12
-    for required in ("project-manager", "release-manager", "documentation-writer"):
+    # 16 roles incl. PM, release-manager, doc-writer, researcher, spec-analyst,
+    # planner and integration-engineer.
+    assert len(ROSTER) == 16
+    for required in ("project-manager", "release-manager", "documentation-writer",
+                     "researcher", "spec-analyst", "planner", "integration-engineer"):
         assert required in ROSTER
     ports = [s.port for s in ROSTER.values()]
     assert len(ports) == len(set(ports)), "ports must be unique"

@@ -9,8 +9,8 @@ from a2a.server.tasks import TaskUpdater
 from a2a.types import Part, TextPart, TaskState
 from a2a.utils import new_task
 
-from .brain import think
-from .roster import RoleSpec
+from .brain import think, think_with_tools
+from .roster import RoleSpec, effective_system_prompt
 
 
 class RoleExecutor(AgentExecutor):
@@ -30,7 +30,11 @@ class RoleExecutor(AgentExecutor):
         await updater.start_work()
 
         try:
-            result = await think(self.spec.system_prompt, query, role_title=self.spec.title)
+            sys_prompt = effective_system_prompt(self.spec)
+            if self.spec.tools:
+                result = await think_with_tools(sys_prompt, query, role_title=self.spec.title)
+            else:
+                result = await think(sys_prompt, query, role_title=self.spec.title)
             await updater.add_artifact(
                 [Part(root=TextPart(text=result))],
                 name=f"{self.spec.key}-result",

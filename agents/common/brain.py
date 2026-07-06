@@ -56,6 +56,104 @@ async def think(system_prompt: str, user_text: str, *, role_title: str = "agent"
     return _stub(role_title, system_prompt, user_text, error=last_err)
 
 
+async def think_with_tools(system_prompt: str, user_text: str, *, role_title: str = "agent",
+                           model: str | None = None, max_iters: int = 10) -> str:
+    """Like think(), but the model can call repo tools (read/write/run) in a
+    ReAct loop. Ollama-backed (function-calling); falls back to plain think()
+    for non-Ollama providers or if the tool loop errors."""
+    order = _order()
+    if "ollama" in order:
+        try:
+            return await _ollama_tools(system_prompt, user_text, model, max_iters)
+        except Exception:  # noqa: BLE001 - fall back to tool-less reasoning
+            pass
+    return await think(system_prompt, user_text, role_title=role_title, model=model)
+
+
+async def _ollama_tools(system_prompt: str, user_text: str, model: str | None,
+                        max_iters: int) -> str:
+    from .tools import TOOL_SCHEMAS, execute_tool
+
+    mdl = model or os.getenv("A2A_MODEL") or DEFAULT_OLLAMA_MODEL
+    messages = [
+        {"role": "system", "content": system_prompt
+         + "\n\nYou have tools to inspect and modify the repository and run tests. "
+           "Use them to ground every claim in reality; never guess file contents or "
+           "test results — read/run them. When done, give a concise final answer."},
+        {"role": "user", "content": user_text},
+    ]
+    async with httpx.AsyncClient(timeout=600) as client:
+        for _ in range(max_iters):
+            r = await client.post(
+                f"{OLLAMA_URL}/api/chat",
+                json={"model": mdl, "messages": messages, "tools": TOOL_SCHEMAS,
+                      "stream": False, "options": {"temperature": 0.2}},
+            )
+            r.raise_for_status()
+            msg = r.json()["message"]
+            calls = msg.get("tool_calls") or []
+            content = msg.get("content") or ""
+            if not calls:
+                # Some models (e.g. qwen via Ollama) emit tool calls as JSON in
+                # content instead of the structured tool_calls field — parse those.
+                calls = _parse_tool_calls_from_content(content)
+            if not calls:
+                return content.strip()
+            messages.append(msg)
+            for tc in calls:
+                fn = tc.get("function", {})
+                result = execute_tool(fn.get("name", ""), fn.get("arguments", {}) or {})
+                messages.append({"role": "tool", "content": str(result)[:8000]})
+        # Out of iterations — ask for a final answer without tools.
+        r = await client.post(
+            f"{OLLAMA_URL}/api/chat",
+            json={"model": mdl,
+                  "messages": messages + [{"role": "user", "content":
+                      "Stop using tools. Give your final answer now."}],
+                  "stream": False, "options": {"temperature": 0.2}},
+        )
+        r.raise_for_status()
+        return (r.json()["message"].get("content") or "").strip()
+
+
+def _parse_tool_calls_from_content(content: str) -> list[dict]:
+    """Extract tool calls a model emitted as JSON in its message content.
+    Only returns calls whose name is a real registered tool (so a plain JSON
+    final answer isn't mistaken for a tool call)."""
+    import json
+    import re
+
+    from .tools import REGISTRY
+
+    if not content or "{" not in content:
+        return []
+    text = content.strip()
+    for token in ("```json", "```", "<tool_call>", "</tool_call>"):
+        text = text.replace(token, "")
+    text = text.strip()
+    obj = None
+    try:
+        obj = json.loads(text)
+    except Exception:  # noqa: BLE001
+        m = re.search(r"\{.*\}", text, re.S)
+        if m:
+            try:
+                obj = json.loads(m.group(0))
+            except Exception:  # noqa: BLE001
+                return []
+    if obj is None:
+        return []
+    items = obj if isinstance(obj, list) else [obj]
+    calls = []
+    for it in items:
+        if isinstance(it, dict) and it.get("name") in REGISTRY:
+            calls.append({"function": {
+                "name": it["name"],
+                "arguments": it.get("arguments") or it.get("parameters") or {},
+            }})
+    return calls
+
+
 async def _ollama(system_prompt: str, user_text: str, model: str | None) -> str:
     mdl = model or os.getenv("A2A_MODEL") or DEFAULT_OLLAMA_MODEL
     async with httpx.AsyncClient(timeout=300) as client:
