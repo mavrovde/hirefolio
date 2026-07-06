@@ -96,7 +96,7 @@ async def orchestrate(goal: str, roles: list[str] | None = None) -> dict:
                            f"Goal: {goal}\nTeam: {', '.join(pipeline)}",
                            role_title=PROJECT_MANAGER.title)
         transcript.append(("project-manager (plan)", plan))
-        print(f"\n=== Project Manager plan ===\n{plan}\n")
+        print(f"\n=== Project Manager plan ===\n{plan}\n", flush=True)
 
         # Delegate down the pipeline, giving each agent focused dependency context.
         for role_key in pipeline:
@@ -104,24 +104,29 @@ async def orchestrate(goal: str, roles: list[str] | None = None) -> dict:
             prompt = _build_context(role_key, goal, plan, results)
             deps = [d for d in DEPENDENCIES.get(role_key, []) if d in results]
             print(f"--> delegating to {spec.name} ({role_key}) at {spec.host()}"
-                  f"{'  <- inputs: ' + ', '.join(deps) if deps else ''}")
+                  f"{'  <- inputs: ' + ', '.join(deps) if deps else ''}", flush=True)
             try:
                 out = await delegate(hx, spec, prompt)
             except Exception as exc:
                 out = f"(unreachable: {exc})"
             results[role_key] = out
             transcript.append((role_key, out))
-            print(f"<-- {spec.name}: {out.splitlines()[0][:100] if out else ''}")
+            print(f"<-- {spec.name}: {out.splitlines()[0][:100] if out else ''}", flush=True)
 
-        # PM synthesizes the final report.
+        # PM synthesizes the final report. IMPORTANT: these agents produce
+        # analysis/plans/reviews only — they never change code — so the summary
+        # must be framed as findings & recommendations, not completed work.
         summary_input = "\n\n".join(f"## {who}\n{txt}" for who, txt in transcript)
         report = await think(
             PROJECT_MANAGER.system_prompt,
-            f"Goal: {goal}\n\nTeam transcript:\n{summary_input}\n\n"
-            f"Write the final delivery summary: what was produced, status, and open risks.",
+            f"Goal: {goal}\n\nTeam transcript (analysis & recommendations only):\n{summary_input}\n\n"
+            f"Write the final report. CRITICAL: this team only produces analysis, plans and "
+            f"reviews — nothing was implemented, changed, fixed or deployed. Frame everything as "
+            f"RECOMMENDED / PROPOSED, never as done. Structure it: Summary, Key recommendations "
+            f"(prioritized), and Open risks / follow-ups.",
             role_title="Delivery summary",
         )
-    print(f"\n=== Final delivery report ===\n{report}\n")
+    print(f"\n=== Final report (recommendations only) ===\n{report}\n", flush=True)
     return {"goal": goal, "transcript": transcript, "report": report}
 
 

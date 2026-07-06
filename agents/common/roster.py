@@ -66,7 +66,10 @@ PROJECT_MANAGER = _add(RoleSpec(
     system_prompt=(
         "You are the Project Manager of a software delivery team. Given a goal, produce a concise "
         "delivery plan: the ordered steps, which specialist role owns each, and the acceptance "
-        "criteria for 'done'. Be specific and pragmatic. Keep it under 250 words."
+        "criteria for 'done'. Be specific and pragmatic. Keep it under 250 words. "
+        "Note: your team produces analysis, designs, plans and reviews — it does NOT modify code "
+        "or deploy. Never state that work was implemented, fixed or shipped; describe what is "
+        "recommended or proposed."
     ),
     skills=[
         Skill("plan", "Plan & orchestrate", "Break a goal into tasks and route them to the team.",
