@@ -41,11 +41,40 @@ Dependency (communication) graph — who feeds whom — lives in
 outputs of QA, Code Review, Security, Docs and DevOps before drafting the release
 and giving a Go/No-Go.
 
-## The brain
+## The brain (LLM backend)
 
-Every agent thinks with **Claude** when `ANTHROPIC_API_KEY` is set (model via
-`A2A_MODEL`, default `claude-opus-4-8`). With no key it uses a **deterministic
-stub**, so the whole team is runnable and fully testable offline / in CI.
+Pluggable via `A2A_LLM_PROVIDER` = `ollama` | `anthropic` | `gemini` | `stub` | `auto`
+(default `auto`: try Ollama → Anthropic if a key is set → deterministic stub).
+Model via `A2A_MODEL`. The **stub** keeps the team runnable/testable offline (CI, no key).
+
+### Recommended: Ollama (local, no API key)
+
+```bash
+export A2A_LLM_PROVIDER=ollama
+export A2A_MODEL=qwen2.5-coder:7b        # see model guidance below
+export OLLAMA_URL=http://localhost:11434 # default
+ollama pull qwen2.5-coder:7b
+```
+
+**On Apple silicon, run Ollama NATIVELY** (`brew install ollama` / the app) — it uses
+the **Metal GPU** and your **full RAM**. Ollama *inside Docker* on macOS is CPU-only
+and capped by Docker Desktop's VM memory (~8 GB by default), which is too small for
+7B+ models. If you must use Docker, raise Docker Desktop → Resources → Memory to ≥12 GB.
+
+**Model guidance (this repo's code-centric team):**
+
+| Model | Size | Fit |
+|-------|------|-----|
+| `qwen2.5-coder:7b` ⭐ | ~4.7 GB | Best on M-series/16 GB — strong code + reasoning |
+| `qwen2.5:7b` | ~4.7 GB | If you weight planning/writing over code |
+| `llama3.1:8b` | ~4.9 GB | Solid all-rounder |
+| `qwen2.5-coder:14b` | ~9 GB | Higher quality; needs ≥24 GB comfortably |
+| `llama3.2` (3B) | 2 GB | Quick/low-RAM; limited for deep review |
+
+### Anthropic / Gemini
+
+`A2A_LLM_PROVIDER=anthropic` (`ANTHROPIC_API_KEY`, `A2A_MODEL=claude-opus-4-8`) or
+`A2A_LLM_PROVIDER=gemini` (`GEMINI_API_KEY`, `A2A_MODEL=gemini-2.0-flash`).
 
 ## Run it
 
