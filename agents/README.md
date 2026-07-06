@@ -75,7 +75,7 @@ and capped by Docker Desktop's VM memory (~8 GB by default), which is too small 
 
 ```bash
 export A2A_LLM_PROVIDER=gemini
-export A2A_MODEL=gemini-2.5-flash          # or gemini-2.5-pro
+export A2A_MODEL=gemini-2.5-pro            # strongest; or gemini-2.5-flash (cheaper, weaker)
 export GEMINI_API_KEY="$(security find-generic-password -s gemini-api-key -w)"  # from Keychain
 ```
 

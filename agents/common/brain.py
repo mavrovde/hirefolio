@@ -18,7 +18,7 @@ import httpx
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434").rstrip("/")
 DEFAULT_OLLAMA_MODEL = "qwen2.5-coder:7b"
 DEFAULT_ANTHROPIC_MODEL = "claude-opus-4-8"
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-2.5-pro"  # stronger reasoning/coding for autonomous work
 
 
 def _order() -> list[str]:
