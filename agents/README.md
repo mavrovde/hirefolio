@@ -131,7 +131,7 @@ A2A_AUTORELEASE=1 python -m agents.autonomous "<goal>"                       # -
 
 Guarantees / safety model:
 - **Isolated worktree/branch** — agents write only there, never directly on `main`.
-- **Deterministic test gate** — real backend+frontend suites at **100% coverage**;
+- **Deterministic test gate** — real backend+frontend suites at a configurable coverage floor (**default 95%**, `A2A_COV_MIN`; CI/merge enforces the project 100%);
   trusts exit codes, not the LLM. Red gate ⇒ bounded fix loop ⇒ if still red, abort.
 - **Review gates auto-release** — auto-merge happens only if the gate is green
   AND `code-reviewer` + `security-reviewer` APPROVE AND `release-manager` says GO;

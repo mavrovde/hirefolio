@@ -35,6 +35,9 @@ from agents.orchestrator import delegate
 
 REPO = "/Users/maverick/Projects/mavrov.de"
 MAX_FIX_ITERS = int(os.getenv("A2A_MAX_FIX_ITERS", "3"))
+# Autonomous gate coverage floor. Lower than the project's 100% CI standard so the
+# team can open a working PR; the human/CI enforces 100% at merge (path B).
+COV_MIN = int(os.getenv("A2A_COV_MIN", "95"))
 
 
 def sh(cmd: str, cwd: str = REPO) -> subprocess.CompletedProcess:
@@ -116,7 +119,7 @@ def run_gate(workdir: str) -> tuple[bool, str]:
     reports = []
     if be_changed:
         be = sh("TESTING=true /Users/maverick/Projects/mavrov.de/backend/venv/bin/python -m pytest "
-                "backend/tests -q -p no:cacheprovider --cov=app --cov-report= --cov-fail-under=100",
+                f"backend/tests -q -p no:cacheprovider --cov=app --cov-report= --cov-fail-under={COV_MIN}",
                 cwd=workdir)
         ok &= be.returncode == 0
         reports.append(f"[backend] {'PASS' if be.returncode == 0 else 'FAIL'}\n{(be.stdout or be.stderr)[-1400:]}")
@@ -214,7 +217,8 @@ async def run(goal: str, auto_release: bool = False) -> dict:
                 green, report = run_gate(workdir)
                 log.step(f"Test gate (attempt {i+2})", report)
             result["gate_green"] = green
-            log.decision(f"Deterministic test gate: {'GREEN (100% coverage)' if green else 'RED — pipeline aborts'}.")
+            log.decision(f"Deterministic test gate (≥{COV_MIN}% coverage): "
+                         f"{'GREEN' if green else 'RED — pipeline aborts'}.")
 
             if not green:
                 log.decision("NO-GO: not finalizing; branch kept for human review.")
@@ -290,7 +294,8 @@ def _commit_message(goal: str, workdir: str, log: RunLog) -> str:
         f"(research -> spec -> plan -> design -> implement -> test gate -> review -> docs).\n\n"
         f"Changes:\n{diffstat}\n\n"
         f"Critical decisions:\n{decisions}\n\n"
-        f"Verification: deterministic test gate green (backend + frontend, 100% coverage).\n"
+        f"Verification: deterministic test gate green (backend + frontend, >={COV_MIN}% coverage). "
+        f"CI/merge enforces the project's 100% standard.\n"
         f"Run log: {log.rel}\n\n"
         f"Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\n"
     )

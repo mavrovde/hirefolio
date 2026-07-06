@@ -25,12 +25,13 @@ def test_public_api_exists():
         assert hasattr(autonomous, fn)
 
 
-def test_gate_uses_real_coverage_flag():
-    # the gate must enforce 100% coverage deterministically (not trust the LLM)
+def test_gate_enforces_configurable_coverage():
+    # the gate enforces a coverage floor deterministically (default 95, env-tunable)
     import inspect
+    assert autonomous.COV_MIN == 95  # path B default
     src = inspect.getsource(autonomous.run_gate)
-    assert "--cov-fail-under=100" in src
-    assert "returncode" in src  # trusts exit codes
+    assert "--cov-fail-under={COV_MIN}" in src or "cov-fail-under" in src
+    assert "returncode" in src  # trusts exit codes, not the LLM
 
 
 def test_verdict_parsing():
