@@ -43,9 +43,15 @@ and giving a Go/No-Go.
 
 ## The brain (LLM backend)
 
-Pluggable via `A2A_LLM_PROVIDER` = `ollama` | `anthropic` | `gemini` | `stub` | `auto`
-(default `auto`: try Ollama → Anthropic if a key is set → deterministic stub).
+Pluggable via `A2A_LLM_PROVIDER` = `ollama` | `anthropic` | `gemini` | `stub` | `auto`.
+**Default: `anthropic` (Claude, `claude-sonnet-4-6`), with prompt caching on** — export
+`ANTHROPIC_API_KEY` (or put it in the repo-root `.env`). Set `A2A_LLM_PROVIDER=auto` for the
+no-cost path (local Ollama → deterministic stub), or `=ollama`/`=gemini`/`=stub` explicitly.
 Model via `A2A_MODEL`. The **stub** keeps the team runnable/testable offline (CI, no key).
+
+Prompt caching (system prompt + tool defs + the tool-loop transcript) is always on for the
+Anthropic path. To **verify cache hits**, run with `A2A_LOG_USAGE=1` and watch for
+`cache_read=…>0` on calls after the first within the ~5-min TTL.
 
 ### Recommended: Ollama (local, no API key)
 

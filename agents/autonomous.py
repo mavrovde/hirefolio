@@ -114,7 +114,12 @@ def run_gate(workdir: str) -> tuple[bool, str]:
     be_changed = "backend/" in changed
     fe_changed = "frontend/" in changed
     if not be_changed and not fe_changed:
-        be_changed = True  # sanity default
+        # No app-layer changes at all means the implement step produced nothing —
+        # the existing suite would pass and fake a GREEN. Treat it as RED so the
+        # pipeline aborts and keeps the branch for inspection instead of opening an
+        # empty PR. (Changed files this run: docs/run-log only.)
+        return False, ("[backend] FAIL\nNo backend/ or frontend/ changes were produced — "
+                       "the implementation step wrote no code. Changed files:\n" + (changed or "(none)"))
     ok = True
     reports = []
     if be_changed:
@@ -146,8 +151,8 @@ def _free_ports(role_keys: list[str]) -> None:
 def start_agents(role_keys: list[str], workdir: str) -> list[subprocess.Popen]:
     _free_ports(role_keys)
     env = {**os.environ, "A2A_WORKDIR": workdir,
-           "A2A_LLM_PROVIDER": os.getenv("A2A_LLM_PROVIDER", "ollama"),
-           "A2A_MODEL": os.getenv("A2A_MODEL", "qwen2.5-coder:7b"), "PYTHONUNBUFFERED": "1"}
+           "A2A_LLM_PROVIDER": os.getenv("A2A_LLM_PROVIDER", "anthropic"),
+           "A2A_MODEL": os.getenv("A2A_MODEL", "claude-sonnet-4-6"), "PYTHONUNBUFFERED": "1"}
     return [subprocess.Popen([sys.executable, "-m", "agents.serve", k], cwd=REPO, env=env)
             for k in role_keys]
 
@@ -209,9 +214,12 @@ async def run(goal: str, auto_release: bool = False, slug: str | None = None) ->
             design = await ask("architect", f"Goal: {goal}\nPlan:\n{plan}\n\nTechnical design + risks.", "Design")
             await ask("story-writer", f"Goal: {goal}\nSpec:\n{spec}\n\nUser stories + acceptance criteria.", "Stories")
 
-            impl = (f"Goal: {goal}\nPlan:\n{plan}\nDesign:\n{design}\n\nImplement now IN THIS WORKTREE "
-                    f"using your tools (write_file/run_command). Add/adjust tests to keep 100% coverage, "
-                    f"then run the tests.")
+            impl = (f"Goal: {goal}\nPlan:\n{plan}\nDesign:\n{design}\n\nImplement now IN THIS WORKTREE by "
+                    f"ACTUALLY CALLING your tools: write_file for new files, edit_file for existing ones, "
+                    f"run_tests to verify. Do NOT just describe a plan or paste code in your reply — the "
+                    f"only changes that count are files you write to disk with the tools. Add/adjust tests "
+                    f"to keep 100% coverage, then run the tests. If nothing in your layer needs to change, "
+                    f"say so explicitly and write nothing.")
             await ask("backend-dev", impl, "Implement (backend)")
             await ask("frontend-dev", impl, "Implement (frontend)")
 
@@ -241,7 +249,9 @@ async def run(goal: str, auto_release: bool = False, slug: str | None = None) ->
                 return result
 
             # Independent review — by DIFFERENT roles than the implementer — and it GATES.
-            diff = sh("git diff HEAD", cwd=workdir).stdout[:8000]
+            # Give reviewers enough of the diff to render a clear verdict (a too-small
+            # window once truncated the change and produced "unclear" verdicts).
+            diff = sh("git diff HEAD", cwd=workdir).stdout[:20000]
             review = await ask("code-reviewer", f"Independently review this diff for correctness/quality. "
                                f"End your response with exactly APPROVE or REQUEST-CHANGES:\n{diff}", "Code review")
             sec = await ask("security-reviewer", f"Independently security-review this diff. "
@@ -341,10 +351,26 @@ def commit_and_push_branch(branch: str, workdir: str, goal: str, log: RunLog) ->
     return True
 
 
+def _pr_title(goal: str, branch: str) -> str:
+    """A concise PR title (<=72 chars). `goal` may be a long instruction that embeds
+    a whole spec (from the intake), so derive a subject from the spec's first H1 if
+    present, else the branch name — never the full goal (GitHub caps titles at 256)."""
+    subject = ""
+    for line in goal.splitlines():
+        s = line.strip()
+        if s.startswith("# "):
+            subject = s[2:].strip()
+            break
+    if not subject:
+        subject = branch.split("/", 1)[-1].replace("-", " ")
+    title = f"feat(auto): {subject}"
+    return title if len(title) <= 72 else title[:69] + "..."
+
+
 def open_pr(branch: str, goal: str, log: RunLog) -> str:
-    body = ("Autonomous implementation by the A2A team; local test gate green (100% coverage).\n\n"
+    body = ("Autonomous implementation by the A2A team; local test gate green (>=95% coverage).\n\n"
             "Critical decisions:\n" + ("\n".join(log.decisions) or "-") + f"\n\nRun log: {log.rel}")
-    pr = sh(f"gh pr create --head {branch} --title {shell_quote('feat(auto): ' + goal)} "
+    pr = sh(f"gh pr create --head {branch} --title {shell_quote(_pr_title(goal, branch))} "
             f"--body {shell_quote(body)}")
     return f"opened PR: {pr.stdout.strip() or pr.stderr.strip()}"
 
