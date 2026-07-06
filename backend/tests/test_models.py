@@ -99,3 +99,75 @@ async def test_same_slug_different_language(db_session):
     posts = result.scalars().all()
 
     assert len(posts) == 2
+
+
+@pytest.mark.asyncio
+async def test_post_provenance_columns_nullable(db_session):
+    """New provenance columns default to None when not supplied."""
+    post = Post(
+        title="Provenance Test",
+        slug="provenance-nullable",
+        content="Content",
+        language="en",
+    )
+    db_session.add(post)
+    await db_session.commit()
+    await db_session.refresh(post)
+
+    assert post.source_urn is None
+    assert post.source_url is None
+    assert post.posted_at is None
+
+
+@pytest.mark.asyncio
+async def test_source_urn_unique_constraint(db_session):
+    """Two posts with the same non-null source_urn must raise an integrity error."""
+    post1 = Post(
+        title="URN Post 1",
+        slug="urn-post-1",
+        content="Content 1",
+        language="en",
+        source_urn="urn:li:activity:111111111",
+    )
+    post2 = Post(
+        title="URN Post 2",
+        slug="urn-post-2",
+        content="Content 2",
+        language="en",
+        source_urn="urn:li:activity:111111111",  # same URN — must be rejected
+    )
+
+    db_session.add(post1)
+    await db_session.commit()
+
+    db_session.add(post2)
+    with pytest.raises(Exception):  # IntegrityError from unique partial index
+        await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_source_urn_null_not_unique(db_session):
+    """Two posts with source_urn=None must both persist (NULLs are not unique)."""
+    post1 = Post(
+        title="No URN Post 1",
+        slug="no-urn-1",
+        content="Content 1",
+        language="en",
+        source_urn=None,
+    )
+    post2 = Post(
+        title="No URN Post 2",
+        slug="no-urn-2",
+        content="Content 2",
+        language="en",
+        source_urn=None,
+    )
+
+    db_session.add(post1)
+    db_session.add(post2)
+    await db_session.commit()
+    await db_session.refresh(post1)
+    await db_session.refresh(post2)
+
+    assert post1.source_urn is None
+    assert post2.source_urn is None

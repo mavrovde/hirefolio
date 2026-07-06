@@ -1,6 +1,8 @@
 from typing import Optional, List
 from datetime import datetime, timezone
-from sqlalchemy import String, Text, DateTime, Boolean, UniqueConstraint, LargeBinary
+from sqlalchemy import (
+    String, Text, DateTime, Boolean, UniqueConstraint, LargeBinary, Index, text,
+)
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, deferred
 from pgvector.sqlalchemy import Vector
@@ -15,7 +17,15 @@ def utc_now():
 
 class Post(Base):
     __tablename__ = "posts"
-    __table_args__ = (UniqueConstraint("slug", "language", name="ux_post_slug_lang"),)
+    __table_args__ = (
+        UniqueConstraint("slug", "language", name="ux_post_slug_lang"),
+        Index(
+            "ix_post_source_urn_unique",
+            "source_urn",
+            unique=True,
+            postgresql_where=text("source_urn IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(255))
@@ -42,6 +52,13 @@ class Post(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+    # LinkedIn provenance (nullable; unique index on source_urn when not null)
+    source_urn: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    source_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    posted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     # Vector embedding for semantic search
