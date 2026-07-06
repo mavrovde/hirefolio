@@ -87,12 +87,17 @@ async def _anthropic_tools(system_prompt: str, user_text: str, model: str | None
 
     tools = [{"name": s["function"]["name"], "description": s["function"]["description"],
               "input_schema": s["function"]["parameters"]} for s in schemas_for(allowed)]
+    # Prompt caching: the system prompt (playbook + role) and tool defs are identical
+    # across every call, so mark them cacheable (ephemeral, ~5 min TTL) to cut cost/latency.
+    if tools:
+        tools[-1] = {**tools[-1], "cache_control": {"type": "ephemeral"}}
+    sys_cached = [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
     client = AsyncAnthropic()
     mdl = model or os.getenv("A2A_MODEL") or DEFAULT_ANTHROPIC_MODEL
     messages: list = [{"role": "user", "content": user_text}]
     for _ in range(max_iters):
         resp = await client.messages.create(model=mdl, max_tokens=4096,
-                                            system=system_prompt, tools=tools, messages=messages)
+                                            system=sys_cached, tools=tools, messages=messages)
         if resp.stop_reason != "tool_use":
             return "".join(b.text for b in resp.content if b.type == "text").strip()
         messages.append({"role": "assistant", "content": resp.content})
@@ -104,7 +109,7 @@ async def _anthropic_tools(system_prompt: str, user_text: str, model: str | None
                                 "content": str(out)[:8000]})
         messages.append({"role": "user", "content": results})
     resp = await client.messages.create(
-        model=mdl, max_tokens=2048, system=system_prompt,
+        model=mdl, max_tokens=2048, system=sys_cached, tools=tools,
         messages=messages + [{"role": "user", "content": "Stop using tools. Final answer now."}])
     return "".join(b.text for b in resp.content if b.type == "text").strip()
 
@@ -271,7 +276,8 @@ async def _anthropic(system_prompt: str, user_text: str, model: str | None) -> s
     resp = await client.messages.create(
         model=model or os.getenv("A2A_MODEL") or DEFAULT_ANTHROPIC_MODEL,
         max_tokens=1024,
-        system=system_prompt,
+        # cache the system prompt (reused across calls) — ephemeral ~5 min TTL
+        system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_text}],
     )
     return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
