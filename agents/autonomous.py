@@ -185,7 +185,12 @@ async def run(goal: str, auto_release: bool = False) -> dict:
         await _wait_ready(ROLES)
         async with httpx.AsyncClient(timeout=600) as hx:
             async def ask(role: str, prompt: str, title: str) -> str:
-                out = await delegate(hx, ROSTER[role], prompt)
+                # One unreachable/failed agent must never crash the whole run —
+                # gate + finalize are deterministic; agent outputs are advisory.
+                try:
+                    out = await delegate(hx, ROSTER[role], prompt)
+                except Exception as exc:  # noqa: BLE001
+                    out = f"(agent '{role}' unavailable: {str(exc)[:200]})"
                 log.step(f"{title} ({role})", out)
                 return out
 
@@ -269,7 +274,10 @@ async def run(goal: str, auto_release: bool = False) -> dict:
         return result
     finally:
         stop_agents(procs)
-        remove_worktree(workdir, branch, keep=not result.get("gate_green"))
+        # Keep the worktree/branch unless finalize reached a terminal state — so a
+        # crash after a green gate doesn't discard the work.
+        done = str(result.get("finalized") or "").startswith(("opened PR", "auto-merged", "no changes"))
+        remove_worktree(workdir, branch, keep=not done)
 
 
 def _verdict(text: str) -> str:
