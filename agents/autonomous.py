@@ -182,8 +182,8 @@ ROLES = ["researcher", "spec-analyst", "planner", "architect", "story-writer",
          "documentation-writer", "release-manager"]
 
 
-async def run(goal: str, auto_release: bool = False) -> dict:
-    slug = slugify(goal)
+async def run(goal: str, auto_release: bool = False, slug: str | None = None) -> dict:
+    slug = slug or slugify(goal)
     branch = f"agent/{slug}"
     workdir = create_worktree(branch)
     log = RunLog(workdir, goal, slug)
