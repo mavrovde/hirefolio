@@ -71,10 +71,21 @@ and capped by Docker Desktop's VM memory (~8 GB by default), which is too small 
 | `qwen2.5-coder:14b` | ~9 GB | Higher quality; needs ≥24 GB comfortably |
 | `llama3.2` (3B) | 2 GB | Quick/low-RAM; limited for deep review |
 
-### Anthropic / Gemini
+### Gemini (recommended for autonomous work — supports tools)
 
-`A2A_LLM_PROVIDER=anthropic` (`ANTHROPIC_API_KEY`, `A2A_MODEL=claude-opus-4-8`) or
-`A2A_LLM_PROVIDER=gemini` (`GEMINI_API_KEY`, `A2A_MODEL=gemini-2.0-flash`).
+```bash
+export A2A_LLM_PROVIDER=gemini
+export A2A_MODEL=gemini-2.5-flash          # or gemini-2.5-pro
+export GEMINI_API_KEY="$(security find-generic-password -s gemini-api-key -w)"  # from Keychain
+```
+
+Gemini uses **function-calling**, so the full tool-loop (read/write/run/tests) works —
+a stronger model than the local 7B, better at clearing the 100% coverage gate.
+
+### Anthropic
+
+`A2A_LLM_PROVIDER=anthropic` (`ANTHROPIC_API_KEY`, `A2A_MODEL=claude-opus-4-8`).
+Note: the Anthropic path currently reasons without tools (no tool-loop yet).
 
 ## Run it
 

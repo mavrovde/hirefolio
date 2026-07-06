@@ -2,5 +2,6 @@
 a2a-sdk[http-server]>=0.2,<0.3
 uvicorn>=0.30
 httpx>=0.28
-# Optional LLM brain (agents run with a deterministic stub if this/its key is absent)
+# Optional LLM brains (agents run with a deterministic stub if none is configured)
 anthropic>=0.40
+google-genai>=1.0   # Gemini provider (function-calling tool-loop supported)

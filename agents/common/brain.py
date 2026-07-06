@@ -18,6 +18,7 @@ import httpx
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434").rstrip("/")
 DEFAULT_OLLAMA_MODEL = "qwen2.5-coder:7b"
 DEFAULT_ANTHROPIC_MODEL = "claude-opus-4-8"
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 
 
 def _order() -> list[str]:
@@ -65,13 +66,56 @@ async def think_with_tools(system_prompt: str, user_text: str, *, role_title: st
     from .tools import READONLY_TOOLS
 
     allowed = allowed_tools if allowed_tools is not None else set(READONLY_TOOLS)
-    order = _order()
-    if "ollama" in order:
+    for prov in _order():
         try:
-            return await _ollama_tools(system_prompt, user_text, model, max_iters, allowed)
-        except Exception:  # noqa: BLE001 - fall back to tool-less reasoning
-            pass
+            if prov == "ollama":
+                return await _ollama_tools(system_prompt, user_text, model, max_iters, allowed)
+            if prov == "gemini" and os.getenv("GEMINI_API_KEY"):
+                return await _gemini_tools(system_prompt, user_text, model, max_iters, allowed)
+        except Exception:  # noqa: BLE001 - try the next provider / fall back
+            continue
     return await think(system_prompt, user_text, role_title=role_title, model=model)
+
+
+async def _gemini_tools(system_prompt: str, user_text: str, model: str | None,
+                        max_iters: int, allowed: set[str]) -> str:
+    from google import genai
+    from google.genai import types
+
+    from .tools import execute_tool, schemas_for
+
+    fdecls = [types.FunctionDeclaration(
+        name=s["function"]["name"], description=s["function"]["description"],
+        parameters=s["function"]["parameters"]) for s in schemas_for(allowed)]
+    config = types.GenerateContentConfig(
+        system_instruction=system_prompt, temperature=0.2,
+        tools=[types.Tool(function_declarations=fdecls)],
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+    )
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    mdl = model or os.getenv("A2A_MODEL") or DEFAULT_GEMINI_MODEL
+    contents = [types.Content(role="user", parts=[types.Part(text=user_text)])]
+    for _ in range(max_iters):
+        resp = await client.aio.models.generate_content(model=mdl, contents=contents, config=config)
+        cand = resp.candidates[0]
+        parts = cand.content.parts or []
+        calls = [p.function_call for p in parts if getattr(p, "function_call", None)]
+        if not calls:
+            return (resp.text or "").strip()
+        contents.append(cand.content)
+        fr = []
+        for fc in calls:
+            result = execute_tool(fc.name, dict(fc.args) if fc.args else {}, allowed)
+            fr.append(types.Part(function_response=types.FunctionResponse(
+                name=fc.name, response={"result": str(result)[:8000]})))
+        contents.append(types.Content(role="user", parts=fr))
+    # Out of iterations — ask for a final answer without tools.
+    resp = await client.aio.models.generate_content(
+        model=mdl,
+        contents=contents + [types.Content(role="user",
+                 parts=[types.Part(text="Stop using tools. Give your final answer now.")])],
+        config=types.GenerateContentConfig(system_instruction=system_prompt))
+    return (resp.text or "").strip()
 
 
 async def _ollama_tools(system_prompt: str, user_text: str, model: str | None,
