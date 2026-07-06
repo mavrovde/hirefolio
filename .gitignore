@@ -42,3 +42,6 @@ scraper/.chrome-profile/
 scraper/session.json
 scraper/session.json.stale-*
 
+
+# A2A agents subsystem
+agents/.venv/

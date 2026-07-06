@@ -1,0 +1,6 @@
+# A2A multi-agent team for mavrov.de
+a2a-sdk[http-server]>=0.2,<0.3
+uvicorn>=0.30
+httpx>=0.28
+# Optional LLM brain (agents run with a deterministic stub if this/its key is absent)
+anthropic>=0.40
