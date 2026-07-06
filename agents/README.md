@@ -104,6 +104,36 @@ Inspect any Agent Card:
 curl -s http://localhost:8011/.well-known/agent.json | jq
 ```
 
+## Autonomous feature pipeline
+
+`agents/autonomous.py` runs the **full logged cycle** for a feature:
+
+```
+research → spec → plan → design → stories → implement (isolated git worktree)
+→ deterministic TEST GATE (fix loop) → code+security review → docs → release decision → finalize
+```
+
+```bash
+python -m agents.autonomous "Add an uptime field to the stats endpoint"     # -> opens a PR
+A2A_AUTORELEASE=1 python -m agents.autonomous "<goal>"                       # -> auto-merge+release
+```
+
+Guarantees / safety model:
+- **Isolated worktree/branch** — agents write only there, never directly on `main`.
+- **Deterministic test gate** — real backend+frontend suites at **100% coverage**;
+  trusts exit codes, not the LLM. Red gate ⇒ bounded fix loop ⇒ if still red, abort.
+- **Review gates auto-release** — auto-merge happens only if the gate is green
+  AND `code-reviewer` + `security-reviewer` APPROVE AND `release-manager` says GO;
+  otherwise it downgrades to a **PR for a human**.
+- **Every step is logged** to a committed run-log at `docs/agent-runs/<slug>-<ts>.md`,
+  including **critical decisions**; the docs-writer also updates the CHANGELOG.
+- **Clear commits** — title + body (what/why, change summary, decisions, run-log ref).
+- **GitHub/pipelines** — agents use the read-only `gh_cli` tool; DevOps drives the
+  CI recovery loop. Mutating git/gh + releases are done only by the deterministic layer.
+- **No silent rollback** — if the team can't make CI green after bounded fix
+  attempts, `main` is left intact and a **GitHub issue escalates to a human** with
+  a clear explanation (what failed, diagnosis, what was tried, current state).
+
 ## Test
 
 ```bash

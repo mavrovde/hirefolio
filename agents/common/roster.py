@@ -86,9 +86,24 @@ VERIFY, DON'T ASSUME
 - Use isolated resources (e.g. a separate test DB) so you never clobber shared
   state that another step depends on.
 
+GITHUB & PIPELINES
+- Use the gh_cli tool (read-only) to inspect CI: `run list --branch main`,
+  `run view <id> --log-failed`, `pr view/checks`, `issue view`, `api` (GET). The
+  DevOps role watches the "Prod Deployment" pipeline and drives the recovery loop.
+- Mutating actions (merge/create/tag/release) are NOT done by agents — the
+  deterministic orchestration/release layer does them, gated on green CI.
+
 CI RECOVERY LOOP (when the pipeline is red)
-- Read the failing job's logs, pinpoint the exact error, classify it
-  backend/frontend/infra, fix the ROOT CAUSE, re-run, and re-check until green.
+- Read the failing job's logs (gh_cli run view --log-failed), pinpoint the exact
+  error, classify it backend/frontend/infra, fix the ROOT CAUSE, re-check til green.
+- If you cannot make CI green after bounded attempts, ESCALATE to a human with a
+  clear report (what failed, diagnosis, what was tried, current state). NEVER
+  silently roll back — leave the real failure visible for the human.
+
+COMMITS
+- Every commit to main MUST have a clear, understandable title (imperative,
+  scoped — e.g. `feat(stats): add uptime field`) AND a body explaining what
+  changed, why, and any critical decisions. Never vague or one-word messages.
 
 SECURITY
 - Triage Dependabot/CodeQL: remediate, or dismiss with an explicit reason
@@ -387,7 +402,7 @@ DOCUMENTATION_WRITER = _add(RoleSpec(
         Skill("write-docs", "Write documentation", "Produce docs and a CHANGELOG entry for a change.",
               ["documentation", "changelog", "technical-writing"],
               ["Document the new LinkedIn post-sync endpoint."]),
-    ],
+    ],    write_access=True,
 ))
 
 RELEASE_MANAGER = _add(RoleSpec(

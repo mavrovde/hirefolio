@@ -37,7 +37,7 @@ MUTATING_GIT = {"commit", "push", "tag", "reset", "checkout", "switch", "merge",
 
 # Tool permission tiers. Read-only roles (researcher, analysts, reviewers, PM...)
 # get READONLY_TOOLS only; write-capable roles (devs, integration) also get WRITE_TOOLS.
-READONLY_TOOLS = {"read_file", "list_dir", "grep", "fetch_url", "run_tests"}
+READONLY_TOOLS = {"read_file", "list_dir", "grep", "fetch_url", "run_tests", "gh_cli"}
 WRITE_TOOLS = {"write_file", "run_command"}
 
 
@@ -118,6 +118,40 @@ def fetch_url(url: str) -> str:
     return f"HTTP {resp.status_code}\n{text[:MAX_READ_BYTES]}"
 
 
+def gh_cli(args: str) -> str:
+    """Read-only GitHub CLI access — inspect CI runs, PRs, issues, releases via
+    `gh`. Mutating gh (merge/create/delete/cancel, non-GET api) is blocked;
+    those happen only in the deterministic orchestration/release layer."""
+    try:
+        parts = shlex.split(args)
+    except ValueError:
+        return "ERROR: could not parse gh args"
+    if not parts:
+        return "ERROR: no gh args"
+    read = {
+        "run": {"list", "view"}, "pr": {"list", "view", "checks", "diff", "status"},
+        "issue": {"list", "view"}, "release": {"list", "view"},
+        "workflow": {"list", "view"}, "status": set(), "search": None, "api": None,
+    }
+    top = parts[0]
+    if top not in read:
+        return f"BLOCKED: 'gh {top}' not permitted (read-only gh only: {', '.join(read)})"
+    if top == "api":
+        low = args.lower()
+        if any(x in low for x in ("--method post", "--method patch", "--method delete",
+                                  "--method put", "-x post", "-x patch", "-x delete",
+                                  "-x put", " -f ", "--field ", "--input")):
+            return "BLOCKED: only GET `gh api` calls are allowed"
+    elif read[top] is not None and len(parts) > 1 and parts[1] not in read[top]:
+        return f"BLOCKED: 'gh {top} {parts[1]}' not permitted (allowed: {read[top]})"
+    try:
+        r = subprocess.run(f"gh {args}", shell=True, cwd=WORKDIR, capture_output=True,
+                           text=True, timeout=CMD_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return f"ERROR: gh timed out after {CMD_TIMEOUT}s"
+    return f"exit={r.returncode}\n{(r.stdout or r.stderr)[:MAX_READ_BYTES]}"
+
+
 def run_tests(layer: str = "backend") -> str:
     """Convenience wrapper mapping to the project's real test commands."""
     if layer == "backend":
@@ -139,6 +173,7 @@ REGISTRY = {
     "run_command": run_command,
     "run_tests": run_tests,
     "fetch_url": fetch_url,
+    "gh_cli": gh_cli,
 }
 
 
@@ -170,6 +205,11 @@ TOOL_SCHEMAS = [
         "name": "fetch_url",
         "description": "HTTP GET a URL for external research (docs, advisories, references).",
         "parameters": _p({"url": {"type": "string"}}, ["url"])}},
+    {"type": "function", "function": {
+        "name": "gh_cli",
+        "description": "Read-only GitHub CLI: inspect CI runs, PRs, issues, releases "
+                       "(e.g. 'run list --branch main', 'pr view 12', 'api /repos/o/r/dependabot/alerts').",
+        "parameters": _p({"args": {"type": "string"}}, ["args"])}},
 ]
 
 
