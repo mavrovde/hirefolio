@@ -233,6 +233,26 @@ export const environment = {
 - `GET /api/posts/{slug}/similar` - Find similar posts
 - `GET /api/posts/search/semantic?q=query` - Semantic search
 
+#### Post model — LinkedIn provenance fields (nullable)
+
+| Column | Type | Constraint | Purpose |
+|---|---|---|---|
+| `source_urn` | `String` | unique when not null (partial index) | LinkedIn activity URN; enables idempotent imports |
+| `source_url` | `String(512)` | — | LinkedIn permalink for the original post |
+| `posted_at` | `DateTime(tz=True)` | — | Original publish timestamp from LinkedIn |
+
+All three columns are `NULL` for posts not imported from LinkedIn. Two posts may both have
+`source_urn = NULL`; two non-null URNs must be distinct (enforced by
+`ix_post_source_urn_unique`).
+
+#### Database migrations
+
+| Revision | Description |
+|---|---|
+| `68db39a6f58e` | Add `image_url` to posts (initial) |
+| `d45b3e9ce716` | Add `image_blob` + `image_type` to posts |
+| `c3f8a1d2e947` | Add LinkedIn provenance columns (`source_urn`, `source_url`, `posted_at`) |
+
 ### Health Check
 
 - `GET /` - Welcome message

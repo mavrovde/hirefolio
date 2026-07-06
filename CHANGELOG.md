@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **LinkedIn provenance columns on `Post`** (`source_urn`, `source_url`, `posted_at`): three
+  nullable columns that enable idempotent LinkedIn imports. `source_urn` carries a partial unique
+  index (`WHERE source_urn IS NOT NULL`) so two NULL values are allowed but two identical non-null
+  URNs are rejected. `source_url` stores the LinkedIn permalink (max 512 chars) and `posted_at`
+  stores the original publish timestamp with timezone. All existing rows receive NULLs; no
+  endpoint or API response shape is changed.
+- Alembic migration `c3f8a1d2e947` (revises `d45b3e9ce716`) adds the three columns and the
+  partial unique index with a matching `downgrade()` that drops them cleanly.
+- Three focused model tests: nullable defaults, duplicate-URN integrity error, and two-NULL
+  coexistence.
+
 ## [1.3.0] - 2026-07-06
 
 ### Added
