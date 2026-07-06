@@ -310,10 +310,17 @@ def _commit_message(goal: str, workdir: str, log: RunLog) -> str:
 
 
 def _commit_with_message(workdir: str, message: str) -> None:
-    msg_path = os.path.join(workdir, ".git", "AUTO_COMMIT_MSG")
-    with open(msg_path, "w") as f:
+    # NB: in a git worktree, `.git` is a FILE, not a dir — write the message to a
+    # real temp file instead.
+    import tempfile
+
+    fd, msg_path = tempfile.mkstemp(suffix=".gitmsg")
+    with os.fdopen(fd, "w") as f:
         f.write(message)
-    sh(f"git commit -F {shell_quote(msg_path)}", cwd=workdir)
+    try:
+        sh(f"git commit -F {shell_quote(msg_path)}", cwd=workdir)
+    finally:
+        os.unlink(msg_path)
 
 
 def commit_and_push_branch(branch: str, workdir: str, goal: str, log: RunLog) -> bool:
