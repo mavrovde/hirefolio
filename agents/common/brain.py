@@ -28,7 +28,10 @@ def _order() -> list[str]:
         "anthropic": ["anthropic"],
         "gemini": ["gemini"],
         "stub": ["stub"],
-        "auto": ["ollama", "anthropic", "stub"],
+        # 'auto' never falls back to a PAID provider — only free local Ollama, then
+        # the offline stub. Paid providers (anthropic/gemini) must be requested
+        # explicitly via A2A_LLM_PROVIDER, so a run can't silently cost money.
+        "auto": ["ollama", "stub"],
     }.get(provider, ["stub"])
 
 
