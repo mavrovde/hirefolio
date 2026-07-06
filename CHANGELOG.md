@@ -4,34 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- Placeholder for next release.
+## [1.2.29] - 2026-07-06
 
-## [1.2.29] - 2026-07-05
+### Added
+- Project MCP servers for Claude Code (`postgres`, `playwright`, `github`).
+- CI-fix agent team under `.claude/agents/` (`devops-pipeline`, `backend-dev`, `frontend-dev`).
+- Dependabot configuration.
+
+### Security
+- Dependency remediation: bumped `pillow`, `pydantic-settings`, `python-dotenv`, `python-multipart`, `pytest`; resolved npm advisories via `npm audit fix` + Angular 21.x patch bumps (`undici`, `vite`, `hono`, `path-to-regexp`, `postcss`, `esbuild`, ...). Open Dependabot alerts reduced from 85 to 3 low-severity (deferred -- require a breaking Angular 22 upgrade).
+- Dismissed the `py/sql-injection` CodeQL alert on the admin SQL console as accepted risk (admin-gated; arbitrary SQL is the feature's intent).
+- Dismissed `setuptools` and `langchain-openai` advisories as tolerable risk (CrewAI `pkg_resources` compatibility pin; breaking major bump avoided).
 
 ### Fixed
-- Security: bumped pillow, pydantic-settings, python-dotenv, python-multipart, pytest; remediated npm advisories (43 -> 3) via audit fix + Angular 21.x patch bumps.
-- CI: fixed ruff lint/format on new coverage tests; excluded SSR server entry from coverage (100% maintained).
-- Dismissed by-design SQL-console CodeQL alert and compat-pinned setuptools/langchain-openai advisories.
+- Restored server-side rendering behind the reverse proxy: Angular 21.2's `@angular/ssr` SSRF host allowlist was silently falling back to client-side rendering. Fixed with `NG_ALLOWED_HOSTS` + `trustProxyHeaders: true` (title, `<h1>`, and content now present in initial SSR HTML).
+- Resolved CI lint/format failures (`ruff` F401 + formatting) introduced by the new coverage suites.
+
+### Changed
+- Excluded the SSR server entry (`src/server.ts`) from coverage, consistent with `src/main.ts`; frontend coverage remains 100%.
 
 ## [1.2.28] - 2026-07-05
 
 ### Added
-- Placeholder for next release.
+- 100% line & branch coverage -- backend (605 tests) and frontend (687 tests).
+- Merged still-compatible test and scraper additions salvaged from a pre-rebase branch.
 
-## [1.2.28] - 2026-07-05
-
-## [1.2.27] - 2026-03-15
-
-### Added
-- Placeholder for next release.
+### Changed
+- Ignored the scraper Chrome profile and browser runtime artifacts.
 
 ## [1.2.27] - 2026-03-15
-
-## [1.2.27] - 2026-03-15
-
-### Added
-- Placeholder for next release.
 
 ## [1.2.26] - 2026-03-15
 
