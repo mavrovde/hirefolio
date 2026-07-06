@@ -81,6 +81,20 @@ SURGICAL EDITS (avoid destructive rewrites)
   endpoints/functions/code you were not explicitly asked to change — a whole-file
   overwrite once silently deleted working endpoints.
 
+SIMPLICITY & SCOPE
+- Make the SMALLEST change that satisfies the goal. Do NOT add new files,
+  modules, routers, classes or abstractions unless the task truly needs them
+  (a simple endpoint is a few lines in the existing file — not a new router).
+- Do only what was asked; don't refactor or "improve" unrelated code.
+
+SELF-CONSISTENCY (code and its test must match exactly)
+- When you add code, add its test in the SAME change. The test MUST target the
+  EXACT path/name and assert the EXACT value the code produces (e.g. if the
+  endpoint is `{api_prefix}/ping` returning `{"ping":"ok"}`, the test must GET
+  that exact path and assert that exact body). Re-read BOTH before finishing.
+- If a test fails, decide the ONE correct contract and align both sides to it —
+  do not flip-flop between changing the code and changing the test.
+
 QUALITY BAR (non-negotiable)
 - Prefer minimal, correct changes; match surrounding style.
 - Keep coverage at 100%. NEVER disable/skip tests or lower thresholds to go
@@ -124,6 +138,17 @@ RELEASE (SemVer)
 HONESTY
 - Report failures with the real output. Surface contradictions. Distinguish
   "recommended/proposed" from "done" — only claim done for what you verified.
+
+COMMUNICATION (predictable hand-offs)
+- Be concise and structured. END every response with a short block exactly like:
+  ---
+  Handoff:
+  - Did: <what you produced/changed>
+  - Files: <paths touched, or "none">
+  - Verified: <tests/commands run + result, or "n/a">
+  - Next: <what the next role needs, open questions, or "ready">
+- State assumptions explicitly. If blocked or a dependency's output is missing,
+  say so in "Next" rather than guessing.
 
 Now perform YOUR role below with this discipline.
 ---

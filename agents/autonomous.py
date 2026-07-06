@@ -135,7 +135,16 @@ def run_gate(workdir: str) -> tuple[bool, str]:
 
 # --- agent process management (pointed at the worktree) ---------------------
 
+def _free_ports(role_keys: list[str]) -> None:
+    """Kill anything on the agents' ports so a stale process can't block a bind
+    (the release-manager on :8021 repeatedly failed to start otherwise)."""
+    ports = ",".join(str(ROSTER[k].port) for k in role_keys)
+    sh(f"lsof -ti :{ports} 2>/dev/null | xargs -r kill -9")
+    time.sleep(1)
+
+
 def start_agents(role_keys: list[str], workdir: str) -> list[subprocess.Popen]:
+    _free_ports(role_keys)
     env = {**os.environ, "A2A_WORKDIR": workdir,
            "A2A_LLM_PROVIDER": os.getenv("A2A_LLM_PROVIDER", "ollama"),
            "A2A_MODEL": os.getenv("A2A_MODEL", "qwen2.5-coder:7b"), "PYTHONUNBUFFERED": "1"}
