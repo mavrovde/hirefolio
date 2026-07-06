@@ -20,6 +20,23 @@ def test_read_and_write_within_workdir(tmp_path, monkeypatch):
     assert "hello.txt" in tools.list_dir("sub")
 
 
+def test_edit_file_is_surgical(tmp_path, monkeypatch):
+    monkeypatch.setattr(tools, "WORKDIR", tmp_path)
+    tools.write_file("a.py", "def f():\n    return 1\n\ndef g():\n    return 2\n")
+    assert tools.edit_file("a.py", "return 1", "return 42").startswith("OK")
+    body = tools.read_file("a.py")
+    assert "return 42" in body and "return 2" in body      # g() left intact
+    assert tools.edit_file("a.py", "not-present", "x").startswith("ERROR")   # absent
+    tools.write_file("b.py", "x=1\nx=1\n")
+    assert "times" in tools.edit_file("b.py", "x=1", "x=2")  # non-unique refused
+
+
+def test_edit_file_is_a_write_tool():
+    assert "edit_file" in tools.WRITE_TOOLS
+    assert "edit_file" not in ROSTER["researcher"].allowed_tools()   # read-only role can't
+    assert "edit_file" in ROSTER["backend-dev"].allowed_tools()
+
+
 def test_run_command_allowlist():
     assert tools.run_command("git status").startswith("exit=")  # allowed
     assert tools.run_command("rm -rf /").startswith("BLOCKED")   # blocked pattern

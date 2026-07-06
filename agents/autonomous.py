@@ -204,8 +204,13 @@ async def run(goal: str, auto_release: bool = False) -> dict:
             for i in range(MAX_FIX_ITERS):
                 if green:
                     break
-                await ask("backend-dev", f"Tests FAIL — fix the root cause here.\n\n{report}", f"Fix backend (iter {i+1})")
-                await ask("frontend-dev", f"If frontend tests fail, fix them.\n\n{report}", f"Fix frontend (iter {i+1})")
+                surgical = ("Fix the ROOT CAUSE with SURGICAL edits (edit_file on the exact lines). "
+                            "Do NOT rewrite whole files or remove any existing endpoints/functions/tests.")
+                # Route only to the layer(s) that actually failed.
+                if "[backend] FAIL" in report:
+                    await ask("backend-dev", f"Backend tests FAIL.\n{surgical}\n\n{report}", f"Fix backend (iter {i+1})")
+                if "[frontend] FAIL" in report:
+                    await ask("frontend-dev", f"Frontend tests FAIL.\n{surgical}\n\n{report}", f"Fix frontend (iter {i+1})")
                 green, report = run_gate(workdir)
                 log.step(f"Test gate (attempt {i+2})", report)
             result["gate_green"] = green

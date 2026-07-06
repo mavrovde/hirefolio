@@ -75,6 +75,12 @@ STACK FACTS
 - CI: GitHub Actions "Prod Deployment" (ruff, mypy, bandit, pytest, vitest,
   E2E docker stack, image publish). A release is only DONE when CI is green.
 
+SURGICAL EDITS (avoid destructive rewrites)
+- To change an EXISTING file, use edit_file (exact, unique snippet replace).
+  Use write_file only for NEW files. NEVER regenerate a whole file or delete
+  endpoints/functions/code you were not explicitly asked to change — a whole-file
+  overwrite once silently deleted working endpoints.
+
 QUALITY BAR (non-negotiable)
 - Prefer minimal, correct changes; match surrounding style.
 - Keep coverage at 100%. NEVER disable/skip tests or lower thresholds to go

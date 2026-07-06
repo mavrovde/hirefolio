@@ -38,7 +38,7 @@ MUTATING_GIT = {"commit", "push", "tag", "reset", "checkout", "switch", "merge",
 # Tool permission tiers. Read-only roles (researcher, analysts, reviewers, PM...)
 # get READONLY_TOOLS only; write-capable roles (devs, integration) also get WRITE_TOOLS.
 READONLY_TOOLS = {"read_file", "list_dir", "grep", "fetch_url", "run_tests", "gh_cli"}
-WRITE_TOOLS = {"write_file", "run_command"}
+WRITE_TOOLS = {"write_file", "edit_file", "run_command"}
 
 
 def _safe_path(path: str) -> Path:
@@ -69,6 +69,23 @@ def write_file(path: str, content: str) -> str:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content)
     return f"OK: wrote {len(content)} bytes to {path}"
+
+
+def edit_file(path: str, old_string: str, new_string: str) -> str:
+    """Surgical edit: replace an EXACT unique snippet in an existing file. Prevents
+    the whole-file-overwrite hazard (an agent once deleted endpoints by rewriting a
+    file). Fails if old_string is absent or not unique — forcing precise edits."""
+    p = _safe_path(path)
+    if not p.is_file():
+        return f"ERROR: not a file: {path} (use write_file to create new files)"
+    data = p.read_text()
+    n = data.count(old_string)
+    if n == 0:
+        return "ERROR: old_string not found — read the file and copy an exact snippet."
+    if n > 1:
+        return f"ERROR: old_string occurs {n} times — include more context to make it unique."
+    p.write_text(data.replace(old_string, new_string, 1))
+    return f"OK: edited {path} (1 replacement)"
 
 
 def grep(pattern: str, path: str = ".") -> str:
@@ -169,6 +186,7 @@ REGISTRY = {
     "read_file": read_file,
     "list_dir": list_dir,
     "write_file": write_file,
+    "edit_file": edit_file,
     "grep": grep,
     "run_command": run_command,
     "run_tests": run_tests,
@@ -192,8 +210,16 @@ TOOL_SCHEMAS = [
         "name": "grep", "description": "Recursively regex-search files for a pattern.",
         "parameters": _p({"pattern": {"type": "string"}, "path": {"type": "string"}}, ["pattern"])}},
     {"type": "function", "function": {
-        "name": "write_file", "description": "Create/overwrite a repo file with content.",
+        "name": "write_file",
+        "description": "Create a NEW file (or fully replace one you intend to rewrite). For changing "
+                       "existing files, prefer edit_file to avoid deleting unrelated code.",
         "parameters": _p({"path": {"type": "string"}, "content": {"type": "string"}}, ["path", "content"])}},
+    {"type": "function", "function": {
+        "name": "edit_file",
+        "description": "Surgically replace an exact, unique snippet in an existing file. Use this for "
+                       "changes to existing files so you never delete unrelated code.",
+        "parameters": _p({"path": {"type": "string"}, "old_string": {"type": "string"},
+                          "new_string": {"type": "string"}}, ["path", "old_string", "new_string"])}},
     {"type": "function", "function": {
         "name": "run_command",
         "description": "Run an allowlisted dev shell command (git/pytest/npm/ruff/...) in the repo.",
