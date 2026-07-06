@@ -236,3 +236,8 @@ async def root():
 @app.get(f"{settings.api_prefix}/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.get(f"{settings.api_prefix}/ping")
+async def ping() -> dict[str, str]:
+    return {"ping": "ok"}
