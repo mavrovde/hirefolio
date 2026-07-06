@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Dict, Any, List
 
 import os
@@ -216,3 +217,43 @@ class LinkedInService:
 
 
 linkedin_service = LinkedInService()
+
+# ---------------------------------------------------------------------------
+# Pure text-normalization helpers (no I/O, no network)
+# ---------------------------------------------------------------------------
+
+_ZERO_WIDTH = re.compile(r"[\u200b\u200e\u200f\ufeff]")
+_HASHTAG_LINE = re.compile(r"[ \t]*hashtag[ \t]*\n", re.IGNORECASE)
+_EXCESS_NEWLINES = re.compile(r"\n{3,}")
+_HASHTAG_TOKEN = re.compile(r"#([A-Za-z]\w*)")
+
+
+def normalize_linkedin_text(text: str) -> str:
+    """Return a cleaned version of raw scraped LinkedIn post text."""
+    if not text or not text.strip():
+        return ""
+    # Strip zero-width / bidi chars
+    text = _ZERO_WIDTH.sub("", text)
+    # NBSP → regular space
+    text = text.replace("\u00a0", " ")
+    # Remove bare 'hashtag' label lines (LinkedIn UI artefact)
+    text = _HASHTAG_LINE.sub("", text)
+    # Collapse 3+ consecutive newlines to exactly two
+    text = _EXCESS_NEWLINES.sub("\n\n", text)
+    # Trim leading/trailing whitespace
+    return text.strip()
+
+
+def extract_hashtags(text: str) -> list[str]:
+    """Return up to 5 unique hashtags (without #) in first-seen order."""
+    if not text or not text.strip():
+        return []
+    seen: dict[str, str] = {}
+    for match in _HASHTAG_TOKEN.finditer(text):
+        word = match.group(1)
+        key = word.lower()
+        if key not in seen:
+            seen[key] = word
+        if len(seen) == 5:
+            break
+    return list(seen.values())
