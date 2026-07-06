@@ -39,8 +39,9 @@ def _artifact_text(resp) -> str:
     return "(no textual artifact returned)"
 
 
-async def _resolve_card(hx: httpx.AsyncClient, spec: RoleSpec, attempts: int = 5):
-    """Resolve an Agent Card, retrying briefly so a slow-to-start agent isn't missed."""
+async def _resolve_card(hx: httpx.AsyncClient, spec: RoleSpec, attempts: int = 20):
+    """Resolve an Agent Card, retrying with capped backoff so a slow-to-start
+    agent (e.g. one of many booting at once) is not missed (~30s total)."""
     resolver = A2ACardResolver(httpx_client=hx, base_url=spec.host())
     last: Exception | None = None
     for i in range(attempts):
@@ -48,7 +49,7 @@ async def _resolve_card(hx: httpx.AsyncClient, spec: RoleSpec, attempts: int = 5
             return await resolver.get_agent_card()
         except Exception as exc:  # noqa: BLE001 - transient startup/network errors
             last = exc
-            await asyncio.sleep(0.5 * (i + 1))
+            await asyncio.sleep(min(2.0, 0.5 * (i + 1)))
     raise last  # type: ignore[misc]
 
 
