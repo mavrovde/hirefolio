@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     linkedin_public_id: str = ""
     linkedin_cookie_li_at: str = ""
     linkedin_cookie_jsessionid: str = ""
+    linkedin_import_token: str = ""
+    import_max_image_mb: int = 10
 
     # CORS
     cors_origins: str = "http://localhost:4200,https://mavrov.de,https://www.mavrov.de,http://mavrov.de,http://www.mavrov.de"

@@ -31,3 +31,12 @@ def test_settings_from_env(monkeypatch):
     assert settings.ollama_url == "http://custom-ollama:11434"
     assert settings.embedding_model == "custom-model"
     assert settings.embedding_dimensions == 512
+
+
+def test_import_config_defaults(monkeypatch):
+    """Test that import-related settings have correct defaults."""
+    monkeypatch.delenv("LINKEDIN_IMPORT_TOKEN", raising=False)
+    monkeypatch.delenv("IMPORT_MAX_IMAGE_MB", raising=False)
+    settings = Settings()
+    assert settings.linkedin_import_token == ""
+    assert settings.import_max_image_mb == 10

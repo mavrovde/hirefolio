@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Import configuration settings** (`linkedin_import_token`, `import_max_image_mb`): two new
+  `Settings` fields in `backend/app/config.py` that the upcoming LinkedIn import endpoint will
+  consume. `linkedin_import_token` (default `""`) is the machine auth token for the import
+  endpoint — an empty value means the endpoint is disabled. `import_max_image_mb` (default `10`)
+  caps the image size accepted by the import endpoint. Both fields follow the existing
+  `linkedin_*` style, are overridable via environment variables (pydantic-settings), and are
+  covered by a dedicated test in `backend/tests/test_config.py`. No endpoint or auth logic is
+  added in this change.
 - **LinkedIn provenance columns on `Post`** (`source_urn`, `source_url`, `posted_at`): three
   nullable columns that enable idempotent LinkedIn imports. `source_urn` carries a partial unique
   index (`WHERE source_urn IS NOT NULL`) so two NULL values are allowed but two identical non-null
