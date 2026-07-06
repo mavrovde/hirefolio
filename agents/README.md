@@ -84,8 +84,8 @@ a stronger model than the local 7B, better at clearing the 100% coverage gate.
 
 ### Anthropic
 
-`A2A_LLM_PROVIDER=anthropic` (`ANTHROPIC_API_KEY`, `A2A_MODEL=claude-opus-4-8`).
-Note: the Anthropic path currently reasons without tools (no tool-loop yet).
+`A2A_LLM_PROVIDER=anthropic` (`ANTHROPIC_API_KEY`, `A2A_MODEL=claude-sonnet-4-6` default, or
+`claude-opus-4-8` for max). Full function-calling tool-loop supported.
 
 ## Run it
 

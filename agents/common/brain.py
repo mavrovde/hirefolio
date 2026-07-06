@@ -17,7 +17,7 @@ import httpx
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434").rstrip("/")
 DEFAULT_OLLAMA_MODEL = "qwen2.5-coder:7b"
-DEFAULT_ANTHROPIC_MODEL = "claude-opus-4-8"
+DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"  # strong+cost-effective; opus-4-8 for max
 DEFAULT_GEMINI_MODEL = "gemini-2.5-pro"  # stronger reasoning/coding for autonomous work
 
 
@@ -72,9 +72,41 @@ async def think_with_tools(system_prompt: str, user_text: str, *, role_title: st
                 return await _ollama_tools(system_prompt, user_text, model, max_iters, allowed)
             if prov == "gemini" and os.getenv("GEMINI_API_KEY"):
                 return await _gemini_tools(system_prompt, user_text, model, max_iters, allowed)
+            if prov == "anthropic" and _anthropic_ready():
+                return await _anthropic_tools(system_prompt, user_text, model, max_iters, allowed)
         except Exception:  # noqa: BLE001 - try the next provider / fall back
             continue
     return await think(system_prompt, user_text, role_title=role_title, model=model)
+
+
+async def _anthropic_tools(system_prompt: str, user_text: str, model: str | None,
+                           max_iters: int, allowed: set[str]) -> str:
+    from anthropic import AsyncAnthropic
+
+    from .tools import execute_tool, schemas_for
+
+    tools = [{"name": s["function"]["name"], "description": s["function"]["description"],
+              "input_schema": s["function"]["parameters"]} for s in schemas_for(allowed)]
+    client = AsyncAnthropic()
+    mdl = model or os.getenv("A2A_MODEL") or DEFAULT_ANTHROPIC_MODEL
+    messages: list = [{"role": "user", "content": user_text}]
+    for _ in range(max_iters):
+        resp = await client.messages.create(model=mdl, max_tokens=4096,
+                                            system=system_prompt, tools=tools, messages=messages)
+        if resp.stop_reason != "tool_use":
+            return "".join(b.text for b in resp.content if b.type == "text").strip()
+        messages.append({"role": "assistant", "content": resp.content})
+        results = []
+        for b in resp.content:
+            if b.type == "tool_use":
+                out = execute_tool(b.name, b.input or {}, allowed)
+                results.append({"type": "tool_result", "tool_use_id": b.id,
+                                "content": str(out)[:8000]})
+        messages.append({"role": "user", "content": results})
+    resp = await client.messages.create(
+        model=mdl, max_tokens=2048, system=system_prompt,
+        messages=messages + [{"role": "user", "content": "Stop using tools. Final answer now."}])
+    return "".join(b.text for b in resp.content if b.type == "text").strip()
 
 
 async def _gemini_tools(system_prompt: str, user_text: str, model: str | None,
