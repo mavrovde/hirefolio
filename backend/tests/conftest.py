@@ -42,5 +42,6 @@ def mock_embedding_global(mocker):
         "app.services.embeddings.get_embedding", side_effect=mock_get_embedding
     )
     mocker.patch("app.api.posts.get_embedding", side_effect=mock_get_embedding)
+    mocker.patch("app.api.linkedin.get_embedding", side_effect=mock_get_embedding)
 
     return mock_get_embedding

@@ -23,6 +23,10 @@ filterwarnings = [
 [tool.coverage.run]
 source = ["app"]
 branch = true
+# Trace greenlets so lines executed after SQLAlchemy-async awaits (which hop into a
+# greenlet) are recorded — otherwise async DB endpoints exercised via httpx/ASGI can
+# appear uncovered even though they run.
+concurrency = ["thread", "greenlet"]
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
