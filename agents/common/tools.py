@@ -172,8 +172,16 @@ def gh_cli(args: str) -> str:
 def run_tests(layer: str = "backend") -> str:
     """Convenience wrapper mapping to the project's real test commands."""
     if layer == "backend":
+        # Use the main checkout's venv by absolute path: a fresh worktree has no
+        # venv of its own (it's gitignored), so a relative path would fail to run.
+        # Include coverage at the SAME floor as the deterministic gate so an agent's
+        # self-check matches what the gate will enforce (no "tests pass but gate fails
+        # on coverage" surprise).
+        cov = os.getenv("A2A_COV_MIN", "95")
         return run_command(
-            "TESTING=true backend/venv/bin/python -m pytest backend/tests -q -p no:cacheprovider"
+            "TESTING=true /Users/maverick/Projects/mavrov.de/backend/venv/bin/python "
+            f"-m pytest backend/tests -q -p no:cacheprovider --cov=app --cov-report= "
+            f"--cov-fail-under={cov}"
         )
     if layer == "frontend":
         return run_command("bash -lc 'cd frontend && npx vitest run'")

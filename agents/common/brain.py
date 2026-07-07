@@ -1,12 +1,15 @@
 """The reasoning 'brain' shared by every agent — provider-pluggable.
 
 Provider is chosen by A2A_LLM_PROVIDER: ollama | anthropic | gemini | stub | auto
-(default 'auto': try Ollama, then Anthropic if a key is set, else a deterministic
-stub so the team is always runnable/testable offline).
+(default 'anthropic': the team runs on Claude, with prompt caching on the system
+prompt + tool definitions). Set A2A_LLM_PROVIDER=auto for the no-cost path (local
+Ollama, then a deterministic offline stub) or =ollama/=gemini/=stub explicitly.
+Anthropic needs ANTHROPIC_API_KEY; without it the anthropic path degrades to the
+labelled stub (never a silent charge).
 
 Models per provider come from A2A_MODEL, with sensible defaults:
+  - anthropic -> claude-sonnet-4-6  (strong+cost-effective; claude-opus-4-8 for max)
   - ollama    -> qwen2.5-coder:7b   (great code+reasoning on Apple-silicon/16GB)
-  - anthropic -> claude-opus-4-8
 Ollama endpoint via OLLAMA_URL (default http://localhost:11434).
 """
 from __future__ import annotations
@@ -21,8 +24,26 @@ DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6"  # strong+cost-effective; opus-4-8
 DEFAULT_GEMINI_MODEL = "gemini-2.5-pro"  # stronger reasoning/coding for autonomous work
 
 
+def _log_usage(resp, where: str) -> None:
+    """Observability for prompt caching: with A2A_LOG_USAGE=1, print token usage
+    incl. cache read/write so you can *verify* the cache is being hit (cache_read>0
+    after the first call of a role within the ~5 min TTL). No-op otherwise."""
+    if os.getenv("A2A_LOG_USAGE") != "1":
+        return
+    u = getattr(resp, "usage", None)
+    if u is None:
+        return
+    print(
+        f"[brain:{where}] in={getattr(u, 'input_tokens', 0)} "
+        f"out={getattr(u, 'output_tokens', 0)} "
+        f"cache_write={getattr(u, 'cache_creation_input_tokens', 0)} "
+        f"cache_read={getattr(u, 'cache_read_input_tokens', 0)}",
+        flush=True,
+    )
+
+
 def _order() -> list[str]:
-    provider = os.getenv("A2A_LLM_PROVIDER", "auto").lower()
+    provider = os.getenv("A2A_LLM_PROVIDER", "anthropic").lower()
     return {
         "ollama": ["ollama"],
         "anthropic": ["anthropic"],
@@ -98,9 +119,11 @@ async def _anthropic_tools(system_prompt: str, user_text: str, model: str | None
     client = AsyncAnthropic()
     mdl = model or os.getenv("A2A_MODEL") or DEFAULT_ANTHROPIC_MODEL
     messages: list = [{"role": "user", "content": user_text}]
+    prev_cached: dict | None = None  # rolling breakpoint on the tool transcript
     for _ in range(max_iters):
         resp = await client.messages.create(model=mdl, max_tokens=4096, temperature=0,
                                             system=sys_cached, tools=tools, messages=messages)
+        _log_usage(resp, "anthropic_tools")
         if resp.stop_reason != "tool_use":
             return "".join(b.text for b in resp.content if b.type == "text").strip()
         messages.append({"role": "assistant", "content": resp.content})
@@ -110,10 +133,19 @@ async def _anthropic_tools(system_prompt: str, user_text: str, model: str | None
                 out = execute_tool(b.name, b.input or {}, allowed)
                 results.append({"type": "tool_result", "tool_use_id": b.id,
                                 "content": str(out)[:8000]})
+        # Cache the transcript up to *this* turn's tool results so the next turn reads
+        # the whole prior conversation from cache. Keep exactly one message-level
+        # breakpoint (system + last tool def use the other two) — move it each turn.
+        if prev_cached is not None:
+            prev_cached.pop("cache_control", None)
+        if results:
+            results[-1]["cache_control"] = {"type": "ephemeral"}
+            prev_cached = results[-1]
         messages.append({"role": "user", "content": results})
     resp = await client.messages.create(
         model=mdl, max_tokens=2048, temperature=0, system=sys_cached, tools=tools,
         messages=messages + [{"role": "user", "content": "Stop using tools. Final answer now."}])
+    _log_usage(resp, "anthropic_tools")
     return "".join(b.text for b in resp.content if b.type == "text").strip()
 
 
@@ -283,6 +315,7 @@ async def _anthropic(system_prompt: str, user_text: str, model: str | None) -> s
         system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_text}],
     )
+    _log_usage(resp, "anthropic")
     return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
 
 
