@@ -5,6 +5,7 @@ Revises: d45b3e9ce716
 Create Date: 2026-07-07 00:00:00.000000
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -20,7 +21,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.add_column("posts", sa.Column("source_urn", sa.String(), nullable=True))
-    op.add_column("posts", sa.Column("source_url", sa.String(length=512), nullable=True))
+    op.add_column(
+        "posts", sa.Column("source_url", sa.String(length=512), nullable=True)
+    )
     op.add_column(
         "posts", sa.Column("posted_at", sa.DateTime(timezone=True), nullable=True)
     )
