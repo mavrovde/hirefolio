@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "scrape": "node scrape-linkedin.js",
-    "scrape:debug": "HEADLESS=false node scrape-linkedin.js"
+    "scrape:debug": "HEADLESS=false node scrape-linkedin.js",
+    "scrape:posts": "node scrape-posts.js",
+    "scrape:posts:debug": "HEADLESS=false node scrape-posts.js",
+    "test": "node --test"
   },
   "dependencies": {
     "dotenv": "^16.4.0",

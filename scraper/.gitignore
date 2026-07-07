@@ -16,3 +16,6 @@ profile_data.json
 debug_profile.html
 *.png
 *.log
+
+# Scraped post data (contains live post content — never commit)
+posts_data.json
