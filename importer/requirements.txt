@@ -1,0 +1,4 @@
+# Standalone LinkedIn importer — deliberately minimal, independent of agents/ & backend.
+httpx>=0.28
+# dev/test
+pytest>=8.0
