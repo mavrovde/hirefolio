@@ -199,6 +199,10 @@ DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov
 OLLAMA_URL=http://localhost:11434
 EMBEDDING_MODEL=nomic-embed-text
 GEMINI_API_KEY=your_api_key_here
+
+# LinkedIn import (optional — leave blank to disable the import endpoint)
+LINKEDIN_IMPORT_TOKEN=your_machine_token_here   # default: "" (disabled)
+IMPORT_MAX_IMAGE_MB=10                          # default: 10 MB
 ```
 
 ### Root Environment (Release Script)
