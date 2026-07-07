@@ -1,7 +1,14 @@
 from typing import Optional, List
 from datetime import datetime, timezone
 from sqlalchemy import (
-    String, Text, DateTime, Boolean, UniqueConstraint, LargeBinary, Index, text,
+    String,
+    Text,
+    DateTime,
+    Boolean,
+    UniqueConstraint,
+    LargeBinary,
+    Index,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, deferred

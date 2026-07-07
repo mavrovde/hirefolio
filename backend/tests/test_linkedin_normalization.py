@@ -88,9 +88,7 @@ def test_normalize_no_zero_width_in_output() -> None:
 
 def test_normalize_real_sample_no_hashtag_token() -> None:
     """The literal word 'hashtag' must not appear in the cleaned output."""
-    raw = (
-        "…noise?\u200b\nhashtag\n#EngineeringManagement \nhashtag\n#SoftwareArchitecture"
-    )
+    raw = "…noise?\u200b\nhashtag\n#EngineeringManagement \nhashtag\n#SoftwareArchitecture"
     result = normalize_linkedin_text(raw)
     assert "hashtag" not in result.split()
     assert "#EngineeringManagement" in result
