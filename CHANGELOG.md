@@ -4,25 +4,49 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-08
+
 ### Added
-- **Import configuration settings** (`linkedin_import_token`, `import_max_image_mb`): two new
-  `Settings` fields in `backend/app/config.py` that the upcoming LinkedIn import endpoint will
-  consume. `linkedin_import_token` (default `""`) is the machine auth token for the import
-  endpoint — an empty value means the endpoint is disabled. `import_max_image_mb` (default `10`)
-  caps the image size accepted by the import endpoint. Both fields follow the existing
-  `linkedin_*` style, are overridable via environment variables (pydantic-settings), and are
-  covered by a dedicated test in `backend/tests/test_config.py`. No endpoint or auth logic is
-  added in this change.
-- **LinkedIn provenance columns on `Post`** (`source_urn`, `source_url`, `posted_at`): three
-  nullable columns that enable idempotent LinkedIn imports. `source_urn` carries a partial unique
-  index (`WHERE source_urn IS NOT NULL`) so two NULL values are allowed but two identical non-null
-  URNs are rejected. `source_url` stores the LinkedIn permalink (max 512 chars) and `posted_at`
-  stores the original publish timestamp with timezone. All existing rows receive NULLs; no
-  endpoint or API response shape is changed.
-- Alembic migration `c3f8a1d2e947` (revises `d45b3e9ce716`) adds the three columns and the
-  partial unique index with a matching `downgrade()` that drops them cleanly.
-- Three focused model tests: nullable defaults, duplicate-URN integrity error, and two-NULL
-  coexistence.
+- **LinkedIn post import (end-to-end)** — move LinkedIn posts (text **and** images) into the
+  mavrov.de blog:
+  - `POST /api/app/linkedin/import-post` — multipart ingest of one post (text + optional image
+    bytes). Stores the image **locally** (served from our own domain via
+    `GET /api/app/posts/{id}/image`) and **upserts by LinkedIn URN** so re-imports never
+    duplicate. Auth by `X-Import-Token` (constant-time compare) **or** an admin JWT; image type
+    allowlist (`415`) + size cap `import_max_image_mb` (`413`); tags derived from hashtags.
+    Imported posts are drafts by default. (spec 04)
+  - `Post` provenance columns `source_urn` (partial-unique when not null), `source_url`,
+    `posted_at`, with Alembic migration `c3f8a1d2e947`. (spec 01)
+  - Import settings `linkedin_import_token` and `import_max_image_mb`. (spec 02)
+  - LinkedIn text normalization helpers `normalize_linkedin_text` / `extract_hashtags` (strip the
+    literal `hashtag` labels + zero-width chars; hashtags → tags). (spec 03)
+- **Scraper** — correct post image/date extraction: captures the post's **own** media (no longer
+  the author's profile photo), decodes `postedAt` from the activity URN's embedded timestamp,
+  emits a stable `posts_data.json` schema, adds `scrape:posts` / `scrape:posts:debug` / `test`
+  npm scripts, gentle scraping (session reuse, randomized delays, `SCRAPE_MAX_POSTS`), and a pure
+  `parse-post.js` unit-tested with `node --test`. (spec 05)
+- **Standalone importer** (`importer/`, independent of the A2A team) — drives the scraper,
+  downloads each image with the LinkedIn session, and posts to the ingest endpoint. Idempotent
+  (server URN upsert + local processed-URN ledger), retry/backoff (one bad post never aborts the
+  batch), oldest→newest, `--dry-run` / `--watch` / `--publish`; 10 pytest tests (mocked HTTP). (spec 06)
+- Decomposed feature-spec workflow under `specs/planned/` (run order + `_full-reference.md`).
+
+### Changed
+- A2A agent team now defaults to **Claude** (`claude-sonnet-4-6`) with **prompt caching** on the
+  system prompt + tool definitions + a rolling tool-transcript breakpoint; `A2A_LOG_USAGE=1`
+  surfaces per-call cache hits.
+- Autonomous pipeline hardened from live-run experience: dev agents **implement via tools**
+  (rather than only describing a plan); the deterministic gate now **mirrors CI** (auto
+  `ruff format` + `ruff check --fix` + `mypy` before pytest); an empty implement is treated as a
+  **RED** gate (no fake-green); the PR title is derived from the spec's H1 and length-capped;
+  `run_tests` uses the checkout's venv; each agent server waits for its port to free (fixes the
+  recurring `:8021` bind race).
+
+### Fixed
+- Backend coverage traces greenlets (`concurrency = ["thread", "greenlet"]`) so lines executed
+  after SQLAlchemy-async awaits are recorded — async DB endpoints no longer mis-report as
+  uncovered.
+- Ruff-formatted autonomous LinkedIn changes that had reached `main` unformatted.
 
 ## [1.3.0] - 2026-07-06
 
