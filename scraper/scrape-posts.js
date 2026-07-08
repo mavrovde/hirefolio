@@ -4,6 +4,8 @@ import { writeFileSync, existsSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
+import { parsePost } from './parse-post.js';
+
 config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -13,6 +15,9 @@ const SESSION_FILE = join(__dirname, 'session.json');
 const LINKEDIN_EMAIL = process.env.LINKEDIN_EMAIL;
 const LINKEDIN_PASSWORD = process.env.LINKEDIN_PASSWORD;
 const PROFILE_URL = process.env.PROFILE_URL || 'https://www.linkedin.com/in/smavrov/';
+// Be gentle with LinkedIn (avoid anti-bot / account risk): cap posts per run and
+// use small randomized scroll delays. Session is reused (never re-login per run).
+const MAX_POSTS = parseInt(process.env.SCRAPE_MAX_POSTS || '50', 10);
 
 async function login(page, context) {
     if (existsSync(SESSION_FILE)) {
@@ -55,8 +60,22 @@ async function login(page, context) {
 async function scrollPage(page, times = 5) {
     for (let i = 0; i < times; i++) {
         await page.evaluate(() => window.scrollBy(0, 1000));
-        await page.waitForTimeout(1000);
+        // Randomized delay (800-1600ms) — gentler / less bot-like than a fixed cadence.
+        await page.waitForTimeout(800 + Math.floor(Math.random() * 800));
     }
+}
+
+// Collect every image src under a set of locators (post media may have several).
+async function collectImageSrcs(item, selector) {
+    const srcs = [];
+    try {
+        const imgs = await item.locator(selector).all();
+        for (const img of imgs) {
+            const src = await img.getAttribute('src', { timeout: 500 }).catch(() => null);
+            if (src) srcs.push(src);
+        }
+    } catch { }
+    return srcs;
 }
 
 // Get text from first matching element safely
@@ -84,69 +103,59 @@ async function extractPosts(page) {
         console.log(`Fallback: Found ${itemsToProcess.length} feed update items`);
     }
 
-    for (let i = 0; i < itemsToProcess.length; i++) {
+    for (let i = 0; i < itemsToProcess.length && posts.length < MAX_POSTS; i++) {
         const item = itemsToProcess[i];
         try {
-            const post = {
-                id: `post-${i}`
-            };
+            const raw = { urn: '', content: '', imageCandidates: [], authorImageUrl: null, time: '' };
 
-            // Extract post text/content
+            // Expand truncated text ("see more") then read the post body.
             try {
-                // Find the "see more" button if it exists within this post and click it
                 const seeMoreBtn = item.locator('.feed-shared-inline-show-more-text__see-more-less-toggle');
                 if (await seeMoreBtn.count() > 0) {
-                    // check if it's "see more" or "see less", if it's "see more" click it.
                     const text = await getText(seeMoreBtn);
                     if (text.toLowerCase().includes('more')) {
                         await seeMoreBtn.click({ timeout: 1000 }).catch(() => { });
                         await page.waitForTimeout(200);
                     }
                 }
-
-                post.content = await getText(item.locator('.update-components-text'));
-                if (!post.content) {
-                    // fallback
-                    post.content = await getText(item.locator('.feed-shared-update-v2__description-wrapper'));
+                raw.content = await getText(item.locator('.update-components-text'));
+                if (!raw.content) {
+                    raw.content = await getText(item.locator('.feed-shared-update-v2__description-wrapper'));
                 }
             } catch (e) {
                 console.log(`Text extraction failed for item ${i}`, e.message);
             }
 
-            // Extract image URL
+            // The author's avatar — captured ONLY so parsePost can exclude it (the
+            // old scraper mistook this profile photo for the post's image).
             try {
-                const imgLocator = item.locator('.update-components-image__image, .ivm-view-attr__img--centered').first();
-                if (await imgLocator.count() > 0) {
-                    post.imageUrl = await imgLocator.getAttribute('src', { timeout: 1000 });
+                const avatar = item.locator('.update-components-actor__avatar img').first();
+                if (await avatar.count() > 0) {
+                    raw.authorImageUrl = await avatar.getAttribute('src', { timeout: 500 });
                 }
             } catch { }
 
-            // Extract post URL/urn if possible
+            // The post's OWN media (there may be several).
+            raw.imageCandidates = await collectImageSrcs(
+                item,
+                '.update-components-image__image, .update-components-image img, .feed-shared-image img',
+            );
+
+            // URN (→ activity id, permalink and postedAt are derived in parsePost).
             try {
-                // Try getting it from the urn
-                const urn = await item.getAttribute('data-urn', { timeout: 500 });
-                if (urn) {
-                    post.urn = urn;
-                    // A basic standard share url
-                    const activityId = urn.split(':').pop();
-                    if (activityId) {
-                        post.url = `https://www.linkedin.com/feed/update/urn:li:activity:${activityId}/`;
-                    }
-                }
+                raw.urn = (await item.getAttribute('data-urn', { timeout: 500 })) || '';
             } catch { }
 
-            // Get the Date/Time posted
+            // Human-readable "time" string (kept alongside the derived ISO postedAt).
             try {
                 const timeLocator = item.locator('.update-components-actor__sub-description .visually-hidden').first();
                 if (await timeLocator.count() > 0) {
-                    post.time = await getText(timeLocator);
+                    raw.time = await getText(timeLocator);
                 }
             } catch { }
 
-            // Only add to list if it actually has content
-            if (post.content && post.content.length > 5) {
-                posts.push(post);
-            }
+            const post = parsePost(raw);
+            if (post) posts.push(post);
 
         } catch (e) {
             console.log(`  Error extracting post ${i}: ${e.message}`);
