@@ -106,10 +106,17 @@ def remove_worktree(path: str, branch: str, keep: bool = False) -> None:
 
 # --- deterministic gate (trusts exit codes, not the LLM) --------------------
 
+BACKEND_BIN = "/Users/maverick/Projects/mavrov.de/backend/venv/bin"
+
+
 def run_gate(workdir: str) -> tuple[bool, str]:
-    """Run the real suites for the layer(s) that changed, at 100% coverage.
+    """Run the real quality checks CI enforces, for the layer(s) that changed.
     A fresh worktree lacks gitignored deps, so we reuse the main checkout's venv
-    (absolute path) and symlink its node_modules when the frontend is tested."""
+    (absolute path) and symlink its node_modules when the frontend is tested.
+
+    Backend mirrors CI's jobs: ruff format + ruff lint (auto-applied so the commit
+    is CI-clean — a gap that used to let unformatted code pass locally and fail CI),
+    mypy (if installed), then pytest at the coverage floor."""
     changed = sh("git diff --name-only HEAD", cwd=workdir).stdout
     be_changed = "backend/" in changed
     fe_changed = "frontend/" in changed
@@ -123,7 +130,28 @@ def run_gate(workdir: str) -> tuple[bool, str]:
     ok = True
     reports = []
     if be_changed:
-        be = sh("TESTING=true /Users/maverick/Projects/mavrov.de/backend/venv/bin/python -m pytest "
+        # 1) Auto-apply ruff format + safe lint fixes so the committed code is CI-clean,
+        #    then VERIFY nothing remains (matches CI's "Backend Lint & Format" job — the
+        #    gate used to skip this, so unformatted code passed locally and failed CI).
+        sh(f"bash -lc 'cd backend && {BACKEND_BIN}/ruff format . && "
+           f"{BACKEND_BIN}/ruff check --fix .'", cwd=workdir)
+        lint = sh(f"bash -lc 'cd backend && {BACKEND_BIN}/ruff check . && "
+                  f"{BACKEND_BIN}/ruff format . --check'", cwd=workdir)
+        ok &= lint.returncode == 0
+        reports.append(f"[backend-lint] {'PASS' if lint.returncode == 0 else 'FAIL'}\n"
+                       f"{(lint.stdout or lint.stderr)[-800:]}")
+        # 2) Type-check with mypy IF available (CI runs it); skip cleanly if not installed
+        #    locally so the gate never crashes on a missing tool.
+        if sh(f"{BACKEND_BIN}/python -c 'import mypy'", cwd=workdir).returncode == 0:
+            mp = sh(f"bash -lc 'cd backend && TESTING=true {BACKEND_BIN}/python -m mypy app'",
+                    cwd=workdir)
+            ok &= mp.returncode == 0
+            reports.append(f"[backend-mypy] {'PASS' if mp.returncode == 0 else 'FAIL'}\n"
+                           f"{(mp.stdout or mp.stderr)[-800:]}")
+        else:
+            reports.append("[backend-mypy] SKIPPED (mypy not in local venv; CI still enforces it)")
+        # 3) Tests + coverage.
+        be = sh(f"TESTING=true {BACKEND_BIN}/python -m pytest "
                 f"backend/tests -q -p no:cacheprovider --cov=app --cov-report= --cov-fail-under={COV_MIN}",
                 cwd=workdir)
         ok &= be.returncode == 0
