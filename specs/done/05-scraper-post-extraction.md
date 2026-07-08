@@ -35,3 +35,9 @@ image and isn't wired into npm scripts.
 ## Notes / constraints
 - See `_full-reference.md` §Component 2. Prefer LinkedIn's Voyager JSON over hashed DOM classes.
 </content>
+
+
+---
+## Result (2026-07-08)
+- Implemented directly (console mode); PR #14, merged.
+- Shipped in release **v1.4.0**.
