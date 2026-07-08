@@ -1,18 +1,37 @@
 import logging
 import random
 import re
+import secrets
+from datetime import datetime
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.post import Post
 from app.models.user import User
-from app.services.auth import get_current_admin_user
+from app.services.auth import get_current_admin_user, get_current_user_optional
 from app.services.embeddings import get_embedding
-from app.services.linkedin import linkedin_service
+from app.services.linkedin import (
+    linkedin_service,
+    normalize_linkedin_text,
+    extract_hashtags,
+)
 from app.config import settings
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 router = APIRouter(prefix="/linkedin", tags=["linkedin"])
 logger = logging.getLogger(__name__)
@@ -258,3 +277,208 @@ async def transfer_linkedin_posts(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Bulk transfer failed: {e}",
         )
+
+
+# --- Import a single LinkedIn post (text + optional image bytes) -------------
+
+
+def _import_authorized(token: Optional[str], user: Optional[User]) -> bool:
+    """Authorize an import: a valid machine token (constant-time compare) OR an
+    admin JWT. A blank/unset configured token never authenticates."""
+    configured = settings.linkedin_import_token
+    if configured and token and secrets.compare_digest(token, configured):
+        return True
+    return bool(user and getattr(user, "is_admin", False))
+
+
+def _derive_title(content: str) -> str:
+    """First line / ~60 chars of the content, trimmed on a word boundary."""
+    first_line = content.strip().splitlines()[0] if content.strip() else ""
+    if len(first_line) <= 60:
+        return first_line or "LinkedIn Post"
+    cut = first_line[:60]
+    if " " in cut:
+        cut = cut.rsplit(" ", 1)[0]
+    return cut.strip() + "…"
+
+
+def _slug_base(title: str) -> str:
+    base = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    return base or "linkedin-post"
+
+
+def _parse_posted_at(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _resolve_tags(raw_tags: Optional[str], content: str) -> list[str]:
+    """Explicit CSV tags if given, else hashtags from the content; always keep a
+    'LinkedIn' base tag; de-duplicate case-insensitively; cap at 5."""
+    if raw_tags:
+        candidates = [t.strip() for t in raw_tags.split(",") if t.strip()]
+    else:
+        candidates = extract_hashtags(content)
+    result: list[str] = []
+    seen: set[str] = set()
+    for tag in ["LinkedIn", *candidates]:
+        key = tag.lower()
+        if key not in seen:
+            seen.add(key)
+            result.append(tag)
+        if len(result) == 5:
+            break
+    return result
+
+
+async def _upsert_linkedin_post(
+    db: AsyncSession,
+    *,
+    urn: str,
+    title: str,
+    summary: str,
+    content: str,
+    language: str,
+    published: bool,
+    tags: list[str],
+    source_url: Optional[str],
+    posted_at: Optional[datetime],
+    embedding,
+    image_bytes: Optional[bytes],
+    image_type: Optional[str],
+) -> tuple[Post, bool]:
+    """Upsert a post by LinkedIn URN. Returns (post, created)."""
+    existing = (
+        await db.execute(select(Post).where(Post.source_urn == urn))
+    ).scalar_one_or_none()
+
+    if existing is not None:
+        existing.content = content
+        existing.summary = summary
+        existing.posted_at = posted_at or existing.posted_at
+        existing.source_url = source_url or existing.source_url
+        existing.embedding = embedding
+        if image_bytes is not None:
+            existing.image_blob = image_bytes
+            existing.image_type = image_type
+            existing.image_url = None
+        await db.commit()
+        await db.refresh(existing)
+        return existing, False
+
+    post = Post(
+        title=title,
+        slug=f"{_slug_base(title)}-{random.randint(1000, 9999)}",
+        content=content,
+        summary=summary,
+        language=language,
+        published=published,
+        tags=tags,
+        embedding=embedding,
+        source_urn=urn,
+        source_url=source_url,
+        posted_at=posted_at,
+        image_blob=image_bytes,
+        image_type=image_type,
+    )
+    try:
+        db.add(post)
+        await db.commit()
+    except Exception:
+        # Slug collision on (slug, language) — retry once with a fresh suffix.
+        await db.rollback()
+        post.slug = f"{_slug_base(title)}-{random.randint(1000, 9999)}"
+        db.add(post)
+        await db.commit()
+    await db.refresh(post)
+    return post, True
+
+
+@router.post("/import-post")
+async def import_linkedin_post(
+    content: str = Form(...),
+    urn: str = Form(...),
+    title: Optional[str] = Form(None),
+    summary: Optional[str] = Form(None),
+    language: str = Form("en"),
+    posted_at: Optional[str] = Form(None),
+    source_url: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    published: bool = Form(False),
+    image: Optional[UploadFile] = File(None),
+    x_import_token: Optional[str] = Header(None, alias="X-Import-Token"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Ingest one LinkedIn post — text (+ optional image bytes) — storing the image
+    locally and upserting by its LinkedIn URN so re-imports never duplicate.
+
+    Auth: `X-Import-Token` header (machine) or an admin JWT. Imported posts are
+    drafts (`published=false`) unless explicitly published on first import.
+    """
+    if not _import_authorized(x_import_token, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Import requires a valid X-Import-Token or an admin session.",
+        )
+
+    image_bytes: Optional[bytes] = None
+    image_type: Optional[str] = None
+    if image is not None:
+        if image.content_type not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=f"Unsupported image type: {image.content_type}. "
+                f"Allowed: {', '.join(sorted(ALLOWED_IMAGE_TYPES))}.",
+            )
+        image_bytes = await image.read()
+        max_bytes = settings.import_max_image_mb * 1024 * 1024
+        if len(image_bytes) > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Image exceeds {settings.import_max_image_mb} MB limit.",
+            )
+        image_type = image.content_type
+
+    clean_content = normalize_linkedin_text(content)
+    resolved_title = (title or "").strip() or _derive_title(clean_content)
+    resolved_summary = (summary or "").strip() or clean_content[:200]
+    embedding = await get_embedding(f"{resolved_title}\n\n{clean_content}")
+
+    logger.info(
+        "[LinkedIn] import-post: urn=%s, has_image=%s, content_len=%d, lang=%s",
+        urn,
+        image_bytes is not None,
+        len(clean_content),
+        language,
+    )
+
+    post, created = await _upsert_linkedin_post(
+        db,
+        urn=urn,
+        title=resolved_title,
+        summary=resolved_summary,
+        content=clean_content,
+        language=language,
+        published=published,
+        tags=_resolve_tags(tags, clean_content),
+        source_url=source_url,
+        posted_at=_parse_posted_at(posted_at),
+        embedding=embedding,
+        image_bytes=image_bytes,
+        image_type=image_type,
+    )
+    return {
+        "id": post.id,
+        "slug": post.slug,
+        "created": created,
+        "message": (
+            "Post imported from LinkedIn as a draft."
+            if created
+            else "Post updated from LinkedIn (matched by URN)."
+        ),
+    }
