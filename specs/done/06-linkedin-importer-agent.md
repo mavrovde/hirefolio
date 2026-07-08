@@ -36,3 +36,9 @@ Idempotent, retrying, logged — and completely independent of `agents/`.
 - Full behaviour, env vars, and test strategy in `_full-reference.md` §Component 3 / §Test strategy.
 - Do not commit secrets, cookies, sessions, or scraped content.
 </content>
+
+
+---
+## Result (2026-07-08)
+- Implemented directly (console mode); PR #15, merged.
+- Shipped in release **v1.4.0**.

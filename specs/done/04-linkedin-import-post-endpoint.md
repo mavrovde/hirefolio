@@ -47,3 +47,9 @@ being merged first.
   §1b/§1c. Keep `/transfer-post(s)` working. Extend the autouse embedding mock in `conftest.py` to
   also patch `app.api.linkedin.get_embedding` if needed. Add tests in `backend/tests/`.
 </content>
+
+
+---
+## Result (2026-07-08)
+- Implemented directly (console mode); PR #13, merged.
+- Shipped in release **v1.4.0**.
