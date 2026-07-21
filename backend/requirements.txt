@@ -11,8 +11,8 @@ httpx==0.28.1
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 email-validator==2.3.0
-python-multipart==0.0.26
-Pillow==12.2.0
+python-multipart==0.0.31
+Pillow==12.3.0
 setuptools==69.5.1
 crewai==0.11.0
 langchain-openai==0.0.2
