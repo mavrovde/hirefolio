@@ -11,6 +11,7 @@ config();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUTPUT_FILE = join(__dirname, 'posts_data.json');
 const SESSION_FILE = join(__dirname, 'session.json');
+const USER_DATA_DIR = join(__dirname, '.chrome-profile');
 
 const LINKEDIN_EMAIL = process.env.LINKEDIN_EMAIL;
 const LINKEDIN_PASSWORD = process.env.LINKEDIN_PASSWORD;
@@ -20,6 +21,15 @@ const PROFILE_URL = process.env.PROFILE_URL || 'https://www.linkedin.com/in/smav
 const MAX_POSTS = parseInt(process.env.SCRAPE_MAX_POSTS || '50', 10);
 
 async function login(page, context) {
+    // Prefer the shared persistent profile session (same as scrape-linkedin.js).
+    try {
+        const liCookies = await context.cookies('https://www.linkedin.com');
+        if (liCookies.some((c) => c.name === 'li_at' && c.value)) {
+            console.log('✓ Already authenticated (persistent profile)');
+            return;
+        }
+    } catch { }
+
     if (existsSync(SESSION_FILE)) {
         console.log('Restoring session...');
         const cookies = JSON.parse(readFileSync(SESSION_FILE, 'utf-8'));
@@ -180,12 +190,14 @@ async function main() {
     console.log(`Will perform ${numScrolls} scrolls to load posts.`);
 
     const isHeadless = process.env.HEADLESS !== 'false';
-    const browser = await chromium.launch({ headless: isHeadless, slowMo: 30 });
-    const context = await browser.newContext({
+    const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+        headless: isHeadless,
+        slowMo: 30,
+        channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
         viewport: { width: 1280, height: 900 },
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
     });
-    const page = await context.newPage();
+    const page = context.pages()[0] || await context.newPage();
 
     try {
         await login(page, context);
@@ -209,7 +221,7 @@ async function main() {
     } catch (e) {
         console.error('Error:', e.message);
     } finally {
-        await browser.close();
+        await context.close();
     }
 }
 

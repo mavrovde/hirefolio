@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = 768  # nomic-embed-text uses 768 dimensions
     generation_model: str = "llama3.2"
-    fast_generation_model: str = "tinyllama"
+    fast_generation_model: str = "llama3.2:1b"
 
     # Authentication
     jwt_secret_key: str = "your-secret-key-change-in-production"

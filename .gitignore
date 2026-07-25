@@ -15,6 +15,7 @@ Thumbs.db
 *.swn
 .claude/*
 !.claude/agents/
+!.claude/commands/
 
 # Environment variables
 .env
@@ -41,6 +42,9 @@ proxy/certs/
 scraper/.chrome-profile/
 scraper/session.json
 scraper/session.json.stale-*
+
+# Importer — local processed-URN ledger (personal LinkedIn activity data)
+importer/state.json
 
 
 # A2A agents subsystem

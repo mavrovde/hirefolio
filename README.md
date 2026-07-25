@@ -7,7 +7,7 @@ Personal portfolio website with blog functionality powered by semantic search an
 - **Modern Portfolio**: Showcase experience, skills, education, and recommendations
 - **Multilingual**: Full support for English and German with real-time switching
 - **Blog with Semantic Search**: AI-powered content discovery using `nomic-embed-text` embeddings
-- **AI Tag Generation**: Auto-suggest tags for posts using `tinyllama` model
+- **AI Tag Generation**: Auto-suggest tags for posts using a local `llama3.2:1b` model
 - **Responsive Design**: Works seamlessly on desktop and mobile
 - **Admin Dashboard**: Secure interface for managing posts (rich editor, drafting, publishing)
 - **Type-Safe**: Full TypeScript/Python type coverage
@@ -28,7 +28,8 @@ Personal portfolio website with blog functionality powered by semantic search an
 - **Database**: PostgreSQL 16 with `pgvector` extension
 - **AI**: Ollama (Local LLM & Embeddings)
   - Embeddings: `nomic-embed-text`
-  - Logic/Text: `tinyllama`
+  - Chat/generation: `llama3.2`
+  - Fast metadata/tags: `llama3.2:1b`
 - **ORM**: SQLAlchemy 2.0.46 (async)
 - **Testing**: pytest + Vitest (100% line & branch coverage)
 
@@ -110,7 +111,19 @@ npm start
 - **API Docs**: <http://localhost:8000/docs>
 - **Ollama**: <http://localhost:11434>
 
-## 🤖 MCP Servers (Claude Code)
+## 🤖 AI Assistant (Claude Code)
+
+**Claude Code is the primary AI tool for this project.** All assistant guidance lives in
+[`CLAUDE.md`](./CLAUDE.md) (stack facts, commands, the LinkedIn pipeline, engineering rules, and the
+configured MCP servers / subagents / plugins / slash commands). Legacy per-tool files
+(`.cursorrules`, `.windsurfrules`, `.cline.md`, `.geminirules`, `AI.md`, `.clauderules`) are thin
+pointers to `CLAUDE.md`.
+
+Project-scoped Claude Code tooling: subagents under `.claude/agents/` (`devops-pipeline`,
+`backend-dev`, `frontend-dev`), slash commands under `.claude/commands/` (`/verify`, `/release`,
+`/linkedin-sync`), and the plugins listed in `CLAUDE.md`.
+
+### MCP Servers
 
 A project-scoped `.mcp.json` configures Model Context Protocol servers to speed up development with Claude Code. On first use, Claude Code will ask you to approve the project's MCP servers.
 
@@ -355,7 +368,7 @@ isort app/
 
 ## 📊 Test Coverage
 
-- **Backend**: 100% line & branch coverage (1862 statements / 374 branches; 605 tests)
+- **Backend**: ~99% line & branch coverage (652 tests)
 - **Frontend**: 100% coverage across statements, branches, functions & lines (687 tests)
 - **E2E**: 81 Playwright tests passing against the full stack (real Ollama integration)
 

@@ -4,9 +4,9 @@ import warnings
 import httpx
 import re
 from typing import Any, AsyncGenerator, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 from crewai import Agent
-from langchain.tools import BaseTool
+from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from langchain_core.callbacks import BaseCallbackHandler
 from app.config import settings
@@ -32,7 +32,7 @@ class StreamingCallbackHandler(BaseCallbackHandler):
         self.loop = loop
         self.current_agent_name = "Unknown"
 
-    def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
+    def on_llm_new_token(self, token: Any, **kwargs: Any) -> None:
         if token:
             # Safely put tokens from a background thread into the main loop's queue
             self.loop.call_soon_threadsafe(
@@ -90,7 +90,7 @@ async def multi_agent_conversation(
         llm = ChatOpenAI(
             model=settings.generation_model,
             base_url=f"{settings.ollama_url}/v1",
-            api_key="NA",
+            api_key=SecretStr("NA"),
             streaming=True,
             callbacks=[callback],
             temperature=0.7,
@@ -111,7 +111,7 @@ async def multi_agent_conversation(
     moderator_llm = ChatOpenAI(
         model=settings.generation_model,
         base_url=f"{settings.ollama_url}/v1",
-        api_key="NA",
+        api_key=SecretStr("NA"),
         streaming=False,  # Moderator doesn't need to stream
         temperature=0.1,
     )

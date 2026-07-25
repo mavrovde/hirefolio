@@ -93,7 +93,7 @@ mock_lc_callbacks.BaseCallbackHandler = BaseCallbackHandler
 mock_lc_comm_chat = mock_module("langchain_community.chat_models")
 mock_lc_comm_chat.ChatOllama = MagicMock
 
-mock_lc_tools = mock_module("langchain.tools")
+mock_lc_tools = mock_module("langchain_core.tools")
 
 
 class BaseToolMock:
