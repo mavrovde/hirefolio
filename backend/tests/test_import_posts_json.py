@@ -213,6 +213,9 @@ def test_is_allowed_image_url_matrix():
     assert _is_allowed_image_url("https://media.licdn.com.evil.com/x.png") is False
     assert _is_allowed_image_url("http://169.254.169.254/latest/meta-data") is False
     assert _is_allowed_image_url("not a url") is False
+    # Malformed authority (bad IPv6) makes .hostname raise → caught → False.
+    assert _is_allowed_image_url("https://[::1") is False
+    assert _is_allowed_image_url(12345) is False  # non-str → TypeError → False
 
 
 @respx.mock
@@ -268,8 +271,14 @@ async def test_download_declared_length_too_large_returns_none(monkeypatch):
 async def test_download_too_large_body_returns_none(monkeypatch):
     monkeypatch.setattr(settings, "linkedin_cookie_li_at", "c")
     monkeypatch.setattr(settings, "import_max_image_mb", 0)  # any bytes exceed 0 MB
+    # Declared length "0" passes the header pre-check, so the actual-body cap
+    # (len(data) > max) is what rejects it.
     respx.get(IMG).mock(
-        return_value=Response(200, content=PNG, headers={"content-type": "image/png"})
+        return_value=Response(
+            200,
+            content=PNG,
+            headers={"content-type": "image/png", "content-length": "0"},
+        )
     )
     assert await _download_image_best_effort(IMG) == (None, None)
 

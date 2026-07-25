@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, of } from 'rxjs';
-import { shareReplay, switchMap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { catchError, shareReplay, switchMap } from 'rxjs/operators';
 import { LanguageService } from '@mavrov/shared';
+import { environment } from '../../environments/environment';
 
 export interface Profile {
   name: string;
@@ -69,18 +70,24 @@ export interface Recommendation {
 export class ProfileService {
   private dataUrlBase = 'assets/profile_data';
 
-  // Cache observable to prevent multiple requests
-  private profile$: Observable<Profile> | null = null;
-
   constructor(
     private http: HttpClient,
     private languageService: LanguageService,
   ) {}
 
+  /**
+   * Load the active profile for the current language from the backend
+   * (`/profile?lang=…`), falling back to the bundled static asset when the
+   * backend has no active version yet or is unreachable — so the site is never
+   * blank before the first admin upload.
+   */
   getProfile(): Observable<Profile> {
     return this.languageService.currentLang$.pipe(
       switchMap((lang) => {
-        return this.http.get<Profile>(`${this.dataUrlBase}_${lang}.json`);
+        const apiUrl = `${environment.apiUrl}${environment.apiPrefix}/profile?lang=${lang}`;
+        return this.http
+          .get<Profile>(apiUrl)
+          .pipe(catchError(() => this.http.get<Profile>(`${this.dataUrlBase}_${lang}.json`)));
       }),
       shareReplay(1),
     );

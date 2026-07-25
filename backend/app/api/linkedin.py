@@ -518,11 +518,13 @@ def _is_allowed_image_url(url: str) -> bool:
     """
     try:
         parsed = urlparse(url)
-    except (ValueError, TypeError):
+        if parsed.scheme != "https":
+            return False
+        # .hostname raises ValueError on malformed authorities (bad IPv6/port).
+        host = (parsed.hostname or "").lower()
+    except (ValueError, TypeError, AttributeError):
+        # AttributeError: a non-str url (e.g. a numeric imageUrl) reached here.
         return False
-    if parsed.scheme != "https":
-        return False
-    host = (parsed.hostname or "").lower()
     return any(host == h or host.endswith("." + h) for h in ALLOWED_IMAGE_HOSTS)
 
 

@@ -27,72 +27,79 @@ describe('ProfileService', () => {
     httpMock.verify();
   });
 
+  const dummyProfile: Profile = {
+    name: 'John Doe',
+    headline: 'Developer',
+    location: 'City',
+    about: 'Bio',
+    contact: { email: 'test@example.com', linkedin: 'https://linkedin.com/test' },
+    experience: [],
+    education: [],
+    skills: ['Angular'],
+    certifications: [],
+    languages: [],
+    recommendations: [],
+  };
+
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
 
-  it('should fetch profile data from assets', () => {
-    const dummyProfile: Profile = {
-      name: 'John Doe',
-      headline: 'Developer',
-      location: 'City',
-      about: 'Bio',
-      contact: { email: 'test@example.com', linkedin: 'https://linkedin.com/test' },
-      experience: [],
-      education: [],
-      skills: ['Angular'],
-      certifications: [],
-      languages: [],
-      recommendations: [],
-    };
-
+  it('should fetch the active profile from the backend', () => {
     service.getProfile().subscribe((profile) => {
       expect(profile).toEqual(dummyProfile);
     });
 
-    // Expect a request to the assets file
     const req = httpMock.expectOne(
-      (req) => req.url.includes('assets/profile_data') && req.method === 'GET',
+      (r) => r.url.includes('/api/app/profile') && r.method === 'GET',
     );
+    expect(req.request.url).toContain('lang=en');
     req.flush(dummyProfile);
   });
 
-  it('should handle HTTP errors gracefully', () => {
-    let errorOccurred = false;
+  it('should fall back to the static asset when the backend has no profile', () => {
+    service.getProfile().subscribe((profile) => {
+      expect(profile).toEqual(dummyProfile);
+    });
 
+    // Backend returns 404 (no active version) → fall back to the asset.
+    const backendReq = httpMock.expectOne((r) => r.url.includes('/api/app/profile'));
+    backendReq.flush('Not found', { status: 404, statusText: 'Not Found' });
+
+    const assetReq = httpMock.expectOne((r) => r.url.includes('assets/profile_data_en.json'));
+    assetReq.flush(dummyProfile);
+  });
+
+  it('should error only when both backend and the asset fail', () => {
+    let errorOccurred = false;
     service.getProfile().subscribe({
       next: () => {},
-      error: (error) => {
-        expect(error).toBeTruthy();
+      error: () => {
         errorOccurred = true;
       },
     });
 
-    const req = httpMock.expectOne((req) => req.url.includes('assets/profile_data'));
-    req.flush('Error', { status: 500, statusText: 'Server Error' });
+    httpMock
+      .expectOne((r) => r.url.includes('/api/app/profile'))
+      .flush('err', { status: 500, statusText: 'Server Error' });
+    httpMock
+      .expectOne((r) => r.url.includes('assets/profile_data_en.json'))
+      .flush('err', { status: 500, statusText: 'Server Error' });
 
     expect(errorOccurred).toBe(true);
   });
 
-  it('should switch language and reload profile', () => {
+  it('should switch language and reload profile from the backend', () => {
     const languageService = TestBed.inject(LanguageService) as unknown as MockLanguageService;
 
-    // Initial load (default language en)
     service.getProfile().subscribe();
+    httpMock.match((r) => r.url.includes('lang=en')).forEach((r) => r.flush(dummyProfile));
 
-    const reqs = httpMock.match((req) => req.url.endsWith('en.json'));
-    if (reqs.length > 0) {
-      reqs[0].flush({ name: 'English Profile' } as any);
-    }
-
-    // Switch language
     languageService.setLanguage('de');
 
-    // Should load German profile
     service.getProfile().subscribe();
-
-    const reqs2 = httpMock.match((req) => req.url.endsWith('de.json'));
-    expect(reqs2.length).toBeGreaterThan(0);
-    reqs2[0].flush({ name: 'German Profile' } as any);
+    const deReqs = httpMock.match((r) => r.url.includes('lang=de'));
+    expect(deReqs.length).toBeGreaterThan(0);
+    deReqs[0].flush({ ...dummyProfile, name: 'German Profile' });
   });
 });

@@ -5,7 +5,25 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Placeholder for next release.
+- **DB-backed, versioned profile + admin JSON upload.** The scraper's
+  `profile_data.json` can now be uploaded from the admin **Profile Data** page and is stored
+  **versioned, per language** (EN/DE evolve independently — one active version each).
+  - Backend: `ProfileVersion` model (unique `(version, language)`), public
+    `GET /api/app/profile?lang=en|de` (active version; 404 → frontend falls back to the bundled
+    static asset), admin `POST /admin/profile/upload`, `GET /admin/profile/versions`,
+    `PATCH /admin/profile/versions/{id}/activate`. Alembic migration `a1b2c3d4e5f6`.
+  - Public site now loads the profile from the backend (with a static-asset fallback), so an
+    upload is reflected immediately.
+- **Bulk posts import from `posts_data.json`.** `POST /api/app/linkedin/import-posts-json` and an
+  **Upload posts_data.json** button in the admin LinkedIn tab upsert scraper posts by URN as drafts
+  (idempotent). Images are downloaded best-effort from LinkedIn's CDN, else the remote URL is kept.
+  - Security-hardened: image fetch is restricted to https `*.licdn.com` (SSRF guard; the `li_at`
+    cookie never leaves LinkedIn), redirects are not followed, and the upload/post-count/image size
+    are bounded (413 over limit).
+
+### Notes
+- Full test coverage: backend 100% (new `profile`/`admin_profile`/`linkedin` paths), admin app 100%
+  (service + Profile Data component + posts-JSON upload), plus admin-e2e for the Profile Data page.
 
 ## [1.6.0] - 2026-07-25
 
