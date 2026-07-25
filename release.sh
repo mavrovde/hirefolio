@@ -58,6 +58,7 @@ echo "Target Version: v$VERSION"
 echo "Step 1b: Updating docker-compose.prod.yml with $VERSION..."
 sed -i '' "s|}-backend:\${IMAGE_TAG:-[0-9.]*}|}-backend:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
 sed -i '' "s|}-frontend:\${IMAGE_TAG:-[0-9.]*}|}-frontend:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
+sed -i '' "s|}-admin-frontend:\${IMAGE_TAG:-[0-9.]*}|}-admin-frontend:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
 sed -i '' "s|}-proxy:\${IMAGE_TAG:-[0-9.]*}|}-proxy:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
 
 
@@ -70,7 +71,7 @@ if ./verify_all.sh; then
 else
     echo "❌ Verification FAILED. Release aborted."
     echo "Reverting version bump..."
-    git checkout VERSION backend/app/main.py frontend/package.json frontend/src/app/version.ts
+    git checkout VERSION backend/app/main.py frontend/package.json frontend/projects/public/src/app/version.ts
     echo "Fix the issues and try again."
     exit 1
 fi
@@ -82,7 +83,7 @@ if ./verify_proxy_startup.sh; then
 else
     echo "❌ Proxy Smoke Test FAILED. Release aborted."
     echo "Reverting version bump..."
-    git checkout VERSION backend/app/main.py frontend/package.json frontend/src/app/version.ts
+    git checkout VERSION backend/app/main.py frontend/package.json frontend/projects/public/src/app/version.ts
     exit 1
 fi
 

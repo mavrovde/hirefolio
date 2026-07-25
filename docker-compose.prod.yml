@@ -52,7 +52,7 @@ services:
       - app-network
 
   backend:
-    image: ${IMAGE_REPO:-maverickde/mavrov.de}-backend:${IMAGE_TAG:-1.4.2}
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-backend:${IMAGE_TAG:-1.5.0}
     restart: always
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5433/${POSTGRES_DB:-mavrov}
@@ -76,7 +76,7 @@ services:
       - app-network
 
   frontend:
-    image: ${IMAGE_REPO:-maverickde/mavrov.de}-frontend:${IMAGE_TAG:-1.4.2}
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-frontend:${IMAGE_TAG:-1.5.0}
     restart: always
     expose:
       - "80"
@@ -88,6 +88,18 @@ services:
       # the public host. The reverse proxy already validates the public Host, so
       # host validation here would only break pre-rendered SSR. See server.ts.
       - NG_ALLOWED_HOSTS=*
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  admin-frontend:
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-admin-frontend:${IMAGE_TAG:-1.5.0}
+    restart: always
+    expose:
+      - "80"
+    environment:
+      - NODE_ENV=production
     depends_on:
       - backend
     networks:
@@ -108,7 +120,7 @@ services:
       - app-network
 
   proxy:
-    image: ${IMAGE_REPO:-maverickde/mavrov.de}-proxy:${IMAGE_TAG:-1.4.2}
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-proxy:${IMAGE_TAG:-1.5.0}
     container_name: global_proxy
     restart: always
     ports:
@@ -116,6 +128,7 @@ services:
       - "10443:443"
     depends_on:
       - frontend
+      - admin-frontend
       - backend
       - open-webui
     networks:

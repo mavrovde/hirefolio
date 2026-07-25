@@ -1,0 +1,16 @@
+import { Component, Input } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TranslatePipe } from '@mavrov/shared';
+import { YearExtractPipe } from '../../pipes/year-extract.pipe';
+import { Profile } from '../../services/profile.service';
+
+@Component({
+  selector: 'app-experience',
+  standalone: true,
+  imports: [CommonModule, TranslatePipe, YearExtractPipe],
+  templateUrl: './experience.component.html',
+  styleUrls: ['./experience.component.css'],
+})
+export class ExperienceComponent {
+  @Input() profile: Profile | null = null;
+}

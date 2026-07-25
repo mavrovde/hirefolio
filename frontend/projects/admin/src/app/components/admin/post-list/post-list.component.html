@@ -1,0 +1,82 @@
+<div class="post-list">
+  <div class="header">
+    <h1 class="page-title">&gt; Manage Posts</h1>
+    <a routerLink="/posts/new" class="btn-new"> <span class="icon">➕</span> New Post </a>
+  </div>
+
+  <!-- Search & Controls -->
+  <div class="controls-bar">
+    <div class="search-box">
+      <span class="prompt">> SEARCH:</span>
+      <input type="text" [(ngModel)]="table.searchText" (keyup.enter)="table.setSearch(table.searchText)"
+        placeholder="Enter keywords..." class="terminal-input" />
+    </div>
+  </div>
+
+  @if (loading) {
+  <div class="loading">Loading posts...</div>
+  <div class="error-state">
+    <p class="error-text">&gt; Error: {{ error }}</p>
+    <button (click)="loadPosts()" class="btn-primary">Retry</button>
+  </div>
+  } @else if (table.items.length === 0 && !table.searchText) {
+  <div class="empty-state">
+    <p>&gt; No posts found</p>
+    <a routerLink="/posts/new" class="btn-primary">Create your first post</a>
+  </div>
+  } @else {
+  <div class="posts-table">
+    <table>
+      <thead>
+        <tr>
+          <th (click)="table.toggleSort('id')" class="sortable">ID {{ table.isSorted('id') ?
+            (table.getSortDirection('id')
+            === 'asc' ? '▲' : '▼') : '' }}</th>
+          <th (click)="table.toggleSort('title')" class="sortable">Title {{ table.isSorted('title') ?
+            (table.getSortDirection('title') === 'asc' ? '▲' : '▼') : '' }}</th>
+          <th (click)="table.toggleSort('slug')" class="sortable">Slug {{ table.isSorted('slug') ?
+            (table.getSortDirection('slug') === 'asc' ? '▲' : '▼') : '' }}</th>
+          <th (click)="table.toggleSort('language')" class="sortable">Language {{ table.isSorted('language') ?
+            (table.getSortDirection('language') === 'asc' ? '▲' : '▼') : '' }}</th>
+          <th (click)="table.toggleSort('published')" class="sortable">Status {{ table.isSorted('published') ?
+            (table.getSortDirection('published') === 'asc' ? '▲' : '▼') : '' }}</th>
+          <th (click)="table.toggleSort('created_at')" class="sortable">Created {{ table.isSorted('created_at') ?
+            (table.getSortDirection('created_at') === 'asc' ? '▲' : '▼') : '' }}</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (post of table.items; track post.id) {
+        <tr>
+          <td class="id-cell">{{ post.id }}</td>
+          <td class="title-cell">{{ post.title }}</td>
+          <td class="slug-cell">{{ post.slug }}</td>
+          <td class="lang-cell">{{ post.language }}</td>
+          <td class="status-cell">
+            <span [class]="post.published ? 'status-published' : 'status-draft'">
+              {{ post.published ? '✓ Published' : '○ Draft' }}
+            </span>
+          </td>
+          <td class="date-cell">{{ post.created_at }}</td>
+          <td class="actions-cell">
+            <a [routerLink]="['/posts/edit', post.id]" class="btn-edit"> Edit </a>
+            <button (click)="deletePost(post)" class="btn-delete" [disabled]="deletingIds.has(post.id)">
+              {{ deletingIds.has(post.id) ? 'Deleting...' : 'Delete' }}
+            </button>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    <!-- Pagination Controls -->
+    <div class="pagination">
+      <button [disabled]="table.currentPage === 1" (click)="table.setPage(table.currentPage - 1)" class="btn-page">&lt;
+        PREV</button>
+      <span class="page-info">Page {{ table.currentPage }} of {{ table.totalPages }} ({{ table.totalItems }}
+        items)</span>
+      <button [disabled]="table.currentPage === table.totalPages" (click)="table.setPage(table.currentPage + 1)"
+        class="btn-page">NEXT &gt;</button>
+    </div>
+  </div>
+  }
+</div>

@@ -32,9 +32,9 @@ echo "frontend: 🅰️  Running Lint, Tests & Build..."
 cd frontend
 echo "Running Lint..."
 npm run lint --if-present
-echo "Running Tests..."
-npm test -- --watch=false --coverage
-echo "Building Production..."
+echo "Running Tests (shared + public + admin, 100% coverage each)..."
+npm run test:coverage
+echo "Building Production (shared + public + admin)..."
 npm run build
 cd ..
 
@@ -43,10 +43,10 @@ echo ""
 echo "e2e: 🎭 Running E2E Tests..."
 # Ensure full stack is running
 echo "Starting full stack..."
-docker-compose -f docker-compose.prod.yml -f docker-compose.e2e.yml up -d --build backend frontend proxy open-webui
+docker-compose -f docker-compose.prod.yml -f docker-compose.e2e.yml up -d --build backend frontend admin-frontend proxy open-webui
 
-echo "🔄 Restarting Frontend & Proxy to ensure fresh DNS resolution..."
-docker-compose -f docker-compose.prod.yml -f docker-compose.e2e.yml restart frontend proxy
+echo "🔄 Restarting Frontend, Admin & Proxy to ensure fresh DNS resolution..."
+docker-compose -f docker-compose.prod.yml -f docker-compose.e2e.yml restart frontend admin-frontend proxy
 
 # Waiting for Health with timeouts instead of fixed sleeps
 echo "Waiting for Backend to be ready..."

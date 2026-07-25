@@ -1,0 +1,69 @@
+<div class="admin-layout">
+  <nav class="admin-sidebar">
+    <div class="sidebar-header">
+      <h2>&gt; Admin Panel</h2>
+      @if (currentUser) {
+      <p class="user-info">{{ currentUser.username }}</p>
+      }
+    </div>
+
+    <ul class="nav-menu">
+      <li>
+        <a routerLink="/dashboard" routerLinkActive="active">
+          <span class="icon">📊</span> Dashboard
+        </a>
+      </li>
+      <li>
+        <a routerLink="/posts" routerLinkActive="active" class="nav-item">
+          <span class="icon">📝</span>
+          <span>Posts</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/posts/new" routerLinkActive="active">
+          <span class="icon">➕</span> New Post
+        </a>
+      </li>
+      <li>
+        <a routerLink="/cv-manager" routerLinkActive="active" class="nav-item">
+          <span class="icon">📄</span>
+          <span>CV Manager</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/profile" routerLinkActive="active" class="nav-item">
+          <span class="icon">👤</span>
+          <span>Profile</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/sql" routerLinkActive="active" class="nav-item">
+          <span class="icon">💾</span>
+          <span>SQL Panel</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/chat" routerLinkActive="active" class="nav-item">
+          <span class="icon">🤖</span>
+          <span>Gemini Chat</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/linkedin" routerLinkActive="active" class="nav-item">
+          <span class="icon">🔗</span>
+          <span>LinkedIn Sync</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/" class="home-link"> <span class="icon">🏠</span> View Site </a>
+      </li>
+      <li>
+        <button (click)="logout()" class="logout-btn"><span class="icon">🚪</span> Logout</button>
+      </li>
+    </ul>
+  </nav>
+
+  <main class="admin-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

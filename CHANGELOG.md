@@ -7,6 +7,27 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+## [1.5.0] - 2026-07-25
+
+### Added
+- **Frontend split into two independent apps.** The single Angular app is now an Angular
+  workspace with three projects under `frontend/projects/`:
+  - `public` — the SSR visitor site (home, blog, cv, llm, marketing shell), unauthenticated.
+  - `admin` — a CSR-only admin console SPA (login + management), served on the restricted
+    `admin.mavrov.de` subdomain.
+  - `@mavrov/shared` — an ng-packagr library holding the code both apps share (blog/stats/llm/
+    language/storage services, translate pipe, i18n), decoupled from the host app via the
+    `SHARED_ENVIRONMENT` and `AUTH_TOKEN_PROVIDER` injection tokens.
+  Each app builds, tests (100% coverage per project), and deploys independently.
+- **Second frontend Docker image** `…-admin-frontend` (static nginx SPA, no SSR/Node) plus a
+  dedicated `admin.mavrov.de` reverse-proxy server block with a loopback-allowed access
+  allowlist (`proxy/admin_allowlist.conf`) and `noindex` headers.
+
+### Changed
+- CI (`deploy.yml`) now builds/tests/publishes both frontends and runs the Playwright E2E suite
+  split into `public-e2e` and `admin-e2e` projects. `release.sh` / `build_amd64_and_push.sh`
+  build and promote the admin image alongside the others.
+
 ## [1.4.2] - 2026-07-25
 
 ### Added

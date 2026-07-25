@@ -14,7 +14,11 @@
     "importHelpers": true,
     "target": "ES2022",
     "module": "preserve",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "paths": {
+      "@mavrov/shared": ["./projects/shared/src/public-api.ts"],
+      "@mavrov/shared/testing": ["./projects/shared/testing/public-api.ts"]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
@@ -24,11 +28,11 @@
   },
   "files": [],
   "references": [
-    {
-      "path": "./tsconfig.app.json"
-    },
-    {
-      "path": "./tsconfig.spec.json"
-    }
+    { "path": "./projects/shared/tsconfig.lib.json" },
+    { "path": "./projects/shared/tsconfig.spec.json" },
+    { "path": "./projects/public/tsconfig.app.json" },
+    { "path": "./projects/public/tsconfig.spec.json" },
+    { "path": "./projects/admin/tsconfig.app.json" },
+    { "path": "./projects/admin/tsconfig.spec.json" }
   ]
 }

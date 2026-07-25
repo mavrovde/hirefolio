@@ -1,0 +1,71 @@
+<div class="dashboard">
+  <h1 class="page-title">&gt; Dashboard</h1>
+
+  @if (loading) {
+  <div class="loading">Loading stats...</div>
+  } @else if (error) {
+  <div class="error-state">
+    <p class="error-text">&gt; Error: {{ error }}</p>
+    <button (click)="loadStats()" class="btn-primary">Retry</button>
+  </div>
+  } @else {
+  <div class="stats-grid" *ngIf="stats">
+    <!-- Posts Stats -->
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.posts.total }}</div>
+      <div class="stat-label">Total Posts</div>
+      <div class="stat-subtext">
+        <span class="text-green-400">{{ stats.posts.published }} Pub</span> /
+        <span class="text-yellow-400">{{ stats.posts.drafts }} Draft</span>
+      </div>
+    </div>
+
+    <!-- Language Breakdown -->
+    <div class="stat-card">
+      <div class="stat-label mb-2">Languages</div>
+      <div class="flex flex-col gap-1 text-sm">
+        <div *ngFor="let lang of getLanguages()" class="flex justify-between">
+          <span class="uppercase font-bold text-terminal-highlight">{{ lang }}</span>
+          <span>{{ stats.posts.by_language[lang] }}</span>
+        </div>
+        <span *ngIf="getLanguages().length === 0" class="text-terminal-dim">None</span>
+      </div>
+    </div>
+
+    <!-- Users -->
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.users }}</div>
+      <div class="stat-label">Admins</div>
+    </div>
+
+    <!-- Visitors/Subs (Placeholders) -->
+    <div class="stat-card">
+      <div class="stat-value">{{ stats.subscribers }}</div>
+      <div class="stat-label">Subscribers</div>
+    </div>
+
+    <div class="stat-card col-span-full md:col-span-2">
+      <div class="stat-label">Visitor Stats</div>
+      <div class="text-lg text-terminal-highlight mt-1">{{ stats.visitors }}</div>
+    </div>
+  </div>
+
+  <div class="quick-actions">
+    <h2>&gt; Quick Actions</h2>
+    <div class="action-buttons">
+      <a routerLink="/posts/new" class="action-btn">
+        <span class="icon">➕</span>
+        <span>Create New Post</span>
+      </a>
+      <a routerLink="/posts" class="action-btn">
+        <span class="icon">📝</span>
+        <span>Manage Posts</span>
+      </a>
+      <a routerLink="/" class="action-btn">
+        <span class="icon">👁️</span>
+        <span>View Site</span>
+      </a>
+    </div>
+  </div>
+  }
+</div>

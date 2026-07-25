@@ -41,11 +41,11 @@ else
   sed -i "s/\"version\": \"[0-9.]*\"/\"version\": \"$new_version\"/" frontend/package.json
 fi
 
-# Update frontend/src/app/version.ts
+# Update frontend/projects/public/src/app/version.ts
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' "s/VERSION = '.*';/VERSION = '$new_version';/" frontend/src/app/version.ts
+  sed -i '' "s/VERSION = '.*';/VERSION = '$new_version';/" frontend/projects/public/src/app/version.ts
 else
-  sed -i "s/VERSION = '.*';/VERSION = '$new_version';/" frontend/src/app/version.ts
+  sed -i "s/VERSION = '.*';/VERSION = '$new_version';/" frontend/projects/public/src/app/version.ts
 fi
 
 # Update .env IMAGE_TAG
