@@ -65,7 +65,7 @@
     "@types/node": "^22.20.1",
     "@vitest/browser-playwright": "^4.1.10",
     "@vitest/coverage-v8": "^4.1.10",
-    "jsdom": "^27.4.0",
+    "jsdom": "^29.1.1",
     "ng-packagr": "^22.0.2",
     "stylelint": "^17.14.1",
     "stylelint-config-standard": "^40.0.0",
