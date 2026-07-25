@@ -16,7 +16,7 @@ Built on the canonical [`a2a-sdk`](https://pypi.org/project/a2a-sdk/) (0.2.x).
 | Solution Architect | `architect` | 8011 | Technical design, interfaces, trade-offs |
 | Story Writer | `story-writer` | 8012 | User stories + acceptance criteria |
 | Backend Developer | `backend-dev` | 8013 | FastAPI / Python implementation |
-| Frontend Developer | `frontend-dev` | 8014 | Angular 21 / TS implementation |
+| Frontend Developer | `frontend-dev` | 8014 | Angular 22 / TS implementation |
 | QA Engineer | `qa-engineer` | 8015 | Test plans, verification, coverage |
 | Code Reviewer | `code-reviewer` | 8016 | Correctness / security / quality review |
 | LinkedIn Checker | `linkedin-checker` | 8017 | Validates the LinkedIn integration |

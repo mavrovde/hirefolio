@@ -214,9 +214,24 @@ describe('HeaderComponent', () => {
   });
 
   it('should not show slider when years array is empty', () => {
-    component.years = [];
-    fixture.changeDetectorRef.detectChanges();
-    const slider = fixture.debugElement.query(By.css('.year-slider'));
+    // HeaderComponent populates `years` from YearsService in its constructor, so the shared
+    // fixture is already rendered with a full slider. Mutating `component.years = []` after
+    // that first render and re-running change detection does not re-render the frozen fixture
+    // view under the Angular 22 test harness. Build a fresh fixture whose YearsService yields
+    // an empty list to assert the real behaviour: `*ngIf="years.length > 0"` hides the slider.
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [HeaderComponent],
+      providers: [
+        provideRouter([]),
+        { provide: LanguageService, useClass: MockLanguageService },
+        { provide: YearsService, useValue: { getYears: () => of([]) } },
+      ],
+    });
+    const emptyFixture = TestBed.createComponent(HeaderComponent);
+    emptyFixture.detectChanges();
+    const slider = emptyFixture.debugElement.query(By.css('.year-slider'));
     expect(slider).toBeFalsy();
+    expect(emptyFixture.componentInstance.years).toEqual([]);
   });
 });

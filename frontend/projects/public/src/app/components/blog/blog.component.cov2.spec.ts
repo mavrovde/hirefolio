@@ -164,8 +164,14 @@ describe('BlogComponent (cov2 branch coverage)', () => {
     );
     component.loadPosts();
     await flushPromises();
-    const calledUrl = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1][0] as string;
-    expect(calledUrl).toContain('tag=angular');
+    // Angular 22's HttpClient defaults to the Fetch backend, so unrelated HttpClient
+    // requests (e.g. YearsService's /api/app/cv/years from the rendered header) also hit
+    // this fetch spy. Target the posts request explicitly rather than assuming it is last.
+    const postsCall = fetchSpy.mock.calls.find(
+      (call: any[]) => typeof call[0] === 'string' && call[0].includes('/api/app/posts')
+    );
+    expect(postsCall).toBeTruthy();
+    expect(postsCall[0] as string).toContain('tag=angular');
   });
 
   // Line 229 + 234: sharePost non-browser branch uses https://mavrov.de and skips both browser branches

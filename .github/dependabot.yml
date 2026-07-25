@@ -1,11 +1,111 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
+# Dependabot version updates for mavrov.de
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Rationale: the Angular workspace must move as ONE unit. A previous run bumped only
+# @angular/build to a new major while the framework stayed a major behind, breaking the
+# build. We therefore GROUP the whole Angular toolchain into a single PR and IGNORE
+# major bumps for the framework — majors (Angular, TypeScript) are deliberate, manual
+# efforts per CLAUDE.md dependency policy, not automated.
 
 version: 2
 updates:
-  - package-ecosystem: "" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # ---------- Frontend (Angular workspace) ----------
+  - package-ecosystem: "npm"
+    directory: "/frontend"
     schedule:
       interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    groups:
+      # The entire Angular platform + build tooling moves together, minor/patch only.
+      angular:
+        patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"
+          - "ng-packagr"
+          - "zone.js"
+        update-types:
+          - "minor"
+          - "patch"
+      # Everything else (Tailwind, Vitest, Playwright, tooling) grouped for minor/patch.
+      frontend-minor:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@angular/*"
+          - "@angular-devkit/*"
+          - "ng-packagr"
+          - "typescript"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Major framework/toolchain bumps are deliberate, manual migrations — not automated.
+      - dependency-name: "@angular/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@angular/build"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "ng-packagr"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  # ---------- Backend (Python / FastAPI) ----------
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "backend"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      backend-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # linkedin-api is pinned to 2.2.1 (prod installs a patched wheel) — never auto-bump.
+      - dependency-name: "linkedin-api"
+
+  # ---------- GitHub Actions ----------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # ---------- Docker base images ----------
+  - package-ecosystem: "docker"
+    directories:
+      - "/backend"
+      - "/frontend"
+      - "/proxy"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(docker)"
