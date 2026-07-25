@@ -8,20 +8,19 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['src/test-setup.ts'],
-    include: ['src/**/*.spec.ts'],
+    include: ['src/**/*.spec.ts', 'testing/**/*.spec.ts'],
     reporters: ['default'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       include: ['src/**/*.ts'],
-      // Exclude framework-generated bootstrap entry points (client + SSR server)
-      exclude: ['src/**/*.spec.ts', 'src/test-setup.ts', 'src/main.ts', 'src/server.ts'],
+      exclude: ['src/**/*.spec.ts', 'src/test-setup.ts', 'src/public-api.ts', 'testing/**'],
     },
   },
   resolve: {
     alias: {
-      '@app': resolve(__dirname, './src/app'),
-      '@env': resolve(__dirname, './src/environments'),
+      '@mavrov/shared/testing': resolve(__dirname, './testing/public-api.ts'),
+      '@mavrov/shared': resolve(__dirname, './src/public-api.ts'),
     },
   },
 });

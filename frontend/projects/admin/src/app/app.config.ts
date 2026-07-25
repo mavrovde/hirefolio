@@ -1,11 +1,11 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 
 import { routes } from './app.routes';
-import { ssrInterceptor } from './interceptors/ssr.interceptor';
-import { provideSharedEnvironment, provideAuthTokenProvider } from '@mavrov/shared';
+import { authInterceptor } from './interceptors/auth.interceptor';
+import { AuthService } from './services/auth.service';
+import { AUTH_TOKEN_PROVIDER, provideSharedEnvironment } from '@mavrov/shared';
 import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
@@ -18,10 +18,14 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
       })
     ),
-    // Public app is unauthenticated: only the SSR URL-rewriting interceptor.
-    provideHttpClient(withInterceptors([ssrInterceptor])),
-    provideClientHydration(withEventReplay()),
+    // Admin app carries the auth interceptor (attaches Bearer, handles 401/403).
+    provideHttpClient(withInterceptors([authInterceptor])),
     provideSharedEnvironment(environment),
-    provideAuthTokenProvider(() => null),
+    // Feed the shared library's Gemini calls the admin bearer token.
+    {
+      provide: AUTH_TOKEN_PROVIDER,
+      useFactory: (auth: AuthService) => () => auth.getToken(),
+      deps: [AuthService],
+    },
   ],
 };
