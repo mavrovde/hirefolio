@@ -110,9 +110,7 @@ async def get_profile_versions(
     if language:
         query = query.where(ProfileVersion.language == language.lower())
 
-    total_raw = await db.scalar(
-        select(func.count()).select_from(query.subquery())
-    )
+    total_raw = await db.scalar(select(func.count()).select_from(query.subquery()))
     total = int(total_raw) if total_raw is not None else 0
 
     if hasattr(ProfileVersion, sort_by):
@@ -183,4 +181,6 @@ async def activate_profile_version(
     except Exception as e:
         logger.error("Error activating profile version: %s", e)
         await db.rollback()
-        raise HTTPException(status_code=500, detail="Failed to activate profile version")
+        raise HTTPException(
+            status_code=500, detail="Failed to activate profile version"
+        )

@@ -220,9 +220,7 @@ async def test_activate_switches_active(client: AsyncClient, db_session):
 
 
 async def test_activate_unknown_id_is_404(client: AsyncClient):
-    r = await client.patch(
-        f"{VERSIONS}/00000000-0000-0000-0000-000000000000/activate"
-    )
+    r = await client.patch(f"{VERSIONS}/00000000-0000-0000-0000-000000000000/activate")
     assert r.status_code == 404
 
 

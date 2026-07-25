@@ -5,6 +5,7 @@ import re
 import secrets
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 
@@ -35,6 +36,15 @@ from app.services.linkedin import (
 from app.config import settings
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+# Post images may only be fetched from LinkedIn's CDN. This is a hard SSRF guard
+# AND the reason it is safe to attach the `li_at` session cookie to the request:
+# the cookie is never sent anywhere but LinkedIn.
+ALLOWED_IMAGE_HOSTS = ("licdn.com",)
+
+# Bounds for the bulk posts-JSON import (resource-exhaustion guards).
+MAX_POSTS_JSON_BYTES = 10 * 1024 * 1024  # 10 MB uploaded file cap
+MAX_POSTS_PER_IMPORT = 500
 
 router = APIRouter(prefix="/linkedin", tags=["linkedin"])
 logger = logging.getLogger(__name__)
@@ -499,32 +509,59 @@ def _pick_image_url(entry: dict) -> Optional[str]:
     return images[0] if images else None
 
 
+def _is_allowed_image_url(url: str) -> bool:
+    """Only https URLs on LinkedIn's CDN are eligible for server-side download.
+
+    Prevents SSRF (no fetching internal/metadata endpoints) and protects the
+    ``li_at`` cookie from leaking to attacker-controlled hosts supplied in the
+    uploaded JSON.
+    """
+    try:
+        parsed = urlparse(url)
+    except (ValueError, TypeError):
+        return False
+    if parsed.scheme != "https":
+        return False
+    host = (parsed.hostname or "").lower()
+    return any(host == h or host.endswith("." + h) for h in ALLOWED_IMAGE_HOSTS)
+
+
 async def _download_image_best_effort(
     url: Optional[str],
 ) -> tuple[Optional[bytes], Optional[str]]:
-    """Best-effort fetch of a post image using the configured ``li_at`` cookie.
+    """Best-effort fetch of a post image from LinkedIn's CDN using the ``li_at``
+    cookie.
 
     Returns ``(bytes, content_type)`` on success, or ``(None, None)`` on any
-    failure (no cookie, network error, unsupported type, too large) — the caller
-    then falls back to storing the remote URL, so a single bad image never fails
-    the whole import.
+    failure (disallowed/None URL, network error, unsupported type, too large) —
+    the caller then falls back to storing the remote URL, so a single bad image
+    never fails the whole import.
+
+    Security: the URL must pass :func:`_is_allowed_image_url` (https + LinkedIn
+    CDN host) before any request is made, redirects are NOT followed (a redirect
+    could escape the allowlist), and the body is size-capped by the declared
+    Content-Length before it is read into memory.
     """
-    if not url:
+    if not url or not _is_allowed_image_url(url):
         return None, None
     cookies = (
         {"li_at": settings.linkedin_cookie_li_at}
         if settings.linkedin_cookie_li_at
         else None
     )
+    max_bytes = settings.import_max_image_mb * 1024 * 1024
     try:
-        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as http:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as http:
             resp = await http.get(url, cookies=cookies)
         resp.raise_for_status()
         content_type = (resp.headers.get("content-type") or "").split(";")[0].strip()
         if content_type not in ALLOWED_IMAGE_TYPES:
             return None, None
+        declared = resp.headers.get("content-length")
+        if declared and declared.isdigit() and int(declared) > max_bytes:
+            return None, None
         data = resp.content
-        if len(data) > settings.import_max_image_mb * 1024 * 1024:
+        if len(data) > max_bytes:
             return None, None
         return data, content_type
     except Exception as e:  # noqa: BLE001 — best-effort, never fatal
@@ -552,7 +589,13 @@ async def import_posts_json(
             detail="Import requires a valid X-Import-Token or an admin session.",
         )
 
-    raw = await file.read()
+    # Cap the in-memory read so an oversized upload can't exhaust memory.
+    raw = await file.read(MAX_POSTS_JSON_BYTES + 1)
+    if len(raw) > MAX_POSTS_JSON_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Posts JSON exceeds {MAX_POSTS_JSON_BYTES // (1024 * 1024)} MB limit.",
+        )
     try:
         entries = json.loads(raw)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -561,6 +604,17 @@ async def import_posts_json(
         raise HTTPException(
             status_code=400, detail="Posts JSON must be a top-level array."
         )
+
+    total_entries = len(entries)
+    if total_entries > MAX_POSTS_PER_IMPORT:
+        logger.warning(
+            "[LinkedIn] import-posts-json: %d entries exceeds cap %d — processing "
+            "the first %d only.",
+            total_entries,
+            MAX_POSTS_PER_IMPORT,
+            MAX_POSTS_PER_IMPORT,
+        )
+        entries = entries[:MAX_POSTS_PER_IMPORT]
 
     created = 0
     updated = 0

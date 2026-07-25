@@ -11,7 +11,11 @@ from httpx import AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.linkedin import _download_image_best_effort, _pick_image_url
+from app.api.linkedin import (
+    _download_image_best_effort,
+    _is_allowed_image_url,
+    _pick_image_url,
+)
 from app.config import settings
 from app.models.post import Post
 
@@ -109,10 +113,14 @@ async def test_creates_drafts_and_is_idempotent(
         assert r2.json()["updated"] == 1 and r2.json()["created"] == 0
 
     all_posts = (
-        await db_session.execute(
-            select(Post).where(Post.source_urn == "urn:li:activity:1")
+        (
+            await db_session.execute(
+                select(Post).where(Post.source_urn == "urn:li:activity:1")
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(all_posts) == 1
 
 
@@ -135,7 +143,9 @@ async def test_skips_entries_without_urn_or_content(clean_client: AsyncClient):
 async def test_downloaded_image_is_stored_locally(
     clean_client: AsyncClient, db_session: AsyncSession
 ):
-    entries = [{"urn": "urn:img", "content": "post with image", "imageUrl": "http://x/i.png"}]
+    entries = [
+        {"urn": "urn:img", "content": "post with image", "imageUrl": "http://x/i.png"}
+    ]
     with patch(
         "app.api.linkedin._download_image_best_effort",
         new=AsyncMock(return_value=(PNG, "image/png")),
@@ -151,7 +161,11 @@ async def test_failed_image_download_keeps_remote_url(
     clean_client: AsyncClient, db_session: AsyncSession
 ):
     entries = [
-        {"urn": "urn:fallback", "content": "post img fallback", "imageUrls": ["http://x/f.jpg"]}
+        {
+            "urn": "urn:fallback",
+            "content": "post img fallback",
+            "imageUrls": ["http://x/f.jpg"],
+        }
     ]
     with patch(
         "app.api.linkedin._download_image_best_effort",
@@ -181,41 +195,113 @@ def test_pick_image_url_none_when_absent():
 # --- helper: _download_image_best_effort ------------------------------------
 
 
+IMG = "https://media.licdn.com/dms/image/ok.png"
+
+
 async def test_download_none_url_returns_none():
     assert await _download_image_best_effort(None) == (None, None)
+
+
+# --- SSRF / credential-leak guard: only https LinkedIn CDN URLs are allowed ---
+
+
+def test_is_allowed_image_url_matrix():
+    assert _is_allowed_image_url("https://media.licdn.com/x.png") is True
+    assert _is_allowed_image_url("https://licdn.com/x.png") is True
+    assert _is_allowed_image_url("http://media.licdn.com/x.png") is False  # not https
+    assert _is_allowed_image_url("https://evil.com/x.png") is False  # not licdn
+    assert _is_allowed_image_url("https://media.licdn.com.evil.com/x.png") is False
+    assert _is_allowed_image_url("http://169.254.169.254/latest/meta-data") is False
+    assert _is_allowed_image_url("not a url") is False
+
+
+@respx.mock
+async def test_download_disallowed_host_never_requests(monkeypatch):
+    """A non-LinkedIn URL must not be fetched (SSRF) and must not receive li_at."""
+    monkeypatch.setattr(settings, "linkedin_cookie_li_at", "secret-cookie")
+    route = respx.get("https://evil.com/x.png").mock(
+        return_value=Response(200, content=PNG, headers={"content-type": "image/png"})
+    )
+    assert await _download_image_best_effort("https://evil.com/x.png") == (None, None)
+    assert route.called is False  # no request left the process
 
 
 @respx.mock
 async def test_download_success_with_cookie(monkeypatch):
     monkeypatch.setattr(settings, "linkedin_cookie_li_at", "cookie123")
-    respx.get("http://img/ok.png").mock(
+    respx.get(IMG).mock(
         return_value=Response(200, content=PNG, headers={"content-type": "image/png"})
     )
-    data, ctype = await _download_image_best_effort("http://img/ok.png")
+    data, ctype = await _download_image_best_effort(IMG)
     assert data == PNG and ctype == "image/png"
 
 
 @respx.mock
 async def test_download_wrong_content_type_returns_none(monkeypatch):
     monkeypatch.setattr(settings, "linkedin_cookie_li_at", "")
-    respx.get("http://img/x.html").mock(
-        return_value=Response(200, content=b"<html>", headers={"content-type": "text/html"})
+    respx.get(IMG).mock(
+        return_value=Response(
+            200, content=b"<html>", headers={"content-type": "text/html"}
+        )
     )
-    assert await _download_image_best_effort("http://img/x.html") == (None, None)
+    assert await _download_image_best_effort(IMG) == (None, None)
 
 
 @respx.mock
-async def test_download_too_large_returns_none(monkeypatch):
+async def test_download_declared_length_too_large_returns_none(monkeypatch):
+    monkeypatch.setattr(settings, "linkedin_cookie_li_at", "c")
+    monkeypatch.setattr(settings, "import_max_image_mb", 1)
+    respx.get(IMG).mock(
+        return_value=Response(
+            200,
+            content=PNG,
+            headers={
+                "content-type": "image/png",
+                "content-length": str(5 * 1024 * 1024),
+            },
+        )
+    )
+    assert await _download_image_best_effort(IMG) == (None, None)
+
+
+@respx.mock
+async def test_download_too_large_body_returns_none(monkeypatch):
     monkeypatch.setattr(settings, "linkedin_cookie_li_at", "c")
     monkeypatch.setattr(settings, "import_max_image_mb", 0)  # any bytes exceed 0 MB
-    respx.get("http://img/big.png").mock(
+    respx.get(IMG).mock(
         return_value=Response(200, content=PNG, headers={"content-type": "image/png"})
     )
-    assert await _download_image_best_effort("http://img/big.png") == (None, None)
+    assert await _download_image_best_effort(IMG) == (None, None)
 
 
 @respx.mock
 async def test_download_network_error_returns_none(monkeypatch):
     monkeypatch.setattr(settings, "linkedin_cookie_li_at", "c")
-    respx.get("http://img/err.png").mock(return_value=Response(500))
-    assert await _download_image_best_effort("http://img/err.png") == (None, None)
+    respx.get(IMG).mock(return_value=Response(500))
+    assert await _download_image_best_effort(IMG) == (None, None)
+
+
+# --- resource-exhaustion guards --------------------------------------------
+
+
+async def test_oversized_upload_is_413(clean_client: AsyncClient, monkeypatch):
+    monkeypatch.setattr("app.api.linkedin.MAX_POSTS_JSON_BYTES", 10)
+    r = await clean_client.post(URL, files=_file(b"x" * 50), headers=_hdr())
+    assert r.status_code == 413
+    assert "exceeds" in r.json()["detail"]
+
+
+async def test_post_count_is_capped(clean_client: AsyncClient, monkeypatch):
+    monkeypatch.setattr("app.api.linkedin.MAX_POSTS_PER_IMPORT", 1)
+    entries = [
+        {"urn": f"urn:cap:{i}", "content": f"post number {i} body"} for i in range(3)
+    ]
+    with patch(
+        "app.api.linkedin._download_image_best_effort",
+        new=AsyncMock(return_value=(None, None)),
+    ):
+        r = await clean_client.post(URL, files=_file(entries), headers=_hdr())
+    body = r.json()
+    # Only the first entry is processed; count reflects the processed slice.
+    assert body["count"] == 1
+    assert body["created"] == 1
