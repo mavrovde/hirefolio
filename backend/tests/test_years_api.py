@@ -154,7 +154,11 @@ class TestYearsEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["years"] == [2025, 2021, 2014]
+        # The endpoint always includes the current year so the timeline reaches "now".
+        from datetime import datetime, timezone
+
+        current_year = datetime.now(timezone.utc).year
+        assert data["years"] == sorted({current_year, 2025, 2021, 2014}, reverse=True)
 
     async def test_returns_404_when_no_data(self, tmp_path):
         """Should return 404 when no profile files have experience data."""

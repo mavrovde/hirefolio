@@ -5,10 +5,32 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Placeholder for next release.
+
+## [1.4.2] - 2026-07-25
+
+### Added
 - **Ollama model prewarming** — the `ollama` service now loads the generation models
   (`llama3.2`, `llama3.2:1b`) into memory right after pulling them, and keeps all models
   resident (`OLLAMA_KEEP_ALIVE=-1`, prod `OLLAMA_MAX_LOADED_MODELS` raised to 3), so the first
   chat/tag request is not a multi-second cold start.
+
+### Changed
+- **Timeline reaches the present** — `GET /api/app/cv/years` now always includes the current
+  calendar year, so the header year-slider shows the current year (e.g. 2026) even when no
+  experience *started* this year.
+- `/release` slash command now mirrors `release.sh` end-to-end (all steps documented).
+
+### Fixed
+- **Prod pulled stale images** — `docker-compose.prod.yml` image tags were pinned to the previous
+  release's default (`IMAGE_TAG:-1.4.0`); `bump_version.sh` never updated them (only `release.sh`
+  does). Bumped to the current version so the prod server pulls the right images.
+- **Ollama models re-downloaded on every restart** — `ollama pull` is now guarded by an
+  `ollama list` check, so models already in the persistent `ollama_data` volume are not
+  re-downloaded (offline-safe once cached).
+- **`HeaderComponent` NG0100** — subscribe to `YearsService.getYears()` in the constructor rather
+  than `ngOnInit`, so a synchronous `shareReplay(1)` replay can't mutate bindings after the view
+  was checked (removes the dev-mode `ExpressionChangedAfterItHasBeenCheckedError`).
 
 ## [1.4.1] - 2026-07-25
 

@@ -19,7 +19,7 @@ def main() -> None:
     for key, spec in ROSTER.items():
         p = subprocess.Popen([sys.executable, "-m", "agents.serve", key])
         procs.append(p)
-        print(f"[run_all] {spec.name} ({key}) -> http://localhost:{spec.port}"
+        print(f"[run_all] {spec.name} ({key}) -> {spec.host}"
               f"/.well-known/agent.json (pid {p.pid})", flush=True)
 
     def shutdown(*_):
