@@ -233,6 +233,7 @@ async function main() {
   const isHeadless = process.env.HEADLESS !== 'false';
   const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: isHeadless,
+    channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
     slowMo: 20,
     viewport: { width: 1280, height: 900 },
     userAgent: USER_AGENT,

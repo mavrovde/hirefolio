@@ -27,7 +27,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep nomic-embed-text && ollama list | grep llama3.2 && ollama list | grep tinyllama || exit 1"]
+      test: ["CMD-SHELL", "ollama list | grep nomic-embed-text && ollama list | grep llama3.2 && ollama list | grep 'llama3.2:1b' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 180
@@ -38,7 +38,7 @@ services:
         sleep 5
         ollama pull nomic-embed-text
         ollama pull llama3.2
-        ollama pull tinyllama
+        ollama pull llama3.2:1b
         wait
     environment:
       - OLLAMA_NUM_PARALLEL=16
@@ -59,7 +59,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5433/${POSTGRES_DB:-mavrov}
       - OLLAMA_URL=http://ollama:11434
       - GENERATION_MODEL=llama3.2
-      - FAST_GENERATION_MODEL=tinyllama
+      - FAST_GENERATION_MODEL=llama3.2:1b
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}

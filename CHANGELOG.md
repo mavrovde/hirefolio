@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Placeholder for next release.
+
+## [1.4.1] - 2026-07-25
+
+### Changed
+- **Dependency modernization** to latest **within current majors** (deliberately not crossing
+  breaking majors — no Angular 22, TypeScript 7, or google-genai 2):
+  - Backend: `fastapi` 0.129→0.140, `sqlalchemy` 2.0.46→2.0.51, `pgvector` 0.4.2→0.5.0,
+    `alembic` 1.18.4→1.18.5, `uvicorn` 0.41→0.51, `Pillow` 12.2→12.3, `python-multipart`
+    0.0.26→0.0.32, `google-genai` 1.64→1.75, `setuptools` 69.5→83, `respx` 0.22→0.23.1.
+    (`linkedin-api` stays 2.2.1 — prod installs a patched wheel.)
+  - Frontend: Angular 21.2.17→21.2.19, `tailwindcss` 4.0→4.3, `vitest` 4.1.9→4.1.10,
+    `express` 5.1→5.2, `zone.js` 0.16.0→0.16.2, `@playwright/test` 1.58→1.62,
+    `@analogjs/vite-plugin-angular` 2.2→2.6.4 (TypeScript pinned at 5.9.x, `@types/node` at 20.x).
+- **CrewAI 0.11.0 → 1.15.6** (Python 3.13 compatible). `multi_chat.py` migrated off the
+  removed `langchain.tools` to `langchain_core.tools`; `langchain-openai` 0.0.2→1.4.1;
+  `ChatOpenAI` `api_key` typed as `SecretStr` for the stricter 1.x signatures.
+- **Chat agents**: `fast_generation_model` switched `tinyllama` → `llama3.2:1b` (cleaner,
+  parseable JSON for tag/metadata generation at a similar footprint). Compose `ollama pull`
+  lists and healthchecks updated to match.
+
+### Added
+- Scraper: both `scrape-linkedin.js` (profile) and `scrape-posts.js` (posts) now reuse a
+  single persistent Chrome profile session, and honor `PLAYWRIGHT_CHANNEL` (e.g. `chrome`) to
+  drive system Google Chrome instead of the bundled Chromium.
+- Production backend accepts `LINKEDIN_IMPORT_TOKEN` and `IMPORT_MAX_IMAGE_MB` env vars,
+  enabling authenticated LinkedIn post import against production.
+
 ## [1.4.0] - 2026-07-08
 
 ### Added
