@@ -33,7 +33,8 @@ yarn-error.log
 /.angular/cache
 .sass-cache/
 /connect.lock
-/coverage
+# Coverage output — any project, any depth (v8/istanbul reports must never be committed)
+coverage/
 /libpeerconnection.log
 testem.log
 /typings
