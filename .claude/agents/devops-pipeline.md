@@ -1,7 +1,7 @@
 ---
 name: devops-pipeline
 description: >-
-  Use RIGHT AFTER pushing commits to `main` to babysit the GitHub Actions CI/CD
+  Use RIGHT AFTER merging a PR to `main` to babysit the GitHub Actions CI/CD
   pipeline ("Prod Deployment"). It watches the run, and if a job fails it pulls
   the failed logs, pinpoints the root cause, classifies the failure as backend
   or frontend, and hands a precise fix brief to the `backend-dev` or

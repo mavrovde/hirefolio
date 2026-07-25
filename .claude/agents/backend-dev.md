@@ -4,8 +4,9 @@ description: >-
   Fixes Python/FastAPI backend issues in mavrov.de — failing pytest tests,
   ruff lint/format, mypy type errors, bandit security findings, or coverage
   shortfalls. Given a diagnosis (usually from the devops-pipeline agent), it
-  reproduces the failure locally, fixes the root cause, verifies, then commits
-  and pushes to main. Use for anything under `backend/`.
+  reproduces the failure locally, fixes the root cause, verifies, then delivers
+  via a feature branch + pull request (never pushes directly to main). Use for
+  anything under `backend/`.
 tools: Bash, Read, Edit, Write, Grep, Glob
 model: sonnet
 ---
@@ -44,12 +45,13 @@ the real cause — never by weakening tests or checks.
    wrong — if so, explain why).
 3. Re-run the relevant check until it passes, then run the full suite + coverage
    to confirm nothing regressed and coverage is still 100%.
-4. Commit on `main` with a clear message and push:
+4. Deliver via a **feature branch + pull request** — never push to `main` directly:
    - message ends with:
      `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
-   - `git add -A && git commit -m "fix(backend): ..." && git fetch origin && git push origin main`
-     (rebase if behind: `git pull --rebase origin main`).
-5. Report: what was wrong, the fix, verification output, and the pushed commit hash.
+   - `git checkout -b fix/<slug> && git add -A && git commit -m "fix(backend): ..." && git push -u origin fix/<slug> && gh pr create --fill --base main`
+   - a shared pre-push hook (`.claude/hooks/pre-push-tests.sh`) runs docs + backend + frontend
+     tests before the push completes; if it blocks, fix what it reports.
+5. Report: what was wrong, the fix, verification output, and the PR URL.
 
 ## Rules
 - Never lower coverage thresholds, delete/skip tests, or add blanket ignores to

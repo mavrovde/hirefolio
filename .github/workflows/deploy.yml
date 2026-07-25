@@ -146,7 +146,7 @@ jobs:
 
   # --- Frontend unit tests, one job per workspace project (parallel, legible per-app) ---
   frontend-shared-tests:
-    name: Frontend Tests — @mavrov/shared (lib)
+    name: Frontend Tests · Shared Library
     runs-on: ubuntu-latest
     needs: [frontend-lint]
     steps:
@@ -171,7 +171,7 @@ jobs:
           fail_ci_if_error: false
 
   frontend-public-tests:
-    name: Frontend Tests — public (SSR app)
+    name: Frontend Tests · Public App (SSR)
     runs-on: ubuntu-latest
     needs: [frontend-lint]
     steps:
@@ -196,7 +196,7 @@ jobs:
           fail_ci_if_error: false
 
   frontend-admin-tests:
-    name: Frontend Tests — admin (CSR app)
+    name: Frontend Tests · Admin App (SPA)
     runs-on: ubuntu-latest
     needs: [frontend-lint]
     steps:
@@ -266,7 +266,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   build-frontend:
-    name: Build Frontend Image
+    name: Build Public Frontend Image
     runs-on: ubuntu-latest
     needs: [frontend-shared-tests, frontend-public-tests]
     permissions:
@@ -450,14 +450,14 @@ jobs:
       # E2E is split by app so the two flows are legible in the run log.
       # Both target the same running proxy: public on http://localhost:80,
       # admin on http://admin.localhost (mapped to loopback above).
-      - name: E2E — Public site (public-e2e)
+      - name: E2E · Public Site
         working-directory: ./frontend
         env:
           BASE_URL: http://localhost:80
           ADMIN_BASE_URL: http://admin.localhost
         run: npx playwright test --project=public-e2e
 
-      - name: E2E — Admin console (admin-e2e)
+      - name: E2E · Admin Console
         working-directory: ./frontend
         env:
           BASE_URL: http://localhost:80
