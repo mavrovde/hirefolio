@@ -1,0 +1,22 @@
+---
+description: Scrape latest LinkedIn profile + posts and import posts into the backend
+---
+
+Drive the LinkedIn → mavrov.de pipeline end-to-end. The saved session lives in
+`scraper/.chrome-profile/` (gitignored); if it's expired, run with `HEADLESS=false` and let the
+user complete login/MFA. Prefer system Chrome via `PLAYWRIGHT_CHANNEL=chrome` if the bundled
+Chromium is unavailable.
+
+1. **Scrape** (`cd scraper`):
+   - Profile: `PLAYWRIGHT_CHANNEL=chrome HEADLESS=false node scrape-linkedin.js` → `profile_data.json`
+   - Posts:   `PLAYWRIGHT_CHANNEL=chrome HEADLESS=false node scrape-posts.js` → `posts_data.json`
+   - Sanity-check the JSON (counts, content/urn/postedAt present).
+2. **Import** (repo root) — dry-run first, then real:
+   - `MAVROV_API_URL=<target> LINKEDIN_IMPORT_TOKEN=<token> python -m importer --dry-run`
+   - then without `--dry-run`. Imports are drafts by default (add `--publish` only if asked).
+   - Upsert is by LinkedIn URN (idempotent). For image downloads set `LINKEDIN_COOKIE_LI_AT`.
+3. **Verify**: confirm rows landed (`source_urn` populated, images stored) and the image endpoint
+   `GET /api/app/posts/{id}/image` serves.
+
+Default target is `http://localhost:8000`. Only target production when explicitly asked, and only
+after confirming `LINKEDIN_IMPORT_TOKEN` is set on the prod backend. $ARGUMENTS
