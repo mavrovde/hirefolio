@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Placeholder for next release.
+- **Ollama model prewarming** — the `ollama` service now loads the generation models
+  (`llama3.2`, `llama3.2:1b`) into memory right after pulling them, and keeps all models
+  resident (`OLLAMA_KEEP_ALIVE=-1`, prod `OLLAMA_MAX_LOADED_MODELS` raised to 3), so the first
+  chat/tag request is not a multi-second cold start.
 
 ## [1.4.1] - 2026-07-25
 
