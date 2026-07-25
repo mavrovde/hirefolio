@@ -17,22 +17,24 @@ explicit green verification and explicit user go-ahead.
 
 ## 1. Bump version — `./bump_version.sh <bump>`
 Updates: `VERSION`, `backend/app/main.py` (`version="…"`), `frontend/package.json`,
-`frontend/src/app/version.ts`, `.env` (`IMAGE_TAG`), re-syncs `frontend/package-lock.json`, and
-rotates `CHANGELOG.md`. Then `export IMAGE_TAG=$(cat VERSION)`.
+`frontend/projects/public/src/app/version.ts`, `.env` (`IMAGE_TAG`), re-syncs
+`frontend/package-lock.json`, and rotates `CHANGELOG.md`. Then `export IMAGE_TAG=$(cat VERSION)`.
+Also bump `frontend/projects/shared/package.json` to match.
 
 ## 1b. Update prod compose image tags  ⚠️ (bump_version.sh does NOT do this)
-`sed` `docker-compose.prod.yml` so `-backend`, `-frontend`, `-proxy` all use the new
-`${IMAGE_TAG:-<VERSION>}` default. **Skipping this leaves prod pulling the previous version's
+`sed` `docker-compose.prod.yml` so `-backend`, `-frontend`, `-admin-frontend`, `-proxy` all use the
+new `${IMAGE_TAG:-<VERSION>}` default. **Skipping this leaves prod pulling the previous version's
 images** even after a green pipeline — this is a required step.
 
 ## 1c. Fill the changelog
 Replace the rotated `[<VERSION>]` placeholder with real Added/Changed/Fixed notes.
 
 ## 2. Full verification — `./verify_all.sh` (abort on failure, revert the version bump)
-Runs: backend `pytest` (Docker DB), frontend `npm run lint`/`npm test --coverage`/`npm run build`,
-then the **Docker E2E stack** (`docker-compose.prod.yml` + `docker-compose.e2e.yml`, seed e2e user,
-`verify_proxy_routes.py`, Playwright `--grep-invert profile`). On failure: `git checkout VERSION
-backend/app/main.py frontend/package.json frontend/src/app/version.ts` and stop.
+Runs: backend `pytest` (Docker DB), frontend per-project `npm run test:coverage` + `npm run build`
+(shared → public → admin), then the **Docker E2E stack** (`docker-compose.prod.yml` +
+`docker-compose.e2e.yml`, incl. the `admin-frontend` service, seed e2e user, `verify_proxy_routes.py`,
+Playwright `public-e2e` + `admin-e2e`). On failure: `git checkout VERSION backend/app/main.py
+frontend/package.json frontend/projects/public/src/app/version.ts` and stop.
 - ⚠️ `verify_all.sh` line ~26 hardcodes a conda python path (`/Users/sergii.mavrov/...`) — make it
   portable (use `backend/venv` or `python3`) before running on any other machine.
 
@@ -52,7 +54,15 @@ Builds AMD64 backend/frontend/proxy and pushes them to the registry with the new
 `docker compose -f docker-compose.prod.yml up -d` on the prod host pulls the new tagged images
 (that's why step 1b matters). Verify the deployed version (e.g. footer `BE: v<VERSION>`).
 
-## Safer PR alternative (used for v1.4.1/1.4.2)
-Instead of `release.sh`'s direct push to `main`: do steps 1–3 on a branch, open a PR, and merge to
-`main` so CI runs the same gates + E2E + publish. Still do **step 1b** (compose tags) and the prod
-server rollout (step 6) — CI publishes images but does not roll the prod server for you.
+## PR-based release (PREFERRED — used for v1.4.1/1.4.2/1.5.0/1.5.1)
+**Default to this over `release.sh`'s direct push to `main`.** Do steps 1–3 (bump + compose tags +
+changelog) on a **feature branch**, open a PR, get checks green, and **merge to `main`** — the merge
+triggers `deploy.yml`, which runs the same gates + Docker E2E + publishes `<VERSION>`/`latest`. Then
+tag `v<VERSION>` on the merge commit (a tag push does not re-trigger the branch pipeline). Still do
+**step 1b** (compose tags) and the prod rollout (step 6) — CI publishes images but does not roll the
+prod server.
+
+## Security reports (every release)
+Before tagging, check GitHub security scanning and triage: `gh api repos/<owner>/<repo>/code-scanning/alerts?state=open`
+(CodeQL) and `.../dependabot/alerts?state=open`. Note which are pre-existing vs introduced by the
+release; a release is only "confirmed" once the pipeline is green **and** you've reviewed these.

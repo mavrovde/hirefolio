@@ -7,6 +7,17 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+## [1.5.2] - 2026-07-25
+
+### Changed
+- **Clearer CI job names** in `deploy.yml` — per-app frontend lanes and E2E steps renamed to a
+  consistent scheme (`Frontend Tests · Shared Library` / `· Public App (SSR)` / `· Admin App (SPA)`;
+  `Build Public Frontend Image`; `E2E · Public Site` / `E2E · Admin Console`).
+- **Behavior docs** — `CLAUDE.md`, the `backend-dev` / `frontend-dev` / `devops-pipeline` subagents,
+  and the `/release` runbook updated to the PR-based workflow (never push feature work to `main`
+  directly), the full local test round (backend + frontend + E2E), and a per-release security-report
+  check; agent paths updated for the frontend workspace split.
+
 ## [1.5.1] - 2026-07-25
 
 ### Changed
