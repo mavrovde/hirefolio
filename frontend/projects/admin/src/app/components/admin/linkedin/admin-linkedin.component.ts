@@ -28,6 +28,9 @@ export class AdminLinkedinComponent implements OnInit {
     posts: LinkedInPost[] = [];
     statusMessage: string = '';
 
+    selectedPostsFile: File | null = null;
+    isUploadingPostsJson = false;
+
     ngOnInit(): void {
         this.checkLoginStatus();
     }
@@ -119,6 +122,33 @@ export class AdminLinkedinComponent implements OnInit {
             console.error('Error transferring post:', err);
             this.statusMessage = 'Error transferring post.';
         } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    onPostsFileSelected(event: Event): void {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files.length > 0) {
+            this.selectedPostsFile = input.files[0];
+        }
+    }
+
+    async uploadPostsJson(): Promise<void> {
+        if (!this.selectedPostsFile || this.isUploadingPostsJson) return;
+
+        this.isUploadingPostsJson = true;
+        this.statusMessage = 'Uploading posts JSON...';
+        try {
+            const res = await this.linkedinService.importPostsJson(this.selectedPostsFile);
+            this.statusMessage =
+                `Imported ${res.count} posts: ${res.created} created, ` +
+                `${res.updated} updated, ${res.skipped} skipped (drafts).`;
+            this.selectedPostsFile = null;
+            this.clearMessageAfterDelay();
+        } catch (err: any) {
+            this.statusMessage = err.message || 'Error uploading posts JSON.';
+        } finally {
+            this.isUploadingPostsJson = false;
             this.cdr.detectChanges();
         }
     }

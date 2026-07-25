@@ -1,9 +1,12 @@
+import json
 import logging
 import random
 import re
 import secrets
 from datetime import datetime
 from typing import Optional
+
+import httpx
 
 from fastapi import (
     APIRouter,
@@ -481,4 +484,137 @@ async def import_linkedin_post(
             if created
             else "Post updated from LinkedIn (matched by URN)."
         ),
+    }
+
+
+# --- Bulk import from a scraper posts_data.json file -------------------------
+
+
+def _pick_image_url(entry: dict) -> Optional[str]:
+    """Return the best image URL from a scraper post entry, if any."""
+    url = entry.get("imageUrl")
+    if url:
+        return url
+    images = entry.get("imageUrls") or []
+    return images[0] if images else None
+
+
+async def _download_image_best_effort(
+    url: Optional[str],
+) -> tuple[Optional[bytes], Optional[str]]:
+    """Best-effort fetch of a post image using the configured ``li_at`` cookie.
+
+    Returns ``(bytes, content_type)`` on success, or ``(None, None)`` on any
+    failure (no cookie, network error, unsupported type, too large) — the caller
+    then falls back to storing the remote URL, so a single bad image never fails
+    the whole import.
+    """
+    if not url:
+        return None, None
+    cookies = (
+        {"li_at": settings.linkedin_cookie_li_at}
+        if settings.linkedin_cookie_li_at
+        else None
+    )
+    try:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as http:
+            resp = await http.get(url, cookies=cookies)
+        resp.raise_for_status()
+        content_type = (resp.headers.get("content-type") or "").split(";")[0].strip()
+        if content_type not in ALLOWED_IMAGE_TYPES:
+            return None, None
+        data = resp.content
+        if len(data) > settings.import_max_image_mb * 1024 * 1024:
+            return None, None
+        return data, content_type
+    except Exception as e:  # noqa: BLE001 — best-effort, never fatal
+        logger.warning("[LinkedIn] image download failed for %s: %s", url, e)
+        return None, None
+
+
+@router.post("/import-posts-json")
+async def import_posts_json(
+    file: UploadFile = File(...),
+    x_import_token: Optional[str] = Header(None, alias="X-Import-Token"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Bulk-import a scraper ``posts_data.json`` array as drafts.
+
+    Each entry is upserted by its LinkedIn URN (idempotent — re-uploading never
+    duplicates). Images are downloaded best-effort; on failure the remote URL is
+    kept instead. Entries without a URN or content are skipped. Auth mirrors
+    ``/import-post`` (machine token or admin session).
+    """
+    if not _import_authorized(x_import_token, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Import requires a valid X-Import-Token or an admin session.",
+        )
+
+    raw = await file.read()
+    try:
+        entries = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise HTTPException(status_code=400, detail="File is not valid JSON.")
+    if not isinstance(entries, list):
+        raise HTTPException(
+            status_code=400, detail="Posts JSON must be a top-level array."
+        )
+
+    created = 0
+    updated = 0
+    skipped = 0
+    for entry in entries:
+        if not isinstance(entry, dict):
+            skipped += 1
+            continue
+        urn = (entry.get("urn") or "").strip()
+        content = normalize_linkedin_text(entry.get("content") or "")
+        if not urn or not content:
+            skipped += 1
+            continue
+
+        image_url = _pick_image_url(entry)
+        image_bytes, image_type = await _download_image_best_effort(image_url)
+
+        title = _derive_title(content)
+        embedding = await get_embedding(f"{title}\n\n{content}")
+
+        post, was_created = await _upsert_linkedin_post(
+            db,
+            urn=urn,
+            title=title,
+            summary=content[:200],
+            content=content,
+            language=(entry.get("language") or "en").lower()[:2],
+            published=False,
+            tags=_resolve_tags(None, content),
+            source_url=entry.get("url"),
+            posted_at=_parse_posted_at(entry.get("postedAt")),
+            embedding=embedding,
+            image_bytes=image_bytes,
+            image_type=image_type,
+        )
+        # Keep the remote URL when we could not download the image locally.
+        if image_bytes is None and image_url and post.image_url != image_url:
+            post.image_url = image_url
+            await db.commit()
+        if was_created:
+            created += 1
+        else:
+            updated += 1
+
+    logger.info(
+        "[LinkedIn] import-posts-json: created=%d updated=%d skipped=%d (of %d)",
+        created,
+        updated,
+        skipped,
+        len(entries),
+    )
+    return {
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "count": len(entries),
     }

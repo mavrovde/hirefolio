@@ -22,6 +22,13 @@ export interface LinkedInBulkTransferResponse {
     message: string;
 }
 
+export interface LinkedInImportPostsJsonResponse {
+    created: number;
+    updated: number;
+    skipped: number;
+    count: number;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -106,6 +113,31 @@ export class LinkedinService {
         if (!response.ok) {
             const body = await response.json().catch(() => null);
             throw new Error(body?.detail || 'Failed to transfer post');
+        }
+        return await response.json();
+    }
+
+    /**
+     * Bulk-import a scraper `posts_data.json` file (multipart upload).
+     * Posts are upserted by URN as drafts on the server.
+     */
+    async importPostsJson(file: File): Promise<LinkedInImportPostsJsonResponse> {
+        const token = this.authService.getToken();
+        // Multipart: let the browser set Content-Type (with boundary) — do NOT set JSON.
+        const headers: HeadersInit = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch(`${this.apiUrl}/import-posts-json`, {
+            method: 'POST',
+            headers,
+            body: formData,
+        });
+        if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            throw new Error(body?.detail || 'Failed to import posts JSON');
         }
         return await response.json();
     }
