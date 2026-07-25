@@ -52,7 +52,7 @@ services:
       - app-network
 
   backend:
-    image: ${IMAGE_REPO:-maverickde/mavrov.de}-backend:${IMAGE_TAG:-1.5.0}
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-backend:${IMAGE_TAG:-1.5.1}
     restart: always
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5433/${POSTGRES_DB:-mavrov}
@@ -76,7 +76,7 @@ services:
       - app-network
 
   frontend:
-    image: ${IMAGE_REPO:-maverickde/mavrov.de}-frontend:${IMAGE_TAG:-1.5.0}
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-frontend:${IMAGE_TAG:-1.5.1}
     restart: always
     expose:
       - "80"
@@ -94,7 +94,7 @@ services:
       - app-network
 
   admin-frontend:
-    image: ${IMAGE_REPO:-maverickde/mavrov.de}-admin-frontend:${IMAGE_TAG:-1.5.0}
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-admin-frontend:${IMAGE_TAG:-1.5.1}
     restart: always
     expose:
       - "80"
@@ -120,7 +120,7 @@ services:
       - app-network
 
   proxy:
-    image: ${IMAGE_REPO:-maverickde/mavrov.de}-proxy:${IMAGE_TAG:-1.5.0}
+    image: ${IMAGE_REPO:-maverickde/mavrov.de}-proxy:${IMAGE_TAG:-1.5.1}
     container_name: global_proxy
     restart: always
     ports:

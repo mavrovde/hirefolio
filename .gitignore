@@ -17,6 +17,7 @@ Thumbs.db
 !.claude/agents/
 !.claude/commands/
 !.claude/settings.json
+!.claude/hooks/
 
 # Environment variables
 .env

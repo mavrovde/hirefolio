@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Pre-push gate for mavrov.de.
+#
+# Runs a full local check round — docs + backend pytest + frontend unit tests —
+# and BLOCKS a `git push` if anything fails. It self-gates by inspecting the
+# PreToolUse tool-call JSON on stdin, so it returns "allow" instantly for every
+# Bash command that is not a git push (never interferes with normal work).
+set -uo pipefail
+
+# ---------------------------------------------------------------------------
+# Configurable knobs — override via your shell env or, per-developer, in
+# .claude/settings.local.json under "env": { ... } (gitignored, personal).
+#   TEST_DATABASE_URL      Postgres URL for the backend pytest run
+#   PREPUSH_LOG            where the combined log is written
+#   PREPUSH_CHECK_DOCS     1/0 — run the docs check (CHANGELOG [Unreleased] + README)
+#   PREPUSH_RUN_BACKEND    1/0 — run backend pytest (needs the DB above)
+#   PREPUSH_RUN_FRONTEND   1/0 — run frontend shared/public/admin unit tests
+# ---------------------------------------------------------------------------
+: "${TEST_DATABASE_URL:=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov}"
+: "${PREPUSH_LOG:=/tmp/mavrov-prepush-tests.log}"
+: "${PREPUSH_CHECK_DOCS:=1}"
+: "${PREPUSH_RUN_BACKEND:=1}"
+: "${PREPUSH_RUN_FRONTEND:=1}"
+export TEST_DATABASE_URL
+
+allow() {
+  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
+  exit 0
+}
+deny() {
+  # $1 = reason (plain text, no double quotes)
+  printf '%s\n' "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"$1\"}}"
+  exit 0
+}
+
+INPUT="$(cat)"
+# Extract the command being run (fall back to the raw payload if jq is absent).
+CMD="$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)"
+[ -z "$CMD" ] && CMD="$INPUT"
+
+# Only gate real pushes; everything else passes through untouched.
+case "$CMD" in
+  *"git push"*) : ;;
+  *) allow ;;
+esac
+
+ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+LOG="$PREPUSH_LOG"
+
+run_checks() {
+  if [ "$PREPUSH_CHECK_DOCS" = "1" ]; then
+    echo "== docs check =="
+    grep -q "Unreleased" "$ROOT/CHANGELOG.md" || { echo "CHANGELOG.md is missing an [Unreleased] section"; return 1; }
+    test -s "$ROOT/README.md" || { echo "README.md is missing or empty"; return 1; }
+  fi
+
+  if [ "$PREPUSH_RUN_BACKEND" = "1" ]; then
+    echo "== backend pytest =="
+    ( cd "$ROOT/backend" && GEMINI_API_KEY="" ./venv/bin/pytest -q ) || return 1
+  fi
+
+  if [ "$PREPUSH_RUN_FRONTEND" = "1" ]; then
+    echo "== frontend tests (shared + public + admin) =="
+    ( cd "$ROOT/frontend" && npm test ) || return 1
+  fi
+}
+
+if run_checks >"$LOG" 2>&1; then
+  allow
+else
+  deny "Pre-push checks FAILED (docs / backend pytest / frontend tests). See $LOG. Configure via env: PREPUSH_RUN_BACKEND, PREPUSH_RUN_FRONTEND, PREPUSH_CHECK_DOCS, TEST_DATABASE_URL."
+fi
