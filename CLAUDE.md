@@ -12,7 +12,7 @@ legacy per-tool rule files (`.cursorrules`, `.windsurfrules`, `.cline.md`, `.gem
 Personal portfolio + blog with semantic search and local AI. A LinkedIn → mavrov.de content
 pipeline moves posts (and profile data) into the site.
 
-- **Frontend**: Angular 21 (standalone components, **Signals**, native SSR via `server.ts`),
+- **Frontend**: Angular 22 (standalone components, **Signals**, native SSR via `server.ts`),
   TailwindCSS 4, Vitest 4 (unit), Playwright (E2E).
 - **Backend**: FastAPI (runs on **Python 3.12** in prod/CI; local dev venv may be 3.13),
   SQLAlchemy 2 async, PostgreSQL 16 + `pgvector`, Ollama (local LLM/embeddings), crewai 1.x.
@@ -23,7 +23,7 @@ pipeline moves posts (and profile data) into the site.
 
 ```
 backend/    FastAPI app (app/api, app/services, app/models); tests/; conftest.py mocks crewai/langchain
-frontend/   Angular 21 workspace — projects/public (SSR visitor app), projects/admin (CSR admin SPA),
+frontend/   Angular 22 workspace — projects/public (SSR visitor app), projects/admin (CSR admin SPA),
             projects/shared (@mavrov/shared lib); Vitest (per-project) + Playwright (public-e2e/admin-e2e)
 scraper/    LinkedIn scrapers — scrape-linkedin.js (profile) + scrape-posts.js (posts) → *_data.json
 importer/   Standalone LinkedIn → backend importer (POSTs to /api/app/linkedin/import-post)

@@ -7,6 +7,25 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+## [1.6.0] - 2026-07-25
+
+### Changed
+- **Angular 21 → 22 major upgrade** across the whole workspace (`shared` / `public` / `admin`).
+  All `@angular/*` packages, `@angular/build`, `@angular/cli`, `ng-packagr` moved to `22.x`;
+  TypeScript bumped to `~6.0` and `@types/node` to `22.x` to satisfy Angular 22's peer ranges.
+  Triggered by a Dependabot partial bump of `@angular/build` to v22 against a v21 framework, which
+  broke the build; resolved by completing the full major migration rather than pinning back.
+- **HttpClient Fetch backend** — Angular 22 defaults `HttpClient` to the Fetch backend; the public
+  blog specs were adjusted to target the posts request explicitly so the change in transport no
+  longer confuses the native-`fetch` infinite-scroll assertions (no runtime behavior change).
+
+### Added
+- **Dependabot configuration** (`.github/dependabot.yml`) — replaces the empty placeholder. The
+  Angular toolchain is now **grouped into a single PR** and **major bumps are ignored** for
+  `@angular/*`, `@angular/build`, `ng-packagr`, and `typescript`, so the workspace can never again
+  be left with a half-migrated major. Also covers backend pip (linkedin-api pinned/ignored),
+  GitHub Actions, and Docker base images with grouped weekly updates.
+
 ## [1.5.2] - 2026-07-25
 
 ### Changed

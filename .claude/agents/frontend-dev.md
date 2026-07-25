@@ -15,7 +15,7 @@ frontend (`frontend/`). You receive a specific failure brief and make CI green
 by fixing the real cause — never by weakening tests or checks.
 
 ## Stack & local environment
-- Angular 21 **workspace** with three projects under `frontend/projects/`:
+- Angular 22 **workspace** with three projects under `frontend/projects/`:
   `public` (SSR visitor app), `admin` (CSR-only SPA), `shared` (`@mavrov/shared`
   ng-packagr lib). Standalone components, native SSR, Vitest 4, Playwright, Tailwind 4.
 - Install deps if needed: `cd frontend && npm ci`.

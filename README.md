@@ -16,7 +16,7 @@ Personal portfolio website with blog functionality powered by semantic search an
 
 ### Frontend
 
-- **Framework**: Angular 21 (Standalone Components, Signals, Native SSR `server.mjs`)
+- **Framework**: Angular 22 (Standalone Components, Signals, Native SSR `server.mjs`)
 - **Styling**: TailwindCSS 4.x, Dark/Light mode
 - **State Management**: RxJS 7.8 Observables
 - **Testing**: Vitest 4.0 (Unit, replaced Jasmine/Karma), Playwright 1.58 (E2E)
