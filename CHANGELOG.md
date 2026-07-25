@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Placeholder for next release.
+
+## [1.5.2] - 2026-07-25
+
 ### Changed
 - **Clearer CI job names** in `deploy.yml` — per-app frontend lanes and E2E steps renamed to a
   consistent scheme (`Frontend Tests · Shared Library` / `· Public App (SSR)` / `· Admin App (SPA)`;
