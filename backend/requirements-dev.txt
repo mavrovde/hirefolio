@@ -12,7 +12,7 @@ pytest-mock==3.15.1
 ruff==0.15.2
 
 # Type Checking
-mypy==1.19.1
+mypy==2.3.0
 types-passlib==1.7.7.20260211
 
 # Security
