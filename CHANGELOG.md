@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Placeholder for next release.
+
+## [1.5.0] - 2026-07-25
+
+### Added
 - **Frontend split into two independent apps.** The single Angular app is now an Angular
   workspace with three projects under `frontend/projects/`:
   - `public` — the SSR visitor site (home, blog, cv, llm, marketing shell), unauthenticated.
