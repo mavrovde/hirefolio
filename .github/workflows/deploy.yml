@@ -144,8 +144,9 @@ jobs:
         working-directory: ./frontend
         run: npm run lint --if-present
 
-  frontend-tests:
-    name: Frontend Tests
+  # --- Frontend unit tests, one job per workspace project (parallel, legible per-app) ---
+  frontend-shared-tests:
+    name: Frontend Tests — @mavrov/shared (lib)
     runs-on: ubuntu-latest
     needs: [frontend-lint]
     steps:
@@ -159,14 +160,64 @@ jobs:
       - name: Install dependencies
         working-directory: ./frontend
         run: npm i --legacy-peer-deps
-      - name: Run tests with coverage (shared + public + admin)
+      - name: Test shared library (100% coverage)
         working-directory: ./frontend
-        run: npm run test:coverage
+        run: npm run test:coverage:shared
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: ./frontend/coverage/shared/lcov.info,./frontend/coverage/public/lcov.info,./frontend/coverage/admin/lcov.info
-          flags: frontend
+          files: ./frontend/coverage/shared/lcov.info
+          flags: frontend-shared
+          fail_ci_if_error: false
+
+  frontend-public-tests:
+    name: Frontend Tests — public (SSR app)
+    runs-on: ubuntu-latest
+    needs: [frontend-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm i --legacy-peer-deps
+      - name: Test public app (100% coverage)
+        working-directory: ./frontend
+        run: npm run test:coverage:public
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./frontend/coverage/public/lcov.info
+          flags: frontend-public
+          fail_ci_if_error: false
+
+  frontend-admin-tests:
+    name: Frontend Tests — admin (CSR app)
+    runs-on: ubuntu-latest
+    needs: [frontend-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm i --legacy-peer-deps
+      - name: Test admin app (100% coverage)
+        working-directory: ./frontend
+        run: npm run test:coverage:admin
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./frontend/coverage/admin/lcov.info
+          flags: frontend-admin
           fail_ci_if_error: false
 
   # ============================================
@@ -217,7 +268,7 @@ jobs:
   build-frontend:
     name: Build Frontend Image
     runs-on: ubuntu-latest
-    needs: [frontend-tests]
+    needs: [frontend-shared-tests, frontend-public-tests]
     permissions:
       contents: read
       packages: write
@@ -248,7 +299,7 @@ jobs:
   build-admin-frontend:
     name: Build Admin Frontend Image
     runs-on: ubuntu-latest
-    needs: [frontend-tests]
+    needs: [frontend-shared-tests, frontend-admin-tests]
     permissions:
       contents: read
       packages: write
@@ -396,12 +447,22 @@ jobs:
         run: |
           docker compose -f docker-compose.prod.yml exec -T backend python scripts/seed_e2e_user.py
 
-      - name: Run Playwright Tests (Targeting Proxy)
+      # E2E is split by app so the two flows are legible in the run log.
+      # Both target the same running proxy: public on http://localhost:80,
+      # admin on http://admin.localhost (mapped to loopback above).
+      - name: E2E — Public site (public-e2e)
         working-directory: ./frontend
         env:
-          # Point Playwright directly to the Proxy
           BASE_URL: http://localhost:80
-        run: npx playwright test
+          ADMIN_BASE_URL: http://admin.localhost
+        run: npx playwright test --project=public-e2e
+
+      - name: E2E — Admin console (admin-e2e)
+        working-directory: ./frontend
+        env:
+          BASE_URL: http://localhost:80
+          ADMIN_BASE_URL: http://admin.localhost
+        run: npx playwright test --project=admin-e2e
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4

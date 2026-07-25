@@ -1,0 +1,26 @@
+{
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git push*)",
+            "timeout": 900,
+            "statusMessage": "Running full test round (backend + frontend) before push...",
+            "command": "cd \"${CLAUDE_PROJECT_DIR:-.}\"; { ( cd backend && TEST_DATABASE_URL=\"${TEST_DATABASE_URL:-postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov}\" GEMINI_API_KEY=\"\" ./venv/bin/pytest -q ) && ( cd frontend && npm test ); } >/tmp/mavrov-prepush-tests.log 2>&1 && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}' || echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Pre-push test round FAILED (backend pytest and/or frontend shared/public/admin). See /tmp/mavrov-prepush-tests.log. Fix before pushing. Backend tests need Postgres on 127.0.0.1:5433 (test_mavrov DB).\"}}'"
+          }
+        ]
+      }
+    ]
+  }
+}

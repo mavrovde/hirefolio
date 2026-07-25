@@ -58,6 +58,9 @@ test.describe('Blog Display on Page Load', () => {
 
         // Logout and visit the blog page as a visitor
         await page.click('.logout-btn');
+        // Wait for logout to settle (admin origin → /login) before the cross-origin
+        // navigation to the public site, so the goto below isn't interrupted mid-flight.
+        await page.waitForURL(/\/login/, { timeout: 15000 });
         await page.goto('/blog');
         await page.waitForLoadState('networkidle');
 
@@ -132,6 +135,9 @@ test.describe('Blog Display on Page Load', () => {
 
         // Logout and visit blog
         await page.click('.logout-btn');
+        // Wait for logout to settle (admin origin → /login) before the cross-origin
+        // navigation to the public site, so the goto below isn't interrupted mid-flight.
+        await page.waitForURL(/\/login/, { timeout: 15000 });
         await page.goto('/blog');
         await page.waitForLoadState('networkidle');
 
@@ -163,6 +169,9 @@ test.describe('Blog Display on Page Load', () => {
         await page.waitForURL(/\/posts/);
 
         await page.click('.logout-btn');
+        // Wait for logout to settle (admin origin → /login) before the cross-origin
+        // navigation to the public site, so the goto below isn't interrupted mid-flight.
+        await page.waitForURL(/\/login/, { timeout: 15000 });
 
         // Navigate directly to the slug URL to verify SSR/Routing fix
         const response = await page.goto(`/blog/${slug}`);
