@@ -1,7 +1,7 @@
 <div class="post-list">
   <div class="header">
     <h1 class="page-title">&gt; Manage Posts</h1>
-    <a routerLink="/admin/posts/new" class="btn-new"> <span class="icon">➕</span> New Post </a>
+    <a routerLink="/posts/new" class="btn-new"> <span class="icon">➕</span> New Post </a>
   </div>
 
   <!-- Search & Controls -->
@@ -22,7 +22,7 @@
   } @else if (table.items.length === 0 && !table.searchText) {
   <div class="empty-state">
     <p>&gt; No posts found</p>
-    <a routerLink="/admin/posts/new" class="btn-primary">Create your first post</a>
+    <a routerLink="/posts/new" class="btn-primary">Create your first post</a>
   </div>
   } @else {
   <div class="posts-table">
@@ -59,7 +59,7 @@
           </td>
           <td class="date-cell">{{ post.created_at }}</td>
           <td class="actions-cell">
-            <a [routerLink]="['/admin/posts/edit', post.id]" class="btn-edit"> Edit </a>
+            <a [routerLink]="['/posts/edit', post.id]" class="btn-edit"> Edit </a>
             <button (click)="deletePost(post)" class="btn-delete" [disabled]="deletingIds.has(post.id)">
               {{ deletingIds.has(post.id) ? 'Deleting...' : 'Delete' }}
             </button>

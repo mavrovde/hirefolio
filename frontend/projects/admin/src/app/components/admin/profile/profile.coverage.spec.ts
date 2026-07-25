@@ -4,8 +4,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ProfileComponent } from './profile';
 import { AuthService } from '../../../services/auth.service';
 import { BehaviorSubject, of, throwError } from 'rxjs';
-import { MockTranslatePipe } from '../../../testing/mock-translate.pipe';
-import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
+import { TranslatePipe } from '@mavrov/shared';
 
 describe('ProfileComponent early-return branch', () => {
   let component: ProfileComponent;

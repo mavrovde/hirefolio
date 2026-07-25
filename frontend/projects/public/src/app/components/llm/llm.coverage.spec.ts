@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { LlmComponent } from './llm.component';
-import { LlmService } from '../../services/llm.service';
+import { LlmService } from '@mavrov/shared';
 import { FormsModule } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { PLATFORM_ID } from '@angular/core';

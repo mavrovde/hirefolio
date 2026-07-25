@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { LlmComponent } from './llm.component';
-import { LlmService } from '../../services/llm.service';
+import { LlmService } from '@mavrov/shared';
 import { FormsModule } from '@angular/forms';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { provideRouter, Router } from '@angular/router';

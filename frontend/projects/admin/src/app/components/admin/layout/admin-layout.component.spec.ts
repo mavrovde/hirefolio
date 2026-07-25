@@ -75,7 +75,7 @@ describe('AdminLayoutComponent', () => {
     component.logout();
     
     expect(authServiceSpy.logout).toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith(['/admin/login']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/login']);
   });
 
   it('should not show Tags link', () => {
@@ -94,6 +94,6 @@ describe('AdminLayoutComponent', () => {
       (a) => a.textContent?.trim().includes('Gemini Chat')
     );
     expect(chatLink).toBeTruthy();
-    expect(chatLink?.getAttribute('href')).toBe('/admin/chat');
+    expect(chatLink?.getAttribute('href')).toBe('/chat');
   });
 });

@@ -1,10 +1,10 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { BlogPostComponent } from './blog-post.component';
-import { BlogService } from '../../../services/blog.service';
+import { BlogService } from '@mavrov/shared';
 import { SeoService } from '../../../services/seo.service';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { of, throwError, BehaviorSubject } from 'rxjs';
-import { MockTranslatePipe } from '../../../testing/mock-translate.pipe';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 

@@ -2,10 +2,10 @@ import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject } from '@angular/core
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { StatsService } from '../../services/stats.service';
+import { TranslatePipe } from '@mavrov/shared';
+import { StatsService } from '@mavrov/shared';
 
-import packageJson from '../../../../package.json';
+import packageJson from '../../../../../../package.json';
 
 @Component({
   selector: 'app-system-stats',

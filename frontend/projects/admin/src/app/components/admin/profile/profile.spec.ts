@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ProfileComponent } from './profile';
 import { AuthService } from '../../../services/auth.service';
-import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
 import { FormsModule } from '@angular/forms';
 import { of, throwError, BehaviorSubject } from 'rxjs';
 import { ChangeDetectorRef } from '@angular/core';

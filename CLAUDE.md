@@ -23,7 +23,8 @@ pipeline moves posts (and profile data) into the site.
 
 ```
 backend/    FastAPI app (app/api, app/services, app/models); tests/; conftest.py mocks crewai/langchain
-frontend/   Angular 21 app (src/app/...); Vitest + Playwright
+frontend/   Angular 21 workspace — projects/public (SSR visitor app), projects/admin (CSR admin SPA),
+            projects/shared (@mavrov/shared lib); Vitest (per-project) + Playwright (public-e2e/admin-e2e)
 scraper/    LinkedIn scrapers — scrape-linkedin.js (profile) + scrape-posts.js (posts) → *_data.json
 importer/   Standalone LinkedIn → backend importer (POSTs to /api/app/linkedin/import-post)
 agents/     A2A multi-agent delivery team (independent of the importer)
@@ -39,8 +40,12 @@ specs/      Feature specs (planned/done)
 - Types: `mypy app --ignore-missing-imports --no-error-summary`
 - Security: `bandit -r app -ll --skip B101`
 
-**Frontend** (`cd frontend`):
-- Tests: `npm test -- --watch=false --coverage`  ·  Build: `npm run build`
+**Frontend** (`cd frontend`) — Angular workspace, 3 projects (`public`, `admin`, `shared`):
+- Tests (100% coverage each): `npm run test:coverage` (all) or `npm run test:{shared,public,admin}`
+- Build: `npm run build` (all) or `npm run build:{shared,public,admin}`. `shared` must build before the apps.
+- Serve: `npm start` (public, :4200) · `npm run start:admin` (admin, :4300)
+- Shared code lives in `@mavrov/shared`; apps consume it via the `SHARED_ENVIRONMENT` +
+  `AUTH_TOKEN_PROVIDER` injection tokens (public passes a null token; admin wires it to AuthService).
 
 **Full stack / verify / release**:
 - `./manage.sh start|stop|logs` — Docker stack

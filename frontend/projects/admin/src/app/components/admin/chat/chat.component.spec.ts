@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { AdminChatComponent } from './chat.component';
-import { LlmService } from '../../../services/llm.service';
+import { LlmService } from '@mavrov/shared';
 import { FormsModule } from '@angular/forms';
 import { By } from '@angular/platform-browser';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';

@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { BlogService } from '../../../services/blog.service';
+import { BlogService } from '@mavrov/shared';
 
 interface PostData {
   title: string;
@@ -298,16 +298,16 @@ export class PostEditorComponent implements OnInit {
         if (this.selectedFile && savedPost.id) {
           this.blogService.uploadImage(savedPost.id, this.selectedFile).subscribe({
             next: () => {
-              this.router.navigate(['/admin/posts']);
+              this.router.navigate(['/posts']);
             },
             error: (err) => {
               console.error('Image upload failed', err);
               // Navigate anyway, but maybe show warning?
-              this.router.navigate(['/admin/posts']);
+              this.router.navigate(['/posts']);
             }
           });
         } else {
-          this.router.navigate(['/admin/posts']);
+          this.router.navigate(['/posts']);
         }
       },
       error: (error) => {
@@ -321,7 +321,7 @@ export class PostEditorComponent implements OnInit {
   }
 
   cancel(): void {
-    this.router.navigate(['/admin/posts']);
+    this.router.navigate(['/posts']);
   }
 
   deletePost(): void {
@@ -335,7 +335,7 @@ export class PostEditorComponent implements OnInit {
 
     this.blogService.deletePostById(this.currentId).subscribe({
       next: () => {
-        this.router.navigate(['/admin/posts']);
+        this.router.navigate(['/posts']);
       },
       error: (error) => {
         this.deleting = false;

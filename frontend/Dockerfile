@@ -13,8 +13,8 @@ RUN --mount=type=cache,target=/root/.npm \
 # Copy source code
 COPY . .
 
-# Build for production
-RUN npm run build
+# Build the public SSR app (and the shared library it depends on)
+RUN npm run build:shared && npm run build:public
 
 # Production stage with nginx
 FROM node:24-slim
@@ -25,9 +25,9 @@ RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/* &&
 # Clear default nginx assets
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy built app from builder
-COPY --from=builder /app/dist/frontend/browser /usr/share/nginx/browser
-COPY --from=builder /app/dist/frontend/server /usr/share/nginx/server
+# Copy built public app from builder
+COPY --from=builder /app/dist/public/browser /usr/share/nginx/browser
+COPY --from=builder /app/dist/public/server /usr/share/nginx/server
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf

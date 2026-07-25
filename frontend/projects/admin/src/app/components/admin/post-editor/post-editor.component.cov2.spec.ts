@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PostEditorComponent } from './post-editor.component';
-import { BlogService } from '../../../services/blog.service';
+import { BlogService } from '@mavrov/shared';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { of, Subject } from 'rxjs';
@@ -96,7 +96,7 @@ describe('PostEditorComponent (cov2: file upload)', () => {
 
       uploadSubject.next(undefined);
 
-      expect(routerSpy.navigate).toHaveBeenCalledWith(['/admin/posts']);
+      expect(routerSpy.navigate).toHaveBeenCalledWith(['/posts']);
     });
 
     it('should navigate anyway when the image upload fails', () => {
@@ -111,7 +111,7 @@ describe('PostEditorComponent (cov2: file upload)', () => {
       component.onSubmit();
 
       expect(blogServiceSpy.uploadImage).toHaveBeenCalledWith(7, file);
-      expect(routerSpy.navigate).toHaveBeenCalledWith(['/admin/posts']);
+      expect(routerSpy.navigate).toHaveBeenCalledWith(['/posts']);
     });
 
     it('should navigate directly when a file is selected but saved post has no id', () => {
@@ -123,7 +123,7 @@ describe('PostEditorComponent (cov2: file upload)', () => {
       component.onSubmit();
 
       expect(blogServiceSpy.uploadImage).not.toHaveBeenCalled();
-      expect(routerSpy.navigate).toHaveBeenCalledWith(['/admin/posts']);
+      expect(routerSpy.navigate).toHaveBeenCalledWith(['/posts']);
     });
 
     it('should navigate directly when no file is selected', () => {
@@ -133,7 +133,7 @@ describe('PostEditorComponent (cov2: file upload)', () => {
       component.onSubmit();
 
       expect(blogServiceSpy.uploadImage).not.toHaveBeenCalled();
-      expect(routerSpy.navigate).toHaveBeenCalledWith(['/admin/posts']);
+      expect(routerSpy.navigate).toHaveBeenCalledWith(['/posts']);
     });
   });
 });

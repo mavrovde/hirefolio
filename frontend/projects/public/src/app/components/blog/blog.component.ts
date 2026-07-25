@@ -1,8 +1,8 @@
 import { Component, OnInit, Input, Inject, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { BlogService, BlogPost, BlogSearchResult } from '../../services/blog.service';
+import { BlogService, BlogPost, BlogSearchResult } from '@mavrov/shared';
 import { Observable, map } from 'rxjs';
-import { TranslatePipe } from '../../pipes/translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
 import { Router, RouterModule } from '@angular/router';
 import { SeoService } from '../../services/seo.service';
 

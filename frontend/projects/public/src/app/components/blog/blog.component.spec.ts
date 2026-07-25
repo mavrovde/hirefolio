@@ -1,11 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { BlogComponent } from './blog.component';
-import { BlogService } from '../../services/blog.service';
-import { LanguageService } from '../../services/language.service';
+import { BlogService } from '@mavrov/shared';
+import { LanguageService } from '@mavrov/shared';
 import { of, Observable, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
-import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 

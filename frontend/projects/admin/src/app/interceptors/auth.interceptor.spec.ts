@@ -85,7 +85,7 @@ describe('AuthInterceptor', () => {
         req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
 
         expect(authService.logout).toHaveBeenCalled();
-        expect(router.navigate).toHaveBeenCalledWith(['/admin/login']);
+        expect(router.navigate).toHaveBeenCalledWith(['/login']);
     });
 
     it('should logout and redirect on 403 response', () => {
@@ -102,7 +102,7 @@ describe('AuthInterceptor', () => {
         req.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
 
         expect(authService.logout).toHaveBeenCalled();
-        expect(router.navigate).toHaveBeenCalledWith(['/admin/login']);
+        expect(router.navigate).toHaveBeenCalledWith(['/login']);
     });
 
     it('should NOT logout on 401 for login endpoint', () => {

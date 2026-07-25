@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DashboardComponent } from './dashboard.component';
-import { StatsService, SystemStats } from '../../../services/stats.service';
+import { StatsService, SystemStats } from '@mavrov/shared';
 import { of, throwError } from 'rxjs';
 import { RouterTestingModule } from '@angular/router/testing';
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';

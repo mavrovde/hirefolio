@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { StatsService, SystemStats } from '../../../services/stats.service';
+import { StatsService, SystemStats } from '@mavrov/shared';
 
 @Component({
   selector: 'app-dashboard',

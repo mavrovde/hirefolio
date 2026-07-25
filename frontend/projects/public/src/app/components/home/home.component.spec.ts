@@ -5,10 +5,10 @@ import { vi } from 'vitest';
 import { HomeComponent } from './home.component';
 import { ProfileService } from '../../services/profile.service';
 import { SeoService } from '../../services/seo.service';
-import { LanguageService } from '../../services/language.service';
+import { LanguageService, provideSharedEnvironment } from '@mavrov/shared';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { of } from 'rxjs';
-import { MockLanguageService } from '../../testing/mock-language.service';
+import { MockLanguageService } from '@mavrov/shared/testing';
 
 // Mock Services
 class MockProfileService {
@@ -49,6 +49,7 @@ describe('HomeComponent', () => {
         HttpClientTestingModule,
       ],
       providers: [
+        provideSharedEnvironment({ production: false, apiUrl: '', apiPrefix: '/api/app', googleAnalyticsId: '' }),
         { provide: ProfileService, useClass: MockProfileService },
         { provide: LanguageService, useClass: MockLanguageService },
         { provide: ActivatedRoute, useValue: mockActivatedRoute }

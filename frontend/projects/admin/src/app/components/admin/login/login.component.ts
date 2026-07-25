@@ -39,7 +39,7 @@ export class LoginComponent {
       .subscribe({
         next: () => {
           console.log('Login successful, navigating...');
-          const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/admin/dashboard';
+          const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
           console.log('Navigating to:', returnUrl);
           this.router.navigate([returnUrl]);
         },

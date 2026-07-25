@@ -1,11 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BlogPostComponent } from './blog-post.component';
-import { BlogService } from '../../../services/blog.service';
+import { BlogService } from '@mavrov/shared';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { SeoService } from '../../../services/seo.service';
 import { of, BehaviorSubject } from 'rxjs';
-import { MockTranslatePipe } from '../../../testing/mock-translate.pipe';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
 
 describe('BlogPostComponent SEO branches', () => {
   let component: BlogPostComponent;

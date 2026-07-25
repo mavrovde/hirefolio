@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TranslatePipe } from '../../pipes/translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
 import { YearExtractPipe } from '../../pipes/year-extract.pipe';
 import { Profile } from '../../services/profile.service';
 

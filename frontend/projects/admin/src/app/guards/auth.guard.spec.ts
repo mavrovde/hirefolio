@@ -33,7 +33,7 @@ describe('AuthGuard', () => {
     );
 
     expect(result).toBe(false);
-    expect(routerSpy.navigate).toHaveBeenCalledWith(['/admin/login'], expect.anything());
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/login'], expect.anything());
   });
 
   it('should allow if authenticated and no admin requirement', () => {
@@ -53,7 +53,7 @@ describe('AuthGuard', () => {
     const result = TestBed.runInInjectionContext(() =>
       authGuard(
         { data: { requireAdmin: true } } as any,
-        { url: '/admin/dashboard' } as any,
+        { url: '/dashboard' } as any,
       ),
     );
 
@@ -72,7 +72,7 @@ describe('AuthGuard', () => {
     const result = TestBed.runInInjectionContext(() =>
       authGuard(
         { data: { requireAdmin: true } } as any,
-        { url: '/admin/dashboard' } as any,
+        { url: '/dashboard' } as any,
       ),
     );
 
@@ -80,7 +80,7 @@ describe('AuthGuard', () => {
       result.subscribe((r) => {
         expect(r).toBe(false);
         expect(routerSpy.navigate).toHaveBeenCalledWith(
-          ['/admin/login'],
+          ['/login'],
           expect.anything(),
         );
       });
@@ -94,7 +94,7 @@ describe('AuthGuard', () => {
     const result = TestBed.runInInjectionContext(() =>
       authGuard(
         { data: { requireAdmin: true } } as any,
-        { url: '/admin/dashboard' } as any,
+        { url: '/dashboard' } as any,
       ),
     );
 
@@ -102,7 +102,7 @@ describe('AuthGuard', () => {
       result.subscribe((r) => {
         expect(r).toBe(false);
         expect(routerSpy.navigate).toHaveBeenCalledWith(
-          ['/admin/login'],
+          ['/login'],
           expect.anything(),
         );
       });

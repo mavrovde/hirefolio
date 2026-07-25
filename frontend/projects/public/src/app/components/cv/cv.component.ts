@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CvService } from '../../services/cv.service';
 import { HeaderComponent } from '../header/header.component';
-import { TranslatePipe } from '../../pipes/translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
 import { SeoService } from '../../services/seo.service';
 
 @Component({

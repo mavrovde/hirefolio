@@ -2,7 +2,7 @@ import { Component, ElementRef, ViewChild, AfterViewChecked, OnInit, ChangeDetec
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { LlmService, ChatMessage } from '../../services/llm.service';
+import { LlmService, ChatMessage } from '@mavrov/shared';
 import { VERSION } from '../../version';
 
 import { HeaderComponent } from '../header/header.component';

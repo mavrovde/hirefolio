@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
-import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
 import { AdminCvService, CvRequestSummary, CvVersion } from '../../../services/admin-cv.service';
 import { ServerTableHelper } from '../../../utils/table-helper-server';
 import { Subscription } from 'rxjs';

@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AdminChatComponent } from './chat.component';
-import { LlmService } from '../../../services/llm.service';
+import { LlmService } from '@mavrov/shared';
 import { FormsModule } from '@angular/forms';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 

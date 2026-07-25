@@ -2,8 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SkillsComponent } from './skills.component';
 import { Profile } from '../../services/profile.service';
 
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
 
 describe('SkillsComponent', () => {
   let component: SkillsComponent;

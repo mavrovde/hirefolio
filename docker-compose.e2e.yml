@@ -7,5 +7,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
 
+  admin-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.admin
+
   proxy:
     build: ./proxy

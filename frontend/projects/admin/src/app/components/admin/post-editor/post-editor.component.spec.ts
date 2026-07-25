@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PostEditorComponent } from './post-editor.component';
-import { BlogService } from '../../../services/blog.service';
+import { BlogService } from '@mavrov/shared';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { of, Subject } from 'rxjs';
@@ -405,7 +405,7 @@ describe('PostEditorComponent', () => {
 
   it('should navigate to post list on cancel', () => {
     component.cancel();
-    expect(routerSpy.navigate).toHaveBeenCalledWith(['/admin/posts']);
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/posts']);
   });
 
   it('should navigate to post list after successful deletion', () => {
@@ -418,7 +418,7 @@ describe('PostEditorComponent', () => {
     component.deletePost();
     deleteSubject.next(undefined);
 
-    expect(routerSpy.navigate).toHaveBeenCalledWith(['/admin/posts']);
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/posts']);
   });
 
   it('should handle loadPost error', () => {

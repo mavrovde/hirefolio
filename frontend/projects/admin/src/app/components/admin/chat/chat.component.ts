@@ -2,7 +2,7 @@
 import { Component, ElementRef, ViewChild, AfterViewChecked, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LlmService, ChatMessage } from '../../../services/llm.service';
+import { LlmService, ChatMessage } from '@mavrov/shared';
 
 @Component({
     selector: 'app-admin-chat',

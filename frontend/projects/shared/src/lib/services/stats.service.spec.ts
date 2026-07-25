@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { StatsService, SystemStats } from './stats.service';
-import { environment } from '../../environments/environment';
+import { provideSharedEnvironment } from '../config/environment.token';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('StatsService', () => {
@@ -11,7 +11,10 @@ describe('StatsService', () => {
     beforeEach(() => {
         TestBed.configureTestingModule({
             imports: [HttpClientTestingModule],
-            providers: [StatsService],
+            providers: [
+                StatsService,
+                provideSharedEnvironment({ production: false, apiUrl: '', apiPrefix: '/api/app', googleAnalyticsId: '' }),
+            ],
         });
         service = TestBed.inject(StatsService);
         httpMock = TestBed.inject(HttpTestingController);
@@ -40,7 +43,7 @@ describe('StatsService', () => {
             expect(stats).toEqual(mockStats);
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/stats`);
+        const req = httpMock.expectOne('/api/app/stats');
         expect(req.request.method).toBe('GET');
         req.flush(mockStats);
     });
@@ -51,7 +54,7 @@ describe('StatsService', () => {
             expect(stats).toEqual(mockPublicStats);
         });
 
-        const req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/stats/public`);
+        const req = httpMock.expectOne('/api/app/stats/public');
         expect(req.request.method).toBe('GET');
         req.flush(mockPublicStats);
     });

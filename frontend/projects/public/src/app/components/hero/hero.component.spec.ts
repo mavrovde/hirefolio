@@ -4,8 +4,8 @@ import { Profile } from '../../services/profile.service';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
 
 describe('HeroComponent', () => {
   let component: HeroComponent;

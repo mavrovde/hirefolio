@@ -4,11 +4,11 @@ import { By } from '@angular/platform-browser';
 import { vi, afterEach } from 'vitest';
 import { Router, provideRouter } from '@angular/router';
 
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
 
-import { LanguageService } from '../../services/language.service';
-import { MockLanguageService } from '../../testing/mock-language.service';
+import { LanguageService } from '@mavrov/shared';
+import { MockLanguageService } from '@mavrov/shared/testing';
 import { YearsService } from '../../services/years.service';
 import { of } from 'rxjs';
 

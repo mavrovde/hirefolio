@@ -5,7 +5,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { BlogService } from './blog.service';
 import { LanguageService } from './language.service';
 import { BehaviorSubject } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { provideSharedEnvironment } from '../config/environment.token';
 
 class MockLanguageService {
   currentLang$ = new BehaviorSubject<string>('en');
@@ -20,6 +20,7 @@ describe('BlogService search param branches', () => {
       providers: [
         BlogService,
         { provide: LanguageService, useClass: MockLanguageService },
+        provideSharedEnvironment({ production: false, apiUrl: '', apiPrefix: '/api/app', googleAnalyticsId: '' }),
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
@@ -34,7 +35,7 @@ describe('BlogService search param branches', () => {
     service
       .getPosts(true, 'en', 'ng', 2, 5, 'title', 'asc', 'keyword')
       .subscribe();
-    const req = httpMock.expectOne((r) => r.url === `${environment.apiUrl}${environment.apiPrefix}/posts`);
+    const req = httpMock.expectOne((r) => r.url === '/api/app/posts');
     expect(req.request.params.get('search')).toBe('keyword');
     expect(req.request.params.get('tag')).toBe('ng');
     expect(req.request.params.get('published_only')).toBe('true');
@@ -46,7 +47,7 @@ describe('BlogService search param branches', () => {
     service
       .getPosts(false, undefined, 'ng', 1, 10, 'created_at', 'desc', 'kw')
       .subscribe();
-    const req = httpMock.expectOne((r) => r.url === `${environment.apiUrl}${environment.apiPrefix}/posts`);
+    const req = httpMock.expectOne((r) => r.url === '/api/app/posts');
     expect(req.request.params.get('search')).toBe('kw');
     expect(req.request.params.get('lang')).toBe('en');
     expect(req.request.params.get('published_only')).toBe('false');

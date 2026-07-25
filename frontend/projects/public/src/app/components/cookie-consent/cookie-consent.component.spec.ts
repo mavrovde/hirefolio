@@ -1,8 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CookieConsentComponent } from './cookie-consent.component';
-import { StorageService } from '../../services/storage.service';
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
+import { StorageService } from '@mavrov/shared';
+import { TranslatePipe } from '@mavrov/shared';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 

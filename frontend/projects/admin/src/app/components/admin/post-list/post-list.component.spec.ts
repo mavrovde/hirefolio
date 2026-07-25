@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PostListComponent } from './post-list.component';
-import { BlogService, BlogPost } from '../../../services/blog.service';
+import { BlogService, BlogPost } from '@mavrov/shared';
 import { of, throwError } from 'rxjs';
 import { RouterTestingModule } from '@angular/router/testing';
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';

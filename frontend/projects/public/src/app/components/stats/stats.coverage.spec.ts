@@ -1,12 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SystemStatsComponent } from './stats.component';
-import { StatsService } from '../../services/stats.service';
+import { StatsService } from '@mavrov/shared';
 import { Router, NavigationEnd } from '@angular/router';
 import { Subject } from 'rxjs';
 import { PLATFORM_ID } from '@angular/core';
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
 
 describe('SystemStatsComponent visibility + uptime-fallback branches', () => {
   let component: SystemStatsComponent;

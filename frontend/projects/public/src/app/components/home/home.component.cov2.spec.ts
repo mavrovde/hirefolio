@@ -8,8 +8,8 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { HomeComponent } from './home.component';
 import { ProfileService } from '../../services/profile.service';
 import { SeoService } from '../../services/seo.service';
-import { LanguageService } from '../../services/language.service';
-import { MockLanguageService } from '../../testing/mock-language.service';
+import { LanguageService, provideSharedEnvironment } from '@mavrov/shared';
+import { MockLanguageService } from '@mavrov/shared/testing';
 
 function makeProfile(overrides: any = {}) {
   return {
@@ -46,6 +46,7 @@ async function configure(opts: {
   await TestBed.configureTestingModule({
     imports: [HomeComponent, HttpClientTestingModule],
     providers: [
+      provideSharedEnvironment({ production: false, apiUrl: '', apiPrefix: '/api/app', googleAnalyticsId: '' }),
       { provide: ProfileService, useValue: profileService },
       { provide: LanguageService, useClass: MockLanguageService },
       { provide: ActivatedRoute, useValue: mockActivatedRoute },

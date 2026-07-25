@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { StorageService } from '../../services/storage.service';
+import { TranslatePipe } from '@mavrov/shared';
+import { StorageService } from '@mavrov/shared';
 
 @Component({
     selector: 'app-cookie-consent',

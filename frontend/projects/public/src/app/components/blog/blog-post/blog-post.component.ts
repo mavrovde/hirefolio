@@ -1,7 +1,7 @@
 import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { BlogService, BlogPost } from '../../../services/blog.service';
+import { BlogService, BlogPost } from '@mavrov/shared';
 import { Observable, switchMap, catchError, of, tap } from 'rxjs';
 import { HeaderComponent } from '../../header/header.component';
 import { SeoService } from '../../../services/seo.service';

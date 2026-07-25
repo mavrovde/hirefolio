@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { BlogComponent } from './blog.component';
-import { BlogService } from '../../services/blog.service';
-import { LanguageService } from '../../services/language.service';
+import { BlogService } from '@mavrov/shared';
+import { LanguageService } from '@mavrov/shared';
 import { of, throwError } from 'rxjs';
-import { MockTranslatePipe } from '../../testing/mock-translate.pipe';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 

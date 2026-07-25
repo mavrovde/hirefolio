@@ -4,6 +4,7 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [angular()],
+  root: __dirname,
   test: {
     globals: true,
     environment: 'jsdom',
@@ -13,6 +14,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
+      reportsDirectory: '../../coverage/admin',
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.spec.ts', 'src/test-setup.ts', 'src/main.ts'],
     },

@@ -3,8 +3,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PLATFORM_ID } from '@angular/core';
 import { HeaderComponent } from './header.component';
 import { Router, provideRouter } from '@angular/router';
-import { LanguageService } from '../../services/language.service';
-import { MockLanguageService } from '../../testing/mock-language.service';
+import { LanguageService } from '@mavrov/shared';
+import { MockLanguageService } from '@mavrov/shared/testing';
 
 describe('HeaderComponent (server platform)', () => {
   let component: HeaderComponent;

@@ -94,6 +94,21 @@ services:
     networks:
       - app-network
 
+  admin-frontend:
+    image: mavrovde-admin-frontend:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.admin
+    restart: always
+    expose:
+      - "80"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
   open-webui:
     image: ghcr.io/open-webui/open-webui:latest
     container_name: open-webui
@@ -118,6 +133,7 @@ services:
       - "443:443"
     depends_on:
       - frontend
+      - admin-frontend
       - backend
       - open-webui
     networks:

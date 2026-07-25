@@ -1,6 +1,6 @@
 import { Component, Input, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { TranslatePipe } from '../../pipes/translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
 import { Profile } from '../../services/profile.service';
 
 @Component({

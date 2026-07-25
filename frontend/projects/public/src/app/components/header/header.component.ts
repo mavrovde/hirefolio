@@ -1,9 +1,9 @@
 import { Component, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { Language, LanguageService } from '../../services/language.service';
+import { Language, LanguageService } from '@mavrov/shared';
 import { YearsService } from '../../services/years.service';
-import { TranslatePipe } from '../../pipes/translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
 
 @Component({
   selector: 'app-header',

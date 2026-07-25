@@ -5,11 +5,9 @@ import { RenderMode } from '@angular/ssr';
 import bootstrap from '../main.server';
 
 describe('server-side app configuration', () => {
-  it('defines admin as client-rendered and everything else as server-rendered', () => {
-    expect(serverRoutes.length).toBe(2);
-    const admin = serverRoutes.find((r) => r.path === 'admin/**');
+  it('renders every route on the server via the catch-all route', () => {
+    expect(serverRoutes.length).toBe(1);
     const rest = serverRoutes.find((r) => r.path === '**');
-    expect(admin?.renderMode).toBe(RenderMode.Client);
     expect(rest?.renderMode).toBe(RenderMode.Server);
   });
 

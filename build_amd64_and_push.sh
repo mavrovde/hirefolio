@@ -45,6 +45,14 @@ echo "   Cleaning up local Frontend images..."
 ## docker rmi "maverickde/mavrov.de-frontend:$VERSION" "maverickde/mavrov.de-frontend:latest" || true
 ## docker system prune -f || true
 
+# 2b. Admin Frontend (CSR SPA)
+echo "2b. Building Admin Frontend (AMD64)..."
+docker build --platform $PLATFORM -f ./frontend/Dockerfile.admin -t "maverickde/mavrov.de-admin-frontend:$VERSION" -t "maverickde/mavrov.de-admin-frontend:latest" ./frontend
+echo "   Pushing Admin Frontend..."
+podman push "maverickde/mavrov.de-admin-frontend:$VERSION"
+podman push "maverickde/mavrov.de-admin-frontend:latest"
+echo "   Cleaning up local Admin Frontend images..."
+
 # 3. Proxy
 echo "3. Building Proxy (AMD64)..."
 docker build --platform $PLATFORM -t "maverickde/mavrov.de-proxy:$VERSION" -t "maverickde/mavrov.de-proxy:latest" ./proxy

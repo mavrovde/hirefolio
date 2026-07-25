@@ -1,13 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { LlmService } from './llm.service';
-import { environment } from '../../environments/environment';
+import { provideSharedEnvironment } from '../config/environment.token';
+import { provideAuthTokenProvider } from '../config/auth-token.token';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('LlmService uncovered branches', () => {
   let service: LlmService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [
+        provideSharedEnvironment({ production: false, apiUrl: '', apiPrefix: '/api/app', googleAnalyticsId: '' }),
+        provideAuthTokenProvider(() => null),
+      ],
+    });
     service = TestBed.inject(LlmService);
     (globalThis as any).fetch = vi.fn();
   });
@@ -87,7 +93,7 @@ describe('LlmService uncovered branches', () => {
       const result = await service.chatGemini([{ role: 'user', content: 'hi' }]);
       expect(result).toBe('Gemini says hi');
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        `${environment.apiUrl}${environment.apiPrefix}/ai/gemini-chat`,
+        '/api/app/ai/gemini-chat',
         expect.objectContaining({ method: 'POST' }),
       );
     });

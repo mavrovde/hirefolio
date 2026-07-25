@@ -2,8 +2,8 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { BlogService } from '../../../services/blog.service';
-import { BlogPost } from '../../../services/blog.service';
+import { BlogService } from '@mavrov/shared';
+import { BlogPost } from '@mavrov/shared';
 import { ServerTableHelper } from '../../../utils/table-helper-server';
 import { Subscription } from 'rxjs';
 

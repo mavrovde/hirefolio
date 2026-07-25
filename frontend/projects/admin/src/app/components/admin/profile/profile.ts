@@ -2,7 +2,7 @@ import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
-import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
 
 @Component({
   selector: 'app-profile',

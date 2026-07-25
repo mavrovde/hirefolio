@@ -5,6 +5,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { BlogService } from './blog.service';
 import { LanguageService } from './language.service';
 import { BehaviorSubject } from 'rxjs';
+import { provideSharedEnvironment } from '../config/environment.token';
 
 class MockLanguageService {
   currentLang$ = new BehaviorSubject<string>('en');
@@ -22,6 +23,7 @@ describe('BlogService getStaticPosts slug branches (line 159)', () => {
       providers: [
         BlogService,
         { provide: LanguageService, useClass: MockLanguageService },
+        provideSharedEnvironment({ production: false, apiUrl: '', apiPrefix: '/api/app', googleAnalyticsId: '' }),
         provideHttpClient(),
         provideHttpClientTesting(),
       ],

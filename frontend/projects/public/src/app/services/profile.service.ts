@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { shareReplay, switchMap } from 'rxjs/operators';
-import { LanguageService } from './language.service';
+import { LanguageService } from '@mavrov/shared';
 
 export interface Profile {
   name: string;

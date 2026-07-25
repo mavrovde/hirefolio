@@ -53,21 +53,21 @@ describe('LoginComponent', () => {
     component.onSubmit();
 
     expect(authServiceSpy.login).toHaveBeenCalledWith('admin', 'password');
-    expect(routerSpy.navigate).toHaveBeenCalledWith(['/admin/dashboard']);
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/dashboard']);
     expect(component.loading).toBe(false);
   });
 
   it('should navigate to returnUrl after login', () => {
     component.username = 'admin';
     component.password = 'password';
-    routeMock.snapshot.queryParams['returnUrl'] = '/admin/posts';
+    routeMock.snapshot.queryParams['returnUrl'] = '/posts';
     authServiceSpy.login.mockReturnValue(
       of({ access_token: 'token', token_type: 'bearer', expires_in: 3600 }),
     );
 
     component.onSubmit();
 
-    expect(routerSpy.navigate).toHaveBeenCalledWith(['/admin/posts']);
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/posts']);
   });
 
   it('should handle login error', () => {

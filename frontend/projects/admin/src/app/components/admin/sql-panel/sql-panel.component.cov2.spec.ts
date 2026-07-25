@@ -1,8 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SqlPanelComponent } from './sql-panel.component';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { TranslatePipe } from '../../../pipes/translate.pipe';
-import { MockTranslatePipe } from '../../../testing/mock-translate.pipe';
+import { TranslatePipe } from '@mavrov/shared';
+import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { environment } from '../../../../environments/environment';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
