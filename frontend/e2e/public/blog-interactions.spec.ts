@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { config } from '../config';
 
 test.describe('Blog Interactions', () => {
     test.beforeEach(async ({ page }) => {
@@ -7,15 +8,15 @@ test.describe('Blog Interactions', () => {
             window.localStorage.setItem('cookie_consent', 'true');
         });
 
-        // 1. Login
-        await page.goto('/admin/login');
+        // 1. Login (admin SPA lives on a separate origin)
+        await page.goto(`${config.adminUrl}/login`);
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'admin123');
         await page.click('button[type="submit"]');
-        await expect(page).toHaveURL(/\/admin\/dashboard/);
+        await expect(page).toHaveURL(/\/dashboard/);
 
         // 2. Create a clean test post
-        await page.goto('/admin/posts');
+        await page.goto(`${config.adminUrl}/posts`);
         await page.click('.btn-new');
 
         // Use a fixed timestamp for this test run to ensure uniqueness but predictability within the test context
@@ -31,11 +32,11 @@ test.describe('Blog Interactions', () => {
 
         // Click Publish to ensure it appears on the public site
         await page.click('button:has-text("[ Publish ]")');
-        await page.waitForURL('/admin/posts');
+        await page.waitForURL(/\/posts/);
 
         // 3. Logout to view as guest
         await page.click('.logout-btn');
-        await expect(page).toHaveURL('/admin/login');
+        await expect(page).toHaveURL(/\/login/);
 
         // 4. Navigate to home
         await page.goto('/');

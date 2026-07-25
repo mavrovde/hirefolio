@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { API_PREFIX } from './config';
+import { API_PREFIX } from '../config';
 
 test.describe('Admin Tag Management', () => {
     test.beforeEach(async ({ page }) => {
         // Login as admin
-        await page.goto('/admin/login');
+        await page.goto('/login');
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'admin123');
         await page.click('button[type="submit"]');
-        await expect(page).toHaveURL(/\/admin\/dashboard/);
+        await expect(page).toHaveURL(/\/dashboard/);
     });
 
     test('should display tags list', async ({ page }) => {
@@ -30,7 +30,7 @@ test.describe('Admin Tag Management', () => {
             });
         });
 
-        await page.goto('/admin/tag-manager');
+        await page.goto('/tag-manager');
 
         // Check header
         await expect(page.locator('h1.page-title')).toContainText('TAG_MANAGER');
@@ -64,7 +64,7 @@ test.describe('Admin Tag Management', () => {
             }
         });
 
-        await page.goto('/admin/tag-manager');
+        await page.goto('/tag-manager');
 
         const searchInput = page.locator('.search-box input');
         await searchInput.fill('React');
@@ -91,7 +91,7 @@ test.describe('Admin Tag Management', () => {
             }
         });
 
-        await page.goto('/admin/tag-manager');
+        await page.goto('/tag-manager');
 
         // Double click to edit
         await page.locator('.tag-name').dblclick();
@@ -123,7 +123,7 @@ test.describe('Admin Tag Management', () => {
             }
         });
 
-        await page.goto('/admin/tag-manager');
+        await page.goto('/tag-manager');
 
         // Mock confirmation dialog
         page.on('dialog', dialog => dialog.accept());

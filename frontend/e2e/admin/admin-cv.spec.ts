@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API_PREFIX } from './config';
+import { API_PREFIX } from '../config';
 import { Buffer } from 'node:buffer';
 
 test.describe('Admin CV Management', () => {
@@ -13,11 +13,11 @@ test.describe('Admin CV Management', () => {
 
         // Login as admin
         console.log('[E2E] Logging in as admin...');
-        await page.goto('/admin/login');
+        await page.goto('/login');
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'admin123');
         await page.click('button[type="submit"]');
-        await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
         console.log('[E2E] Login successful.');
     });
 
@@ -54,7 +54,7 @@ test.describe('Admin CV Management', () => {
         const responsePromise = page.waitForResponse(response =>
             response.url().includes(`${API_PREFIX}/admin/cv/requests`) && response.status() === 200
         );
-        await page.goto('/admin/cv-manager');
+        await page.goto('/cv-manager');
         await responsePromise;
         console.log('[E2E] Navigation and API response received.');
 
@@ -118,7 +118,7 @@ test.describe('Admin CV Management', () => {
         });
 
         console.log('[E2E] Navigating to CV Manager...');
-        await page.goto('/admin/cv-manager');
+        await page.goto('/cv-manager');
 
         console.log('[E2E] Switching to Versions tab...');
         await page.locator('button').filter({ hasText: /Versions/i }).click();

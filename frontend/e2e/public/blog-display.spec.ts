@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { config } from '../config';
 
 test.describe('Blog Display on Page Load', () => {
     test.beforeEach(async ({ page }) => {
@@ -32,16 +33,16 @@ test.describe('Blog Display on Page Load', () => {
 
     test('load more button fetches additional posts', async ({ page }) => {
         // First, create enough posts via admin
-        await page.goto('/admin/login');
+        await page.goto(`${config.adminUrl}/login`);
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'admin123');
         await page.click('button[type="submit"]');
-        await expect(page).toHaveURL(/\/admin\/dashboard/);
+        await expect(page).toHaveURL(/\/dashboard/);
 
         // Create 15 published posts (enough to trigger load-more after initial 10)
         for (let i = 0; i < 15; i++) {
             const uniqueId = Date.now() + i;
-            await page.goto('/admin/posts');
+            await page.goto(`${config.adminUrl}/posts`);
             await page.click('.btn-new');
 
             await page.fill('input[id="title"]', `Blog Display E2E ${uniqueId}`);
@@ -52,7 +53,7 @@ test.describe('Blog Display on Page Load', () => {
 
             // Publish the post (uses the Publish button, not a checkbox)
             await page.click('button:has-text("[ Publish ]")');
-            await page.waitForURL('/admin/posts');
+            await page.waitForURL(/\/posts/);
         }
 
         // Logout and visit the blog page as a visitor
@@ -113,13 +114,13 @@ test.describe('Blog Display on Page Load', () => {
         const title = `E2E Title Check ${uniqueId}`;
 
         // Create a post via admin
-        await page.goto('/admin/login');
+        await page.goto(`${config.adminUrl}/login`);
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'admin123');
         await page.click('button[type="submit"]');
-        await expect(page).toHaveURL(/\/admin\/dashboard/);
+        await expect(page).toHaveURL(/\/dashboard/);
 
-        await page.goto('/admin/posts');
+        await page.goto(`${config.adminUrl}/posts`);
         await page.click('.btn-new');
         await page.fill('input[id="title"]', title);
         await page.fill('input[id="slug"]', `e2e-title-check-${uniqueId}`);
@@ -127,7 +128,7 @@ test.describe('Blog Display on Page Load', () => {
         await page.fill('textarea[id="content"]', 'Title check content');
         await page.fill('textarea[id="summary"]', 'Title check summary');
         await page.click('button:has-text("[ Publish ]")');
-        await page.waitForURL('/admin/posts');
+        await page.waitForURL(/\/posts/);
 
         // Logout and visit blog
         await page.click('.logout-btn');
@@ -145,13 +146,13 @@ test.describe('Blog Display on Page Load', () => {
         const slug = `slug-direct-load-${uniqueId}`;
 
         // Create a post via admin
-        await page.goto('/admin/login');
+        await page.goto(`${config.adminUrl}/login`);
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'admin123');
         await page.click('button[type="submit"]');
-        await expect(page).toHaveURL(/\/admin\/dashboard/);
+        await expect(page).toHaveURL(/\/dashboard/);
 
-        await page.goto('/admin/posts');
+        await page.goto(`${config.adminUrl}/posts`);
         await page.click('.btn-new');
         await page.fill('input[id="title"]', title);
         await page.fill('input[id="slug"]', slug);
@@ -159,7 +160,7 @@ test.describe('Blog Display on Page Load', () => {
         await page.fill('textarea[id="content"]', 'Direct URL load content');
         await page.fill('textarea[id="summary"]', 'Direct URL load summary');
         await page.click('button:has-text("[ Publish ]")');
-        await page.waitForURL('/admin/posts');
+        await page.waitForURL(/\/posts/);
 
         await page.click('.logout-btn');
 

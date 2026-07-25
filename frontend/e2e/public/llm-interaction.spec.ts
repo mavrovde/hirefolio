@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API_PREFIX } from './config';
+import { API_PREFIX } from '../config';
 
 test.describe('LLM Terminal', () => {
     test.beforeEach(async ({ page }) => {

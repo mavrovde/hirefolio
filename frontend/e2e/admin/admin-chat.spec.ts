@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Admin Chat', () => {
     test.beforeEach(async ({ page }) => {
         // Navigate to admin login
-        await page.goto('/admin/login');
+        await page.goto('/login');
 
         // Perform login
         await page.fill('input[name="username"]', 'admin');
@@ -12,12 +12,12 @@ test.describe('Admin Chat', () => {
         await page.click('button[type="submit"]');
 
         // Wait for navigation to dashboard
-        await expect(page).toHaveURL('/admin/dashboard');
+        await expect(page).toHaveURL('/dashboard');
     });
 
     test('should navigate to Gemini Chat from sidebar', async ({ page }) => {
         // Navigate directly to chat to ensure page loads
-        await page.goto('/admin/chat');
+        await page.goto('/chat');
 
         // Check for header
         await expect(page.locator('h2', { hasText: 'Admin Chat with Gemini' })).toBeVisible();

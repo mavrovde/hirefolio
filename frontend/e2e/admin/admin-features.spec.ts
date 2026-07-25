@@ -12,7 +12,7 @@ test.describe('Admin New Features Verification', () => {
         page.on('console', msg => console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`));
 
         // Login sequence
-        await page.goto('/admin/login');
+        await page.goto('/login');
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'admin123');
         // Setup network listener
@@ -49,7 +49,7 @@ test.describe('Admin New Features Verification', () => {
         // 'app-admin-layout' is usually the wrapper for dashboard
         // Or check URL
         try {
-            await expect(page).toHaveURL(/\/admin\/(dashboard|chat|profile|sql)/, { timeout: 15000 });
+            await expect(page).toHaveURL(/\/(dashboard|chat|profile|sql)/, { timeout: 15000 });
         } catch (e) {
             console.log('Navigation failed. Current URL:', page.url());
             throw e;
@@ -70,7 +70,7 @@ test.describe('Admin New Features Verification', () => {
             });
         });
 
-        await page.goto('/admin/chat');
+        await page.goto('/chat');
 
         // Verify container visibility first
         await expect(page.locator('.bg-terminal-dark')).toBeVisible();
@@ -95,7 +95,7 @@ test.describe('Admin New Features Verification', () => {
     });
 
     test('Profile should have show password toggle', async ({ page }) => {
-        await page.goto('/admin/profile');
+        await page.goto('/profile');
 
         // Check old password field exists
         await expect(page.locator('input[name="oldPassword"]')).toBeVisible();
@@ -122,7 +122,7 @@ test.describe('Admin New Features Verification', () => {
     });
 
     test('SQL Panel should have Backup and Restore buttons', async ({ page }) => {
-        await page.goto('/admin/sql');
+        await page.goto('/sql');
 
         // Check Backup button
         const backupBtn = page.locator('button', { hasText: 'BACKUP DATABASE' });

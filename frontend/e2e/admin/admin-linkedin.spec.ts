@@ -12,7 +12,7 @@ test.describe('Admin LinkedIn Integration Verification', () => {
         page.on('console', msg => console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`));
 
         // Login sequence
-        await page.goto('/admin/login');
+        await page.goto('/login');
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'admin123');
 
@@ -26,7 +26,7 @@ test.describe('Admin LinkedIn Integration Verification', () => {
 
         // Wait for ANY admin page element to ensure login success
         try {
-            await expect(page).toHaveURL(/\/admin\/(dashboard|chat|profile|sql|linkedin)/, { timeout: 15000 });
+            await expect(page).toHaveURL(/\/(dashboard|chat|profile|sql|linkedin)/, { timeout: 15000 });
         } catch (e) {
             console.log('Navigation failed. Current URL:', page.url());
             throw e;
@@ -74,7 +74,7 @@ test.describe('Admin LinkedIn Integration Verification', () => {
             });
         });
         // Navigate to the LinkedIn admin page
-        await page.goto('/admin/linkedin');
+        await page.goto('/linkedin');
 
         // Wait for container to be visible
         await expect(page.locator('h1', { hasText: '> LinkedIn Sync' })).toBeVisible({ timeout: 15000 });
@@ -120,7 +120,7 @@ test.describe('Admin LinkedIn Integration Verification', () => {
             });
         });
         // Navigate to the LinkedIn admin page
-        await page.goto('/admin/linkedin');
+        await page.goto('/linkedin');
 
         // Wait for container to be visible
         await expect(page.locator('h1', { hasText: '> LinkedIn Sync' })).toBeVisible();
@@ -157,7 +157,7 @@ test.describe('Admin LinkedIn Integration Verification', () => {
         });
 
         // Navigate to the LinkedIn admin page
-        await page.goto('/admin/linkedin');
+        await page.goto('/linkedin');
         
         // Wait for container to be visible and login form to render
         await expect(page.locator('h1', { hasText: '> LinkedIn Sync' })).toBeVisible({ timeout: 15000 });

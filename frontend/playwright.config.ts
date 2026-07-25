@@ -2,7 +2,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './e2e',
   timeout: 120000,
   fullyParallel: false, // Run tests sequentially to avoid shared state conflicts
   forbidOnly: !!process.env.CI,
@@ -10,7 +9,6 @@ export default defineConfig({
   workers: 1, // Sequential execution needed for profile/sql tests sharing admin user
   reporter: 'html',
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:4200', // Default to local dev, override for Docker
     ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
     screenshot: 'on',
@@ -18,8 +16,20 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'public-e2e',
+      testDir: './e2e/public',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env.BASE_URL || 'http://localhost:4200', // Public site (dev default, override for CI/Docker)
+      },
+    },
+    {
+      name: 'admin-e2e',
+      testDir: './e2e/admin',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env.ADMIN_BASE_URL || 'http://admin.localhost', // Admin SPA origin
+      },
     },
   ],
 });

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API_PREFIX } from './config';
+import { API_PREFIX } from '../config';
 
 test.describe('Post Management', () => {
   test.setTimeout(60000); // Reduced from 300s since AI is now mocked
@@ -35,26 +35,26 @@ test.describe('Post Management', () => {
     });
 
     console.log('[E2E] Logging in as admin...');
-    await page.goto('/admin/login');
+    await page.goto('/login');
 
     // Retry login once if it fails due to concurrency
     try {
       await page.fill('input[name="username"]', 'admin');
       await page.fill('input[name="password"]', 'admin123');
       await page.click('button[type="submit"]');
-      await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30000 });
+      await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
     } catch (e) {
       console.log('[E2E] Login failed, retrying once...');
-      await page.goto('/admin/login');
+      await page.goto('/login');
       await page.fill('input[name="username"]', 'admin');
       await page.fill('input[name="password"]', 'admin123');
       await page.click('button[type="submit"]');
-      await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30000 });
+      await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
     }
     console.log('[E2E] Login successful.');
 
-    console.log('[E2E] Navigating to /admin/posts...');
-    await page.goto('/admin/posts');
+    console.log('[E2E] Navigating to /posts...');
+    await page.goto('/posts');
   });
 
   test('should create a new post', async ({ page }) => {
@@ -70,7 +70,7 @@ test.describe('Post Management', () => {
     await page.fill('textarea[id="summary"]', 'Test summary');
 
     await page.click('button[type="submit"]');
-    await page.waitForURL('/admin/posts');
+    await page.waitForURL('/posts');
     await expect(page.locator('table')).toContainText(title);
   });
 
@@ -95,7 +95,7 @@ test.describe('Post Management', () => {
     const newTitle = `Edited ${Date.now()}`;
     await page.fill('input[id="title"]', newTitle);
     await page.click('button[type="submit"]');
-    await page.waitForURL('/admin/posts');
+    await page.waitForURL('/posts');
     await expect(page.locator('table')).toContainText(newTitle);
   });
 
@@ -106,7 +106,7 @@ test.describe('Post Management', () => {
     await page.fill('input[id="slug"]', `delete-${timestamp}`);
     await page.fill('textarea[id="content"]', 'Content');
     await page.click('button[type="submit"]');
-    await page.waitForURL('/admin/posts');
+    await page.waitForURL('/posts');
 
     const row = page.locator('tr', { hasText: `Delete Me ${timestamp}` });
     page.on('dialog', dialog => dialog.accept());
@@ -143,7 +143,7 @@ test.describe('Post Management', () => {
     await page.fill('input[id="slug"]', slug);
     await page.fill('textarea[id="content"]', 'Image upload test content.');
     await page.click('button[type="submit"]');
-    await page.waitForURL('/admin/posts');
+    await page.waitForURL('/posts');
 
     // Edit the created post
     const row = page.locator('tr', { hasText: title });
@@ -169,6 +169,6 @@ test.describe('Post Management', () => {
 
   test('should logout', async ({ page }) => {
     await page.click('.logout-btn');
-    await expect(page).toHaveURL('/admin/login');
+    await expect(page).toHaveURL('/login');
   });
 });

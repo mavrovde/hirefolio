@@ -1,32 +1,32 @@
 import { test, expect } from '@playwright/test';
 // import { LoginPage } from './pages/login-page';
-import { API_PREFIX } from './config';
+import { API_PREFIX } from '../config';
 
 test.describe('Admin SQL Panel', () => {
 
     test.beforeEach(async ({ page }) => {
         console.log(`[E2E] Starting test: ${test.info().title}`);
-        await page.goto('/admin/login');
+        await page.goto('/login');
 
         // Retry login once if it fails due to concurrency or slower start
         try {
             await page.fill('input[name="username"]', 'admin');
             await page.fill('input[name="password"]', 'admin123');
             await page.click('button[type="submit"]');
-            await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30000 });
+            await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
         } catch (e) {
             console.log('[E2E] Login failed, retrying once...');
-            await page.goto('/admin/login');
+            await page.goto('/login');
             await page.fill('input[name="username"]', 'admin');
             await page.fill('input[name="password"]', 'admin123');
             await page.click('button[type="submit"]');
-            await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30000 });
+            await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
         }
         console.log('[E2E] Login successful.');
     });
 
     test('should execute a valid SQL query and show results', async ({ page }) => {
-        await page.goto('/admin/sql');
+        await page.goto('/sql');
 
         // Check if we are on the SQL panel
         await expect(page.locator('h2:has-text("SQL Panel")')).toBeVisible();
@@ -53,7 +53,7 @@ test.describe('Admin SQL Panel', () => {
     });
 
     test('should handle invalid SQL query', async ({ page }) => {
-        await page.goto('/admin/sql');
+        await page.goto('/sql');
 
         await page.fill('#query', "SELECT * FROM non_existent_table_123");
         

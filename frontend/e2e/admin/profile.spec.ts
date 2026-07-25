@@ -1,12 +1,12 @@
 
 import { test, expect } from '@playwright/test';
-import { API_PREFIX } from './config';
+import { API_PREFIX } from '../config';
 
 test.describe('Admin Profile - Change Password', () => {
 
     test.beforeEach(async ({ page }) => {
         console.log(`[E2E] Starting test: ${test.info().title}`);
-        await page.goto('/admin/login');
+        await page.goto('/login');
 
         // Explicitly accept cookies if banner is present
         const cookieButton = page.getByRole('button', { name: 'Accept & Save' });
@@ -20,27 +20,27 @@ test.describe('Admin Profile - Change Password', () => {
             await page.fill('input[name="username"]', 'admin');
             await page.fill('input[name="password"]', 'admin123');
             await page.click('button[type="submit"]');
-            await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30000 });
+            await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
         } catch (e) {
             console.log('[E2E] Login failed, retrying once...');
-            await page.goto('/admin/login');
+            await page.goto('/login');
             await page.fill('input[name="username"]', 'admin');
             await page.fill('input[name="password"]', 'admin123');
             await page.click('button[type="submit"]');
-            await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30000 });
+            await expect(page).toHaveURL(/\/dashboard/, { timeout: 30000 });
         }
         console.log('[E2E] Login successful.');
     });
 
     test('should display profile page and user details', async ({ page }) => {
-        await page.goto('/admin/profile');
+        await page.goto('/profile');
         // Use class selector to avoid ambiguity
         await expect(page.locator('h2.profile-title').first()).toContainText('Profile');
         await expect(page.locator('.user-info')).toContainText('admin');
     });
 
     test('should fail with incorrect old password', async ({ page }) => {
-        await page.goto('/admin/profile');
+        await page.goto('/profile');
 
         await page.fill('input[name="oldPassword"]', 'wrongpassword');
         await page.fill('input[name="newPassword"]', 'newpass123');
@@ -56,7 +56,7 @@ test.describe('Admin Profile - Change Password', () => {
         // 1. Login with initial password 'admin' (Handled by beforeEach)
 
         // 2. Change password to 'newpass123'
-        await page.goto('/admin/profile');
+        await page.goto('/profile');
         await page.fill('input[name="oldPassword"]', 'admin123');
         await page.fill('input[name="newPassword"]', 'newpass123');
 
@@ -68,7 +68,7 @@ test.describe('Admin Profile - Change Password', () => {
         const logoutBtn = page.locator('.logout-btn');
         await expect(logoutBtn).toBeVisible();
         await logoutBtn.click();
-        await expect(page).toHaveURL(/\/admin\/login/);
+        await expect(page).toHaveURL(/\/login/);
         await page.waitForTimeout(500); // Give Angular time to bind NgModel
 
         // 4. Login with NEW password 'newpass123'
@@ -76,11 +76,11 @@ test.describe('Admin Profile - Change Password', () => {
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'newpass123');
         await page.click('button[type="submit"]');
-        await expect(page).toHaveURL(/\/admin\/dashboard/);
+        await expect(page).toHaveURL(/\/dashboard/);
 
         // 5. Change password BACK to 'admin'
         console.log('[E2E] Reverting password...');
-        await page.goto('/admin/profile');
+        await page.goto('/profile');
         await page.fill('input[name="oldPassword"]', 'newpass123');
         await page.fill('input[name="newPassword"]', 'admin123');
         await page.locator('button[type="submit"]').click({ force: true });
@@ -90,7 +90,7 @@ test.describe('Admin Profile - Change Password', () => {
         console.log('[E2E] Logging out again...');
         await expect(logoutBtn).toBeVisible();
         await logoutBtn.click();
-        await expect(page).toHaveURL(/\/admin\/login/);
+        await expect(page).toHaveURL(/\/login/);
         await page.waitForTimeout(500); // Give Angular time to bind NgModel
 
         // 7. Login with OLD password 'admin'
@@ -98,7 +98,7 @@ test.describe('Admin Profile - Change Password', () => {
         await page.fill('input[name="username"]', 'admin');
         await page.fill('input[name="password"]', 'admin123');
         await page.click('button[type="submit"]');
-        await expect(page).toHaveURL(/\/admin\/dashboard/);
+        await expect(page).toHaveURL(/\/dashboard/);
         console.log('[E2E] Password reverted successfully and full flow verified.');
     });
 
@@ -107,7 +107,7 @@ test.describe('Admin Profile - Change Password', () => {
         console.log('[E2E] CLEANUP: Ensuring password is reset to "admin"...');
 
         try {
-            await page.goto('/admin/login');
+            await page.goto('/login');
 
             // Try logging in with NEW password
             await page.fill('input[name="username"]', 'admin');
@@ -115,10 +115,10 @@ test.describe('Admin Profile - Change Password', () => {
             await page.click('button[type="submit"]');
 
             try {
-                await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 5000 });
+                await expect(page).toHaveURL(/\/dashboard/, { timeout: 5000 });
                 console.log('[E2E] CLEANUP: Logged in with NEW password. Reverting...');
 
-                await page.goto('/admin/profile');
+                await page.goto('/profile');
                 await page.fill('input[name="oldPassword"]', 'newpass123');
                 await page.fill('input[name="newPassword"]', 'admin123');
                 await page.click('button[type="submit"]');

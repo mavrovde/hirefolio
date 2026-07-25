@@ -47,7 +47,7 @@ test.describe('Gemini Configuration', () => {
         // and can navigate directly to protected routes.
         // await page.goto('/login'); // specific login steps removed
 
-        await page.goto('/admin/profile');
+        await page.goto('/profile');
     });
 
     test('should load and update Gemini API Key', async ({ page }) => {
