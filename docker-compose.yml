@@ -36,13 +36,20 @@ services:
       - |
         /bin/ollama serve &
         sleep 5
-        ollama pull nomic-embed-text
-        ollama pull llama3.2
-        ollama pull llama3.2:1b
+        # Pull only if not already cached in the persistent ollama_data volume
+        # (no re-download on restart; offline-safe once cached).
+        ollama list | grep -q 'nomic-embed-text' || ollama pull nomic-embed-text
+        ollama list | grep -q 'llama3.2:latest'  || ollama pull llama3.2
+        ollama list | grep -q 'llama3.2:1b'       || ollama pull llama3.2:1b
+        # Prewarm: load the generation models into memory so the first user
+        # request is not a multi-second cold start (kept resident via KEEP_ALIVE).
+        ollama run llama3.2 "warmup" >/dev/null 2>&1 || true
+        ollama run llama3.2:1b "warmup" >/dev/null 2>&1 || true
         wait
     environment:
       - OLLAMA_NUM_PARALLEL=16
       - OLLAMA_MAX_LOADED_MODELS=4
+      - OLLAMA_KEEP_ALIVE=-1
     networks:
       - app-network
 
