@@ -188,7 +188,7 @@ def start_agents(role_keys: list[str], workdir: str) -> list[subprocess.Popen]:
 async def _wait_ready(role_keys: list[str]) -> None:
     async with httpx.AsyncClient(timeout=5) as hx:
         for k in role_keys:
-            url = f"http://localhost:{ROSTER[k].port}/.well-known/agent.json"
+            url = f"{ROSTER[k].host}/.well-known/agent.json"
             for _ in range(40):
                 try:
                     if (await hx.get(url)).status_code == 200:

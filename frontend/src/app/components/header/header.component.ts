@@ -1,4 +1,4 @@
-import { Component, Inject, PLATFORM_ID, OnInit } from '@angular/core';
+import { Component, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Language, LanguageService } from '../../services/language.service';
@@ -12,7 +12,7 @@ import { TranslatePipe } from '../../pipes/translate.pipe';
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.css'],
 })
-export class HeaderComponent implements OnInit {
+export class HeaderComponent {
   currentLang: Language = 'en';
   years: number[] = [];
   selectedYearIndex: number = 0;
@@ -35,9 +35,12 @@ export class HeaderComponent implements OnInit {
     @Inject(PLATFORM_ID) private platformId: Object
   ) {
     this.languageService.currentLang$.subscribe((lang) => (this.currentLang = lang));
-  }
 
-  ngOnInit(): void {
+    // Subscribe in the constructor (an injection context) rather than ngOnInit so that
+    // a synchronous `shareReplay(1)` replay from YearsService populates `years` /
+    // `selectedYearIndex` BEFORE the component's first change-detection pass. Doing it in
+    // ngOnInit let a cached (sync) emission mutate these bindings after the view was
+    // checked, triggering NG0100 (ExpressionChangedAfterItHasBeenCheckedError) in dev mode.
     this.yearsService.getYears().subscribe((years) => {
       // Reverse to ascending order: oldest (left) → newest (right)
       this.years = [...years].reverse();

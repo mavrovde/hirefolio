@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from app.logger import logger
 from app.config import settings
@@ -77,6 +78,11 @@ async def get_cv_years():
     if not all_years:
         logger.error("No years found in any profile data file.")
         raise HTTPException(status_code=404, detail="No experience years found")
+
+    # Always surface the current year so the timeline reaches the present, even if no
+    # experience *started* this year (roles are ongoing). Keeps the slider current
+    # (e.g. 2026) without hardcoding a year.
+    all_years.add(datetime.now(timezone.utc).year)
 
     sorted_years = sorted(all_years, reverse=True)
     return {"years": sorted_years}
