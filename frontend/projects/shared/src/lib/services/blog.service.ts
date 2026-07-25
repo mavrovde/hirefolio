@@ -1,9 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { switchMap, map } from 'rxjs/operators';
 import { LanguageService } from './language.service';
-import { environment } from '../../environments/environment';
+import { SHARED_ENVIRONMENT, SharedEnvironment } from '../config/environment.token';
 
 export interface BlogPost {
   id: number;
@@ -41,12 +41,15 @@ export interface PaginatedResponse<T> {
   providedIn: 'root',
 })
 export class BlogService {
-  private apiUrl = `${environment.apiUrl}${environment.apiPrefix}/posts`;
+  private apiUrl: string;
 
   constructor(
     private http: HttpClient,
     private languageService: LanguageService,
-  ) { }
+    @Inject(SHARED_ENVIRONMENT) env: SharedEnvironment,
+  ) {
+    this.apiUrl = `${env.apiUrl}${env.apiPrefix}/posts`;
+  }
 
   getPosts(
     publishedOnly: boolean = true,

@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { SHARED_ENVIRONMENT, SharedEnvironment } from '../config/environment.token';
 
 export interface PostStats {
   total: number;
@@ -31,9 +31,14 @@ export interface SystemStats {
   providedIn: 'root',
 })
 export class StatsService {
-  private apiUrl = `${environment.apiUrl}${environment.apiPrefix}/stats`;
+  private apiUrl: string;
 
-  constructor(private http: HttpClient) { }
+  constructor(
+    private http: HttpClient,
+    @Inject(SHARED_ENVIRONMENT) env: SharedEnvironment,
+  ) {
+    this.apiUrl = `${env.apiUrl}${env.apiPrefix}/stats`;
+  }
 
   getStats(): Observable<SystemStats> {
     return this.http.get<SystemStats>(this.apiUrl);

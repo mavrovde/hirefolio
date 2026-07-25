@@ -1,6 +1,6 @@
-import { Injectable } from '@angular/core';
-import { environment } from '../../environments/environment';
-import { AuthService } from './auth.service';
+import { Injectable, Inject } from '@angular/core';
+import { SHARED_ENVIRONMENT, SharedEnvironment } from '../config/environment.token';
+import { AUTH_TOKEN_PROVIDER, AuthTokenProvider } from '../config/auth-token.token';
 
 export interface ChatMessage {
     role: 'user' | 'assistant' | 'system';
@@ -19,9 +19,14 @@ export interface AgentConfig {
     providedIn: 'root'
 })
 export class LlmService {
-    private apiUrl = `${environment.apiUrl}${environment.apiPrefix}/ai`;
+    private apiUrl: string;
 
-    constructor(private authService: AuthService) { }
+    constructor(
+        @Inject(SHARED_ENVIRONMENT) env: SharedEnvironment,
+        @Inject(AUTH_TOKEN_PROVIDER) private authToken: AuthTokenProvider,
+    ) {
+        this.apiUrl = `${env.apiUrl}${env.apiPrefix}/ai`;
+    }
 
     async chat(messages: ChatMessage[], onChunk: (chunk: string) => void, signal?: AbortSignal): Promise<void> {
         const response = await fetch(`${this.apiUrl}/chat`, {
@@ -113,7 +118,7 @@ export class LlmService {
         }
     }
     async chatGemini(messages: ChatMessage[]): Promise<string> {
-        const token = this.authService.getToken();
+        const token = this.authToken();
         const headers: HeadersInit = {
             'Content-Type': 'application/json'
         };
