@@ -1,5 +1,5 @@
 # Multi-stage build for the Angular ADMIN app (CSR-only SPA, no SSR/Node runtime)
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 

@@ -1,5 +1,5 @@
 # Multi-stage build for Angular frontend
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build:shared && npm run build:public
 
 # Production stage with nginx
-FROM node:24-slim
+FROM node:26-slim
 
 # Install nginx and clear default config
 RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/* && rm -f /etc/nginx/sites-enabled/default
