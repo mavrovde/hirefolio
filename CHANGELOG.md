@@ -7,6 +7,27 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+## [1.5.1] - 2026-07-25
+
+### Changed
+- **CI flow split per app** — `deploy.yml` now runs one test lane per workspace project
+  (`frontend-shared-tests` / `frontend-public-tests` / `frontend-admin-tests`, distinct
+  Codecov flags); each image build depends on its own lane; the E2E job runs two explicit
+  steps, `E2E — Public (public-e2e)` and `E2E — Admin (admin-e2e)`, so the public and admin
+  flows are legible end to end.
+
+### Added
+- **Pre-push test gate** (`.claude/hooks/pre-push-tests.sh`, wired via `.claude/settings.json`)
+  — before any `git push`, runs a docs check (CHANGELOG `[Unreleased]` + README), the backend
+  pytest suite, and the frontend shared/public/admin unit tests, blocking the push on failure.
+  Self-gates on the push command so it never interferes with other shell commands; all legs are
+  env-configurable (`PREPUSH_RUN_BACKEND` / `PREPUSH_RUN_FRONTEND` / `PREPUSH_CHECK_DOCS` /
+  `TEST_DATABASE_URL`).
+
+### Fixed
+- Hardened the cross-app blog E2E specs to wait for admin logout to settle before the
+  cross-origin navigation to the public site.
+
 ## [1.5.0] - 2026-07-25
 
 ### Added
