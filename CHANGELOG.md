@@ -7,6 +7,19 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Changed
+- **CI: pinned & cached third-party base images** (#72, PR #76). Added `.github/base-images.txt`
+  as the single source of truth (pinned `ollama/ollama:0.5.7`, `open-webui:v0.5.10`,
+  `pgvector/pgvector:pg16`, matching prod compose — removed the `:latest` drift) and replaced both
+  `Pull Standard Images` steps with an `actions/cache` restore + `docker load`/`save`, so the base
+  images download once instead of every run.
+
+### Docs
+- **Codified the issue/milestone/label development workflow into repo config** (#74, PR #75):
+  a new `CLAUDE.md` section, `backend-dev`/`frontend-dev`/`devops-pipeline` role updates, a committed
+  `.claude/skills/issue-workflow` skill, and a `/issue-triage` command — shared across devices and
+  developers.
+
 ## [1.7.1] - 2026-07-26
 
 ### Security
