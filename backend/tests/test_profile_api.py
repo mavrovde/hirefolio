@@ -132,6 +132,42 @@ async def test_get_projects_contact_to_email_and_linkedin(
     }
 
 
+async def test_get_active_profile_rate_limited_after_limit(
+    client: AsyncClient, db_session, monkeypatch
+):
+    """The Nth request within the window returns 429; requests under the limit
+    (a normal single request, or several within it) still return 200."""
+    from app.api import profile as profile_module
+
+    monkeypatch.setattr(profile_module.profile_rate_limiter, "max_requests", 3)
+    await _seed(
+        db_session,
+        version="v1",
+        language="en",
+        data={"name": "RateLimited"},
+        is_active=True,
+    )
+
+    for _ in range(3):
+        r = await client.get(URL, params={"lang": "en"})
+        assert r.status_code == 200
+
+    r = await client.get(URL, params={"lang": "en"})
+    assert r.status_code == 429
+    assert "Too many requests" in r.json()["detail"]
+
+
+async def test_get_active_profile_single_request_not_rate_limited(
+    client: AsyncClient, db_session
+):
+    """A normal single request is never affected by the (generous) rate limit."""
+    await _seed(
+        db_session, version="v1", language="en", data={"name": "Normal"}, is_active=True
+    )
+    r = await client.get(URL, params={"lang": "en"})
+    assert r.status_code == 200
+
+
 async def test_get_handles_non_dict_stored_data(client: AsyncClient, db_session):
     """Defensive: a non-object stored payload projects to an empty object."""
     await _seed(

@@ -7,6 +7,18 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Security
+- **Rate-limited the public `GET /api/app/profile` endpoint** (#47): a small, self-contained
+  in-memory sliding-window limiter (`backend/app/services/rate_limit.py`, no new dependency)
+  rejects excess requests per client IP with `429 Too Many Requests`; the limit/window are
+  configurable via `Settings.profile_rate_limit_requests`/`profile_rate_limit_window_seconds`
+  (default 100 requests/60s — generous enough that normal browsing/SSR is never affected).
+- **Sanitized legacy LinkedIn admin error responses** (`backend/app/api/linkedin.py`, #47): the six
+  handlers that used to interpolate the raw caught exception into the client-facing `detail`
+  (`login`, `profile-sync`, `posts`, `transfer-post`, `transfer-posts`) now log the full exception
+  server-side (`logger.exception`) and return a generic, non-revealing message to the client,
+  matching the pattern already used by the newer `import-post`/`import-posts-json` endpoints.
+
 ### Changed
 - **CI: pinned & cached third-party base images** (#72, PR #76). Added `.github/base-images.txt`
   as the single source of truth (pinned `ollama/ollama:0.5.7`, `open-webui:v0.5.10`,
