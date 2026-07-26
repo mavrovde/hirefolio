@@ -4,8 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- Placeholder for next release.
+### Changed
+- **CI: cache Ollama model weights in the E2E job** (#78, refs #91). The `ollama` service pulls the
+  embedding + generation model weights (`nomic-embed-text`, `llama3.2`, `llama3.2:1b` — several GB)
+  into its data volume on startup, previously re-downloaded on every `deploy.yml` run and the largest
+  remaining uncached runtime download after the base-image cache (#72/#76). The `E2E Tests (Docker
+  Stack)` job now snapshots the `ollama_data` volume to a tarball and caches it via `actions/cache`,
+  keyed on the new `.github/ollama-models.txt` manifest + the pinned `ollama/ollama` image
+  (`.github/base-images.txt`). On a cache hit the weights are pre-loaded into the volume before the
+  stack starts, so the container finds the blobs present and skips the pull; on a miss it pulls as
+  before, then snapshots the volume so the next run is a hit. A model/version change busts the key
+  and re-fetches once. The Compose project name is pinned (`COMPOSE_PROJECT_NAME: mavrov`) so the
+  cached volume name is deterministic.
 
 ## [1.8.0] - 2026-07-26
 

@@ -1,0 +1,18 @@
+# Ollama models the E2E/prod stack prewarms at startup (the `ollama` service in
+# docker-compose.prod.yml / docker-compose.yml pulls exactly these). This is the
+# single source of truth for the CI *model-weights* cache key: deploy.yml caches
+# the ollama data volume keyed on hashFiles(this file + .github/base-images.txt),
+# so a change to the model list here (or to the pinned `ollama/ollama` image in
+# base-images.txt) busts the cache and the new weights are fetched exactly once.
+#
+# Keep in sync with:
+#   - docker-compose.prod.yml  (ollama service: `ollama pull ...` + healthcheck)
+#   - docker-compose.yml       (ollama service: `ollama pull ...` + healthcheck)
+#   - backend/app/config.py    (embedding_model / generation_model / fast_generation_model)
+#
+# embedding model:
+nomic-embed-text
+# generation model:
+llama3.2
+# fast generation model:
+llama3.2:1b

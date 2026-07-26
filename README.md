@@ -272,7 +272,10 @@ container start (`proxy/entrypoint.sh` → envsubst on `proxy/default.conf.templ
 access is currently controlled by `proxy/admin_allowlist.conf`; making it config-driven (with nginx
 real_ip so trusted CIDRs work behind the Docker gateway) is tracked in issue #86. Pinned base images
 (`pgvector/pgvector:pg16`, `ollama/ollama:0.5.7`, `ghcr.io/open-webui/open-webui:v0.5.10`) live in
-`docker-compose.prod.yml` + `.github/base-images.txt`.
+`docker-compose.prod.yml` + `.github/base-images.txt`. The **Ollama model weights** the stack
+prewarms (`nomic-embed-text`, `llama3.2`, `llama3.2:1b`) are listed in `.github/ollama-models.txt`;
+the E2E job (`deploy.yml`) caches the ollama data volume keyed on that list + the pinned ollama
+image, so those multi-GB weights are pulled once and restored (not re-downloaded) on later runs.
 
 ### Frontend Environment
 
