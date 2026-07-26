@@ -47,6 +47,11 @@ frontend/package.json frontend/projects/public/src/app/version.ts` and stop.
 Pushing `main` triggers GitHub Actions `deploy.yml` (Prod Deployment): gates → build/publish images
 (`cache-from/to: type=gha`) → E2E → deploy.
 
+## 4b. Publish the GitHub Release (a tag is NOT a Release)
+After the pipeline is green, publish an official Release so it appears on the repo Releases page:
+`gh release create "v<VERSION>" --verify-tag --latest --title "v<VERSION> — <headline>" --notes "<CHANGELOG section>"`.
+Backfill any tags that never got a Release. (`release.sh` tags but does not publish Releases.)
+
 ## 5. Build & publish images — `./build_amd64_and_push.sh`
 Builds AMD64 backend/frontend/proxy and pushes them to the registry with the new tag.
 
