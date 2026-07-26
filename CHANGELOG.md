@@ -17,10 +17,8 @@ All notable changes to this project will be documented in this file.
     (defaults keep `ghcr.io/${{ github.repository }}` unchanged for the canonical repo).
   - **Proxy `server_name`:** `proxy/default.conf` became `proxy/default.conf.template`, rendered at
     container start by `entrypoint.sh` (envsubst) from `PUBLIC_SERVER_NAME` / `ADMIN_SERVER_NAME`
-    (defaults preserve the canonical hostnames).
-  - **Admin allowlist hardened:** `proxy/admin_allowlist.conf` no longer ships `allow all;` — the
-    admin surface is now CLOSED by default (loopback only) and opened explicitly via
-    `ADMIN_ALLOWED_CIDRS`. E2E opens it via env for the test run only.
+    (defaults preserve the canonical hostnames). (Admin-allowlist hardening is deferred to #86 so
+    prod admin access is unchanged here.)
   - **Postgres port:** the `5433` literal became the `POSTGRES_PORT` env knob across both compose
     files (PGPORT, host mapping, healthcheck, `DATABASE_URL`).
   - **`verify_all.sh`:** replaced the hardcoded conda python path with a portable interpreter

@@ -133,8 +133,6 @@ services:
       # the canonical mavrov.de behavior; a forker overrides these in the root .env.
       - PUBLIC_SERVER_NAME=${PUBLIC_SERVER_NAME:-mavrov.de www.mavrov.de}
       - ADMIN_SERVER_NAME=${ADMIN_SERVER_NAME:-admin.mavrov.de admin.localhost}
-      # Admin allowlist: closed by default (loopback only). Set trusted CIDRs to open.
-      - ADMIN_ALLOWED_CIDRS=${ADMIN_ALLOWED_CIDRS:-}
     ports:
       - "4200:80"
       - "443:443"

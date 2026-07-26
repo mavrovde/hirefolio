@@ -240,14 +240,14 @@ identifies you. Every knob has a safe default that preserves the canonical behav
 | `REGISTRY`, `IMAGE_NAME` | GitHub **repository variables** | `ghcr.io`, `${{ github.repository }}` | Where `deploy.yml` publishes images (override to retarget the CI publish) |
 | `PUBLIC_SERVER_NAME` | `.env` (proxy) | `mavrov.de www.mavrov.de` | Public site hostname(s) the reverse proxy answers on |
 | `ADMIN_SERVER_NAME` | `.env` (proxy) | `admin.mavrov.de admin.localhost` | Admin console hostname(s) |
-| `ADMIN_ALLOWED_CIDRS` | `.env` (proxy) | *empty → CLOSED (loopback only)* | Trusted IPs/CIDRs allowed to reach the admin console. **Never `0.0.0.0/0` in prod.** |
 | `POSTGRES_PORT` | `.env` (compose) | `5433` | Postgres listen port + host mapping + backend `DATABASE_URL` |
 
 The reverse proxy renders its `server_name` from `PUBLIC_SERVER_NAME`/`ADMIN_SERVER_NAME` at
-container start (`proxy/entrypoint.sh` → envsubst on `proxy/default.conf.template`), and generates
-the admin allowlist from `ADMIN_ALLOWED_CIDRS` — so the admin surface ships **closed** and you opt
-trusted IPs in explicitly. Pinned base images (`pgvector/pgvector:pg16`, `ollama/ollama:0.5.7`,
-`ghcr.io/open-webui/open-webui:v0.5.10`) live in `docker-compose.prod.yml` + `.github/base-images.txt`.
+container start (`proxy/entrypoint.sh` → envsubst on `proxy/default.conf.template`). Admin-console
+access is currently controlled by `proxy/admin_allowlist.conf`; making it config-driven (with nginx
+real_ip so trusted CIDRs work behind the Docker gateway) is tracked in issue #86. Pinned base images
+(`pgvector/pgvector:pg16`, `ollama/ollama:0.5.7`, `ghcr.io/open-webui/open-webui:v0.5.10`) live in
+`docker-compose.prod.yml` + `.github/base-images.txt`.
 
 ### Frontend Environment
 

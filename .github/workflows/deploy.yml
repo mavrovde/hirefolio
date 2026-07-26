@@ -401,10 +401,6 @@ jobs:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: sha-${{ github.sha }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Admin E2E hits admin.localhost through the Docker bridge (source IP is the
-          # gateway, not loopback), so open the allowlist for the test run only. The
-          # prod default ships CLOSED (loopback only) — see proxy/admin_allowlist.conf.
-          ADMIN_ALLOWED_CIDRS: 0.0.0.0/0
         run: |
           # Start stack
           docker compose -f docker-compose.prod.yml up -d
