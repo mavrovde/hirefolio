@@ -35,10 +35,12 @@ dist/
 build/
 *.log
 
-# SSL
+# SSL — TLS material is provided at runtime (host mount / deploy secret); the proxy
+# entrypoint self-signs a dev cert when none is present. Never commit real certs/keys.
 certs/*.key
 certs/*.pem
 proxy/certs/
+proxy/ssl/
 
 # Scraper — persistent browser profile holds the live LinkedIn login session
 scraper/.chrome-profile/
