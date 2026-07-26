@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     linkedin_cookie_jsessionid: str = ""
     linkedin_import_token: str = ""
     import_max_image_mb: int = 10
+    # Directory where the saved LinkedIn login session (cookies) is stored. Must
+    # live on a persistent, mounted volume (see docker-compose) so the session
+    # survives container recreation/deploys instead of being wiped with /tmp.
+    linkedin_cookies_dir: str = "/data/linkedin_cookies"
 
     # CORS
     cors_origins: str = "http://localhost:4200,https://mavrov.de,https://www.mavrov.de,http://mavrov.de,http://www.mavrov.de"

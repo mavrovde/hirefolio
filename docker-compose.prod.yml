@@ -54,6 +54,10 @@ services:
   backend:
     image: ${IMAGE_REPO:-maverickde/mavrov.de}-backend:${IMAGE_TAG:-1.8.0}
     restart: always
+    volumes:
+      # Persist the saved LinkedIn login session across deploys/restarts
+      # (see LINKEDIN_COOKIES_DIR / app.services.linkedin.COOKIES_DIR).
+      - linkedin_cookies:/data/linkedin_cookies
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:${POSTGRES_PORT:-5433}/${POSTGRES_DB:-mavrov}
       - OLLAMA_URL=http://ollama:11434
@@ -147,3 +151,4 @@ volumes:
   postgres_data:
   ollama_data:
   open-webui_data:
+  linkedin_cookies:

@@ -7,7 +7,10 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-COOKIES_DIR = "/tmp/linkedin_cookies"  # nosec B108
+# Session (cookie) storage lives on a persistent, mounted volume so a saved
+# LinkedIn login survives container recreation/deploys. The path is
+# env-overridable via LINKEDIN_COOKIES_DIR (see app.config.Settings).
+COOKIES_DIR = settings.linkedin_cookies_dir
 
 
 class LinkedInService:

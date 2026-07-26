@@ -241,6 +241,11 @@ GEMINI_API_KEY=your_api_key_here
 # LinkedIn import (optional — leave blank to disable the import endpoint)
 LINKEDIN_IMPORT_TOKEN=your_machine_token_here   # default: "" (disabled)
 IMPORT_MAX_IMAGE_MB=10                          # default: 10 MB
+
+# Where the saved LinkedIn login session is stored. Defaults to
+# /data/linkedin_cookies, backed by the `linkedin_cookies` named volume so the
+# session survives container recreates/deploys.
+LINKEDIN_COOKIES_DIR=/data/linkedin_cookies    # default: /data/linkedin_cookies
 ```
 
 ### Root Environment (Release Script)

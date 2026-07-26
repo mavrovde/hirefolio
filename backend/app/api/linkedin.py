@@ -89,7 +89,12 @@ async def get_linkedin_status(
     Checks if there is an active valid LinkedIn session available.
     """
     is_logged_in = await linkedin_service.is_logged_in()
-    return {"logged_in": is_logged_in}
+    message = (
+        "LinkedIn session is active."
+        if is_logged_in
+        else "No active LinkedIn session. Use 'Log in & save session' to authenticate."
+    )
+    return {"logged_in": is_logged_in, "message": message}
 
 
 @router.get("/profile-sync")
