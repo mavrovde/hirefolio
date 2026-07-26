@@ -1,8 +1,9 @@
-import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, Inject, PLATFORM_ID, signal } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { BlogService, BlogPost } from '@mavrov/shared';
-import { Observable, switchMap, catchError, of, tap } from 'rxjs';
+import { switchMap, catchError, of } from 'rxjs';
 import { HeaderComponent } from '../../header/header.component';
 import { SeoService } from '../../../services/seo.service';
 
@@ -25,10 +26,10 @@ import { SeoService } from '../../../services/seo.service';
               [ cd .. ]
             </button>
             <span class="text-terminal-dim">|</span>
-            <span class="text-secondary">~/blog/{{ (post$ | async)?.slug }}</span>
+            <span class="text-secondary">~/blog/{{ post()?.slug }}</span>
           </div>
 
-          <ng-container *ngIf="post$ | async as post; else loading">
+          <ng-container *ngIf="post() as post; else loading">
             <!-- Post Metadata -->
             <div class="mb-8 space-y-2">
               <h1 class="text-2xl md:text-4xl font-bold text-primary mb-4">{{ post.title }}</h1>
@@ -98,7 +99,13 @@ import { SeoService } from '../../../services/seo.service';
   `]
 })
 export class BlogPostComponent implements OnInit {
-  post$: Observable<BlogPost | undefined> | null = null;
+  /**
+   * The post currently on screen. Backed by a signal (not an async-piped
+   * observable) so that a transient fetch error simply leaves the previous
+   * value in place instead of resetting the view — see the `catchError`
+   * handling below.
+   */
+  readonly post = signal<BlogPost | undefined>(undefined);
 
   constructor(
     private route: ActivatedRoute,
@@ -109,53 +116,67 @@ export class BlogPostComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.post$ = this.route.paramMap.pipe(
-      switchMap(params => {
-        const slug = params.get('slug');
-        if (!slug) {
-          this.router.navigate(['/']);
-          return of(undefined);
-        }
-        return this.blogService.getPost(slug).pipe(
-          tap((post) => {
-            if (post) {
-              this.seoService.updateSeo({
-                title: post.title,
-                description: post.summary || post.content.substring(0, 160),
-                url: `/blog/${post.slug}`,
-                type: 'article',
-                keywords: post.tags?.join(', ')
-              });
-
-              this.seoService.setJsonLd({
-                "@context": "https://schema.org",
-                "@type": "BlogPosting",
-                "headline": post.title,
-                "datePublished": post.created_at,
-                "author": {
-                  "@type": "Person",
-                  "name": "Sergii Mavrov",
-                  "url": "https://mavrov.de"
-                },
-                "description": post.summary || post.content.substring(0, 160),
-                "mainEntityOfPage": {
-                  "@type": "WebPage",
-                  "@id": `https://mavrov.de/blog/${post.slug}`
-                },
-                "keywords": post.tags?.join(', ')
-              });
-            }
-          }),
-          catchError(() => {
+    this.route.paramMap
+      .pipe(
+        switchMap(params => {
+          const slug = params.get('slug');
+          if (!slug) {
             this.router.navigate(['/']);
             return of(undefined);
-          })
-        );
-      })
-    );
+          }
+          return this.blogService.getPost(slug).pipe(
+            catchError((error: unknown) => {
+              // A genuine 404 means the slug doesn't exist: there is nothing
+              // to render, so send the visitor home. Any other error
+              // (network blip, 5xx, timeout, etc.) is transient — leave
+              // whatever post is already rendered (e.g. the SSR-hydrated
+              // one) in place instead of navigating away or wiping the page.
+              // See issue #25: unconditionally navigating home on *any*
+              // error is what caused direct blog-post links to flash back to
+              // the home page right after hydration.
+              if (error instanceof HttpErrorResponse && error.status === 404) {
+                this.router.navigate(['/']);
+              }
+              return of(undefined);
+            })
+          );
+        })
+      )
+      .subscribe((post) => {
+        if (post) {
+          this.post.set(post);
+          this.updateSeo(post);
+        }
+      });
   }
 
+  private updateSeo(post: BlogPost) {
+    this.seoService.updateSeo({
+      title: post.title,
+      description: post.summary || post.content.substring(0, 160),
+      url: `/blog/${post.slug}`,
+      type: 'article',
+      keywords: post.tags?.join(', ')
+    });
 
+    this.seoService.setJsonLd({
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": post.title,
+      "datePublished": post.created_at,
+      "author": {
+        "@type": "Person",
+        "name": "Sergii Mavrov",
+        "url": "https://mavrov.de"
+      },
+      "description": post.summary || post.content.substring(0, 160),
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": `https://mavrov.de/blog/${post.slug}`
+      },
+      "keywords": post.tags?.join(', ')
+    });
+  }
 
   goBack() {
     this.router.navigate(['/'], { fragment: 'blog' });

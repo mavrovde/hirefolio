@@ -7,6 +7,23 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Fixed
+- **Fixed flaky blog-post SSR routing: direct `/blog/:slug` no longer flashes to home after
+  hydration** (#25, frontend). Root cause: the SSR URL-rewriting logic lived in an
+  `HttpInterceptorFn` (`ssr.interceptor.ts`), which runs *before* Angular's HTTP transfer-cache
+  interceptor. That made the SSR pass compute its transfer-cache key from the rewritten absolute
+  backend URL while the browser computed its key from the original relative URL, so the client
+  never found the SSR-cached response and always re-fetched the post on hydration — any transient
+  failure of that unnecessary re-fetch then unconditionally navigated the visitor to `/`
+  (`BlogPostComponent`'s `catchError`). Fix: moved the URL rewrite into a new `SsrHttpBackend`
+  (an `HttpBackend`, not an interceptor) so it runs *after* the transfer cache reads/writes its
+  entry — the client now reuses the SSR response instead of re-fetching. As defense-in-depth,
+  `BlogPostComponent` now only navigates home on a genuine 404 (`HttpErrorResponse` with
+  `status === 404`); other/transient errors leave the already-rendered post in place. Added
+  regression coverage: `ssr-http-backend.spec.ts`, updated `blog-post.component.spec.ts`, and a
+  strengthened `e2e/public/blog-display.spec.ts` direct-slug-load test that tracks navigations and
+  asserts the app never redirects to `/`.
+
 ### Changed
 - **CI: pinned & cached third-party base images** (#72, PR #76). Added `.github/base-images.txt`
   as the single source of truth (pinned `ollama/ollama:0.5.7`, `open-webui:v0.5.10`,
