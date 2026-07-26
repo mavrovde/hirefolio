@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Security
+- **Removed mistakenly-committed TLS certificate files** (`proxy/ssl/fullchain.pem`,
+  `proxy/ssl/privkey.pem`) from the (public) repository and added `proxy/ssl/` to `.gitignore`.
+  The certificate was already revoked (no live exposure), and the files were orphaned — the proxy
+  `Dockerfile` never copied them, no compose service mounts them, and `proxy/entrypoint.sh`
+  self-signs a dev cert when none is present, so removal has no runtime effect. Real TLS material
+  is provided at runtime (host mount / deploy secret), never committed. Closes #64.
+
 ### Changed
 - **Backend dependency modernization sweep** (fix-forward on the `ruff` revert from #56;
   closes #54). Re-verified every pinned backend package against latest: `fastapi` 0.140.0,
