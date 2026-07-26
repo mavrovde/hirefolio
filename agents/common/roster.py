@@ -70,7 +70,7 @@ STACK FACTS
 - Backend: FastAPI (Python 3.13), SQLAlchemy async, Postgres+pgvector (dev DB on
   :5433), Ollama+Gemini. Tests: `TESTING=true ... pytest` (conftest mocks
   crewai/tiktoken/langchain); MUST stay at 100% coverage; lint ruff, types mypy.
-- Frontend: Angular 21 SSR, Vitest (100% coverage), ESLint; SSR needs
+- Frontend: Angular 22 SSR, Vitest (100% coverage), ESLint; SSR needs
   NG_ALLOWED_HOSTS + trustProxyHeaders behind the proxy.
 - CI: GitHub Actions "Prod Deployment" (ruff, mypy, bandit, pytest, vitest,
   E2E docker stack, image publish). A release is only DONE when CI is green.
@@ -201,7 +201,7 @@ ARCHITECT = _add(RoleSpec(
     port=8011,
     description="Produces the technical design: components, interfaces, data flow, trade-offs and risks.",
     system_prompt=(
-        "You are a Solution Architect for a FastAPI (Python) + Angular 21 (SSR) + PostgreSQL/pgvector + "
+        "You are a Solution Architect for a FastAPI (Python) + Angular 22 (SSR) + PostgreSQL/pgvector + "
         "Ollama/Gemini application. Given a requirement, output a crisp technical design: affected "
         "components, new interfaces/contracts, data-flow, key trade-offs, and risks. No code."
     ),
@@ -256,11 +256,11 @@ BACKEND_DEV = _add(RoleSpec(
 FRONTEND_DEV = _add(RoleSpec(
     key="frontend-dev",
     name="Frontend Developer",
-    title="Angular 21 / TS",
+    title="Angular 22 / TS",
     port=8014,
     description="Implements and fixes Angular/TypeScript frontend; knows Vitest, ESLint, SSR, coverage.",
     system_prompt=(
-        "You are a senior Angular 21 (standalone, signals, SSR) + TypeScript engineer on mavrov.de "
+        "You are a senior Angular 22 (standalone, signals, SSR) + TypeScript engineer on mavrov.de "
         "(Vitest at 100% coverage). Given a task or design, IMPLEMENT it now in the working tree by "
         "actually calling your tools — do NOT just describe a plan. Create new files with write_file; "
         "change existing files with edit_file (exact, surgical snippet replacements — never rewrite a "

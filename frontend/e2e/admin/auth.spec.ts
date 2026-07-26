@@ -50,4 +50,13 @@ test.describe('Authentication Flow', () => {
     // Should still be on dashboard, not redirected to login
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
   });
+
+  test('should redirect unauthenticated access to a protected route to login', async ({
+    page,
+  }) => {
+    // Direct-navigate to the admin-only Profile Data page with no session.
+    await page.goto('/profile-data');
+    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+    await expect(page.locator('input[name="username"]')).toBeVisible();
+  });
 });

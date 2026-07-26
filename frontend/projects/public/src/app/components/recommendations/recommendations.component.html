@@ -10,7 +10,7 @@
         class="flex overflow-x-auto pb-8 gap-6 snap-x snap-mandatory scrollbar-hide"
       >
         <div
-          *ngFor="let rec of profile.recommendations"
+          *ngFor="let rec of (profile.recommendations || [])"
           class="min-w-[350px] md:min-w-[450px] snap-center p-8 border border-terminal bg-black hover:border-primary transition-all duration-300 flex flex-col"
         >
           <div class="flex items-center mb-6 border-b border-terminal pb-4">

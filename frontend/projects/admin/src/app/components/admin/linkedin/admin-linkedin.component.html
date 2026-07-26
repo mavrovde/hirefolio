@@ -44,6 +44,17 @@
                 (~30s).</div>
         </div>
 
+        <div class="controls-bar">
+            <input type="file" accept=".json,application/json" (change)="onPostsFileSelected($event)" />
+            <button (click)="uploadPostsJson()" [disabled]="isUploadingPostsJson || !selectedPostsFile"
+                class="btn-primary">
+                <span class="icon">📤</span>
+                {{ isUploadingPostsJson ? 'Uploading...' : 'Upload posts_data.json' }}
+            </button>
+            <div class="helper-text">Bulk-import a scraper <code>posts_data.json</code>; posts are upserted by URN as
+                drafts.</div>
+        </div>
+
         @if (isFetchingPosts) {
         <div class="loading">Loading posts...</div>
         } @else if (posts.length === 0) {

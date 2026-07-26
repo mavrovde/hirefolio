@@ -1,0 +1,82 @@
+<div class="profile-data">
+  <div class="header">
+    <h1 class="page-title">&gt; {{ 'ADMIN.PROFILE_DATA' | translate }}</h1>
+  </div>
+
+  <!-- Upload card -->
+  <div class="upload-card">
+    <h2 class="section-title">&gt; {{ 'ADMIN.PROFILE_DATA_UPLOAD' | translate }}</h2>
+    <form [formGroup]="uploadForm" (ngSubmit)="onUpload()" class="upload-form">
+      <div class="field">
+        <label>&gt; {{ 'ADMIN.PROFILE_DATA_FILE' | translate }}</label>
+        <input type="file" accept=".json,application/json" (change)="onFileSelected($event)" />
+      </div>
+      <div class="field">
+        <label>&gt; {{ 'ADMIN.PROFILE_DATA_VERSION' | translate }}</label>
+        <input type="text" formControlName="version" placeholder="v1" class="terminal-input" />
+      </div>
+      <div class="field">
+        <label>&gt; {{ 'ADMIN.PROFILE_DATA_LANGUAGE' | translate }}</label>
+        <select [(ngModel)]="selectedLanguage" [ngModelOptions]="{ standalone: true }" class="terminal-input">
+          <option value="en">EN</option>
+          <option value="de">DE</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-primary" [disabled]="uploading || !uploadForm.valid || !selectedFile">
+        {{ (uploading ? 'ADMIN.PROFILE_DATA_UPLOADING' : 'ADMIN.PROFILE_DATA_UPLOAD_BTN') | translate }}
+      </button>
+    </form>
+
+    <div *ngIf="successMessage" class="status-bar status-success">{{ successMessage | translate }}</div>
+    <div *ngIf="errorMessage" class="status-bar status-error">{{ errorMessage | translate }}</div>
+  </div>
+
+  <!-- Language filter -->
+  <div class="controls-bar">
+    <span class="prompt">&gt; {{ 'ADMIN.PROFILE_DATA_FILTER' | translate }}:</span>
+    <button class="tab-btn" [class.active]="languageFilter === null" (click)="setLanguageFilter(null)">ALL</button>
+    <button class="tab-btn" [class.active]="languageFilter === 'en'" (click)="setLanguageFilter('en')">EN</button>
+    <button class="tab-btn" [class.active]="languageFilter === 'de'" (click)="setLanguageFilter('de')">DE</button>
+  </div>
+
+  <!-- Versions table -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ 'ADMIN.PROFILE_DATA_VERSION' | translate }}</th>
+          <th>{{ 'ADMIN.PROFILE_DATA_LANGUAGE' | translate }}</th>
+          <th>{{ 'ADMIN.PROFILE_DATA_UPLOADED' | translate }}</th>
+          <th>{{ 'ADMIN.PROFILE_DATA_STATUS' | translate }}</th>
+          <th>{{ 'ADMIN.PROFILE_DATA_ACTIONS' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let v of versionsTable.items">
+          <td>{{ v.version }}</td>
+          <td>{{ v.language.toUpperCase() }}</td>
+          <td>{{ v.created_at | date: 'short' }}</td>
+          <td>
+            <span [class]="v.is_active ? 'status-active' : 'status-inactive'">
+              {{ (v.is_active ? 'ADMIN.PROFILE_DATA_ACTIVE' : 'ADMIN.PROFILE_DATA_INACTIVE') | translate }}
+            </span>
+          </td>
+          <td>
+            <button
+              *ngIf="!v.is_active"
+              class="btn-secondary"
+              [disabled]="loading"
+              (click)="onActivate(v)"
+            >
+              {{ 'ADMIN.PROFILE_DATA_ACTIVATE' | translate }}
+            </button>
+            <span *ngIf="v.is_active">—</span>
+          </td>
+        </tr>
+        <tr *ngIf="versionsTable.items.length === 0">
+          <td colspan="5" class="empty-row">{{ 'ADMIN.PROFILE_DATA_EMPTY' | translate }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

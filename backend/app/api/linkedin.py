@@ -1,9 +1,13 @@
+import json
 import logging
 import random
 import re
 import secrets
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urlparse
+
+import httpx
 
 from fastapi import (
     APIRouter,
@@ -32,6 +36,15 @@ from app.services.linkedin import (
 from app.config import settings
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+# Post images may only be fetched from LinkedIn's CDN. This is a hard SSRF guard
+# AND the reason it is safe to attach the `li_at` session cookie to the request:
+# the cookie is never sent anywhere but LinkedIn.
+ALLOWED_IMAGE_HOSTS = ("licdn.com",)
+
+# Bounds for the bulk posts-JSON import (resource-exhaustion guards).
+MAX_POSTS_JSON_BYTES = 10 * 1024 * 1024  # 10 MB uploaded file cap
+MAX_POSTS_PER_IMPORT = 500
 
 router = APIRouter(prefix="/linkedin", tags=["linkedin"])
 logger = logging.getLogger(__name__)
@@ -481,4 +494,201 @@ async def import_linkedin_post(
             if created
             else "Post updated from LinkedIn (matched by URN)."
         ),
+    }
+
+
+# --- Bulk import from a scraper posts_data.json file -------------------------
+
+
+def _pick_image_url(entry: dict) -> Optional[str]:
+    """Return the best image URL from a scraper post entry, if any."""
+    url = entry.get("imageUrl")
+    if url:
+        return url
+    images = entry.get("imageUrls") or []
+    return images[0] if images else None
+
+
+def _safe_http_url(url: object) -> Optional[str]:
+    """Keep a URL only if it is a real http(s) URL.
+
+    Stored post URLs (`source_url`, fallback `image_url`) come from the uploaded
+    JSON and are rendered by the site — reject `javascript:`/`data:`/other
+    schemes so nothing dangerous is persisted.
+    """
+    if not isinstance(url, str) or not url:
+        return None
+    try:
+        scheme = urlparse(url).scheme.lower()
+    except (ValueError, TypeError, AttributeError):
+        return None
+    return url if scheme in ("http", "https") else None
+
+
+def _is_allowed_image_url(url: str) -> bool:
+    """Only https URLs on LinkedIn's CDN are eligible for server-side download.
+
+    Prevents SSRF (no fetching internal/metadata endpoints) and protects the
+    ``li_at`` cookie from leaking to attacker-controlled hosts supplied in the
+    uploaded JSON.
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme != "https":
+            return False
+        # .hostname raises ValueError on malformed authorities (bad IPv6/port).
+        host = (parsed.hostname or "").lower()
+    except (ValueError, TypeError, AttributeError):
+        # AttributeError: a non-str url (e.g. a numeric imageUrl) reached here.
+        return False
+    return any(host == h or host.endswith("." + h) for h in ALLOWED_IMAGE_HOSTS)
+
+
+async def _download_image_best_effort(
+    url: Optional[str],
+) -> tuple[Optional[bytes], Optional[str]]:
+    """Best-effort fetch of a post image from LinkedIn's CDN using the ``li_at``
+    cookie.
+
+    Returns ``(bytes, content_type)`` on success, or ``(None, None)`` on any
+    failure (disallowed/None URL, network error, unsupported type, too large) —
+    the caller then falls back to storing the remote URL, so a single bad image
+    never fails the whole import.
+
+    Security: the URL must pass :func:`_is_allowed_image_url` (https + LinkedIn
+    CDN host) before any request is made, redirects are NOT followed (a redirect
+    could escape the allowlist), and the body is size-capped by the declared
+    Content-Length before it is read into memory.
+    """
+    if not url or not _is_allowed_image_url(url):
+        return None, None
+    cookies = (
+        {"li_at": settings.linkedin_cookie_li_at}
+        if settings.linkedin_cookie_li_at
+        else None
+    )
+    max_bytes = settings.import_max_image_mb * 1024 * 1024
+    try:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as http:
+            resp = await http.get(url, cookies=cookies)
+        resp.raise_for_status()
+        content_type = (resp.headers.get("content-type") or "").split(";")[0].strip()
+        if content_type not in ALLOWED_IMAGE_TYPES:
+            return None, None
+        declared = resp.headers.get("content-length")
+        if declared and declared.isdigit() and int(declared) > max_bytes:
+            return None, None
+        data = resp.content
+        if len(data) > max_bytes:
+            return None, None
+        return data, content_type
+    except Exception as e:  # noqa: BLE001 — best-effort, never fatal
+        logger.warning("[LinkedIn] image download failed for %s: %s", url, e)
+        return None, None
+
+
+@router.post("/import-posts-json")
+async def import_posts_json(
+    file: UploadFile = File(...),
+    x_import_token: Optional[str] = Header(None, alias="X-Import-Token"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Bulk-import a scraper ``posts_data.json`` array as drafts.
+
+    Each entry is upserted by its LinkedIn URN (idempotent — re-uploading never
+    duplicates). Images are downloaded best-effort; on failure the remote URL is
+    kept instead. Entries without a URN or content are skipped. Auth mirrors
+    ``/import-post`` (machine token or admin session).
+    """
+    if not _import_authorized(x_import_token, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Import requires a valid X-Import-Token or an admin session.",
+        )
+
+    # Cap the in-memory read so an oversized upload can't exhaust memory.
+    raw = await file.read(MAX_POSTS_JSON_BYTES + 1)
+    if len(raw) > MAX_POSTS_JSON_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Posts JSON exceeds {MAX_POSTS_JSON_BYTES // (1024 * 1024)} MB limit.",
+        )
+    try:
+        entries = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise HTTPException(status_code=400, detail="File is not valid JSON.")
+    if not isinstance(entries, list):
+        raise HTTPException(
+            status_code=400, detail="Posts JSON must be a top-level array."
+        )
+
+    total_entries = len(entries)
+    if total_entries > MAX_POSTS_PER_IMPORT:
+        logger.warning(
+            "[LinkedIn] import-posts-json: %d entries exceeds cap %d — processing "
+            "the first %d only.",
+            total_entries,
+            MAX_POSTS_PER_IMPORT,
+            MAX_POSTS_PER_IMPORT,
+        )
+        entries = entries[:MAX_POSTS_PER_IMPORT]
+
+    created = 0
+    updated = 0
+    skipped = 0
+    for entry in entries:
+        if not isinstance(entry, dict):
+            skipped += 1
+            continue
+        urn = (entry.get("urn") or "").strip()
+        content = normalize_linkedin_text(entry.get("content") or "")
+        if not urn or not content:
+            skipped += 1
+            continue
+
+        image_url = _pick_image_url(entry)
+        image_bytes, image_type = await _download_image_best_effort(image_url)
+
+        title = _derive_title(content)
+        embedding = await get_embedding(f"{title}\n\n{content}")
+
+        post, was_created = await _upsert_linkedin_post(
+            db,
+            urn=urn,
+            title=title,
+            summary=content[:200],
+            content=content,
+            language=(entry.get("language") or "en").lower()[:2],
+            published=False,
+            tags=_resolve_tags(None, content),
+            source_url=_safe_http_url(entry.get("url")),
+            posted_at=_parse_posted_at(entry.get("postedAt")),
+            embedding=embedding,
+            image_bytes=image_bytes,
+            image_type=image_type,
+        )
+        # Keep the remote URL when we could not download the image locally —
+        # only if it is a safe http(s) URL.
+        safe_image_url = _safe_http_url(image_url)
+        if image_bytes is None and safe_image_url and post.image_url != safe_image_url:
+            post.image_url = safe_image_url
+            await db.commit()
+        if was_created:
+            created += 1
+        else:
+            updated += 1
+
+    logger.info(
+        "[LinkedIn] import-posts-json: created=%d updated=%d skipped=%d (of %d)",
+        created,
+        updated,
+        skipped,
+        len(entries),
+    )
+    return {
+        "created": created,
+        "updated": updated,
+        "skipped": skipped,
+        "count": len(entries),
     }

@@ -293,4 +293,56 @@ describe('LinkedinService', () => {
         });
         await expect(service.login('testuser', 'wrongpass')).rejects.toThrow('Login failed');
     });
+
+    it('should import a posts JSON file as multipart with auth', async () => {
+        const summary = { created: 2, updated: 1, skipped: 0, count: 3 };
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve(summary),
+        });
+        const file = new File(['[]'], 'posts_data.json', { type: 'application/json' });
+
+        const result = await service.importPostsJson(file);
+
+        expect(result).toEqual(summary);
+        const [url, init] = (globalThis.fetch as any).mock.calls[0];
+        expect(url).toBe(`${environment.apiUrl}${environment.apiPrefix}/linkedin/import-posts-json`);
+        expect(init.method).toBe('POST');
+        expect(init.body).toBeInstanceOf(FormData);
+        expect((init.body as FormData).get('file')).toBeInstanceOf(File);
+        // Multipart: no explicit Content-Type, but Authorization present.
+        expect(init.headers['Authorization']).toBe('Bearer test-token');
+        expect(init.headers['Content-Type']).toBeUndefined();
+    });
+
+    it('should omit Authorization when there is no token', async () => {
+        authServiceSpy.getToken.mockReturnValue(null);
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({ created: 0, updated: 0, skipped: 0, count: 0 }),
+        });
+        await service.importPostsJson(new File(['[]'], 'posts.json'));
+        const [, init] = (globalThis.fetch as any).mock.calls[0];
+        expect(init.headers['Authorization']).toBeUndefined();
+    });
+
+    it('should throw with API detail on importPostsJson failure', async () => {
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: false, status: 400,
+            json: () => Promise.resolve({ detail: 'File is not valid JSON.' }),
+        });
+        await expect(service.importPostsJson(new File(['x'], 'p.json'))).rejects.toThrow(
+            'File is not valid JSON.',
+        );
+    });
+
+    it('should throw fallback message on importPostsJson failure without detail', async () => {
+        (globalThis.fetch as any).mockResolvedValue({
+            ok: false, status: 500,
+            json: () => Promise.reject(new Error('not json')),
+        });
+        await expect(service.importPostsJson(new File(['x'], 'p.json'))).rejects.toThrow(
+            'Failed to import posts JSON',
+        );
+    });
 });

@@ -19,6 +19,8 @@ from app.api.admin_cv import router as admin_cv_router
 from app.api.admin_sql import router as admin_sql_router
 from app.api.linkedin import router as linkedin_router
 from app.api.years import router as years_router
+from app.api.profile import router as profile_router
+from app.api.admin_profile import router as admin_profile_router
 from app.config import settings
 
 
@@ -226,6 +228,8 @@ app.include_router(admin_cv_router, prefix=settings.api_prefix)
 app.include_router(admin_sql_router, prefix=settings.api_prefix)
 app.include_router(linkedin_router, prefix=settings.api_prefix)
 app.include_router(years_router, prefix=settings.api_prefix)
+app.include_router(profile_router, prefix=settings.api_prefix)
+app.include_router(admin_profile_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

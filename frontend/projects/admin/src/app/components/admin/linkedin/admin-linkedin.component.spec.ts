@@ -10,6 +10,7 @@ class MockLinkedinService {
     async transferPost() { return { id: 0, message: '' }; }
     async getStatus() { return { logged_in: false }; }
     async login() { return {}; }
+    async importPostsJson() { return { created: 0, updated: 0, skipped: 0, count: 0 }; }
 }
 
 describe('AdminLinkedinComponent', () => {
@@ -233,5 +234,52 @@ describe('AdminLinkedinComponent', () => {
         
         expect(component.isLoggingIn).toBe(false);
         expect(component.statusMessage).toBe('Login failed. Note: MFA is not currently supported.');
+    });
+
+    it('should select a posts JSON file', () => {
+        const file = new File(['[]'], 'posts_data.json', { type: 'application/json' });
+        component.onPostsFileSelected({ target: { files: [file] } } as unknown as Event);
+        expect(component.selectedPostsFile).toBe(file);
+    });
+
+    it('should ignore an empty posts file selection', () => {
+        component.onPostsFileSelected({ target: { files: [] } } as unknown as Event);
+        expect(component.selectedPostsFile).toBeNull();
+    });
+
+    it('should do nothing when uploading posts JSON with no file', async () => {
+        const spy = vi.spyOn(mockLinkedinService, 'importPostsJson');
+        component.selectedPostsFile = null;
+        await component.uploadPostsJson();
+        expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('should upload posts JSON and report the summary', async () => {
+        vi.spyOn(mockLinkedinService, 'importPostsJson').mockResolvedValue({
+            created: 2, updated: 1, skipped: 3, count: 6,
+        });
+        component.selectedPostsFile = new File(['[]'], 'posts_data.json');
+        await component.uploadPostsJson();
+        expect(component.statusMessage).toContain('Imported 6 posts');
+        expect(component.statusMessage).toContain('2 created');
+        expect(component.selectedPostsFile).toBeNull();
+        expect(component.isUploadingPostsJson).toBe(false);
+    });
+
+    it('should report an error when posts JSON upload fails', async () => {
+        vi.spyOn(mockLinkedinService, 'importPostsJson').mockRejectedValue(
+            new Error('File is not valid JSON.'),
+        );
+        component.selectedPostsFile = new File(['x'], 'bad.json');
+        await component.uploadPostsJson();
+        expect(component.statusMessage).toBe('File is not valid JSON.');
+        expect(component.isUploadingPostsJson).toBe(false);
+    });
+
+    it('should use a fallback error message when none is provided', async () => {
+        vi.spyOn(mockLinkedinService, 'importPostsJson').mockRejectedValue({});
+        component.selectedPostsFile = new File(['x'], 'bad.json');
+        await component.uploadPostsJson();
+        expect(component.statusMessage).toBe('Error uploading posts JSON.');
     });
 });
