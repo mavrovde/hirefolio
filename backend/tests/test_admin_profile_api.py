@@ -8,7 +8,6 @@ paginated version listing, activation, and the error/500 paths.
 import json
 from unittest.mock import patch
 
-import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
