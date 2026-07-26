@@ -3,6 +3,7 @@ import { BlogPostComponent } from './blog-post.component';
 import { BlogService } from '@mavrov/shared';
 import { SeoService } from '../../../services/seo.service';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError, BehaviorSubject } from 'rxjs';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { PLATFORM_ID } from '@angular/core';
@@ -90,10 +91,7 @@ describe('BlogPostComponent', () => {
             keywords: 'tag1'
         });
         expect(seoServiceSpy.setJsonLd).toHaveBeenCalled();
-        
-        component.post$?.subscribe((post) => {
-            expect(post).toEqual(mockPost);
-        });
+        expect(component.post()).toEqual(mockPost);
     });
 
     it('should handle undefined post gracefully', () => {
@@ -129,10 +127,37 @@ describe('BlogPostComponent', () => {
         expect(routerSpy.navigate).toHaveBeenCalledWith(['/']);
     });
 
-    it('should redirect home on service error', () => {
-        blogServiceSpy.getPost.mockReturnValue(throwError(() => new Error('Not found')));
+    it('should redirect home on a genuine 404 (not-found handling)', () => {
+        blogServiceSpy.getPost.mockReturnValue(
+            throwError(() => new HttpErrorResponse({ status: 404, statusText: 'Not Found' }))
+        );
         fixture.detectChanges();
         expect(routerSpy.navigate).toHaveBeenCalledWith(['/']);
+    });
+
+    it('regression #25: should NOT redirect home on a transient HTTP error and keeps the rendered post', () => {
+        // Simulate the post already being rendered (e.g. from the SSR-hydrated response).
+        blogServiceSpy.getPost.mockReturnValue(of(mockPost));
+        fixture.detectChanges();
+        expect(component.post()).toEqual(mockPost);
+        routerSpy.navigate.mockClear();
+
+        // A later transient failure (e.g. a 5xx blip on the client re-fetch) must not
+        // bounce the visitor home nor wipe the already-rendered post.
+        blogServiceSpy.getPost.mockReturnValue(
+            throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Internal Server Error' }))
+        );
+        paramMapSubject.next({ get: (key: string) => (key === 'slug' ? 'test-post' : null) });
+        fixture.detectChanges();
+
+        expect(routerSpy.navigate).not.toHaveBeenCalledWith(['/']);
+        expect(component.post()).toEqual(mockPost);
+    });
+
+    it('regression #25: should NOT redirect home on a non-HTTP (e.g. network) error', () => {
+        blogServiceSpy.getPost.mockReturnValue(throwError(() => new Error('network blip')));
+        fixture.detectChanges();
+        expect(routerSpy.navigate).not.toHaveBeenCalledWith(['/']);
     });
 
     it('should navigate back on goBack()', () => {
@@ -204,7 +229,16 @@ describe('BlogPostComponent Server Rendering', () => {
     });
 
     it('should use prod host string for share link in SSR', async () => {
-        blogServiceSpy.getPost.mockReturnValue(of({ slug: 'test-post' }));
+        blogServiceSpy.getPost.mockReturnValue(of({
+            id: 1,
+            title: 'Test Post',
+            slug: 'test-post',
+            content: '<p>Content</p>',
+            summary: 'Summary',
+            language: 'en',
+            tags: ['tag1'],
+            created_at: '2026-01-24T10:00:00Z',
+        }));
         fixture.detectChanges();
 
         // During SSR, navigator won't exist but we can verify the URL generation
