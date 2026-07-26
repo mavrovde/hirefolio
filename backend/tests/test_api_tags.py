@@ -3,7 +3,6 @@ import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 @pytest.fixture(autouse=True)
 def mock_embedding(mocker):
     # Mocking get_embedding to avoid real calls to Ollama
