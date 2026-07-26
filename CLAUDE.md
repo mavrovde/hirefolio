@@ -12,8 +12,8 @@ legacy per-tool rule files (`.cursorrules`, `.windsurfrules`, `.cline.md`, `.gem
 Personal portfolio + blog with semantic search and local AI. A LinkedIn → mavrov.de content
 pipeline moves posts (and profile data) into the site.
 
-- **Frontend**: Angular 22 (standalone components, **Signals**, native SSR via `server.ts`),
-  TailwindCSS 4, Vitest 4 (unit), Playwright (E2E).
+- **Frontend**: Angular 22 (standalone components, **RxJS Observables + `async` pipe** for state,
+  native SSR via `server.ts`), TailwindCSS 4, Vitest 4 (unit), Playwright (E2E).
 - **Backend**: FastAPI (runs on **Python 3.12** in prod/CI; local dev venv may be 3.13),
   SQLAlchemy 2 async, PostgreSQL 16 + `pgvector`, Ollama (local LLM/embeddings), crewai 1.x.
 - **Infra**: Docker Compose (`db`, `ollama`, `backend`, `frontend`, `proxy`, `open-webui`),
@@ -49,8 +49,8 @@ specs/      Feature specs (planned/done)
 
 **Full stack / verify / release**:
 - `./manage.sh start|stop|logs` — Docker stack
-- `./verify_all.sh` — full suite incl. Docker E2E (⚠️ line ~26 has a hardcoded conda path; make it
-  portable before relying on it locally)
+- `./verify_all.sh` — full suite incl. Docker E2E (runs backend pytest via `backend/venv` → `python3`;
+  override the interpreter with `PYTEST_PYTHON`)
 - Deploy = **push to `main`** → GitHub Actions builds images + `docker compose -f
   docker-compose.prod.yml up -d`. `release.sh --patch|--minor|--major` bumps version + tags + pushes.
 
@@ -67,7 +67,9 @@ specs/      Feature specs (planned/done)
 - **Subagents** (`.claude/agents/`): `devops-pipeline` (babysit CI after a merge), `backend-dev`,
   `frontend-dev` (reproduce → fix → verify a diagnosis, then deliver via a PR — not a direct push).
 - **Pre-push hook** (`.claude/hooks/pre-push-tests.sh`, via committed `.claude/settings.json`): runs
-  docs + backend pytest + frontend tests before every `git push`; env-configurable, self-gating.
+  docs + backend pytest + backend lint/type (ruff check + ruff format --check + mypy) + frontend
+  tests before every `git push`; env-configurable (`PREPUSH_RUN_LINT`/`PREPUSH_RUN_RUFF`/
+  `PREPUSH_RUN_MYPY` among others), self-gating.
 - **Plugins** (project scope): frontend-design, context7, playwright, pyright-lsp, typescript-lsp,
   security-guidance.
 - **Slash commands** (`.claude/commands/`): project flows — `/verify`, `/release`, `/linkedin-sync`.
@@ -86,8 +88,12 @@ specs/      Feature specs (planned/done)
    a gate; keep the PR description's checklist current.
 4. **Typing is law.** Pydantic models for backend schemas; explicit TypeScript interfaces (no `any`)
    mirroring them. All backend I/O is async.
-5. **Frontend discipline.** State via Signals (`signal`/`computed`/`effect`). Guard all DOM access
-   with `isPlatformBrowser()` (SSR-safe). Components stay dumb; logic lives in injected services.
+5. **Frontend discipline.** State via RxJS Observables rendered with the `async` pipe (components
+   expose `Observable` fields composed with `switchMap`/`catchError`/`shareReplay`, consumed as
+   `value$ | async` in templates); RxJS is the **primary** state/streams mechanism. Signals are
+   used only sparingly for local component state where they fit (e.g. `blog-post`), not as the
+   default. Guard all DOM access with `isPlatformBrowser()` (SSR-safe). Components stay dumb; logic
+   lives in injected services.
 6. **Dependency policy.** Upgrade to latest **within current majors** by default; breaking majors
    (e.g. Angular, TypeScript) are separate, deliberate efforts. `linkedin-api` stays `2.2.1` (prod
    installs a patched wheel). Update both `requirements.txt` and `requirements-dev.txt` together.

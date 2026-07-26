@@ -39,15 +39,6 @@ async def test_lifespan_admin_key_update():
     mock_factory = MagicMock()
     mock_factory.return_value.__aenter__.return_value = mock_session
     mock_factory.return_value.__aexit__.return_value = None
-    # Mock engine to avoid migration logic tripping up on DB connection
-    mock_engine = MagicMock()
-    mock_conn = AsyncMock()
-    mock_engine.begin.return_value.__aenter__.return_value = mock_conn
-    mock_engine.begin.return_value.__aexit__.return_value = None
-
-    # Mock migration checks ( SELECT column_name ... )
-    # We want it to succeed without doing anything
-    mock_conn.execute.return_value = []
 
     import app.database
     import app.main
@@ -56,8 +47,6 @@ async def test_lifespan_admin_key_update():
     with (
         patch.object(app.database, "async_session", mock_factory),
         patch.object(app.main, "async_session", mock_factory),
-        patch.object(app.database, "engine", mock_engine),
-        patch.object(app.main, "engine", mock_engine),
     ):
         # Mock os.path.exists for .env.local and os.getenv for the key
         with (

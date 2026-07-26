@@ -11,8 +11,14 @@ import shlex
 import subprocess
 from pathlib import Path
 
+# Repo root derived at runtime (this file is <repo>/agents/common/tools.py), so the
+# tools work from any checkout path — no owner-specific absolute path baked in.
+REPO_ROOT = Path(__file__).resolve().parents[2]
 # Work area (a git worktree/branch can be set via env for autonomous implementation).
-WORKDIR = Path(os.getenv("A2A_WORKDIR", "/Users/maverick/Projects/mavrov.de")).resolve()
+WORKDIR = Path(os.getenv("A2A_WORKDIR", str(REPO_ROOT))).resolve()
+# The backend venv lives in the main checkout (a fresh worktree has none), so resolve
+# it from the repo root rather than WORKDIR. Override with A2A_BACKEND_PYTHON.
+BACKEND_PYTHON = os.getenv("A2A_BACKEND_PYTHON", str(REPO_ROOT / "backend" / "venv" / "bin" / "python"))
 
 MAX_READ_BYTES = 60_000
 CMD_TIMEOUT = int(os.getenv("A2A_CMD_TIMEOUT", "600"))
@@ -179,7 +185,7 @@ def run_tests(layer: str = "backend") -> str:
         # on coverage" surprise).
         cov = os.getenv("A2A_COV_MIN", "95")
         return run_command(
-            "TESTING=true /Users/maverick/Projects/mavrov.de/backend/venv/bin/python "
+            f"TESTING=true {BACKEND_PYTHON} "
             f"-m pytest backend/tests -q -p no:cacheprovider --cov=app --cov-report= "
             f"--cov-fail-under={cov}"
         )

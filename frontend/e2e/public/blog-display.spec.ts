@@ -173,6 +173,24 @@ test.describe('Blog Display on Page Load', () => {
         // navigation to the public site, so the goto below isn't interrupted mid-flight.
         await page.waitForURL(/\/login/, { timeout: 15000 });
 
+        // Regression test for #25: a *fresh* direct load of `/blog/:slug` (not an
+        // in-app navigation) used to render the post via SSR and then, once the
+        // client hydrated, flash/redirect back to `/` — because the client
+        // re-fetched the post (the SSR HTTP transfer cache key didn't match the
+        // client's request) and any transient failure of that re-fetch bounced
+        // the visitor home. Track every top-level navigation of the page so we
+        // can assert none of them ever went to `/`.
+        const navigatedPathnames: string[] = [];
+        page.on('framenavigated', (frame) => {
+            if (frame === page.mainFrame()) {
+                try {
+                    navigatedPathnames.push(new URL(frame.url()).pathname);
+                } catch {
+                    // ignore about:blank / non-URL frame states
+                }
+            }
+        });
+
         // Navigate directly to the slug URL to verify SSR/Routing fix
         const response = await page.goto(`/blog/${slug}`);
         await page.waitForLoadState('networkidle');
@@ -183,8 +201,18 @@ test.describe('Blog Display on Page Load', () => {
         // The blog post content should be visible on the loaded page
         const postTitleOnPage = page.locator('h1', { hasText: title });
         await expect(postTitleOnPage).toBeVisible({ timeout: 10000 });
-        
+
         const postContentOnPage = page.getByText('Direct URL load content');
         await expect(postContentOnPage).toBeVisible({ timeout: 10000 });
+
+        // Give the client a settle window past hydration (event replay, any
+        // deferred re-fetch, etc.) and re-assert the URL and post are still
+        // in place — this is exactly the "flash to home after hydration"
+        // window in which the bug used to fire.
+        await page.waitForTimeout(2000);
+
+        await expect(page).toHaveURL(new RegExp(`/blog/${slug}$`));
+        await expect(postTitleOnPage).toBeVisible();
+        expect(navigatedPathnames).not.toContain('/');
     });
 });

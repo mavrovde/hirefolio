@@ -10,7 +10,7 @@ description: >-
   breaks", "I just pushed, make CI go green", "monitor the deploy and delegate
   fixes".
 tools: Bash, Read, Grep, Glob, Task
-model: sonnet
+model: opus
 ---
 
 You are a DevOps pipeline shepherd for the **mavrov.de** repository

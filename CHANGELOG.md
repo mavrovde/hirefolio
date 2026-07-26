@@ -7,6 +7,45 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+## [1.8.0] - 2026-07-26
+
+### Fixed
+- **Fixed flaky blog-post SSR routing: direct `/blog/:slug` no longer flashes to home after
+  hydration** (#25, frontend). Root cause: the SSR URL-rewriting logic lived in an
+  `HttpInterceptorFn` (`ssr.interceptor.ts`), which runs *before* Angular's HTTP transfer-cache
+  interceptor. That made the SSR pass compute its transfer-cache key from the rewritten absolute
+  backend URL while the browser computed its key from the original relative URL, so the client
+  never found the SSR-cached response and always re-fetched the post on hydration — any transient
+  failure of that unnecessary re-fetch then unconditionally navigated the visitor to `/`
+  (`BlogPostComponent`'s `catchError`). Fix: moved the URL rewrite into a new `SsrHttpBackend`
+  (an `HttpBackend`, not an interceptor) so it runs *after* the transfer cache reads/writes its
+  entry — the client now reuses the SSR response instead of re-fetching. As defense-in-depth,
+  `BlogPostComponent` now only navigates home on a genuine 404 (`HttpErrorResponse` with
+  `status === 404`); other/transient errors leave the already-rendered post in place. Added
+  regression coverage: `ssr-http-backend.spec.ts`, updated `blog-post.component.spec.ts`, and a
+  strengthened `e2e/public/blog-display.spec.ts` direct-slug-load test that tracks navigations and
+  asserts the app never redirects to `/`.
+- **Schema drift: Alembic is now the sole, authoritative schema-management mechanism** (#46).
+  `app/main.py` no longer calls `Base.metadata.create_all` or runs ad-hoc `ALTER TABLE cv_requests`
+  checks at startup; `backend/docker-entrypoint.sh` self-adopts the database into Alembic on every
+  container start — no manual step required — before the app starts. It detects which of three
+  states the DB is in (a plain `asyncpg` check for `alembic_version` + a known core table): a fresh
+  DB just gets `alembic upgrade head`; a DB that predates Alembic (built by the old `create_all` —
+  today's prod case) is first stamped at the baseline revision (no DDL) and then upgraded to head,
+  avoiding an "object already exists" crash; a DB already tracked by Alembic just gets `upgrade
+  head` (a no-op at head). Replaced the previously disjoint/incomplete migration history — the
+  top-level `migrations/00N_*.py` scripts (never even on Alembic's discovery path) and the
+  `migrations/versions/*` chain (incremental diffs that assumed tables already existed via
+  `create_all` and could never run against an empty database) — with a single `baseline0001`
+  revision that creates the full current schema (`users`, `cv_documents`, `cv_requests`, `posts`
+  incl. pgvector `embedding` and the partial unique index on `source_urn`, `profile_snapshots`).
+  Verified byte-identical (via `pg_dump --schema-only`) to what `create_all` previously produced.
+  Also fixed `migrations/env.py` (missing `sys.path` bootstrap + missing model imports) and
+  `app/models/__init__.py` (missing `User` import), which silently left autogenerate blind to most
+  of the schema. Added a CI `backend-migrations` job that exercises the real entrypoint against a
+  simulated pre-Alembic DB and a fresh DB (each re-run to confirm idempotency), plus `alembic check`
+  (drift guard), on every push to `main`.
+
 ### Security
 - **Rate-limited the public `GET /api/app/profile` endpoint** (#47): a small, self-contained
   in-memory sliding-window limiter (`backend/app/services/rate_limit.py`, no new dependency)
@@ -20,6 +59,30 @@ All notable changes to this project will be documented in this file.
   matching the pattern already used by the newer `import-post`/`import-posts-json` endpoints.
 
 ### Changed
+- **Pre-push hook now runs backend lint/type (ruff + mypy), matching CI** (#48). Added a
+  backend lint/type leg to `.claude/hooks/pre-push-tests.sh` running `ruff check .`,
+  `ruff format --check .`, and `mypy app --ignore-missing-imports --no-error-summary` from
+  `backend/` (venv), so lint/format/type failures are caught at `git push` instead of only in CI's
+  `Backend Lint & Format` / `Backend Type Check` jobs. Env-gated (`PREPUSH_RUN_LINT` default on,
+  plus granular `PREPUSH_RUN_RUFF` / `PREPUSH_RUN_MYPY`); the `deny` reason and script header now
+  mention the leg. Self-gating (non-`git push` commands still pass instantly) unchanged.
+- **Parameterized deployment & infra for a new owner** (#60). Externalized every owner-specific
+  infra literal behind env/config so a forker deploys by editing only `.env`/repo variables — no
+  source edits. A new root [`.env.example`](.env.example) documents each knob.
+  - **Container images:** `docker-compose.yml` dev image names now use the same
+    `${IMAGE_REPO:-mavrovde}-<svc>` scheme as prod (`${IMAGE_REPO:-maverickde/mavrov.de}-<svc>`);
+    `deploy.yml` publishing is overridable via the `REGISTRY` / `IMAGE_NAME` repository variables
+    (defaults keep `ghcr.io/${{ github.repository }}` unchanged for the canonical repo).
+  - **Proxy `server_name`:** `proxy/default.conf` became `proxy/default.conf.template`, rendered at
+    container start by `entrypoint.sh` (envsubst) from `PUBLIC_SERVER_NAME` / `ADMIN_SERVER_NAME`
+    (defaults preserve the canonical hostnames). (Admin-allowlist hardening is deferred to #86 so
+    prod admin access is unchanged here.)
+  - **Postgres port:** the `5433` literal became the `POSTGRES_PORT` env knob across both compose
+    files (PGPORT, host mapping, healthcheck, `DATABASE_URL`).
+  - **`verify_all.sh`:** replaced the hardcoded conda python path with a portable interpreter
+    (`backend/venv` → `python3`, override via `PYTEST_PYTHON`); updated `.claude/commands/verify.md`.
+  - **Agents:** `agents/autonomous.py` and `agents/common/tools.py` derive the repo root at runtime
+    (no `/Users/maverick` absolute paths); `A2A_REPO`/`A2A_BACKEND_BIN`/`A2A_BACKEND_PYTHON` override.
 - **CI: pinned & cached third-party base images** (#72, PR #76). Added `.github/base-images.txt`
   as the single source of truth (pinned `ollama/ollama:0.5.7`, `open-webui:v0.5.10`,
   `pgvector/pgvector:pg16`, matching prod compose — removed the `:latest` drift) and replaced both
@@ -27,6 +90,11 @@ All notable changes to this project will be documented in this file.
   images download once instead of every run.
 
 ### Docs
+- **Corrected `CLAUDE.md` frontend state-management guidance** (#48, #29). Rule #5 "Frontend
+  discipline" and the project-description bullet now describe the pattern the code actually uses —
+  RxJS Observables + the `async` pipe as the **primary** state/streams mechanism (Signals are used
+  only sparingly for local component state, e.g. `blog-post`), instead of implying Signals-first
+  state; SSR/`isPlatformBrowser()`/dumb-component guidance retained.
 - **Codified the issue/milestone/label development workflow into repo config** (#74, PR #75):
   a new `CLAUDE.md` section, `backend-dev`/`frontend-dev`/`devops-pipeline` role updates, a committed
   `.claude/skills/issue-workflow` skill, and a `/issue-triage` command — shared across devices and
