@@ -27,6 +27,23 @@ All notable changes to this project will be documented in this file.
   `Backend Lint & Format` / `Backend Type Check` jobs. Env-gated (`PREPUSH_RUN_LINT` default on,
   plus granular `PREPUSH_RUN_RUFF` / `PREPUSH_RUN_MYPY`); the `deny` reason and script header now
   mention the leg. Self-gating (non-`git push` commands still pass instantly) unchanged.
+- **Parameterized deployment & infra for a new owner** (#60). Externalized every owner-specific
+  infra literal behind env/config so a forker deploys by editing only `.env`/repo variables — no
+  source edits. A new root [`.env.example`](.env.example) documents each knob.
+  - **Container images:** `docker-compose.yml` dev image names now use the same
+    `${IMAGE_REPO:-mavrovde}-<svc>` scheme as prod (`${IMAGE_REPO:-maverickde/mavrov.de}-<svc>`);
+    `deploy.yml` publishing is overridable via the `REGISTRY` / `IMAGE_NAME` repository variables
+    (defaults keep `ghcr.io/${{ github.repository }}` unchanged for the canonical repo).
+  - **Proxy `server_name`:** `proxy/default.conf` became `proxy/default.conf.template`, rendered at
+    container start by `entrypoint.sh` (envsubst) from `PUBLIC_SERVER_NAME` / `ADMIN_SERVER_NAME`
+    (defaults preserve the canonical hostnames). (Admin-allowlist hardening is deferred to #86 so
+    prod admin access is unchanged here.)
+  - **Postgres port:** the `5433` literal became the `POSTGRES_PORT` env knob across both compose
+    files (PGPORT, host mapping, healthcheck, `DATABASE_URL`).
+  - **`verify_all.sh`:** replaced the hardcoded conda python path with a portable interpreter
+    (`backend/venv` → `python3`, override via `PYTEST_PYTHON`); updated `.claude/commands/verify.md`.
+  - **Agents:** `agents/autonomous.py` and `agents/common/tools.py` derive the repo root at runtime
+    (no `/Users/maverick` absolute paths); `A2A_REPO`/`A2A_BACKEND_BIN`/`A2A_BACKEND_PYTHON` override.
 - **CI: pinned & cached third-party base images** (#72, PR #76). Added `.github/base-images.txt`
   as the single source of truth (pinned `ollama/ollama:0.5.7`, `open-webui:v0.5.10`,
   `pgvector/pgvector:pg16`, matching prod compose — removed the `:latest` drift) and replaced both

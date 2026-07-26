@@ -27,13 +27,16 @@ import re
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import httpx
 
 from agents.common.roster import ROSTER
 from agents.orchestrator import delegate
 
-REPO = "/Users/maverick/Projects/mavrov.de"
+# Repo root derived at runtime (this file is <repo>/agents/autonomous.py), so the
+# pipeline works from any checkout path. Override with A2A_REPO if needed.
+REPO = os.getenv("A2A_REPO", str(Path(__file__).resolve().parents[1]))
 MAX_FIX_ITERS = int(os.getenv("A2A_MAX_FIX_ITERS", "3"))
 # Autonomous gate coverage floor. Lower than the project's 100% CI standard so the
 # team can open a working PR; the human/CI enforces 100% at merge (path B).
@@ -106,7 +109,7 @@ def remove_worktree(path: str, branch: str, keep: bool = False) -> None:
 
 # --- deterministic gate (trusts exit codes, not the LLM) --------------------
 
-BACKEND_BIN = "/Users/maverick/Projects/mavrov.de/backend/venv/bin"
+BACKEND_BIN = os.getenv("A2A_BACKEND_BIN", os.path.join(REPO, "backend", "venv", "bin"))
 
 
 def run_gate(workdir: str) -> tuple[bool, str]:

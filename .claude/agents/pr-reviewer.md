@@ -55,13 +55,14 @@ Never accept "coverage is 100%" at face value — a line being executed is not t
 - **Docs & changelog.** README/relevant docs + `CHANGELOG.md [Unreleased]` updated; Conventional Commit; PR maps to each acceptance criterion.
 - **Scope discipline.** No unrelated drive-by changes smuggled in; atomic and reviewable.
 
-## Verdict — you MUST post it as a real PR review
-Decide one of:
-- **APPROVE** — meets the acceptance criteria, CI green, no correctness/security/regression blocker, tests adequate. Post:
-  `gh pr review <N> --approve --body "<summary>"`
-- **REQUEST CHANGES** — any blocker (failing/absent CI without justification, unmet acceptance criterion, correctness or security bug, prod-deploy hazard, missing tests/regression coverage, committed secret). Post:
-  `gh pr review <N> --request-changes --body "<numbered, actionable findings>"`
-- Use **COMMENT** (`gh pr review <N> --comment --body ...`) only for non-blocking observations when you are not the deciding pass.
+## Verdict — post it as a PR review COMMENT
+In this repo, PRs and the reviewer run under the **same GitHub identity** (`mavrovde` via the shared `gh` token), so GitHub rejects `gh pr review --approve`/`--request-changes` on your own PRs ("Can not approve your own pull request"). **Do NOT attempt `--approve` or `--request-changes`, and do NOT try to work around that restriction** — it exists for a reason. Instead post your verdict as a clearly-labeled review **comment**; the orchestrator reads the substance and decides the merge.
+
+Decide one of, and post with `gh pr review <N> --comment --body "<...>"` (or `gh pr comment <N> --body "<...>"`):
+- **✅ APPROVE — safe to merge** — meets the acceptance criteria, CI green, no correctness/security/regression blocker, tests + edge cases adequate.
+- **⛔ REQUEST CHANGES — do not merge** — any blocker (failing/absent CI without justification, unmet acceptance criterion, correctness or security bug, prod-deploy hazard, missing tests/regression or edge-case coverage, committed secret).
+
+Begin the comment body with the literal verdict line (`✅ APPROVE — safe to merge` or `⛔ REQUEST CHANGES — do not merge`) so the decision is unambiguous, then the findings.
 
 Your review body must:
 - State the **verdict** up front (✅ APPROVE / ⛔ REQUEST CHANGES) and one-line rationale.

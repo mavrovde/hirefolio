@@ -226,6 +226,29 @@ Create `.env` in the project root to configure the release script:
 GEMINI_API_KEY=your_api_key_here
 ```
 
+### Deploying as a new owner (fork & go)
+
+All owner-specific deployment/infra settings are externalized behind env/config — a forker
+deploys by editing **only** [`.env`](.env.example) (and, for CI publishing, GitHub repository
+variables), never tracked source. Copy [`.env.example`](.env.example) to `.env` and set what
+identifies you. Every knob has a safe default that preserves the canonical behavior:
+
+| Knob | Where | Default | What it controls |
+| --- | --- | --- | --- |
+| `IMAGE_REPO` | `.env` (compose) | `maverickde/mavrov.de` (prod), `mavrovde` (dev) | Registry/org/name the compose files pull `-backend/-frontend/-admin-frontend/-proxy` images from |
+| `IMAGE_TAG` | `.env` (compose) | repo `VERSION` | Pinned image tag to run |
+| `REGISTRY`, `IMAGE_NAME` | GitHub **repository variables** | `ghcr.io`, `${{ github.repository }}` | Where `deploy.yml` publishes images (override to retarget the CI publish) |
+| `PUBLIC_SERVER_NAME` | `.env` (proxy) | `mavrov.de www.mavrov.de` | Public site hostname(s) the reverse proxy answers on |
+| `ADMIN_SERVER_NAME` | `.env` (proxy) | `admin.mavrov.de admin.localhost` | Admin console hostname(s) |
+| `POSTGRES_PORT` | `.env` (compose) | `5433` | Postgres listen port + host mapping + backend `DATABASE_URL` |
+
+The reverse proxy renders its `server_name` from `PUBLIC_SERVER_NAME`/`ADMIN_SERVER_NAME` at
+container start (`proxy/entrypoint.sh` → envsubst on `proxy/default.conf.template`). Admin-console
+access is currently controlled by `proxy/admin_allowlist.conf`; making it config-driven (with nginx
+real_ip so trusted CIDRs work behind the Docker gateway) is tracked in issue #86. Pinned base images
+(`pgvector/pgvector:pg16`, `ollama/ollama:0.5.7`, `ghcr.io/open-webui/open-webui:v0.5.10`) live in
+`docker-compose.prod.yml` + `.github/base-images.txt`.
+
 ### Frontend Environment
 
 Edit `frontend/src/environments/environment.ts`:

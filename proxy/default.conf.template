@@ -1,3 +1,11 @@
+# nginx site config TEMPLATE.
+#
+# server_name values are injected at container start by /entrypoint.sh via envsubst
+# from the ${PUBLIC_SERVER_NAME} and ${ADMIN_SERVER_NAME} environment variables
+# (defaults preserve the canonical mavrov.de hostnames). A forker sets their own
+# domain in the root .env — no edit to this file is needed. Only those two names are
+# substituted, so nginx runtime variables ($host, $remote_addr, ...) are left intact.
+
 # Default reject unknown hosts (HTTP)
 server {
     listen 80 default_server;
@@ -5,10 +13,10 @@ server {
     return 444; # Connection Closed Without Response
 }
 
-# HTTP to HTTPS redirect for mavrov.de
+# HTTP to HTTPS redirect for the public site
 server {
     listen 80;
-    server_name mavrov.de www.mavrov.de;
+    server_name ${PUBLIC_SERVER_NAME};
     return 301 https://$host$request_uri;
 }
 
@@ -16,7 +24,7 @@ server {
 server {
     listen 80; # For localhost
     listen 443 ssl;
-    server_name mavrov.de www.mavrov.de localhost 127.0.0.1;
+    server_name ${PUBLIC_SERVER_NAME} localhost 127.0.0.1;
 
     # SSL Certificates (Provided by 1panel in prod or dummy certs in CI/local)
     ssl_certificate /etc/nginx/ssl/fullchain.pem;
@@ -65,7 +73,7 @@ server {
 server {
     listen 80;
     listen 443 ssl;
-    server_name admin.mavrov.de admin.localhost;
+    server_name ${ADMIN_SERVER_NAME};
 
     ssl_certificate /etc/nginx/ssl/fullchain.pem;
     ssl_certificate_key /etc/nginx/ssl/privkey.pem;

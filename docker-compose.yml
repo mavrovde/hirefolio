@@ -6,13 +6,13 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-mavrov}
-      PGPORT: 5433
+      PGPORT: ${POSTGRES_PORT:-5433}
     ports:
-      - "5433:5433"
+      - "${POSTGRES_PORT:-5433}:${POSTGRES_PORT:-5433}"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mavrov} -p 5433"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mavrov} -p ${POSTGRES_PORT:-5433}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -54,7 +54,7 @@ services:
       - app-network
 
   backend:
-    image: mavrovde-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REPO:-mavrovde}-backend:${IMAGE_TAG:-latest}
     build: ./backend
     restart: always
     ports:
@@ -63,7 +63,7 @@ services:
       - ./backend:/app
       - ./scraper:/scraper
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5433/${POSTGRES_DB:-mavrov}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:${POSTGRES_PORT:-5433}/${POSTGRES_DB:-mavrov}
       - OLLAMA_URL=http://ollama:11434
       - GENERATION_MODEL=llama3.2
       - FAST_GENERATION_MODEL=llama3.2:1b
@@ -79,7 +79,7 @@ services:
       - app-network
 
   frontend:
-    image: mavrovde-frontend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REPO:-mavrovde}-frontend:${IMAGE_TAG:-latest}
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -95,7 +95,7 @@ services:
       - app-network
 
   admin-frontend:
-    image: mavrovde-admin-frontend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REPO:-mavrovde}-admin-frontend:${IMAGE_TAG:-latest}
     build:
       context: ./frontend
       dockerfile: Dockerfile.admin
@@ -125,9 +125,14 @@ services:
 
   proxy:
     build: ./proxy
-    image: mavrovde-proxy:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REPO:-mavrovde}-proxy:${IMAGE_TAG:-latest}
     container_name: global_proxy
     restart: always
+    environment:
+      # Owner-configurable proxy identity (see .env.example). Defaults preserve
+      # the canonical mavrov.de behavior; a forker overrides these in the root .env.
+      - PUBLIC_SERVER_NAME=${PUBLIC_SERVER_NAME:-mavrov.de www.mavrov.de}
+      - ADMIN_SERVER_NAME=${ADMIN_SERVER_NAME:-admin.mavrov.de admin.localhost}
     ports:
       - "4200:80"
       - "443:443"

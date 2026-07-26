@@ -32,8 +32,8 @@ Against Postgres on `127.0.0.1:5433` (a `test_*` DB via `TEST_DATABASE_URL`/`DAT
 14. Tear down when done: `docker compose -f docker-compose.prod.yml -f docker-compose.e2e.yml down`
 
 Notes / caveats:
-- `verify_all.sh` orchestrates all of the above, but line ~26 hardcodes a conda python path
-  (`/Users/sergii.mavrov/...`) — make it portable (`backend/venv` or `python3`) before relying on it.
+- `verify_all.sh` orchestrates all of the above. It runs backend pytest with a portable interpreter
+  (`backend/venv/bin/python` if present, else `python3`); override with `PYTEST_PYTHON=/path/to/python`.
 - On a slow link the in-container Ollama model pulls dominate E2E wall-clock; models persist in the
   `ollama_data` volume, so subsequent runs are fast.
 - CI (`deploy.yml`) runs this same E2E on clean runners on push to `main`.
