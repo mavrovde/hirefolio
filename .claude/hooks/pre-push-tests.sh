@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Pre-push gate for mavrov.de.
 #
-# Runs a full local check round — docs + backend pytest + frontend unit tests —
-# and BLOCKS a `git push` if anything fails. It self-gates by inspecting the
+# Runs a full local check round — docs + backend pytest + backend lint/type
+# (ruff + mypy) + frontend unit tests — and BLOCKS a `git push` if anything
+# fails. It self-gates by inspecting the
 # PreToolUse tool-call JSON on stdin, so it returns "allow" instantly for every
 # Bash command that is not a git push (never interferes with normal work).
 set -uo pipefail
@@ -14,12 +15,18 @@ set -uo pipefail
 #   PREPUSH_LOG            where the combined log is written
 #   PREPUSH_CHECK_DOCS     1/0 — run the docs check (CHANGELOG [Unreleased] + README)
 #   PREPUSH_RUN_BACKEND    1/0 — run backend pytest (needs the DB above)
+#   PREPUSH_RUN_LINT       1/0 — run backend lint/type leg (ruff + mypy), mirroring CI
+#   PREPUSH_RUN_RUFF       1/0 — within the lint leg, run `ruff check .` + `ruff format --check .`
+#   PREPUSH_RUN_MYPY       1/0 — within the lint leg, run `mypy app --ignore-missing-imports`
 #   PREPUSH_RUN_FRONTEND   1/0 — run frontend shared/public/admin unit tests
 # ---------------------------------------------------------------------------
 : "${TEST_DATABASE_URL:=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov}"
 : "${PREPUSH_LOG:=/tmp/mavrov-prepush-tests.log}"
 : "${PREPUSH_CHECK_DOCS:=1}"
 : "${PREPUSH_RUN_BACKEND:=1}"
+: "${PREPUSH_RUN_LINT:=1}"
+: "${PREPUSH_RUN_RUFF:=1}"
+: "${PREPUSH_RUN_MYPY:=1}"
 : "${PREPUSH_RUN_FRONTEND:=1}"
 export TEST_DATABASE_URL
 
@@ -59,6 +66,20 @@ run_checks() {
     ( cd "$ROOT/backend" && GEMINI_API_KEY="" ./venv/bin/pytest -q ) || return 1
   fi
 
+  if [ "$PREPUSH_RUN_LINT" = "1" ]; then
+    echo "== backend lint/type (ruff + mypy) =="
+    if [ "$PREPUSH_RUN_RUFF" = "1" ]; then
+      echo "-- ruff check --"
+      ( cd "$ROOT/backend" && ./venv/bin/ruff check . ) || return 1
+      echo "-- ruff format --check --"
+      ( cd "$ROOT/backend" && ./venv/bin/ruff format --check . ) || return 1
+    fi
+    if [ "$PREPUSH_RUN_MYPY" = "1" ]; then
+      echo "-- mypy --"
+      ( cd "$ROOT/backend" && ./venv/bin/mypy app --ignore-missing-imports --no-error-summary ) || return 1
+    fi
+  fi
+
   if [ "$PREPUSH_RUN_FRONTEND" = "1" ]; then
     echo "== frontend tests (shared + public + admin) =="
     ( cd "$ROOT/frontend" && npm test ) || return 1
@@ -68,5 +89,5 @@ run_checks() {
 if run_checks >"$LOG" 2>&1; then
   allow
 else
-  deny "Pre-push checks FAILED (docs / backend pytest / frontend tests). See $LOG. Configure via env: PREPUSH_RUN_BACKEND, PREPUSH_RUN_FRONTEND, PREPUSH_CHECK_DOCS, TEST_DATABASE_URL."
+  deny "Pre-push checks FAILED (docs / backend pytest / backend lint+type ruff+mypy / frontend tests). See $LOG. Configure via env: PREPUSH_RUN_BACKEND, PREPUSH_RUN_LINT, PREPUSH_RUN_RUFF, PREPUSH_RUN_MYPY, PREPUSH_RUN_FRONTEND, PREPUSH_CHECK_DOCS, TEST_DATABASE_URL."
 fi

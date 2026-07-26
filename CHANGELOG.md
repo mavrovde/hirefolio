@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 - Placeholder for next release.
 
 ### Changed
+- **Pre-push hook now runs backend lint/type (ruff + mypy), matching CI** (#48). Added a
+  backend lint/type leg to `.claude/hooks/pre-push-tests.sh` running `ruff check .`,
+  `ruff format --check .`, and `mypy app --ignore-missing-imports --no-error-summary` from
+  `backend/` (venv), so lint/format/type failures are caught at `git push` instead of only in CI's
+  `Backend Lint & Format` / `Backend Type Check` jobs. Env-gated (`PREPUSH_RUN_LINT` default on,
+  plus granular `PREPUSH_RUN_RUFF` / `PREPUSH_RUN_MYPY`); the `deny` reason and script header now
+  mention the leg. Self-gating (non-`git push` commands still pass instantly) unchanged.
 - **CI: pinned & cached third-party base images** (#72, PR #76). Added `.github/base-images.txt`
   as the single source of truth (pinned `ollama/ollama:0.5.7`, `open-webui:v0.5.10`,
   `pgvector/pgvector:pg16`, matching prod compose — removed the `:latest` drift) and replaced both
@@ -15,6 +22,10 @@ All notable changes to this project will be documented in this file.
   images download once instead of every run.
 
 ### Docs
+- **Corrected `CLAUDE.md` frontend state-management guidance** (#48, #29). Rule #5 "Frontend
+  discipline" and the project-description bullet now describe the pattern the code actually uses —
+  RxJS Observables + the `async` pipe — instead of Signals (the frontend has zero
+  `signal(`/`computed(`/`effect(` usage); SSR/`isPlatformBrowser()`/dumb-component guidance retained.
 - **Codified the issue/milestone/label development workflow into repo config** (#74, PR #75):
   a new `CLAUDE.md` section, `backend-dev`/`frontend-dev`/`devops-pipeline` role updates, a committed
   `.claude/skills/issue-workflow` skill, and a `/issue-triage` command — shared across devices and
