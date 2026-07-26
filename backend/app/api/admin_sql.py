@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Dict, Any
+from typing import Any
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.services.auth import get_current_admin_user
+from app.logger import get_logger
 from app.models.user import User
+from app.services.auth import get_current_admin_user
+
+logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/admin/sql", tags=["admin"], dependencies=[Depends(get_current_admin_user)]
@@ -16,14 +20,13 @@ class SqlQuery(BaseModel):
     query: str
 
 
-@router.post("/execute", response_model=List[Dict[str, Any]])
+@router.post("/execute", response_model=list[dict[str, Any]])
 async def execute_sql(
     sql: SqlQuery,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
     from sqlalchemy import text
-    import logging
 
     try:
         # User-supplied SQL is intentional for admin tool. Wait, we should also prevent exposing full SQLite/Postgres error traces.
@@ -45,7 +48,7 @@ async def execute_sql(
 
         return []
     except Exception as e:
-        logging.error(f"SQL execution error: {str(e)}", exc_info=True)
+        logger.exception("SQL execution error")
         # Return generic 501 with a stripped error message if needed or just generic Error to prevent stack trace exposure
         error_msg = str(e).split("\n")[0][
             :200
@@ -67,13 +70,14 @@ def _get_db_url():
 async def backup_database(current_user: User = Depends(get_current_admin_user)):
     import asyncio
     import os
-    from datetime import datetime
+    from datetime import UTC, datetime
+
     from fastapi.responses import StreamingResponse
 
     db_url = _get_db_url()
 
     # Generate backup filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     filename = f"backup_mavrov_{timestamp}.sql"
 
     cmd = ["pg_dump", db_url]
@@ -146,7 +150,7 @@ async def restore_database(
             stdout, stderr = await asyncio.wait_for(
                 proc.communicate(input=content), timeout=300
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             proc.kill()
             raise HTTPException(
                 status_code=500,
@@ -193,4 +197,4 @@ async def restore_database(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Restore error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Restore error: {e!s}")

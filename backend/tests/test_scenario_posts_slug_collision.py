@@ -1,6 +1,7 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, MagicMock
 
 # Scenario: Creating a post with a slug that already exists
 # Expected: System detects collision, retries with a modified slug, and succeeds.
@@ -30,7 +31,6 @@ async def test_posts_scenario_slug_collision_auto_retry(client: AsyncClient):
         commit_calls += 1
         if commit_calls == 1:
             raise Exception("IntegrityError: Duplicate Key")
-        return None
 
     with patch("app.api.posts.get_current_admin_user", return_value=user_mock):
         with patch(
@@ -44,17 +44,15 @@ async def test_posts_scenario_slug_collision_auto_retry(client: AsyncClient):
                     return_value=None
                 )  # Hack for context? No, just awaitable.
                 # AsyncMock is available in unittest.mock in Python 3.8+
-                pass
 
             # Better way: just patch with a coroutine or AsyncMock
+            from datetime import UTC, datetime
             from unittest.mock import AsyncMock
-            from datetime import datetime
 
             async def side_effect_refresh(instance, *args, **kwargs):
                 instance.id = 1
-                instance.created_at = datetime.now()
-                instance.updated_at = datetime.now()
-                return None
+                instance.created_at = datetime.now(UTC)
+                instance.updated_at = datetime.now(UTC)
 
             AsyncMock(side_effect=side_effect_refresh)
 

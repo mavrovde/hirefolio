@@ -1,5 +1,6 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 # Scenario: AI Service Fallback Chain
 # 1. Gemini Client Init Failure -> Handled gracefully
@@ -49,8 +50,9 @@ async def test_ai_scenario_generation_all_models_fail():
 
 @pytest.mark.asyncio
 async def test_ai_scenario_tag_suggestion_ollama_fallback():
-    from app.services.ai import suggest_tags
     from unittest.mock import AsyncMock
+
+    from app.services.ai import suggest_tags
 
     with patch("app.services.ai._generate_text_gemini", return_value=None):
         # Correctly mock AsyncClient

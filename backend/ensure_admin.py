@@ -1,9 +1,11 @@
 import asyncio
-from app.database import get_async_session
-from app.services.auth import get_password_hash
-from app.models.user import User
+
 from sqlalchemy import select
+
 from app.config import settings
+from app.database import get_async_session
+from app.models.user import User
+from app.services.auth import get_password_hash
 
 
 async def check_create_admin():

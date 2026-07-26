@@ -1,8 +1,8 @@
 import json
-import urllib.request
-import urllib.error
 import os
 import sys
+import urllib.error
+import urllib.request
 
 # Constants - use container-internal URL by default
 API_URL_BASE = os.getenv("API_URL", "http://backend:8000/api")
@@ -80,7 +80,7 @@ def seed_posts():
                         f"HTTP Error seeding {post_data['id']} ({lang}): {e.code} - {e.read().decode()}"
                     )
             except Exception as e:
-                print(f"Error seeding {post_data['id']} ({lang}): {str(e)}")
+                print(f"Error seeding {post_data['id']} ({lang}): {e!s}")
 
 
 if __name__ == "__main__":

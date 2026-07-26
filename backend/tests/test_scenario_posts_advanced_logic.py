@@ -1,8 +1,10 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, AsyncMock
-from app.models.post import Post
+
 from app.config import settings
+from app.models.post import Post
 
 
 @pytest.mark.asyncio
@@ -86,7 +88,6 @@ async def test_semantic_search_low_relevance(client: AsyncClient):
 
         # Let's mock db.execute for the vector query path.
         # The code awaits db.execute(vector_query).
-        pass
 
 
 @pytest.mark.asyncio
@@ -120,7 +121,7 @@ async def test_semantic_search_low_relevance_mocked(client: AsyncClient):
                 # Vector result
                 AsyncMock(all=lambda: [(mock_post, 0.1)]),
                 # Keyword result
-                AsyncMock(scalars=lambda: AsyncMock(all=lambda: [])),
+                AsyncMock(scalars=lambda: AsyncMock(all=list)),
             ]
 
             # We need to rely on the fact that `execute()` is called twice.
@@ -135,4 +136,3 @@ async def test_semantic_search_low_relevance_mocked(client: AsyncClient):
 
             # Let's skip the complex mock for now and rely on logic:
             # If search query is random garbage, relevance should be low?
-            pass

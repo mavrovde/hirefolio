@@ -1,9 +1,10 @@
 """Tests for the CV years API endpoint."""
 
 import json
-import pytest
+from datetime import UTC
 from unittest.mock import patch
 
+import pytest
 
 # ─── Unit tests for _extract_years_from_profile ───
 
@@ -121,9 +122,11 @@ class TestYearsEndpoint:
     @pytest.fixture
     def _client(self):
         """Lightweight async client without DB dependency."""
-        from app.main import app
-        from httpx import AsyncClient, ASGITransport
         import asyncio
+
+        from httpx import ASGITransport, AsyncClient
+
+        from app.main import app
 
         async def _make_client():
             transport = ASGITransport(app=app)
@@ -133,8 +136,9 @@ class TestYearsEndpoint:
 
     async def test_returns_years_sorted_descending(self, tmp_path):
         """Should return years in descending order."""
+        from httpx import ASGITransport, AsyncClient
+
         from app.main import app
-        from httpx import AsyncClient, ASGITransport
 
         profile = {
             "experience": [
@@ -155,15 +159,16 @@ class TestYearsEndpoint:
         assert response.status_code == 200
         data = response.json()
         # The endpoint always includes the current year so the timeline reaches "now".
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        current_year = datetime.now(timezone.utc).year
+        current_year = datetime.now(UTC).year
         assert data["years"] == sorted({current_year, 2025, 2021, 2014}, reverse=True)
 
     async def test_returns_404_when_no_data(self, tmp_path):
         """Should return 404 when no profile files have experience data."""
+        from httpx import ASGITransport, AsyncClient
+
         from app.main import app
-        from httpx import AsyncClient, ASGITransport
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -174,9 +179,11 @@ class TestYearsEndpoint:
 
     async def test_fallback_to_http_success(self, tmp_path):
         """Should fetch years via HTTP if local files are missing."""
-        from app.main import app
-        from httpx import AsyncClient, ASGITransport
         from unittest.mock import MagicMock
+
+        from httpx import ASGITransport, AsyncClient
+
+        from app.main import app
 
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
@@ -195,8 +202,9 @@ class TestYearsEndpoint:
 
     async def test_years_are_integers(self, tmp_path):
         """All returned years should be integers."""
+        from httpx import ASGITransport, AsyncClient
+
         from app.main import app
-        from httpx import AsyncClient, ASGITransport
 
         profile = {
             "experience": [
@@ -219,8 +227,9 @@ class TestYearsEndpoint:
 
     async def test_years_have_no_duplicates(self, tmp_path):
         """Years should be unique even when both language files have overlapping data."""
+        from httpx import ASGITransport, AsyncClient
+
         from app.main import app
-        from httpx import AsyncClient, ASGITransport
 
         profile_en = {
             "experience": [
@@ -247,8 +256,9 @@ class TestYearsEndpoint:
 
     async def test_merges_years_from_both_languages(self, tmp_path):
         """Should union years from EN and DE profile files."""
+        from httpx import ASGITransport, AsyncClient
+
         from app.main import app
-        from httpx import AsyncClient, ASGITransport
 
         profile_en = {
             "experience": [

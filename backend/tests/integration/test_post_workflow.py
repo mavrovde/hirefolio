@@ -1,6 +1,8 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
 from httpx import AsyncClient
+
 from app.models.user import User
 
 # Mock User object

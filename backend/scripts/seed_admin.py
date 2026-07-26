@@ -1,11 +1,12 @@
 import asyncio
-import sys
 import os
+import sys
 
 # Add parent directory to path to import app modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.future import select
+
 from app.database import async_session
 from app.models.user import User
 from app.services.auth import get_password_hash

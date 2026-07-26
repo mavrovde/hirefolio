@@ -1,8 +1,10 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
 from httpx import AsyncClient
-from app.models.cv_document import CvDocument
+
 from app.config import settings
+from app.models.cv_document import CvDocument
 
 
 @pytest.mark.asyncio
@@ -161,8 +163,8 @@ async def test_admin_get_versions_exception(client: AsyncClient, db_session):
 
 @pytest.mark.asyncio
 async def test_email_service_config_missing(db_session):
-    from app.services.email import email_service
     from app.config import settings
+    from app.services.email import email_service
 
     with patch.object(settings, "smtp_host", None):
         success = email_service.send_cv_request_notification("N", "e", "C", "M")
@@ -174,8 +176,8 @@ async def test_email_service_config_missing(db_session):
 
 @pytest.mark.asyncio
 async def test_email_service_send_exceptions(db_session):
-    from app.services.email import email_service
     from app.config import settings
+    from app.services.email import email_service
 
     with (
         patch.object(settings, "smtp_host", "localhost"),
@@ -193,9 +195,10 @@ async def test_email_service_send_exceptions(db_session):
 @pytest.mark.asyncio
 async def test_main_infra_check_exception():
     import respx
-    from app.main import lifespan
     from fastapi import FastAPI
+
     from app.config import settings
+    from app.main import lifespan
 
     app = FastAPI()
 

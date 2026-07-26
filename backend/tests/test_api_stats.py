@@ -1,6 +1,7 @@
-from app.config import settings
 import pytest
 from httpx import AsyncClient
+
+from app.config import settings
 
 
 @pytest.mark.asyncio
@@ -80,7 +81,7 @@ async def test_stats_endpoint_unauthorized(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_stats_ai_service_health_check(client: AsyncClient):
     """Test AI service health check logic."""
-    from unittest.mock import patch, AsyncMock, MagicMock
+    from unittest.mock import AsyncMock, MagicMock, patch
 
     # Mock success
     mock_response = MagicMock()

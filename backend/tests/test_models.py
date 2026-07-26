@@ -1,6 +1,8 @@
-import pytest
 from datetime import datetime
+
+import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.models.post import Post
 
@@ -70,7 +72,7 @@ async def test_unique_slug_language_constraint(db_session):
 
     db_session.add(post2)
 
-    with pytest.raises(Exception):  # IntegrityError
+    with pytest.raises(IntegrityError):
         await db_session.commit()
 
 
@@ -141,7 +143,7 @@ async def test_source_urn_unique_constraint(db_session):
     await db_session.commit()
 
     db_session.add(post2)
-    with pytest.raises(Exception):  # IntegrityError from unique partial index
+    with pytest.raises(IntegrityError):  # unique partial index violation
         await db_session.commit()
 
 

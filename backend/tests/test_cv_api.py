@@ -1,15 +1,18 @@
-from app.config import settings
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 from sqlalchemy.future import select
+
+from app.config import settings
 from app.models.cv_request import CvRequest
 
 
 @pytest.mark.asyncio
 async def test_cv_request_success(client, db_session):
     # Ensure active CV exists for versioning
-    from app.models.cv_document import CvDocument
     import uuid
+
+    from app.models.cv_document import CvDocument
 
     doc = CvDocument(
         id=uuid.uuid4(),
@@ -97,8 +100,9 @@ async def test_download_cv_not_found(client, db_session):
 @pytest.mark.asyncio
 async def test_download_cv_db_success(client, db_session):
     # Add a document to DB
-    from app.models.cv_document import CvDocument
     import uuid
+
+    from app.models.cv_document import CvDocument
 
     doc = CvDocument(
         id=uuid.uuid4(),
@@ -118,9 +122,10 @@ async def test_download_cv_db_success(client, db_session):
 @pytest.mark.asyncio
 async def test_download_cv_with_tracking(client, db_session):
     # Setup CV and Request
+    import uuid
+
     from app.models.cv_document import CvDocument
     from app.models.cv_request import CvRequest
-    import uuid
 
     doc = CvDocument(
         id=uuid.uuid4(),
@@ -144,9 +149,7 @@ async def test_download_cv_with_tracking(client, db_session):
     await db_session.commit()
 
     # Download with req_id
-    response = await client.get(
-        f"{settings.api_prefix}/cv/download?req_id={str(req_id)}"
-    )
+    response = await client.get(f"{settings.api_prefix}/cv/download?req_id={req_id!s}")
     assert response.status_code == 200
     assert response.content == b"pdf data"
 
@@ -166,8 +169,9 @@ async def test_download_cv_with_tracking(client, db_session):
 
 @pytest.mark.asyncio
 async def test_download_cv_with_invalid_req_id(client, db_session):
-    from app.models.cv_document import CvDocument
     import uuid
+
+    from app.models.cv_document import CvDocument
 
     doc = CvDocument(
         id=uuid.uuid4(),
@@ -181,7 +185,7 @@ async def test_download_cv_with_invalid_req_id(client, db_session):
 
     invalid_id = uuid.uuid4()
     response = await client.get(
-        f"{settings.api_prefix}/cv/download?req_id={str(invalid_id)}"
+        f"{settings.api_prefix}/cv/download?req_id={invalid_id!s}"
     )
     assert response.status_code == 200
     assert response.content == b"pdf data"
@@ -189,8 +193,9 @@ async def test_download_cv_with_invalid_req_id(client, db_session):
 
 @pytest.mark.asyncio
 async def test_process_email_notifications_calls_both(db_session):
-    from app.api.cv import process_email_notifications
     import uuid
+
+    from app.api.cv import process_email_notifications
 
     mock_payload = AsyncMock()
     mock_payload.name = "Test"

@@ -1,15 +1,16 @@
 """Edge-case coverage for app/services/multi_chat.py."""
 
-import json
 import asyncio
+import json
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from app.services.multi_chat import (
-    multi_agent_conversation,
     AgentConfig,
     ChatMessage,
     StopChatTool,
+    multi_agent_conversation,
 )
 
 

@@ -1,6 +1,7 @@
-from app.config import settings
 import pytest
 from httpx import AsyncClient
+
+from app.config import settings
 
 
 @pytest.fixture(autouse=True)

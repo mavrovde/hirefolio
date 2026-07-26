@@ -9,9 +9,11 @@ Behaviour is still asserted for real: return payloads, sorting/pagination
 branch selection, search-filter application, and error handling.
 """
 
+from datetime import UTC
+
 import pytest
 
-import app.api.admin_cv as admin_cv
+from app.api import admin_cv
 from app.models.cv_document import CvDocument
 from app.models.cv_request import CvRequest
 
@@ -247,9 +249,9 @@ def _make_doc(filename="cv.pdf", version="1.0", is_active=False):
         filename=filename, version=version, data=b"data", is_active=is_active
     )
     doc.id = 42
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    doc.created_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    doc.created_at = datetime(2024, 1, 1, tzinfo=UTC)
     return doc
 
 

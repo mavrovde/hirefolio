@@ -1,6 +1,7 @@
 import asyncio
-import httpx
 import time
+
+import httpx
 
 
 async def login(client):

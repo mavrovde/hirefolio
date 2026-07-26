@@ -16,7 +16,6 @@ import pytest
 from app.services.chat import chat_with_llm
 from app.services.linkedin import LinkedInService
 
-
 # --------------------------------------------------------------------------
 # chat.py stream branches
 # --------------------------------------------------------------------------

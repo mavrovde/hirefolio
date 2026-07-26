@@ -6,10 +6,10 @@ Create Date: 2026-01-24
 
 """
 
-from alembic import op
 import sqlalchemy as sa
-from app.services.auth import get_password_hash
+from alembic import op
 
+from app.services.auth import get_password_hash
 
 # revision identifiers, used by Alembic.
 revision = "001_create_users"

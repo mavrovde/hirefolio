@@ -1,14 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from datetime import UTC
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.database import get_db
-from app.models.cv_request import CvRequest
-from app.models.cv_document import CvDocument
-from app.services.email import email_service
-from app.logger import logger
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.config import settings
+from app.database import get_db
+from app.logger import logger
+from app.models.cv_document import CvDocument
+from app.models.cv_request import CvRequest
+from app.services.email import email_service
 
 router = APIRouter(prefix="/cv", tags=["cv"])
 
@@ -80,9 +83,9 @@ async def download_cv(req_id: str | None = None, db: AsyncSession = Depends(get_
                 cv_request = result.scalar_one_or_none()
 
                 if cv_request:
-                    from datetime import datetime, timezone
+                    from datetime import datetime
 
-                    cv_request.downloaded_at = datetime.now(timezone.utc)
+                    cv_request.downloaded_at = datetime.now(UTC)
                     cv_request.download_count += 1
                     await db.commit()
             except Exception as e:

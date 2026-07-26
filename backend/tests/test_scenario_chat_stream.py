@@ -1,6 +1,8 @@
-import pytest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from app.services.chat import chat_with_llm
 
 # Scenario: Chat stream success

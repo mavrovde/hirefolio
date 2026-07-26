@@ -1,9 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 import respx
-from unittest.mock import patch
 from httpx import Response
-from app.services.ai import suggest_tags, suggest_post_details, suggest_field
+
 from app.config import settings
+from app.services.ai import suggest_field, suggest_post_details, suggest_tags
 
 
 @pytest.mark.asyncio
@@ -360,8 +362,9 @@ async def test_suggest_post_details_regex_fallback_no_tags():
 @pytest.mark.asyncio
 async def test_chat_with_gemini_empty_content():
     """Test chat_with_gemini empty history content branch."""
-    from app.services.ai import chat_with_gemini
     from unittest.mock import MagicMock
+
+    from app.services.ai import chat_with_gemini
 
     with patch("app.services.ai._get_gemini_client") as mock_get:
         mock_client = MagicMock()

@@ -1,25 +1,25 @@
-from typing import Optional, List
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Index,
+    LargeBinary,
     String,
     Text,
-    DateTime,
-    Boolean,
     UniqueConstraint,
-    LargeBinary,
-    Index,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.orm import Mapped, mapped_column, deferred
-from pgvector.sqlalchemy import Vector
+from sqlalchemy.orm import Mapped, deferred, mapped_column
 
-from app.database import Base
 from app.config import settings
+from app.database import Base
 
 
 def utc_now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Post(Base):
@@ -38,16 +38,16 @@ class Post(Base):
     title: Mapped[str] = mapped_column(String(255))
     slug: Mapped[str] = mapped_column(String(255), index=True)
     content: Mapped[str] = mapped_column(Text)
-    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    image_blob: Mapped[Optional[bytes]] = deferred(
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    image_blob: Mapped[bytes | None] = deferred(
         mapped_column(LargeBinary, nullable=True)
     )
-    image_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    image_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     language: Mapped[str] = mapped_column(String(2), default="en", index=True)
 
     @property
-    def display_image_url(self) -> Optional[str]:
+    def display_image_url(self) -> str | None:
         if self.image_type:
             return f"{settings.api_prefix}/posts/{self.id}/image"
         return self.image_url
@@ -62,13 +62,13 @@ class Post(Base):
     )
 
     # LinkedIn provenance (nullable; unique index on source_urn when not null)
-    source_urn: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    source_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    posted_at: Mapped[Optional[datetime]] = mapped_column(
+    source_urn: Mapped[str | None] = mapped_column(String, nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    posted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
     # Vector embedding for semantic search
-    embedding: Mapped[Optional[List[float]]] = mapped_column(
+    embedding: Mapped[list[float] | None] = mapped_column(
         Vector(settings.embedding_dimensions), nullable=True
     )

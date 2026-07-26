@@ -1,14 +1,17 @@
 import asyncio
 import json
-import warnings
-import httpx
 import re
-from typing import Any, AsyncGenerator, List, Optional
-from pydantic import BaseModel, SecretStr
+import warnings
+from collections.abc import AsyncGenerator
+from typing import Any
+
+import httpx
 from crewai import Agent
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
-from langchain_core.callbacks import BaseCallbackHandler
+from pydantic import BaseModel, SecretStr
+
 from app.config import settings
 from app.logger import get_logger
 
@@ -21,9 +24,9 @@ logger = get_logger(__name__)
 class AgentConfig(BaseModel):
     id: int
     description: str
-    name: Optional[str] = None
-    role: Optional[str] = None
-    goal: Optional[str] = None
+    name: str | None = None
+    role: str | None = None
+    goal: str | None = None
 
 
 class StreamingCallbackHandler(BaseCallbackHandler):
@@ -61,7 +64,7 @@ class StopChatTool(BaseTool):
 
 
 async def multi_agent_conversation(
-    agents_config: List[AgentConfig],
+    agents_config: list[AgentConfig],
     topic: str,
     max_turns: int = 20,  # Failsafe turn limit
 ) -> AsyncGenerator[str, None]:
@@ -151,7 +154,7 @@ async def multi_agent_conversation(
                 )
                 return
 
-            history: List[str] = []
+            history: list[str] = []
 
             # Initial prompt context
             history.append(f"Topic: {topic}")
@@ -230,7 +233,7 @@ async def multi_agent_conversation(
                                                 continue
                     except Exception as e:
                         if "STOPPED_BY_MODERATOR" in str(e):
-                            raise e
+                            raise
                         full_text = f"[Error: {e}]"
 
                     # AGGRESSIVE POST-PROCESS: Regex to strip ANY leading labels
@@ -293,7 +296,7 @@ async def multi_agent_conversation(
                 sys_msg = f"\n[System] Conversation Terminated: {clean_reason}"
                 queue.put_nowait({"content": sys_msg, "agent_name": "System"})
             else:
-                logger.error(f"Crew execution failed: {e}", exc_info=True)
+                logger.exception("Crew execution failed")
                 queue.put_nowait({"content": f"\n[Error: {e}]", "agent_name": "System"})
         finally:
             log_msg = "Finishing dynamic loop."

@@ -1,21 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func
 from math import ceil
-from typing import List, Any
+from typing import Any
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database import get_db
-from app.services.auth import get_current_admin_user
+from app.logger import logger
 from app.models.cv_document import CvDocument
 from app.models.cv_request import CvRequest
 from app.models.user import User
-from app.logger import logger
+from app.services.auth import get_current_admin_user
 
 router = APIRouter(prefix="/admin/cv", tags=["admin-cv"])
 
 
 class PaginatedResponse(BaseModel):
-    items: List[Any]
+    items: list[Any]
     total: int
     page: int
     page_size: int

@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock, PropertyMock
+
 from app.services import ai
 
 
@@ -85,6 +87,14 @@ async def test_generate_text_gemini_fail_all():
 
 
 @pytest.mark.asyncio
+async def test_generate_text_gemini_not_configured():
+    """Test _generate_text_gemini returns None when no client is configured."""
+    with patch("app.services.ai._get_gemini_client", return_value=None):
+        result = await ai._generate_text_gemini("prompt")
+        assert result is None
+
+
+@pytest.mark.asyncio
 async def test_chat_with_gemini_not_configured():
     with patch("app.services.ai._get_gemini_client", return_value=None):
         res = await ai.chat_with_gemini("hello")
@@ -127,7 +137,7 @@ async def test_chat_with_gemini_fallback():
         res = await ai.chat_with_gemini("hello")
         assert res == "Fallback Chat"
         assert mock_client.chats.create.call_count == 2
-        args, kwargs = mock_client.chats.create.call_args_list[1]
+        _args, kwargs = mock_client.chats.create.call_args_list[1]
         assert kwargs["model"] == "gemini-3.1-flash"
 
 

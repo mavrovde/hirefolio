@@ -1,6 +1,9 @@
 import re
+from datetime import UTC
+
 import pytest
 from httpx import AsyncClient
+
 from app.config import settings
 
 
@@ -59,12 +62,13 @@ async def test_public_stats_uptime_without_start_time(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_public_stats_uptime_with_start_time(client: AsyncClient):
     """Test that /stats/public returns uptime when start_time is set."""
+    from datetime import datetime
+
     from app.main import app
-    from datetime import datetime, timezone
 
     # Temporarily set start_time
     original = getattr(app.state, "start_time", None)
-    app.state.start_time = datetime.now(timezone.utc)
+    app.state.start_time = datetime.now(UTC)
 
     try:
         response = await client.get(f"{settings.api_prefix}/stats/public")

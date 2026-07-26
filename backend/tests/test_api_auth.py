@@ -1,6 +1,7 @@
-from app.config import settings
 import pytest
 from httpx import AsyncClient
+
+from app.config import settings
 from app.models.user import User
 from app.services.auth import get_password_hash
 

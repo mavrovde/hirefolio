@@ -1,6 +1,7 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, MagicMock
 
 # Scenario: Vector database search fails (e.g. timeout, connection error)
 # Expected: System gracefully falls back to keyword search and returns results (or empty list if none) without crashing.
@@ -58,7 +59,6 @@ async def test_posts_scenario_generation_service_returns_none(client: AsyncClien
     # But this is an external fixture. We can import or re-declare.
     # Better to use the one from conftest or `fixtures_auth_custom` if implicitly available.
     # We will assume we can get it if we define it in args? No, need to import.
-    pass
 
     # Actually, we can just patch dependency or use client with auth.
     # Let's rely on standard client logic if we can mock valid token.

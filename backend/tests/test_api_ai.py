@@ -1,7 +1,9 @@
-from app.config import settings
+from unittest.mock import patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch
+
+from app.config import settings
 
 
 @pytest.mark.asyncio
