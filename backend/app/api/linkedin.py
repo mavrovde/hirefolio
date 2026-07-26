@@ -73,11 +73,11 @@ async def login_linkedin(
             )
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"[LinkedIn] Dynamic login FAILED: {e}")
+    except Exception:
+        logger.exception("[LinkedIn] Dynamic login FAILED")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Login failed: {e!s}",
+            detail="LinkedIn login failed. Check credentials and MFA.",
         )
 
 
@@ -112,17 +112,17 @@ async def sync_linkedin_profile(
             len(profile_data) if isinstance(profile_data, dict) else 0,
         )
         return profile_data
-    except ValueError as e:
-        logger.error("[LinkedIn] profile-sync CONFIG ERROR: %s", e)
+    except ValueError:
+        logger.exception("[LinkedIn] profile-sync CONFIG ERROR")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"LinkedIn config error: {e}",
+            detail="LinkedIn config error.",
         )
-    except Exception as e:
-        logger.error("[LinkedIn] profile-sync FAILED: %s (%s)", e, type(e).__name__)
+    except Exception:
+        logger.exception("[LinkedIn] profile-sync FAILED")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"LinkedIn profile sync failed: {e}",
+            detail="LinkedIn profile sync failed.",
         )
 
 
@@ -151,11 +151,11 @@ async def get_linkedin_posts(
     except ValueError as e:
         logger.warning("[LinkedIn] /posts NOT CONFIGURED: %s", e)
         return []
-    except Exception as e:
-        logger.error("[LinkedIn] /posts FAILED: %s (%s)", e, type(e).__name__)
+    except Exception:
+        logger.exception("[LinkedIn] /posts FAILED")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"LinkedIn posts fetch failed: {e}",
+            detail="LinkedIn posts fetch failed.",
         )
 
 
@@ -227,12 +227,12 @@ async def transfer_linkedin_post(
             "[LinkedIn] transfer-post SUCCESS: id=%s, title=%r", post.id, post.title
         )
         return {"id": post.id, "message": "Post transferred successfully"}
-    except Exception as e:
+    except Exception:
         await db.rollback()
-        logger.error("[LinkedIn] transfer-post FAILED: %s (%s)", e, type(e).__name__)
+        logger.exception("[LinkedIn] transfer-post FAILED")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Transfer failed: {e}",
+            detail="Transfer failed.",
         )
 
 
@@ -276,17 +276,14 @@ async def transfer_linkedin_posts(
             "ids": [p.id for p in transferred],
             "message": f"Successfully transferred {len(transferred)} posts",
         }
-    except Exception as e:
+    except Exception:
         await db.rollback()
-        logger.error(
-            "[LinkedIn] transfer-posts FAILED at post %d: %s (%s)",
-            len(transferred) + 1,
-            e,
-            type(e).__name__,
+        logger.exception(
+            "[LinkedIn] transfer-posts FAILED at post %d", len(transferred) + 1
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Bulk transfer failed: {e}",
+            detail="Bulk transfer failed.",
         )
 
 

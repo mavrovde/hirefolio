@@ -36,31 +36,47 @@ async def test_sync_linkedin_profile_success(override_get_current_admin_user):
 
 
 @pytest.mark.asyncio
-async def test_sync_linkedin_profile_value_error(override_get_current_admin_user):
-    with patch(
-        "app.api.linkedin.linkedin_service.sync_profile", new_callable=AsyncMock
-    ) as mock_sync:
-        mock_sync.side_effect = ValueError("Config missing")
+async def test_sync_linkedin_profile_value_error(
+    override_get_current_admin_user, caplog
+):
+    with (
+        patch(
+            "app.api.linkedin.linkedin_service.sync_profile", new_callable=AsyncMock
+        ) as mock_sync,
+        caplog.at_level("ERROR"),
+    ):
+        mock_sync.side_effect = ValueError("Config missing: /secret/path/creds.json")
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
             response = await client.get("/api/app/linkedin/profile-sync")
             assert response.status_code == 500
-            assert "LinkedIn config error" in response.json()["detail"]
+            detail = response.json()["detail"]
+            assert detail == "LinkedIn config error."
+            assert "/secret/path/creds.json" not in detail
+            assert "/secret/path/creds.json" in caplog.text
 
 
 @pytest.mark.asyncio
-async def test_sync_linkedin_profile_generic_error(override_get_current_admin_user):
-    with patch(
-        "app.api.linkedin.linkedin_service.sync_profile", new_callable=AsyncMock
-    ) as mock_sync:
-        mock_sync.side_effect = Exception("Unknown")
+async def test_sync_linkedin_profile_generic_error(
+    override_get_current_admin_user, caplog
+):
+    with (
+        patch(
+            "app.api.linkedin.linkedin_service.sync_profile", new_callable=AsyncMock
+        ) as mock_sync,
+        caplog.at_level("ERROR"),
+    ):
+        mock_sync.side_effect = Exception("Unknown: driver stack trace XYZ")
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
             response = await client.get("/api/app/linkedin/profile-sync")
             assert response.status_code == 500
-            assert "LinkedIn profile sync failed" in response.json()["detail"]
+            detail = response.json()["detail"]
+            assert detail == "LinkedIn profile sync failed."
+            assert "driver stack trace XYZ" not in detail
+            assert "driver stack trace XYZ" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -93,17 +109,25 @@ async def test_get_linkedin_posts_value_error(override_get_current_admin_user):
 
 
 @pytest.mark.asyncio
-async def test_get_linkedin_posts_generic_error(override_get_current_admin_user):
-    with patch(
-        "app.api.linkedin.linkedin_service.fetch_posts", new_callable=AsyncMock
-    ) as mock_fetch:
-        mock_fetch.side_effect = Exception("Unknown")
+async def test_get_linkedin_posts_generic_error(
+    override_get_current_admin_user, caplog
+):
+    with (
+        patch(
+            "app.api.linkedin.linkedin_service.fetch_posts", new_callable=AsyncMock
+        ) as mock_fetch,
+        caplog.at_level("ERROR"),
+    ):
+        mock_fetch.side_effect = Exception("Unknown: scraper internals leaked")
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
             response = await client.get("/api/app/linkedin/posts")
             assert response.status_code == 500
-            assert "LinkedIn posts fetch failed" in response.json()["detail"]
+            detail = response.json()["detail"]
+            assert detail == "LinkedIn posts fetch failed."
+            assert "scraper internals leaked" not in detail
+            assert "scraper internals leaked" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -195,16 +219,19 @@ async def test_transfer_linkedin_post_long_content_fallback(
 
 
 @pytest.mark.asyncio
-async def test_transfer_linkedin_post_db_error(override_get_current_admin_user):
+async def test_transfer_linkedin_post_db_error(override_get_current_admin_user, caplog):
     post_data = {"content": "Test DB Error"}
 
     mock_db = AsyncMock()
-    mock_db.commit = AsyncMock(side_effect=Exception("DB Error"))
+    mock_db.commit = AsyncMock(
+        side_effect=Exception("DB Error: connection to 10.0.0.5")
+    )
     mock_db.rollback = AsyncMock()
 
     with (
         patch("app.api.linkedin.get_db", return_value=mock_db),
         patch("app.api.linkedin.get_embedding", new_callable=AsyncMock) as mock_embed,
+        caplog.at_level("ERROR"),
     ):
         mock_embed.return_value = [0.1, 0.2]
 
@@ -219,7 +246,10 @@ async def test_transfer_linkedin_post_db_error(override_get_current_admin_user):
                     "/api/app/linkedin/transfer-post", json=post_data
                 )
                 assert response.status_code == 500
-                assert "Transfer failed" in response.json()["detail"]
+                detail = response.json()["detail"]
+                assert detail == "Transfer failed."
+                assert "10.0.0.5" not in detail
+                assert "10.0.0.5" in caplog.text
         finally:
             app.dependency_overrides.pop(get_db, None)
 
@@ -326,20 +356,23 @@ async def test_transfer_posts_bulk_empty(override_get_current_admin_user):
 
 
 @pytest.mark.asyncio
-async def test_transfer_posts_bulk_db_error(override_get_current_admin_user):
+async def test_transfer_posts_bulk_db_error(override_get_current_admin_user, caplog):
     """Test bulk transfer with DB error rolls back."""
     posts_data = [
         {"content": "Post that will fail"},
     ]
 
     mock_db = AsyncMock()
-    mock_db.commit = AsyncMock(side_effect=Exception("DB bulk error"))
+    mock_db.commit = AsyncMock(side_effect=Exception("DB bulk error: /var/lib/pg/wal"))
     mock_db.rollback = AsyncMock()
     from app.database import get_db
 
     app.dependency_overrides[get_db] = lambda: mock_db
 
-    with patch("app.api.linkedin.get_embedding", new_callable=AsyncMock) as mock_embed:
+    with (
+        patch("app.api.linkedin.get_embedding", new_callable=AsyncMock) as mock_embed,
+        caplog.at_level("ERROR"),
+    ):
         mock_embed.return_value = [0.1, 0.2]
         try:
             async with AsyncClient(
@@ -349,7 +382,10 @@ async def test_transfer_posts_bulk_db_error(override_get_current_admin_user):
                     "/api/app/linkedin/transfer-posts", json=posts_data
                 )
                 assert response.status_code == 500
-                assert "Bulk transfer failed" in response.json()["detail"]
+                detail = response.json()["detail"]
+                assert detail == "Bulk transfer failed."
+                assert "/var/lib/pg/wal" not in detail
+                assert "/var/lib/pg/wal" in caplog.text
                 mock_db.rollback.assert_called_once()
         finally:
             app.dependency_overrides.pop(get_db, None)
@@ -388,18 +424,26 @@ async def test_login_linkedin_failure(override_get_current_admin_user):
 
 
 @pytest.mark.asyncio
-async def test_login_linkedin_exception(override_get_current_admin_user):
+async def test_login_linkedin_exception(override_get_current_admin_user, caplog):
+    """The raw exception must never reach the client — only a generic detail,
+    with the full exception logged server-side instead."""
     login_data = {"username": "test@test.com", "password": "password"}
-    with patch(
-        "app.api.linkedin.linkedin_service.login", new_callable=AsyncMock
-    ) as mock_login:
-        mock_login.side_effect = Exception("Challenge required")
+    with (
+        patch(
+            "app.api.linkedin.linkedin_service.login", new_callable=AsyncMock
+        ) as mock_login,
+        caplog.at_level("ERROR"),
+    ):
+        mock_login.side_effect = Exception("Challenge required: internal driver X")
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
             response = await client.post("/api/app/linkedin/login", json=login_data)
             assert response.status_code == 400
-            assert "Challenge required" in response.json()["detail"]
+            detail = response.json()["detail"]
+            assert detail == "LinkedIn login failed. Check credentials and MFA."
+            assert "Challenge required: internal driver X" not in detail
+            assert "Challenge required: internal driver X" in caplog.text
 
 
 @pytest.mark.asyncio
