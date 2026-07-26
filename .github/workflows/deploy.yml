@@ -476,6 +476,12 @@ jobs:
     name: E2E Tests (Docker Stack)
     runs-on: ubuntu-latest
     needs: [build-backend, build-frontend, build-admin-frontend, build-proxy]
+    # Pin the Compose project name so the ollama data volume is deterministically
+    # named `mavrov_ollama_data` across every `docker compose` step in this job.
+    # The Ollama model-weights cache (below) pre-populates / snapshots exactly that
+    # volume, so the name must be stable and match what Compose uses.
+    env:
+      COMPOSE_PROJECT_NAME: mavrov
     steps:
       - uses: actions/checkout@v7
 
@@ -496,6 +502,36 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---- Ollama model-weights cache (#78) ------------------------------------
+      # The largest remaining uncached runtime download: the ollama service pulls
+      # the embedding + generation model weights (nomic-embed-text, llama3.2,
+      # llama3.2:1b — see .github/ollama-models.txt) into its data volume on every
+      # run. We snapshot that volume to a tarball and cache it, keyed on the model
+      # list + the pinned ollama image (base-images.txt). On a HIT we pre-load the
+      # volume before the stack starts, so the ollama container finds the blobs
+      # already present and skips the pull entirely; on a MISS we let it pull as
+      # today, then snapshot the volume so the next run is a hit.
+      - name: Restore cached Ollama model weights
+        id: cache-ollama-models
+        uses: actions/cache@v6
+        with:
+          path: /tmp/ollama-models
+          key: ollama-models-${{ hashFiles('.github/ollama-models.txt', '.github/base-images.txt') }}
+
+      - name: Pre-load Ollama models into volume (cache hit)
+        if: steps.cache-ollama-models.outputs.cache-hit == 'true'
+        run: |
+          set -eo pipefail
+          echo "Cache hit — restoring Ollama model weights into ${COMPOSE_PROJECT_NAME}_ollama_data (no pull):"
+          cat .github/ollama-models.txt | grep -vE '^\s*#|^\s*$'
+          # Create the (empty) named volume Compose will reuse, then extract the
+          # cached blobs into it before the stack starts.
+          docker volume create "${COMPOSE_PROJECT_NAME}_ollama_data" >/dev/null
+          docker run --rm \
+            -v "${COMPOSE_PROJECT_NAME}_ollama_data":/root/.ollama \
+            -v /tmp/ollama-models:/backup \
+            alpine sh -c 'cd /root/.ollama && tar xf /backup/ollama-models.tar'
 
       - name: Start Full Stack (Prod Topology)
         env:
@@ -568,6 +604,23 @@ jobs:
           echo "Waiting for proxy to respond on port 80..."
           timeout 60s bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:80 | grep "200\|302"; do sleep 2; done'
           echo "Stack is up!"
+
+      # On a cache MISS the ollama container has now pulled the model weights
+      # (the proxy only answers once backend -> ollama is healthy, i.e. all models
+      # are present). Snapshot the volume so actions/cache persists it in its
+      # post-job save step, making the next run a hit. Skipped on a hit (the
+      # tarball is already the restored cache; the key exists, so no re-save).
+      - name: Snapshot Ollama model weights (cache miss)
+        if: steps.cache-ollama-models.outputs.cache-hit != 'true'
+        run: |
+          set -eo pipefail
+          echo "Cache miss — snapshotting pulled Ollama model weights for next run:"
+          cat .github/ollama-models.txt | grep -vE '^\s*#|^\s*$'
+          mkdir -p /tmp/ollama-models
+          docker run --rm \
+            -v "${COMPOSE_PROJECT_NAME}_ollama_data":/root/.ollama \
+            -v /tmp/ollama-models:/backup \
+            alpine sh -c 'cd /root/.ollama && tar cf /backup/ollama-models.tar .'
 
       - name: Seed E2E Data
         run: |
