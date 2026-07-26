@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Docs
+- **Reconcile the root `agents/` A2A roster prompts with the `.claude/agents/` charters** (#99).
+  The A2A delivery-team `system_prompt`s in `agents/common/roster.py` predated the richer Claude
+  Code subagent charters added in #89 and had drifted. Enriched the overlapping role prompts with
+  the hard-won guidance from the matching charters: `code-reviewer` ← `pr-reviewer` (mandatory
+  test-coverage + user/edge-case analysis — "coverage executed ≠ behavior asserted" — and a clear
+  severity-tagged APPROVED/REJECTED verdict); `release-manager` ← `release-manager` (SemVer bump by
+  content, never default to minor; the CHANGELOG `[Unreleased]`→version rotation trap; tag on the
+  full SHA; `deploy.yml` has no concurrency guard so serialize; babysit to green, fix-forward on
+  red); `security-reviewer` ← `security-triage` (pull & triage CodeQL + Dependabot real-vs-noise,
+  file grounded issues, verify a release's fixed alerts show `fixed`, no exploit details in a public
+  repo); `spec-analyst`/`story-writer` ← `issue-author` (ground every claim in real code with
+  `path:line`, the full issue template + milestone/priority/area labels). Also fixed factual drift:
+  the `frontend-dev` prompt no longer claims Angular "signals" (the app uses RxJS Observables + the
+  `async` pipe, per #29 — Signals only sparingly for local state), and `PROJECT_PLAYBOOK` now states
+  Python **3.12** in prod/CI (dev venv may be 3.13) and adds the lesson that SSR/`HttpBackend`/
+  interceptor/transfer-cache changes must be validated against the full Docker E2E before merge (the
+  v1.8.0 #84 revert). Prompt strings only — no change to role keys, ports, dependencies or the
+  A2A architecture; the `agents/tests/` suite (55 tests) still passes.
+
 ### Fixed
 - **LinkedIn session now persists across container recreates/deploys** (#44). The saved LinkedIn
   login session was stored under `/tmp/linkedin_cookies` inside the backend container — part of the
