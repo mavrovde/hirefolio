@@ -431,11 +431,29 @@ jobs:
         working-directory: ./frontend
         run: npx playwright install --with-deps
 
-      - name: Pull Standard Images
+      - name: Restore cached base images
+        id: cache-base-images
+        uses: actions/cache@v6
+        with:
+          path: /tmp/base-images
+          key: base-images-${{ hashFiles('.github/base-images.txt') }}
+
+      - name: Load or pull base images
         run: |
-          docker pull pgvector/pgvector:pg16
-          docker pull ollama/ollama:latest
-          docker pull ghcr.io/open-webui/open-webui:latest
+          set -eo pipefail
+          mkdir -p /tmp/base-images
+          TAR=/tmp/base-images/images.tar
+          IMAGES="$(grep -vE '^\s*#|^\s*$' .github/base-images.txt)"
+          if [ -f "$TAR" ]; then
+            echo "Cache hit — loading pinned base images from tarball (no pull):"
+            echo "$IMAGES"
+            docker load -i "$TAR"
+          else
+            echo "Cache miss — pulling pinned base images:"
+            echo "$IMAGES"
+            for img in $IMAGES; do docker pull "$img"; done
+            docker save $IMAGES -o "$TAR"
+          fi
 
       - name: Wait for Stack Ready
         run: |
@@ -625,11 +643,29 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Pull Standard Images
+      - name: Restore cached base images
+        id: cache-base-images
+        uses: actions/cache@v6
+        with:
+          path: /tmp/base-images
+          key: base-images-${{ hashFiles('.github/base-images.txt') }}
+
+      - name: Load or pull base images
         run: |
-          docker pull pgvector/pgvector:pg16
-          docker pull ollama/ollama:latest
-          docker pull ghcr.io/open-webui/open-webui:latest
+          set -eo pipefail
+          mkdir -p /tmp/base-images
+          TAR=/tmp/base-images/images.tar
+          IMAGES="$(grep -vE '^\s*#|^\s*$' .github/base-images.txt)"
+          if [ -f "$TAR" ]; then
+            echo "Cache hit — loading pinned base images from tarball (no pull):"
+            echo "$IMAGES"
+            docker load -i "$TAR"
+          else
+            echo "Cache miss — pulling pinned base images:"
+            echo "$IMAGES"
+            for img in $IMAGES; do docker pull "$img"; done
+            docker save $IMAGES -o "$TAR"
+          fi
 
       - name: Start Proxy Stack
         env:
