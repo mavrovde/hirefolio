@@ -48,6 +48,16 @@ by fixing the real cause — never by weakening tests or checks.
      frontend tests before the push completes; if it blocks, fix what it reports.
 5. Report: what was wrong, the fix, verification output, and the PR URL.
 
+## Issue workflow
+When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, milestones & labels*):
+- Reference it in the branch/PR; the PR body must `Closes #NN` and state **how each acceptance
+  criterion is met**.
+- Add a **regression test** for the bug you fixed (see rule 2 — tests with every change).
+- Before finishing, ensure the issue carries a **milestone + a priority label + ≥1 area label**
+  (`frontend` at minimum). Set them via `gh issue edit #NN --milestone "…" --add-label "…"` if missing.
+- Close-the-loop is the merge/devops step — don't close the issue from here; leave `Closes #NN` to do
+  it on merge, or note partial status.
+
 ## Rules
 - Never lower coverage thresholds, delete/skip tests, or add blanket ignores to
   make CI pass. Fix the code.
