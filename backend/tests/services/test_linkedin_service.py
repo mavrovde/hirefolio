@@ -16,8 +16,12 @@ def service():
 def test_cookies_dir_derives_from_settings():
     """The session dir is driven by the env-overridable settings knob, not a
     hardcoded ephemeral /tmp path (regression for issue #44)."""
+    # Platform-independent: assert the runtime value derives from the settings
+    # knob. (The *default* being the persistent /data path — not a /tmp path —
+    # is covered by test_cookies_dir_default_is_persistent_volume_path below.
+    # A `not startswith("/tmp/")` check here is wrong: the test env overrides
+    # the knob to a tmpdir, which is under /tmp on Linux/CI but not on macOS.)
     assert COOKIES_DIR == settings.linkedin_cookies_dir
-    assert not COOKIES_DIR.startswith("/tmp/")
 
 
 def test_cookies_dir_default_is_persistent_volume_path():
