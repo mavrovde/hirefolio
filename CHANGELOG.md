@@ -70,8 +70,9 @@ All notable changes to this project will be documented in this file.
 ### Docs
 - **Corrected `CLAUDE.md` frontend state-management guidance** (#48, #29). Rule #5 "Frontend
   discipline" and the project-description bullet now describe the pattern the code actually uses —
-  RxJS Observables + the `async` pipe — instead of Signals (the frontend has zero
-  `signal(`/`computed(`/`effect(` usage); SSR/`isPlatformBrowser()`/dumb-component guidance retained.
+  RxJS Observables + the `async` pipe as the **primary** state/streams mechanism (Signals are used
+  only sparingly for local component state, e.g. `blog-post`), instead of implying Signals-first
+  state; SSR/`isPlatformBrowser()`/dumb-component guidance retained.
 - **Codified the issue/milestone/label development workflow into repo config** (#74, PR #75):
   a new `CLAUDE.md` section, `backend-dev`/`frontend-dev`/`devops-pipeline` role updates, a committed
   `.claude/skills/issue-workflow` skill, and a `/issue-triage` command — shared across devices and

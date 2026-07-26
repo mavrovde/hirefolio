@@ -90,8 +90,9 @@ specs/      Feature specs (planned/done)
    mirroring them. All backend I/O is async.
 5. **Frontend discipline.** State via RxJS Observables rendered with the `async` pipe (components
    expose `Observable` fields composed with `switchMap`/`catchError`/`shareReplay`, consumed as
-   `value$ | async` in templates); RxJS is the current state/streams mechanism — Signals are not
-   used yet. Guard all DOM access with `isPlatformBrowser()` (SSR-safe). Components stay dumb; logic
+   `value$ | async` in templates); RxJS is the **primary** state/streams mechanism. Signals are
+   used only sparingly for local component state where they fit (e.g. `blog-post`), not as the
+   default. Guard all DOM access with `isPlatformBrowser()` (SSR-safe). Components stay dumb; logic
    lives in injected services.
 6. **Dependency policy.** Upgrade to latest **within current majors** by default; breaking majors
    (e.g. Angular, TypeScript) are separate, deliberate efforts. `linkedin-api` stays `2.2.1` (prod
