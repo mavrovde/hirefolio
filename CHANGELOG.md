@@ -45,6 +45,14 @@ All notable changes to this project will be documented in this file.
   of the schema. Added a CI `backend-migrations` job that exercises the real entrypoint against a
   simulated pre-Alembic DB and a fresh DB (each re-run to confirm idempotency), plus `alembic check`
   (drift guard), on every push to `main`.
+- **Enabled `withFetch()` for the public app's HttpClient** (#94). The public app overrides
+  `HttpBackend` with `SsrHttpBackend` (from #25), which delegates to Angular's `FetchBackend`, but
+  `provideHttpClient()` was called without `withFetch()` — leaving the fetch backend without its
+  `FetchFactory`, so client-side requests issued through it failed at the network layer
+  (`net::ERR_FAILED`). The footer's `GET /api/app/stats/public` — the site's only genuine
+  browser-side fetch — was the visible casualty (backend version stuck on "Unknown"), which
+  deterministically failed the E2E `footer-stats` spec and blocked the deploy. Added `withFetch()`
+  and gave the footer version assertion a generous timeout.
 
 ### Security
 - **Rate-limited the public `GET /api/app/profile` endpoint** (#47): a small, self-contained
