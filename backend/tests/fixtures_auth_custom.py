@@ -1,7 +1,7 @@
 import pytest
-from app.services.auth import create_access_token
+
 from app.models.user import User
-from app.services.auth import get_password_hash
+from app.services.auth import create_access_token, get_password_hash
 
 
 @pytest.fixture(scope="function")

@@ -1,6 +1,8 @@
-import pytest
-from unittest.mock import patch
 import json
+from unittest.mock import patch
+
+import pytest
+
 from app.services.chat import chat_with_llm
 
 

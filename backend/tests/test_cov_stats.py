@@ -7,7 +7,7 @@ SQLAlchemy async/greenlet bridge prevents coverage from recording the
 post-await resumption lines, even though the code genuinely runs.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -33,7 +33,7 @@ async def _seed_posts(db_session: AsyncSession) -> None:
             published=True,
             language="en",
             tags=["python", "fastapi"],
-            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
         ),
         Post(
             title="Beta",
@@ -42,7 +42,7 @@ async def _seed_posts(db_session: AsyncSession) -> None:
             published=True,
             language="en",
             tags=["python", "testing"],
-            created_at=datetime(2026, 2, 1, tzinfo=timezone.utc),
+            created_at=datetime(2026, 2, 1, tzinfo=UTC),
         ),
         Post(
             title="Gamma",
@@ -51,7 +51,7 @@ async def _seed_posts(db_session: AsyncSession) -> None:
             published=False,
             language="de",
             tags=["python"],
-            created_at=datetime(2026, 3, 1, tzinfo=timezone.utc),
+            created_at=datetime(2026, 3, 1, tzinfo=UTC),
         ),
     ]
     for p in posts:

@@ -1,6 +1,7 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
 import httpx
+import pytest
 
 from app.services.embeddings import get_embedding
 
@@ -46,7 +47,7 @@ async def test_get_embedding_logging():
         with patch("app.services.embeddings.logger") as mock_logger:
             result = await get_embedding("test")
             assert result is None
-            mock_logger.error.assert_called()
+            mock_logger.exception.assert_called()
 
 
 @pytest.mark.asyncio

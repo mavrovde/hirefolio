@@ -1,7 +1,9 @@
-import pytest
-import json
 import asyncio
-from app.services.multi_chat import multi_agent_conversation, AgentConfig
+import json
+
+import pytest
+
+from app.services.multi_chat import AgentConfig, multi_agent_conversation
 
 
 @pytest.mark.asyncio
@@ -63,7 +65,7 @@ async def test_real_multi_chat_ollama_connection():
                 if len(chunks) > 50:
                     break
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         print(
             "Test timed out waiting for Ollama response. This might be due to model loading."
         )

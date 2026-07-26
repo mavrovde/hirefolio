@@ -1,7 +1,9 @@
-import pytest
 import json
-from unittest.mock import patch, MagicMock, AsyncMock
-from app.services.multi_chat import multi_agent_conversation, AgentConfig
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from app.services.multi_chat import AgentConfig, multi_agent_conversation
 
 # Scenario: Multi-agent conversation flow
 # 1. Connection check passes.

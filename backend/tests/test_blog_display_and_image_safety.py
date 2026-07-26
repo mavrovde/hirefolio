@@ -3,10 +3,10 @@ Tests for blog display: initial load 10, load more 5.
 These tests verify the pagination behavior expected by the frontend blog component.
 """
 
-from app.config import settings
 import pytest
 from httpx import AsyncClient
 
+from app.config import settings
 
 API_PREFIX = settings.api_prefix
 

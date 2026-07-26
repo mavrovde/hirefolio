@@ -1,15 +1,19 @@
-from typing import Optional, List, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from math import ceil
+from typing import Any
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, field_validator, ConfigDict, Field
 
 from app.database import get_db
+from app.logger import get_logger
 from app.models.post import Post
-from app.services.embeddings import get_embedding
-from app.services.auth import get_current_admin_user, get_current_user_optional
 from app.models.user import User
+from app.services.auth import get_current_admin_user, get_current_user_optional
+from app.services.embeddings import get_embedding
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -18,11 +22,11 @@ class PostCreate(BaseModel):
     title: str
     slug: str
     content: str
-    summary: Optional[str] = None
-    image_url: Optional[str] = None
+    summary: str | None = None
+    image_url: str | None = None
     language: str = "en"
     published: bool = False
-    tags: List[str] = []
+    tags: list[str] = []
 
     @field_validator("tags")
     @classmethod
@@ -33,13 +37,13 @@ class PostCreate(BaseModel):
 
 
 class PostUpdate(BaseModel):
-    title: Optional[str] = None
-    content: Optional[str] = None
-    summary: Optional[str] = None
-    image_url: Optional[str] = None
-    language: Optional[str] = None
-    published: Optional[bool] = None
-    tags: Optional[List[str]] = None
+    title: str | None = None
+    content: str | None = None
+    summary: str | None = None
+    image_url: str | None = None
+    language: str | None = None
+    published: bool | None = None
+    tags: list[str] | None = None
 
     @field_validator("tags")
     @classmethod
@@ -54,11 +58,11 @@ class PostResponse(BaseModel):
     title: str
     slug: str
     content: str
-    summary: Optional[str]
-    image_url: Optional[str] = Field(None, validation_alias="display_image_url")
+    summary: str | None
+    image_url: str | None = Field(None, validation_alias="display_image_url")
     language: str
     published: bool
-    tags: List[str]
+    tags: list[str]
     created_at: str
     updated_at: str
 
@@ -69,18 +73,18 @@ class PostListResponse(BaseModel):
     id: int
     title: str
     slug: str
-    summary: Optional[str]
-    image_url: Optional[str] = Field(None, validation_alias="display_image_url")
+    summary: str | None
+    image_url: str | None = Field(None, validation_alias="display_image_url")
     language: str
     published: bool
-    tags: List[str]
+    tags: list[str]
     created_at: str
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class PaginatedPostListResponse(BaseModel):
-    items: List[PostListResponse]
+    items: list[PostListResponse]
     total: int
     page: int
     page_size: int
@@ -91,8 +95,8 @@ class SimilarPostResponse(BaseModel):
     id: int
     title: str
     slug: str
-    summary: Optional[str]
-    image_url: Optional[str] = None
+    summary: str | None
+    image_url: str | None = None
     similarity: float
 
 
@@ -103,34 +107,33 @@ class TagSuggestionRequest(BaseModel):
 
 class PostDetailSuggestionRequest(BaseModel):
     content: str
-    field: Optional[str] = "all"
+    field: str | None = "all"
 
 
 class PostDetailSuggestionResponse(BaseModel):
     title: str
     slug: str
     summary: str
-    tags: List[str]
+    tags: list[str]
 
 
 @router.get("", response_model=PaginatedPostListResponse)
 async def list_posts(
     published_only: bool = True,
-    lang: Optional[str] = None,
-    tag: Optional[str] = None,
+    lang: str | None = None,
+    tag: str | None = None,
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     sort_by: str = Query("created_at", description="Field to sort by"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
-    search: Optional[str] = Query(None, description="Search in title and summary"),
+    search: str | None = Query(None, description="Search in title and summary"),
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     """List posts with pagination, sorting, and search."""
     # Restrict access to drafts
-    if not published_only:
-        if not current_user or not current_user.is_admin:
-            published_only = True
+    if not published_only and (not current_user or not current_user.is_admin):
+        published_only = True
 
     # Build base query
     query = select(Post)
@@ -203,7 +206,7 @@ async def list_posts(
 async def get_post_by_id(
     id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     """Get a single post by ID."""
     result = await db.execute(select(Post).where(Post.id == id))
@@ -213,9 +216,8 @@ async def get_post_by_id(
         raise HTTPException(status_code=404, detail="Post not found")
 
     # Check permissions for drafts
-    if not post.published:
-        if not current_user or not current_user.is_admin:
-            raise HTTPException(status_code=404, detail="Post not found")
+    if not post.published and (not current_user or not current_user.is_admin):
+        raise HTTPException(status_code=404, detail="Post not found")
 
     return PostResponse(
         id=post.id,
@@ -235,7 +237,7 @@ async def get_post_by_id(
 @router.get("/search/semantic")
 async def semantic_search(
     q: str,
-    lang: Optional[str] = "en",
+    lang: str | None = "en",
     limit: int = 10,
     min_relevance: float = 0.3,  # Filter out low relevance
     db: AsyncSession = Depends(get_db),
@@ -247,7 +249,7 @@ async def semantic_search(
         return []
 
     # 1. Vector Search
-    vector_results: List[Any] = []
+    vector_results: list[Any] = []
     try:
         query_embedding = await get_embedding(q)
         if query_embedding:
@@ -273,7 +275,7 @@ async def semantic_search(
             vector_results = list(v_res.all())
     except Exception:
         # Fallback to keyword search if vector fails
-        pass
+        logger.exception("Vector search failed; falling back to keyword search")
 
     # 2. Keyword Search
     keyword_query = select(Post).where(Post.published.is_(True))
@@ -342,7 +344,7 @@ async def semantic_search(
 async def get_post(
     slug: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     """Get a single post by slug."""
     result = await db.execute(select(Post).where(Post.slug == slug))
@@ -352,9 +354,8 @@ async def get_post(
         raise HTTPException(status_code=404, detail="Post not found")
 
     # Check permissions for drafts
-    if not post.published:
-        if not current_user or not current_user.is_admin:
-            raise HTTPException(status_code=404, detail="Post not found")
+    if not post.published and (not current_user or not current_user.is_admin):
+        raise HTTPException(status_code=404, detail="Post not found")
 
     return PostResponse(
         id=post.id,
@@ -409,7 +410,7 @@ async def create_post(
             print("DEBUG: create_post retry commit success")
         except Exception as e2:
             print(f"DEBUG: create_post retry commit failed: {e2}")
-            raise e2
+            raise
     await db.refresh(post)
 
     return PostResponse(
@@ -427,7 +428,7 @@ async def create_post(
     )
 
 
-@router.get("/{slug}/similar", response_model=List[SimilarPostResponse])
+@router.get("/{slug}/similar", response_model=list[SimilarPostResponse])
 async def get_similar_posts(
     slug: str,
     limit: int = 5,
@@ -504,7 +505,7 @@ async def suggest_tags_endpoint(
 
 class PostGenerationRequest(BaseModel):
     topic: str
-    keywords: List[str] = []
+    keywords: list[str] = []
     language: str = "en"
 
 
@@ -572,7 +573,7 @@ async def generate_post_endpoint(
             print("DEBUG: create_post retry commit success")
         except Exception as e2:
             print(f"DEBUG: create_post retry commit failed: {e2}")
-            raise e2
+            raise
         await db.refresh(post)
 
     return PostResponse(
@@ -727,6 +728,7 @@ async def get_post_image(
         raise HTTPException(status_code=404, detail="Image not found")
 
     from io import BytesIO
+
     from starlette.responses import StreamingResponse
 
     return StreamingResponse(

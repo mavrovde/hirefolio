@@ -6,15 +6,15 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
+from app.logger import get_logger
 from app.models.user import User
 from app.services.auth import (
-    verify_password,
     create_access_token,
     get_current_user,
+    verify_password,
 )
-from app.config import settings
-from app.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -116,7 +116,6 @@ async def change_password(
     current_user.hashed_password = get_password_hash(password_data.new_password)
     db.add(current_user)
     await db.commit()
-    return
 
 
 class UpdateGeminiKeyRequest(BaseModel):

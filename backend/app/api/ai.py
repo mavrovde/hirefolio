@@ -1,18 +1,20 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List, Dict
-from app.services.chat import chat_with_llm
-from app.services.multi_chat import multi_agent_conversation, AgentConfig
+
+from app.logger import get_logger
 from app.models.user import User
 from app.services.auth import get_current_admin_user
-from fastapi import Depends
+from app.services.chat import chat_with_llm
+from app.services.multi_chat import AgentConfig, multi_agent_conversation
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 class ChatRequest(BaseModel):
-    messages: List[Dict[str, str]]
+    messages: list[dict[str, str]]
 
 
 class NameRequest(BaseModel):
@@ -20,7 +22,7 @@ class NameRequest(BaseModel):
 
 
 class MultiChatRequest(BaseModel):
-    agents: List[AgentConfig]
+    agents: list[AgentConfig]
     topic: str
 
 
@@ -45,8 +47,9 @@ async def gemini_chat_endpoint(
     history = request.messages[:-1]
     last_message = request.messages[-1]["content"] if request.messages else ""
 
-    from app.services.ai import chat_with_gemini
     from fastapi import HTTPException
+
+    from app.services.ai import chat_with_gemini
 
     try:
         response = await chat_with_gemini(
@@ -54,9 +57,7 @@ async def gemini_chat_endpoint(
         )
         return {"response": response}
     except Exception:
-        import logging
-
-        logging.error("Gemini API Error occurred.")
+        logger.exception("Gemini API Error occurred.")
         raise HTTPException(
             status_code=500, detail="Error communicating with AI service"
         )

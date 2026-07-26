@@ -1,6 +1,7 @@
+from unittest.mock import MagicMock
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Mark all tests in this module as async

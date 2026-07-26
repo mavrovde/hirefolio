@@ -1,10 +1,12 @@
+from unittest.mock import patch
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
-from app.models.cv_request import CvRequest
-from app.models.cv_document import CvDocument
-from unittest.mock import patch
+
 from app.config import settings
+from app.models.cv_document import CvDocument
+from app.models.cv_request import CvRequest
 
 
 @pytest.mark.asyncio
@@ -118,8 +120,8 @@ async def test_cv_download_no_active(client: AsyncClient, db_session):
 
 @pytest.mark.asyncio
 async def test_email_service_logic(db_session):
-    from app.services.email import email_service
     from app.config import settings
+    from app.services.email import email_service
 
     # Mock settings to ensure email is "enabled"
     with (

@@ -1,7 +1,9 @@
-from app.config import settings
+import asyncio
+
 import pytest
 from httpx import AsyncClient
-import asyncio
+
+from app.config import settings
 
 
 @pytest.mark.asyncio
@@ -326,11 +328,12 @@ async def test_cv_requests_zero_results_pagination(client: AsyncClient, db_sessi
 @pytest.mark.asyncio
 async def test_posts_sort_stability(client: AsyncClient, db_session):
     """Test sort stability with identical values."""
-    from app.models.post import Post
     import datetime
 
+    from app.models.post import Post
+
     # Create posts with same created_at timestamp
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     posts = [
         Post(
             title=f"Post {i}",

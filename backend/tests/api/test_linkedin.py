@@ -1,8 +1,10 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
+
 from app.main import app
 from app.services.auth import get_current_admin_user
-from unittest.mock import patch, MagicMock, AsyncMock
 
 # Mock user for dependency override
 mock_admin_user = MagicMock()

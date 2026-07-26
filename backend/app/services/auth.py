@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
@@ -10,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models.user import User
 from app.logger import get_logger
+from app.models.user import User
 
 logger = get_logger(__name__)
 
@@ -37,10 +36,10 @@ def get_password_hash(password: str) -> str:
     return hashed.decode("utf-8")
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if expires_delta:
         expire = now + expires_delta
     else:
@@ -53,7 +52,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> Optional[dict]:
+def decode_access_token(token: str) -> dict | None:
     """Decode and validate a JWT token."""
     try:
         payload = jwt.decode(
@@ -79,7 +78,7 @@ async def get_current_user(
     if payload is None:
         raise credentials_exception
 
-    username: Optional[str] = payload.get("sub")
+    username: str | None = payload.get("sub")
     if username is None:
         raise credentials_exception
 
@@ -96,9 +95,9 @@ async def get_current_user(
 
 
 async def get_current_user_optional(
-    token: Optional[str] = Depends(oauth2_scheme_optional),
+    token: str | None = Depends(oauth2_scheme_optional),
     db: AsyncSession = Depends(get_db),
-) -> Optional[User]:
+) -> User | None:
     """Get the current authenticated user from JWT token, if present."""
     if not token:
         return None
@@ -107,7 +106,7 @@ async def get_current_user_optional(
     if payload is None:
         return None
 
-    username: Optional[str] = payload.get("sub")
+    username: str | None = payload.get("sub")
     if username is None:
         return None
 

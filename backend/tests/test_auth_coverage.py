@@ -1,19 +1,21 @@
-from app.config import settings
+from datetime import timedelta
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi import HTTPException
-from unittest.mock import MagicMock, patch
-from app.services.auth import (
-    get_current_user,
-    get_current_admin_user,
-    create_access_token,
-    get_current_user_optional,
-    decode_access_token,
-)
-from datetime import timedelta
 from jose import JWTError
-from app.models.user import User
-from app.services.auth import get_password_hash
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
+from app.models.user import User
+from app.services.auth import (
+    create_access_token,
+    decode_access_token,
+    get_current_admin_user,
+    get_current_user,
+    get_current_user_optional,
+    get_password_hash,
+)
 
 # --- Integration Tests for API Edge Cases ---
 

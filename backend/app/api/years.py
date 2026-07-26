@@ -1,10 +1,12 @@
 import json
 import os
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, HTTPException
-from app.logger import logger
+
 from app.config import settings
+from app.logger import logger
 
 router = APIRouter(prefix="/cv", tags=["cv"])
 
@@ -82,7 +84,7 @@ async def get_cv_years():
     # Always surface the current year so the timeline reaches the present, even if no
     # experience *started* this year (roles are ongoing). Keeps the slider current
     # (e.g. 2026) without hardcoding a year.
-    all_years.add(datetime.now(timezone.utc).year)
+    all_years.add(datetime.now(UTC).year)
 
     sorted_years = sorted(all_years, reverse=True)
     return {"years": sorted_years}

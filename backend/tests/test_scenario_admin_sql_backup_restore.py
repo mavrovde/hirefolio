@@ -1,6 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import MagicMock, AsyncMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Tests for missing branches in admin_sql.py
@@ -36,7 +37,7 @@ async def test_admin_sql_backup_error(client: AsyncClient):
         try:
             async for _ in response.aiter_bytes():
                 pass
-        except Exception:
+        except Exception:  # noqa: S110 -- simulated stream error is expected here
             pass
 
         assert response.status_code == 200

@@ -3,8 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.profile_snapshot import ProfileSnapshot
 from app.logger import logger
+from app.models.profile_snapshot import ProfileSnapshot
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 

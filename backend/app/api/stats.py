@@ -1,8 +1,9 @@
+from datetime import UTC
+
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select, func, text
-from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
-from typing import List, Dict
+from sqlalchemy import func, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.post import Post
@@ -16,7 +17,7 @@ class PostStats(BaseModel):
     total: int
     published: int
     drafts: int
-    by_language: Dict[str, int]
+    by_language: dict[str, int]
 
 
 class PostSummary(BaseModel):
@@ -31,9 +32,9 @@ class SystemStats(BaseModel):
     users: int
     subscribers: int
     visitors: str
-    top_tags: Dict[str, int] = {}
-    recent_posts: List[PostSummary] = []
-    system_health: Dict[str, bool] = {"database": True, "ai_service": False}
+    top_tags: dict[str, int] = {}
+    recent_posts: list[PostSummary] = []
+    system_health: dict[str, bool] = {"database": True, "ai_service": False}
 
 
 @router.get("", response_model=SystemStats)
@@ -86,6 +87,7 @@ async def get_stats(
 
     # System Health Check (Ollama)
     import httpx
+
     from app.config import settings
 
     ai_status = False
@@ -137,10 +139,10 @@ async def get_public_stats(
     uptime_str = "Unknown"
     start_time_iso = None
     if hasattr(request.app.state, "start_time"):
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         st = request.app.state.start_time
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         uptime_delta = now - st
         # Format: "X days, H:M:S" or "H:M:S"
         uptime_str = str(uptime_delta).split(".")[0]  # remove microseconds

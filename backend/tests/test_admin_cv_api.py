@@ -1,9 +1,11 @@
-from app.config import settings
+from unittest.mock import patch
+
 import pytest
 from sqlalchemy.future import select
+
+from app.config import settings
 from app.models.cv_document import CvDocument
 from app.models.cv_request import CvRequest
-from unittest.mock import patch
 
 # Mock is handled in conftest
 

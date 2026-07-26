@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+
 from app.models.user import User
 
 
@@ -47,8 +49,8 @@ async def test_lifespan_admin_key_update():
     # We want it to succeed without doing anything
     mock_conn.execute.return_value = []
 
-    import app.main
     import app.database
+    import app.main
 
     # Patch BOTH locations to be absolutely sure
     with (
@@ -63,8 +65,9 @@ async def test_lifespan_admin_key_update():
             patch("os.getenv", return_value="new-seed-key"),
         ):
             # Trigger lifespan
-            from app.main import lifespan
             from fastapi import FastAPI
+
+            from app.main import lifespan
 
             app_dummy = FastAPI()
 

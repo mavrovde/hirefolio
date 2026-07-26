@@ -1,8 +1,10 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-from app.services.ai import _get_gemini_client
-from app.api.auth import update_gemini_key, UpdateGeminiKeyRequest
+
+from app.api.auth import UpdateGeminiKeyRequest, update_gemini_key
 from app.models.user import User
+from app.services.ai import _get_gemini_client
 
 # Unit tests do not need DB interaction if we mock everything
 # This ensures lines are hit logic-wise without integration setup

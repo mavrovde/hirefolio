@@ -1,8 +1,10 @@
-from app.config import settings
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from app.services.multi_chat import multi_agent_conversation, AgentConfig
 from httpx import AsyncClient
+
+from app.config import settings
+from app.services.multi_chat import AgentConfig, multi_agent_conversation
 
 
 def log(msg):
@@ -34,7 +36,6 @@ class MockStreamResponse:
         for line in self.lines:
             yield line
         # Explicit return to avoid any implicit StopIteration issues
-        return
 
     async def __aenter__(self):
         return self

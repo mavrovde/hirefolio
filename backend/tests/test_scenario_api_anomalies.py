@@ -1,7 +1,9 @@
-from app.config import settings
-import pytest
 from unittest.mock import patch
+
+import pytest
 from httpx import AsyncClient
+
+from app.config import settings
 from app.main import app
 from app.services.auth import get_current_user_optional
 
@@ -127,7 +129,6 @@ async def test_similar_posts_no_embedding(client: AsyncClient, mock_embedding):
     # We would need to manually update DB.
     # Since client fixture mocks DB session via override_get_db yielding 'db_session',
     # we can try to access that session fixture here if we passed it.
-    pass
 
 
 @pytest.mark.asyncio

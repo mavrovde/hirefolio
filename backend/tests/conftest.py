@@ -1,10 +1,11 @@
+from collections.abc import AsyncGenerator
+
 import pytest
-from typing import AsyncGenerator
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.main import app
+
 from app.database import get_db
-from httpx import ASGITransport
+from app.main import app
 
 
 @pytest.fixture(scope="function")

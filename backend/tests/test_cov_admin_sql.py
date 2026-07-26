@@ -1,12 +1,10 @@
-import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.api import admin_sql
-
 
 # ---------------------------------------------------------------------------
 # execute_sql: row / no-row / no-return branches (lines 34, 36-46)
@@ -104,7 +102,7 @@ async def test_restore_timeout(client: AsyncClient):
     mock_proc.kill = MagicMock()
 
     async def raise_timeout(*args, **kwargs):
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     files = {"file": ("backup.sql", b"SELECT 1;", "application/sql")}
     with (

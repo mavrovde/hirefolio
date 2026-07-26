@@ -1,7 +1,8 @@
-from typing import Union, List, Optional
-import re
-import httpx
 import json
+import re
+
+import httpx
+
 from app.config import settings
 from app.logger import get_logger
 
@@ -17,7 +18,7 @@ except ImportError as e:  # pragma: no cover
 logger = get_logger(__name__)
 
 
-def _get_gemini_client(user_api_key: Optional[str] = None):
+def _get_gemini_client(user_api_key: str | None = None):
     """Configures and returns a Gemini client instance."""
     api_key = user_api_key or settings.gemini_api_key
 
@@ -42,8 +43,8 @@ def _get_gemini_client(user_api_key: Optional[str] = None):
 
 
 async def _generate_text_gemini(
-    prompt: str, user_api_key: Optional[str] = None
-) -> Optional[str]:
+    prompt: str, user_api_key: str | None = None
+) -> str | None:
     """Helper to generate text using Gemini, returning None if failed or not configured."""
     client = _get_gemini_client(user_api_key)
     if not client:
@@ -76,7 +77,7 @@ async def _generate_text_gemini(
 
 
 async def suggest_tags(
-    title: str, content: str, user_api_key: Optional[str] = None
+    title: str, content: str, user_api_key: str | None = None
 ) -> list[str]:
     """
     Generate tag suggestions using Gemini (primary) or Ollama (fallback).
@@ -116,10 +117,8 @@ async def suggest_tags(
                 response.raise_for_status()
                 data = response.json()
                 response_text = data.get("response", "")
-        except Exception as e:
-            logger.error(
-                f"Unexpected error in suggest_tags (Ollama): {e}", exc_info=True
-            )
+        except Exception:
+            logger.exception("Unexpected error in suggest_tags (Ollama)")
             response_text = ""
 
     # Process response_text (same logic for both)
@@ -132,7 +131,7 @@ async def suggest_tags(
         if isinstance(parsed_json, list):
             tags = parsed_json
         elif isinstance(parsed_json, dict):
-            for k, v in parsed_json.items():
+            for v in parsed_json.values():
                 if isinstance(v, list):
                     tags = v
                     break
@@ -158,9 +157,12 @@ async def suggest_tags(
         t_str = str(t).lower().strip().replace(" ", "-")
         if t_str in stop_words:
             continue
-        if len(t_str) > 2 and not re.match(r"^[0-9a-f\-]+$", t_str):
-            if t_str not in processed_tags:
-                processed_tags.append(t_str)
+        if (
+            len(t_str) > 2
+            and not re.match(r"^[0-9a-f\-]+$", t_str)
+            and t_str not in processed_tags
+        ):
+            processed_tags.append(t_str)
 
     # Fallback extraction from content if LLM failed completely
     if not processed_tags:
@@ -176,8 +178,8 @@ async def suggest_tags(
 
 
 async def suggest_post_details(
-    content: str, user_api_key: Optional[str] = None
-) -> dict[str, Union[str, List[str]]]:
+    content: str, user_api_key: str | None = None
+) -> dict[str, str | list[str]]:
     """
     Generate title, slug, summary, and tags suggestions using Gemini (primary) or Ollama (fallback).
     """
@@ -218,10 +220,8 @@ async def suggest_post_details(
                 response.raise_for_status()
                 data = response.json()
                 response_text = data.get("response", "")
-        except Exception as e:
-            logger.error(
-                f"Unexpected error in suggest_post_details: {e}", exc_info=True
-            )
+        except Exception:
+            logger.exception("Unexpected error in suggest_post_details")
             return {"title": "", "slug": "", "summary": "", "tags": []}
 
     try:
@@ -229,7 +229,7 @@ async def suggest_post_details(
         details = json.loads(cleaned_text)
 
         if isinstance(details, dict):
-            clean_details: dict[str, Union[str, list[str]]] = {}
+            clean_details: dict[str, str | list[str]] = {}
             for k, v in details.items():
                 if k == "tags":
                     if isinstance(v, list):
@@ -284,7 +284,7 @@ async def suggest_post_details(
 
 
 async def suggest_field(
-    content: str, field: str, user_api_key: Optional[str] = None
+    content: str, field: str, user_api_key: str | None = None
 ) -> dict[str, str]:
     """
     Generate a suggestion for a single field using Gemini (primary) or Ollama (fallback).
@@ -320,8 +320,8 @@ async def suggest_field(
                 response.raise_for_status()
                 data = response.json()
                 response_text = data.get("response", "")
-        except Exception as e:
-            logger.error(f"Error suggesting {field}: {e}", exc_info=True)
+        except Exception:
+            logger.exception(f"Error suggesting {field}")
             return {field: ""}
 
     suggestion = response_text.strip()
@@ -336,7 +336,7 @@ async def suggest_field(
 
 
 async def chat_with_gemini(
-    message: str, history: List[dict] = [], user_api_key: Optional[str] = None
+    message: str, history: list[dict] | None = None, user_api_key: str | None = None
 ) -> str:
     """
     Chat with Gemini model, maintaining conversation history.
@@ -345,6 +345,7 @@ async def chat_with_gemini(
     if not client:
         return "Gemini is not configured."
 
+    history = history or []
     try:
         # Convert simple history format to Gemini format
         # Input: [{"role": "user", "content": "msg"}, {"role": "assistant", "content": "msg"}]
@@ -367,17 +368,17 @@ async def chat_with_gemini(
             chat = client.chats.create(model="gemini-3.1-flash", history=gemini_history)
             response = chat.send_message(message)
             return response.text
-        except Exception as e2:
-            logger.error(f"Error in chat_with_gemini: {e2}", exc_info=True)
+        except Exception:
+            logger.exception("Error in chat_with_gemini")
             return "Error communicating with AI service."
 
 
 async def generate_full_post(
     topic: str,
-    keywords: List[str] = [],
+    keywords: list[str] | None = None,
     language: str = "en",
-    user_api_key: Optional[str] = None,
-) -> dict[str, Union[str, List[str]]]:
+    user_api_key: str | None = None,
+) -> dict[str, str | list[str]]:
     """
     Generate a complete blog post including title, slug, summary, tags, and markdown content.
     Returns a dictionary with these fields.
@@ -433,8 +434,8 @@ async def generate_full_post(
                 response.raise_for_status()
                 data = response.json()
                 response_text = data.get("response", "")
-        except Exception as e:
-            logger.error(f"Unexpected error in generate_full_post: {e}", exc_info=True)
+        except Exception:
+            logger.exception("Unexpected error in generate_full_post")
             return {}
 
     # Parse JSON
@@ -468,6 +469,6 @@ async def generate_full_post(
             f"Failed to decode JSON from generate_full_post response: {response_text[:100]}..."
         )
         return {}
-    except Exception as e:
-        logger.error(f"Error processing generated post: {e}", exc_info=True)
+    except Exception:
+        logger.exception("Error processing generated post")
         return {}

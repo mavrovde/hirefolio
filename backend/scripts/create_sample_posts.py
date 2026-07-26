@@ -5,8 +5,8 @@ Run this after starting the backend service.
 """
 
 import asyncio
-import httpx
 
+import httpx
 
 SAMPLE_POSTS = [
     {

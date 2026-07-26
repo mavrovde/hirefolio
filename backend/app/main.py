@@ -1,56 +1,60 @@
-from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+import asyncio
 import os
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.database import engine, Base, async_session
-from app.api.posts import router as posts_router
+from app.api.admin_cv import router as admin_cv_router
+from app.api.admin_profile import router as admin_profile_router
+from app.api.admin_sql import router as admin_sql_router
+from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
+from app.api.cv import router as cv_router
+from app.api.linkedin import router as linkedin_router
+from app.api.posts import router as posts_router
+from app.api.profile import router as profile_router
 from app.api.stats import router as stats_router
 from app.api.tags import router as tags_router
-from app.api.ai import router as ai_router
-
-
-from app.api.cv import router as cv_router
-from app.api.admin_cv import router as admin_cv_router
-from app.api.admin_sql import router as admin_sql_router
-from app.api.linkedin import router as linkedin_router
 from app.api.years import router as years_router
-from app.api.profile import router as profile_router
-from app.api.admin_profile import router as admin_profile_router
 from app.config import settings
+from app.database import Base, async_session, engine
+
+
+def _read_file_bytes(path: str) -> bytes:
+    """Blocking file read, meant to be run off the event loop via asyncio.to_thread."""
+    with open(path, "rb") as f:
+        return f.read()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print(f"[{datetime.now(timezone.utc)}] LIFESPAN START: Mavrov.de API")
-    app.state.start_time = datetime.now(timezone.utc)
+    print(f"[{datetime.now(UTC)}] LIFESPAN START: Mavrov.de API")
+    app.state.start_time = datetime.now(UTC)
 
     # Check Ollama connection
-    from app.config import settings
     import httpx
 
+    from app.config import settings
+
     print(
-        f"[{datetime.now(timezone.utc)}] INFRA CHECK: Checking Ollama at {settings.ollama_url}..."
+        f"[{datetime.now(UTC)}] INFRA CHECK: Checking Ollama at {settings.ollama_url}..."
     )
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"{settings.ollama_url}/api/tags", timeout=10)
             print(
-                f"[{datetime.now(timezone.utc)}] INFRA CHECK: Ollama status: {resp.status_code}"
+                f"[{datetime.now(UTC)}] INFRA CHECK: Ollama status: {resp.status_code}"
             )
     except Exception as e:
         print(
-            f"[{datetime.now(timezone.utc)}] INFRA CHECK WARNING: Ollama connectivity check failed: {e}"
+            f"[{datetime.now(UTC)}] INFRA CHECK WARNING: Ollama connectivity check failed: {e}"
         )
 
     # Create pgvector extension and tables on startup
-    print(
-        f"[{datetime.now(timezone.utc)}] DB START: Running migrations and extension checks..."
-    )
+    print(f"[{datetime.now(UTC)}] DB START: Running migrations and extension checks...")
     try:
         async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -71,7 +75,7 @@ async def lifespan(app: FastAPI):
             # Add downloaded_at if it doesn't exist
             if "downloaded_at" not in existing_columns:
                 print(
-                    f"[{datetime.now(timezone.utc)}] DB MIGRATION: Adding downloaded_at column to cv_requests table..."
+                    f"[{datetime.now(UTC)}] DB MIGRATION: Adding downloaded_at column to cv_requests table..."
                 )
                 await conn.execute(
                     text("""
@@ -80,13 +84,13 @@ async def lifespan(app: FastAPI):
                 """)
                 )
                 print(
-                    f"[{datetime.now(timezone.utc)}] DB MIGRATION: ✓ downloaded_at column added"
+                    f"[{datetime.now(UTC)}] DB MIGRATION: ✓ downloaded_at column added"
                 )
 
             # Add download_count if it doesn't exist
             if "download_count" not in existing_columns:
                 print(
-                    f"[{datetime.now(timezone.utc)}] DB MIGRATION: Adding download_count column to cv_requests table..."
+                    f"[{datetime.now(UTC)}] DB MIGRATION: Adding download_count column to cv_requests table..."
                 )
                 await conn.execute(
                     text("""
@@ -95,24 +99,22 @@ async def lifespan(app: FastAPI):
                 """)
                 )
                 print(
-                    f"[{datetime.now(timezone.utc)}] DB MIGRATION: ✓ download_count column added"
+                    f"[{datetime.now(UTC)}] DB MIGRATION: ✓ download_count column added"
                 )
 
     except Exception as e:
         # Table might not exist yet (first run), which is fine
-        print(
-            f"[{datetime.now(timezone.utc)}] DB MIGRATION ERROR: Migration check: {e}"
-        )
+        print(f"[{datetime.now(UTC)}] DB MIGRATION ERROR: Migration check: {e}")
 
     # Check and seed default admin user if no users exist
-    print(f"[{datetime.now(timezone.utc)}] DB SEED: Checking default admin user...")
+    print(f"[{datetime.now(UTC)}] DB SEED: Checking default admin user...")
 
     # Load local env for development seeding (ignored in git)
     local_env_path = os.path.join(os.path.dirname(__file__), "..", ".env.local")
     gemini_key_seed = None
     if os.path.exists(local_env_path):
         print(
-            f"[{datetime.now(timezone.utc)}] DB SEED: Found local env file at {local_env_path}"
+            f"[{datetime.now(UTC)}] DB SEED: Found local env file at {local_env_path}"
         )
         from dotenv import load_dotenv
 
@@ -120,11 +122,12 @@ async def lifespan(app: FastAPI):
         gemini_key_seed = os.getenv("GEMINI_API_KEY")
         if gemini_key_seed:
             print(
-                f"[{datetime.now(timezone.utc)}] DB SEED: Loaded GEMINI_API_KEY from local env for seeding."
+                f"[{datetime.now(UTC)}] DB SEED: Loaded GEMINI_API_KEY from local env for seeding."
             )
 
     async with async_session() as session:
         from sqlalchemy import select
+
         from app.models.user import User
         from app.services.auth import get_password_hash
 
@@ -133,7 +136,7 @@ async def lifespan(app: FastAPI):
 
         if not user:
             print(
-                f"[{datetime.now(timezone.utc)}] DB SEED: No users found. Creating default admin user 'admin'..."
+                f"[{datetime.now(UTC)}] DB SEED: No users found. Creating default admin user 'admin'..."
             )
             default_admin = User(
                 username="admin",
@@ -146,20 +149,21 @@ async def lifespan(app: FastAPI):
             session.add(default_admin)
             await session.commit()
             print(
-                f"[{datetime.now(timezone.utc)}] DB SEED: Default admin user 'admin' created successfully."
+                f"[{datetime.now(UTC)}] DB SEED: Default admin user 'admin' created successfully."
             )
         elif gemini_key_seed and not user.gemini_api_key:
             # Optional: Update existing admin if key is missing and we have one locally
             print(
-                f"[{datetime.now(timezone.utc)}] DB SEED: Admin exists but has no key. Injecting from local env..."
+                f"[{datetime.now(UTC)}] DB SEED: Admin exists but has no key. Injecting from local env..."
             )
             user.gemini_api_key = gemini_key_seed
             session.add(user)
             await session.commit()
 
     # Check and seed default CV if no CVs exist
-    from app.models.cv_document import CvDocument
     import uuid
+
+    from app.models.cv_document import CvDocument
 
     cv_result = await session.execute(select(CvDocument))
     cv_exists = cv_result.scalars().first()
@@ -168,10 +172,9 @@ async def lifespan(app: FastAPI):
         static_cv_path = os.path.join(os.path.dirname(__file__), "static", "cv.pdf")
         if os.path.exists(static_cv_path):
             print(
-                f"[{datetime.now(timezone.utc)}] DB SEED: No CV found in database. Seeding from {static_cv_path}..."
+                f"[{datetime.now(UTC)}] DB SEED: No CV found in database. Seeding from {static_cv_path}..."
             )
-            with open(static_cv_path, "rb") as f:
-                cv_data = f.read()
+            cv_data = await asyncio.to_thread(_read_file_bytes, static_cv_path)
 
             default_cv = CvDocument(
                 id=uuid.uuid4(),
@@ -182,19 +185,15 @@ async def lifespan(app: FastAPI):
             )
             session.add(default_cv)
             await session.commit()
-            print(
-                f"[{datetime.now(timezone.utc)}] DB SEED: Default CV seeded successfully."
-            )
+            print(f"[{datetime.now(UTC)}] DB SEED: Default CV seeded successfully.")
         else:
             print(
-                f"[{datetime.now(timezone.utc)}] DB SEED WARNING: Fallback CV not found at {static_cv_path}"
+                f"[{datetime.now(UTC)}] DB SEED WARNING: Fallback CV not found at {static_cv_path}"
             )
 
-    print(f"[{datetime.now(timezone.utc)}] LIFESPAN READY: Backend is operational.")
+    print(f"[{datetime.now(UTC)}] LIFESPAN READY: Backend is operational.")
     yield
-    print(
-        f"[{datetime.now(timezone.utc)}] LIFESPAN SHUTDOWN: Mavrov.de API shutting down."
-    )
+    print(f"[{datetime.now(UTC)}] LIFESPAN SHUTDOWN: Mavrov.de API shutting down.")
 
 
 app = FastAPI(

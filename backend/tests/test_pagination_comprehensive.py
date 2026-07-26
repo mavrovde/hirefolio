@@ -1,16 +1,18 @@
-from app.config import settings
 import pytest
 from httpx import AsyncClient
+
+from app.config import settings
 
 
 @pytest.mark.asyncio
 async def test_posts_sort_all_fields(client: AsyncClient, db_session):
     """Test that ALL sortable fields work correctly."""
-    from app.models.post import Post
     import datetime
 
+    from app.models.post import Post
+
     # Create posts with different dates
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     posts = [
         Post(
             title="Zebra",
@@ -69,10 +71,11 @@ async def test_posts_sort_all_fields(client: AsyncClient, db_session):
 @pytest.mark.asyncio
 async def test_cv_requests_sort_all_fields(client: AsyncClient, db_session):
     """Test CV requests sorting by all available fields."""
-    from app.models.cv_request import CvRequest
     import datetime
 
-    now = datetime.datetime.now(datetime.timezone.utc)
+    from app.models.cv_request import CvRequest
+
+    now = datetime.datetime.now(datetime.UTC)
     requests = [
         CvRequest(
             name="Zebra",

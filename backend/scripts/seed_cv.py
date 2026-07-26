@@ -1,6 +1,8 @@
 import asyncio
 import os
+
 from sqlalchemy import select
+
 from app.database import async_session
 from app.models.cv_document import CvDocument
 
@@ -22,8 +24,12 @@ async def seed_cv():
             return
 
         print(f"Seeding DB with initial CV from {cv_path}...")
-        with open(cv_path, "rb") as f:
-            content = f.read()
+
+        def _read_bytes(path: str) -> bytes:
+            with open(path, "rb") as f:
+                return f.read()
+
+        content = await asyncio.to_thread(_read_bytes, cv_path)
 
         new_cv = CvDocument(
             filename="cv.pdf", data=content, version="v1.0.initial", is_active=True

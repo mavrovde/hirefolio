@@ -1,8 +1,9 @@
 import pytest
 from httpx import AsyncClient
-from app.services.auth import verify_password
-from app.models.user import User
 from sqlalchemy import select
+
+from app.models.user import User
+from app.services.auth import verify_password
 
 
 @pytest.mark.asyncio

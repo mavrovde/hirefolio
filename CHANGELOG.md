@@ -7,6 +7,56 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Changed
+- **Backend dependency modernization sweep** (fix-forward on the `ruff` revert from #56;
+  closes #54). Re-verified every pinned backend package against latest: `fastapi` 0.140.0,
+  `uvicorn` 0.51.0, `sqlalchemy` 2.0.51, `asyncpg` 0.31.0, `pgvector` 0.5.0, `alembic` 1.18.5,
+  `httpx`/`respx` 0.28.1/0.23.1, `python-jose` 3.5.0, `passlib` 1.7.4, `python-multipart`
+  0.0.32, `Pillow` 12.3.0, `setuptools` 83.0.0, `crewai` 1.15.6, `langchain-openai` 1.4.1,
+  `google-genai` 2.14.0, `pytest`/`pytest-asyncio`/`pytest-cov`/`pytest-mock`
+  9.1.1/1.4.0/7.1.0/3.15.1, `mypy` 2.3.0, `bandit` 1.9.4 were all already at latest (no changes
+  needed). `linkedin-api` stays hard-pinned at `2.2.1` (patched wheel).
+- **`ruff` 0.15.2 → 0.16.0, with a real migration** (closes #54). Ruff 0.16 expands its
+  *default* enabled rule set from ~62 to ~416 rules. Added an explicit `[tool.ruff.lint]`
+  `select` in `backend/pyproject.toml` that pins today's default rule set (413 codes, grouped
+  and commented by originating linter) so a future ruff release can't silently change our
+  effective lint config again. Of the ~592 resulting findings: ~450 were auto-fixed
+  (`ruff check . --fix`, mostly import sorting and `pyupgrade` modernization); real
+  correctness/observability issues were fixed at the root — `logger.exception(...)` instead of
+  `logger.error(..., exc_info=True)` (`G201`), module loggers instead of the root logger
+  (`LOG015`), timezone-aware `datetime.now(UTC)` (`DTZ005`), `asyncio.to_thread(...)` for
+  blocking file reads in async startup code (`ASYNC230`), narrowed `pytest.raises(...)` in
+  tests (`B017`), a swallowed vector-search exception now logged (`S110`), mutable default
+  arguments removed (`B006`), and several small `TRY`/`SIM`/`PERF`/`RUF`/`FURB`/`C4` fixes.
+  Three rules are deliberately ignored with documented rationale in `pyproject.toml`:
+  `BLE001` (this codebase's intentional broad error-boundary pattern — every site still logs
+  or re-raises), `TRY002` (a bespoke exception hierarchy is disproportionate for this app's
+  size), and `SIM117` (collapsing nested `with` blocks would hurt readability at several
+  test-double and long-async-body call sites). Added
+  `[tool.ruff.lint.flake8-bugbear] extend-immutable-calls` for FastAPI's `Depends`/`File`/etc.
+  so `B008` no longer false-positives on the framework's documented DI pattern. Removed the
+  `ruff >=0.16.0` dependabot `ignore` added in #56 now that the explicit pyproject config
+  protects future bumps.
+- **`crewai` re-verified at latest (1.15.6)** (refs #52): still pins `pydantic<2.13` and (via
+  `instructor`) `rich<15.0.0`, so `pydantic` and `rich` stay held at their current floors
+  (`pydantic>=2.12.5`, `rich>=13.0.0,<15.0.0`) — unchanged from before this sweep. #52 stays
+  open until a future crewai release relaxes these pins.
+- **`backend/Dockerfile` stays on `python:3.12-slim`** (refs #53): `lxml` (pulled in
+  transitively by the hard-pinned `linkedin-api==2.2.1`, which requires `lxml<6.0.0`) has no
+  Python 3.14 wheel and its sdist fails to build without `libxml2`/`libxslt` dev headers — no
+  change needed here, base image was already 3.12.
+
+### Held
+- `pydantic` (`>=2.13.4` available) and `rich` (`15.0.0` available) — blocked by
+  `crewai==1.15.6`'s own `pydantic<2.13,>=2.11.9` pin and its `instructor` dependency's
+  `rich<15.0.0,>=13.7.0` pin (verified via `pip install crewai==1.15.6 --dry-run`). Tracked in
+  #52.
+- `lxml` (`6.1.1` available, currently resolves to `5.4.0`) — `linkedin-api==2.2.1` requires
+  `lxml<6.0.0,>=5.3.0`; `pip install lxml==6.1.1 linkedin-api==2.2.1` fails with
+  `ResolutionImpossible: linkedin-api 2.2.1 depends on lxml<6.0.0 and >=5.3.0`. `linkedin-api`
+  is hard-pinned per policy, so `lxml` stays on the newest `linkedin-api`-compatible release.
+  Related to #53.
+
 ### Fixed
 - **Reverted `ruff` 0.16.0 (Dependabot #55) that broke `main`.** Dependabot auto-merged a
   recreated group PR bumping `ruff` 0.15.2→0.16.0; 0.16's expanded default rule set failed

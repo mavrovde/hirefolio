@@ -1,7 +1,9 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
-from app.main import lifespan
 from fastapi import FastAPI
+
+from app.main import lifespan
 
 
 @pytest.mark.asyncio

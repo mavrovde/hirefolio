@@ -1,7 +1,7 @@
-from typing import List, cast
+from math import ceil
+from typing import cast
 
 from fastapi import APIRouter, Depends, Query
-from math import ceil
 from pydantic import BaseModel
 from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
@@ -21,7 +21,7 @@ class TagStat(BaseModel):
 
 
 class PaginatedTagStats(BaseModel):
-    items: List[TagStat]
+    items: list[TagStat]
     total: int
     page: int
     page_size: int

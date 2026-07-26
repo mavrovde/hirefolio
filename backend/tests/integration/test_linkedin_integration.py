@@ -5,9 +5,9 @@ Skipped in CI if credentials are not configured.
 """
 
 import pytest
+
 from app.config import settings
 from app.services.linkedin import LinkedInService
-
 
 requires_linkedin_creds = pytest.mark.skipif(
     not settings.linkedin_email
@@ -69,7 +69,7 @@ def linkedin_service():
 
         client.get_profile = mocked_get_profile
 
-    except Exception:
+    except Exception:  # noqa: S110 -- intentional: skipped anyway if creds are absent
         # If client initialization itself fails, we can't patch it this way,
         # but that would be caught by requires_linkedin_creds anyway
         pass

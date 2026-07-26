@@ -1,6 +1,8 @@
-import pytest
 import asyncio
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from app.services import multi_chat
 
 
@@ -72,7 +74,7 @@ async def test_multi_chat_stream_error():
             async with asyncio.timeout(2):
                 async for chunk in multi_chat.multi_agent_conversation(agents, "topic"):
                     pass
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
     assert True
 

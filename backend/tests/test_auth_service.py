@@ -1,17 +1,19 @@
-import pytest
 from datetime import timedelta
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from fastapi import HTTPException
+
+from app.models.user import User
 from app.services.auth import (
-    verify_password,
-    get_password_hash,
     create_access_token,
     decode_access_token,
+    get_current_admin_user,
     get_current_user,
     get_current_user_optional,
-    get_current_admin_user,
+    get_password_hash,
+    verify_password,
 )
-from app.models.user import User
 
 
 def test_password_hashing():

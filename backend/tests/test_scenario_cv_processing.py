@@ -1,6 +1,8 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, MagicMock, AsyncMock
+
 from app.models.cv_document import CvDocument
 from app.models.cv_request import CvRequest
 
@@ -34,27 +36,24 @@ async def test_scenario_cv_request_success(client: AsyncClient):
     # We can't easily mock background tasks logic processed by FastAPI unless we patch `BackgroundTasks.add_task`.
     # But usually we just verify response.
 
-    with patch(
-        "sqlalchemy.ext.asyncio.AsyncSession.execute", side_effect=side_effect_execute
+    with (
+        patch(
+            "sqlalchemy.ext.asyncio.AsyncSession.execute",
+            side_effect=side_effect_execute,
+        ),
+        patch("sqlalchemy.ext.asyncio.AsyncSession.commit", new_callable=AsyncMock),
+        patch("sqlalchemy.ext.asyncio.AsyncSession.refresh", new_callable=AsyncMock),
+        patch("app.api.cv.process_email_notifications", new_callable=AsyncMock),
     ):
-        with patch(
-            "sqlalchemy.ext.asyncio.AsyncSession.commit", new_callable=AsyncMock
-        ):
-            with patch(
-                "sqlalchemy.ext.asyncio.AsyncSession.refresh", new_callable=AsyncMock
-            ):
-                with patch(
-                    "app.api.cv.process_email_notifications", new_callable=AsyncMock
-                ):
-                    payload = {
-                        "name": "John Doe",
-                        "email": "john@example.com",
-                        "message": "Hello",
-                        "subscribe_to_updates": True,
-                    }
-                    response = await client.post("/api/app/cv/request", json=payload)
-                    assert response.status_code == 200
-                    assert response.json()["success"] is True
+        payload = {
+            "name": "John Doe",
+            "email": "john@example.com",
+            "message": "Hello",
+            "subscribe_to_updates": True,
+        }
+        response = await client.post("/api/app/cv/request", json=payload)
+        assert response.status_code == 200
+        assert response.json()["success"] is True
 
 
 # Scenario: CV Request Failure (No Active CV)
@@ -104,14 +103,15 @@ async def test_scenario_cv_download_success(client: AsyncClient):
             return mock_result
         return MagicMock()
 
-    with patch(
-        "sqlalchemy.ext.asyncio.AsyncSession.execute", side_effect=side_effect_execute
+    with (
+        patch(
+            "sqlalchemy.ext.asyncio.AsyncSession.execute",
+            side_effect=side_effect_execute,
+        ),
+        patch("sqlalchemy.ext.asyncio.AsyncSession.commit", new_callable=AsyncMock),
     ):
-        with patch(
-            "sqlalchemy.ext.asyncio.AsyncSession.commit", new_callable=AsyncMock
-        ):
-            # Test with tracking
-            response = await client.get("/api/app/cv/download?req_id=123")
-            assert response.status_code == 200
-            assert response.content == b"%PDF-1.4..."
-            assert "application/pdf" in response.headers["content-type"]
+        # Test with tracking
+        response = await client.get("/api/app/cv/download?req_id=123")
+        assert response.status_code == 200
+        assert response.content == b"%PDF-1.4..."
+        assert "application/pdf" in response.headers["content-type"]

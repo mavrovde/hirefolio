@@ -30,16 +30,16 @@ def _admin_user():
 
 
 async def _make_post(db_session, **kwargs):
-    defaults = dict(
-        title="Title",
-        slug="slug",
-        content="Content body",
-        summary="A summary",
-        language="en",
-        published=True,
-        tags=["tag"],
-        embedding=[0.1] * 768,
-    )
+    defaults = {
+        "title": "Title",
+        "slug": "slug",
+        "content": "Content body",
+        "summary": "A summary",
+        "language": "en",
+        "published": True,
+        "tags": ["tag"],
+        "embedding": [0.1] * 768,
+    }
     defaults.update(kwargs)
     post = Post(**defaults)
     db_session.add(post)

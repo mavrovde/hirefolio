@@ -1,12 +1,13 @@
 import pytest
 from fastapi import HTTPException
+
+from app.models.user import User
 from app.services.auth import (
+    create_access_token,
+    get_current_admin_user,
     get_current_user,
     get_current_user_optional,
-    get_current_admin_user,
-    create_access_token,
 )
-from app.models.user import User
 
 
 @pytest.mark.asyncio

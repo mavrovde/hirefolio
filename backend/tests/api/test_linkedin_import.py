@@ -186,7 +186,7 @@ async def test_same_urn_twice_updates_not_duplicates(
 async def test_content_normalized_and_tags_from_hashtags(
     clean_client: AsyncClient, db_session: AsyncSession
 ):
-    raw = "Great insight​\nhashtag\n#AI \nhashtag\n#Cloud"
+    raw = "Great insight\u200b\nhashtag\n#AI \nhashtag\n#Cloud"
     r = await clean_client.post(
         URL,
         data={
@@ -200,7 +200,7 @@ async def test_content_normalized_and_tags_from_hashtags(
     assert r.status_code == 200
     post = await _get_post(db_session, "urn:li:activity:norm")
     assert "hashtag" not in post.content
-    assert "​" not in post.content
+    assert "\u200b" not in post.content
     assert post.tags == ["LinkedIn", "AI", "Cloud"]
     assert post.source_urn == "urn:li:activity:norm"
     assert post.source_url == "https://lnkd.in/y"

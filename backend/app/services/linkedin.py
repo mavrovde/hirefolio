@@ -1,8 +1,7 @@
 import logging
-import re
-from typing import Dict, Any, List
-
 import os
+import re
+from typing import Any
 
 from app.config import settings
 
@@ -97,10 +96,7 @@ class LinkedInService:
             return True
 
         # Fast path 2: Has cookies stored in the directory
-        if os.path.exists(COOKIES_DIR) and len(os.listdir(COOKIES_DIR)) > 0:
-            return True
-
-        return False
+        return os.path.exists(COOKIES_DIR) and len(os.listdir(COOKIES_DIR)) > 0
 
     def _get_public_id(self) -> str:
         """Get the LinkedIn public ID from settings."""
@@ -111,7 +107,7 @@ class LinkedInService:
             )
         return settings.linkedin_public_id
 
-    async def fetch_posts(self, count: int = 20) -> List[Dict[str, Any]]:
+    async def fetch_posts(self, count: int = 20) -> list[dict[str, Any]]:
         """
         Fetches recent LinkedIn posts using the Python linkedin-api library.
         Returns posts dynamically — no caching, no Node.js, no rebuild needed.
@@ -140,7 +136,7 @@ class LinkedInService:
         logger.info(f"Fetched {len(posts)} posts from LinkedIn.")
         return posts
 
-    async def sync_profile(self) -> Dict[str, Any]:
+    async def sync_profile(self) -> dict[str, Any]:
         """
         Fetches the complete LinkedIn profile data using Python.
         """

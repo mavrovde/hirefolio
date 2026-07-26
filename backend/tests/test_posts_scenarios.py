@@ -1,8 +1,10 @@
+from unittest.mock import patch
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.post import Post
-from unittest.mock import patch
 
 
 @pytest.fixture
@@ -247,5 +249,5 @@ async def test_similar_posts(client: AsyncClient, test_posts):
         else:
             assert resp.status_code == 200
             # Should find Post 2 if close enough or just list it
-    except Exception:
+    except Exception:  # noqa: S110 -- best-effort: env-dependent vector extension support
         pass

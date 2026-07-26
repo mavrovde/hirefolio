@@ -16,14 +16,14 @@ from fastapi import HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.auth import (
-    login,
+    ChangePasswordRequest,
+    TokenResponse,
+    UpdateGeminiKeyRequest,
+    UserResponse,
     change_password,
     get_me,
+    login,
     update_gemini_key,
-    ChangePasswordRequest,
-    UpdateGeminiKeyRequest,
-    TokenResponse,
-    UserResponse,
 )
 from app.config import settings
 from app.models.user import User

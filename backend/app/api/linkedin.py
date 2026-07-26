@@ -4,11 +4,9 @@ import random
 import re
 import secrets
 from datetime import datetime
-from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -23,17 +21,17 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.models.post import Post
 from app.models.user import User
 from app.services.auth import get_current_admin_user, get_current_user_optional
 from app.services.embeddings import get_embedding
 from app.services.linkedin import (
+    extract_hashtags,
     linkedin_service,
     normalize_linkedin_text,
-    extract_hashtags,
 )
-from app.config import settings
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
@@ -79,7 +77,7 @@ async def login_linkedin(
         logger.error(f"[LinkedIn] Dynamic login FAILED: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Login failed: {str(e)}",
+            detail=f"Login failed: {e!s}",
         )
 
 
@@ -295,7 +293,7 @@ async def transfer_linkedin_posts(
 # --- Import a single LinkedIn post (text + optional image bytes) -------------
 
 
-def _import_authorized(token: Optional[str], user: Optional[User]) -> bool:
+def _import_authorized(token: str | None, user: User | None) -> bool:
     """Authorize an import: a valid machine token (constant-time compare) OR an
     admin JWT. A blank/unset configured token never authenticates."""
     configured = settings.linkedin_import_token
@@ -320,16 +318,16 @@ def _slug_base(title: str) -> str:
     return base or "linkedin-post"
 
 
-def _parse_posted_at(value: Optional[str]) -> Optional[datetime]:
+def _parse_posted_at(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return datetime.fromisoformat(value)
     except ValueError:
         return None
 
 
-def _resolve_tags(raw_tags: Optional[str], content: str) -> list[str]:
+def _resolve_tags(raw_tags: str | None, content: str) -> list[str]:
     """Explicit CSV tags if given, else hashtags from the content; always keep a
     'LinkedIn' base tag; de-duplicate case-insensitively; cap at 5."""
     if raw_tags:
@@ -358,11 +356,11 @@ async def _upsert_linkedin_post(
     language: str,
     published: bool,
     tags: list[str],
-    source_url: Optional[str],
-    posted_at: Optional[datetime],
+    source_url: str | None,
+    posted_at: datetime | None,
     embedding,
-    image_bytes: Optional[bytes],
-    image_type: Optional[str],
+    image_bytes: bytes | None,
+    image_type: str | None,
 ) -> tuple[Post, bool]:
     """Upsert a post by LinkedIn URN. Returns (post, created)."""
     existing = (
@@ -415,17 +413,17 @@ async def _upsert_linkedin_post(
 async def import_linkedin_post(
     content: str = Form(...),
     urn: str = Form(...),
-    title: Optional[str] = Form(None),
-    summary: Optional[str] = Form(None),
+    title: str | None = Form(None),
+    summary: str | None = Form(None),
     language: str = Form("en"),
-    posted_at: Optional[str] = Form(None),
-    source_url: Optional[str] = Form(None),
-    tags: Optional[str] = Form(None),
+    posted_at: str | None = Form(None),
+    source_url: str | None = Form(None),
+    tags: str | None = Form(None),
     published: bool = Form(False),
-    image: Optional[UploadFile] = File(None),
-    x_import_token: Optional[str] = Header(None, alias="X-Import-Token"),
+    image: UploadFile | None = File(None),
+    x_import_token: str | None = Header(None, alias="X-Import-Token"),
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     """Ingest one LinkedIn post — text (+ optional image bytes) — storing the image
     locally and upserting by its LinkedIn URN so re-imports never duplicate.
@@ -439,8 +437,8 @@ async def import_linkedin_post(
             detail="Import requires a valid X-Import-Token or an admin session.",
         )
 
-    image_bytes: Optional[bytes] = None
-    image_type: Optional[str] = None
+    image_bytes: bytes | None = None
+    image_type: str | None = None
     if image is not None:
         if image.content_type not in ALLOWED_IMAGE_TYPES:
             raise HTTPException(
@@ -500,7 +498,7 @@ async def import_linkedin_post(
 # --- Bulk import from a scraper posts_data.json file -------------------------
 
 
-def _pick_image_url(entry: dict) -> Optional[str]:
+def _pick_image_url(entry: dict) -> str | None:
     """Return the best image URL from a scraper post entry, if any."""
     url = entry.get("imageUrl")
     if url:
@@ -509,7 +507,7 @@ def _pick_image_url(entry: dict) -> Optional[str]:
     return images[0] if images else None
 
 
-def _safe_http_url(url: object) -> Optional[str]:
+def _safe_http_url(url: object) -> str | None:
     """Keep a URL only if it is a real http(s) URL.
 
     Stored post URLs (`source_url`, fallback `image_url`) come from the uploaded
@@ -545,8 +543,8 @@ def _is_allowed_image_url(url: str) -> bool:
 
 
 async def _download_image_best_effort(
-    url: Optional[str],
-) -> tuple[Optional[bytes], Optional[str]]:
+    url: str | None,
+) -> tuple[bytes | None, str | None]:
     """Best-effort fetch of a post image from LinkedIn's CDN using the ``li_at``
     cookie.
 
@@ -582,7 +580,7 @@ async def _download_image_best_effort(
         if len(data) > max_bytes:
             return None, None
         return data, content_type
-    except Exception as e:  # noqa: BLE001 — best-effort, never fatal
+    except Exception as e:  # best-effort, never fatal (see BLE001 ignore rationale)
         logger.warning("[LinkedIn] image download failed for %s: %s", url, e)
         return None, None
 
@@ -590,9 +588,9 @@ async def _download_image_best_effort(
 @router.post("/import-posts-json")
 async def import_posts_json(
     file: UploadFile = File(...),
-    x_import_token: Optional[str] = Header(None, alias="X-Import-Token"),
+    x_import_token: str | None = Header(None, alias="X-Import-Token"),
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     """Bulk-import a scraper ``posts_data.json`` array as drafts.
 

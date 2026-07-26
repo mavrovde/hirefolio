@@ -6,10 +6,12 @@ Covers uncovered error paths in:
 - app.services.multi_chat (infrastructure errors, empty agents)
 """
 
-import pytest
 import json
-from unittest.mock import MagicMock, patch, AsyncMock
 from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from app.services import chat, multi_chat
 
 

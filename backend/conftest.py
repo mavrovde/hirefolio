@@ -31,8 +31,8 @@ mock_numpy = mock_module("numpy")
 mock_numpy.ndarray = MagicMock
 
 # Create a mock that looks like a SQLAlchemy TypeEngine
-from sqlalchemy.types import UserDefinedType  # noqa: E402
-from sqlalchemy.sql import expression  # noqa: E402
+from sqlalchemy.sql import expression
+from sqlalchemy.types import UserDefinedType
 
 
 class MockVector(UserDefinedType):
@@ -120,13 +120,15 @@ mock_crewai.Agent = MagicMock
 mock_crewai.Task = MagicMock
 mock_crewai.Crew = MagicMock
 
-from typing import AsyncGenerator  # noqa: E402
-import pytest  # noqa: E402
-from httpx import AsyncClient  # noqa: E402
-from sqlalchemy import text  # noqa: E402
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker  # noqa: E402
-from sqlalchemy.pool import NullPool  # noqa: E402
-import os  # noqa: E402
+import os
+from collections.abc import AsyncGenerator
+from datetime import UTC
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 # Defer initialization of engine and sessionmaker to avoid early imports
 _test_engine = None
@@ -185,20 +187,21 @@ async def db_session(init_db) -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create a test client with overridden database and auth dependencies."""
-    from app.main import app
+    from datetime import datetime
+
     from app.database import get_db
+    from app.main import app
+    from app.models.user import User
     from app.services.auth import (
         get_current_admin_user,
-        get_current_user_optional,
         get_current_user,
+        get_current_user_optional,
         get_password_hash,
     )
-    from app.models.user import User
-    from datetime import datetime, timezone
 
     # Ensure app state is initialized for stats tests
     if not hasattr(app.state, "start_time") or app.state.start_time is None:
-        app.state.start_time = datetime.now(timezone.utc)
+        app.state.start_time = datetime.now(UTC)
 
     # Patch app.database.async_session to use test sessionmaker
     # This ensures lifespan events use the TEST database, avoiding InvalidRequestError
@@ -248,19 +251,20 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 @pytest.fixture(scope="function")
 async def normal_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create a test client overridden with a normal (non-admin) user."""
-    from app.main import app
-    from app.database import get_db
-    from app.services.auth import (
-        get_current_user_optional,
-        get_current_user,
-        get_password_hash,
-    )
-    from app.models.user import User
-    from datetime import datetime, timezone
+    from datetime import datetime
     from unittest.mock import patch
 
+    from app.database import get_db
+    from app.main import app
+    from app.models.user import User
+    from app.services.auth import (
+        get_current_user,
+        get_current_user_optional,
+        get_password_hash,
+    )
+
     if not hasattr(app.state, "start_time") or app.state.start_time is None:
-        app.state.start_time = datetime.now(timezone.utc)
+        app.state.start_time = datetime.now(UTC)
 
     test_session_maker = get_test_async_session()
     p = patch("app.main.async_session", side_effect=test_session_maker)
@@ -320,13 +324,14 @@ async def clean_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 
     Used for testing permission denied scenarios where we need real auth checks.
     """
-    from app.main import app
-    from app.database import get_db
+    from datetime import datetime
     from unittest.mock import patch
-    from datetime import datetime, timezone
+
+    from app.database import get_db
+    from app.main import app
 
     if not hasattr(app.state, "start_time") or app.state.start_time is None:
-        app.state.start_time = datetime.now(timezone.utc)
+        app.state.start_time = datetime.now(UTC)
 
     test_session_maker = get_test_async_session()
     p = patch("app.main.async_session", side_effect=test_session_maker)
