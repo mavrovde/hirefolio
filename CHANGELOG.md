@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+## [1.7.1] - 2026-07-26
+
 ### Security
 - **Removed mistakenly-committed TLS certificate files** (`proxy/ssl/fullchain.pem`,
   `proxy/ssl/privkey.pem`) from the (public) repository and added `proxy/ssl/` to `.gitignore`.
@@ -53,27 +55,6 @@ All notable changes to this project will be documented in this file.
   transitively by the hard-pinned `linkedin-api==2.2.1`, which requires `lxml<6.0.0`) has no
   Python 3.14 wheel and its sdist fails to build without `libxml2`/`libxslt` dev headers — no
   change needed here, base image was already 3.12.
-
-### Held
-- `pydantic` (`>=2.13.4` available) and `rich` (`15.0.0` available) — blocked by
-  `crewai==1.15.6`'s own `pydantic<2.13,>=2.11.9` pin and its `instructor` dependency's
-  `rich<15.0.0,>=13.7.0` pin (verified via `pip install crewai==1.15.6 --dry-run`). Tracked in
-  #52.
-- `lxml` (`6.1.1` available, currently resolves to `5.4.0`) — `linkedin-api==2.2.1` requires
-  `lxml<6.0.0,>=5.3.0`; `pip install lxml==6.1.1 linkedin-api==2.2.1` fails with
-  `ResolutionImpossible: linkedin-api 2.2.1 depends on lxml<6.0.0 and >=5.3.0`. `linkedin-api`
-  is hard-pinned per policy, so `lxml` stays on the newest `linkedin-api`-compatible release.
-  Related to #53.
-
-### Fixed
-- **Reverted `ruff` 0.16.0 (Dependabot #55) that broke `main`.** Dependabot auto-merged a
-  recreated group PR bumping `ruff` 0.15.2→0.16.0; 0.16's expanded default rule set failed
-  `ruff check .` on the existing codebase (`I001`, …), turning the prod deploy red. Pinned back
-  to `0.15.2` and added a dependabot `ignore` for `ruff >=0.16.0` so it can't re-open the loop.
-  The deliberate 0.16 migration (pin an explicit `[tool.ruff.lint] select`, then triage ~592
-  findings) is tracked in #54.
-
-### Changed
 - **Frontend dependency sweep** (Dependabot #33/#34/#36/#37): `@types/node` `^22.20.1` →
   `^26.1.1`, `jsdom` (Vitest DOM env) `^27.4.0` → `^29.1.1`, `frontend/Dockerfile`
   `node:24-alpine`/`node:24-slim` → `node:26-alpine`/`node:26-slim`, and
@@ -114,6 +95,25 @@ All notable changes to this project will be documented in this file.
   to `python:3.14-slim` (#32) was held too: `lxml` (pulled in by `linkedin-api`) has no Python
   3.14 wheel yet and its sdist build fails (`Please make sure the libxml2 and libxslt development
   packages are installed`).
+
+### Fixed
+- **Reverted `ruff` 0.16.0 (Dependabot #55) that broke `main`.** Dependabot auto-merged a
+  recreated group PR bumping `ruff` 0.15.2→0.16.0; 0.16's expanded default rule set failed
+  `ruff check .` on the existing codebase (`I001`, …), turning the prod deploy red. Pinned back
+  to `0.15.2` and added a dependabot `ignore` for `ruff >=0.16.0` so it can't re-open the loop.
+  The deliberate 0.16 migration (pin an explicit `[tool.ruff.lint] select`, then triage ~592
+  findings) is tracked in #54.
+
+### Held
+- `pydantic` (`>=2.13.4` available) and `rich` (`15.0.0` available) — blocked by
+  `crewai==1.15.6`'s own `pydantic<2.13,>=2.11.9` pin and its `instructor` dependency's
+  `rich<15.0.0,>=13.7.0` pin (verified via `pip install crewai==1.15.6 --dry-run`). Tracked in
+  #52.
+- `lxml` (`6.1.1` available, currently resolves to `5.4.0`) — `linkedin-api==2.2.1` requires
+  `lxml<6.0.0,>=5.3.0`; `pip install lxml==6.1.1 linkedin-api==2.2.1` fails with
+  `ResolutionImpossible: linkedin-api 2.2.1 depends on lxml<6.0.0 and >=5.3.0`. `linkedin-api`
+  is hard-pinned per policy, so `lxml` stays on the newest `linkedin-api`-compatible release.
+  Related to #53.
 
 ## [1.7.0] - 2026-07-26
 
