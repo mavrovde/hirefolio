@@ -33,18 +33,16 @@ All notable changes to this project will be documented in this file.
   `linkedin_cookies` named volume mounted on the `backend` service in both `docker-compose.yml` and
   `docker-compose.prod.yml`, so the saved session survives container recreation. The `/linkedin/status`
   response now also returns a human-readable `message` explaining whether a session is active.
-### Changed
-- **CI: cache Ollama model weights in the E2E job** (#78, refs #91). The `ollama` service pulls the
-  embedding + generation model weights (`nomic-embed-text`, `llama3.2`, `llama3.2:1b` — several GB)
-  into its data volume on startup, previously re-downloaded on every `deploy.yml` run and the largest
-  remaining uncached runtime download after the base-image cache (#72/#76). The `E2E Tests (Docker
-  Stack)` job now snapshots the `ollama_data` volume to a tarball and caches it via `actions/cache`,
-  keyed on the new `.github/ollama-models.txt` manifest + the pinned `ollama/ollama` image
-  (`.github/base-images.txt`). On a cache hit the weights are pre-loaded into the volume before the
-  stack starts, so the container finds the blobs present and skips the pull; on a miss it pulls as
-  before, then snapshots the volume so the next run is a hit. A model/version change busts the key
-  and re-fetches once. The Compose project name is pinned (`COMPOSE_PROJECT_NAME: mavrov`) so the
-  cached volume name is deterministic.
+
+### Reverted
+- **Reverted the Ollama model-weights CI cache** (#78). After it deployed, before/after
+  measurement showed it made the `E2E Tests (Docker Stack)` job **~56s slower** (8m20s → 9m16s):
+  the cache-hit path cost ~53s (restore 38s + pre-load 15s) but saved only ~11s of model pull —
+  the ~3.6 GB GitHub-cache transfer costs as much as re-pulling the models from Ollama's registry,
+  and it consumed ~3.6 GB toward the 10 GB repo cache limit. Same self-defeating pattern as the
+  base-image cache (#72/#76). Removed the cache steps + `.github/ollama-models.txt`; the real
+  pipeline bottleneck is the sequential critical path (tests → build → E2E → proxy), tracked with
+  concrete levers in #91.
 
 ## [1.8.0] - 2026-07-26
 
