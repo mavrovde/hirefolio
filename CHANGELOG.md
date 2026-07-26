@@ -22,6 +22,30 @@ All notable changes to this project will be documented in this file.
   `frontend/Dockerfile.admin` `nginx:1.27-alpine` → `nginx:1.31-alpine`. Verified with
   `npm run test:coverage` (100% across `shared`/`public`/`admin`), `npm run build`, and local
   `docker build` of both Dockerfiles.
+- **Comprehensive frontend dependency refresh.** Pinned `@angular/animations`, `@angular/common`,
+  `@angular/compiler`, `@angular/core`, `@angular/forms`, `@angular/platform-browser`,
+  `@angular/platform-server`, `@angular/router`, `@angular/cli`, `@angular/compiler-cli`,
+  `@angular/platform-browser-dynamic`, and `@angular/ssr` from `^22.0.0` to the latest published
+  Angular 22 patch, `^22.0.8` (matching the already-current `@angular/build`). Audited every
+  other frontend dependency (`ng-packagr`, `express`, `rxjs`, `tslib`, `zone.js`,
+  `@analogjs/vite-plugin-angular`, `@playwright/test`, `@tailwindcss/postcss`/`tailwindcss`,
+  `@types/express`, `@types/node`, `@vitest/browser-playwright`, `@vitest/coverage-v8`, `jsdom`,
+  `stylelint`/`stylelint-config-standard`, `undici`) against their published `latest` dist-tag —
+  all were already at their true latest version (a recent sweep had already landed them), so no
+  further bump was needed for those. Verified with `npm run test:coverage` (100% across
+  `shared`/`public`/`admin`), `npm run build`, and local `docker build` of both Dockerfiles.
+  **Held back:** `typescript` stays on `~6.0.3` — `@angular/compiler-cli@22.0.8`'s
+  `peerDependencies` requires `typescript: ">=6.0 <6.1"`, and `6.0.3` is already the newest
+  version in that range (latest published `typescript` is `7.0.2`, which Angular 22 does not
+  support). `undici` stays on `^7.29.0` — `jsdom@29.1.1` depends on `undici@^7.25.0` and its
+  internal `jsdom-dispatcher.js` requires a module path (`undici/lib/handler/wrap-handler.js`)
+  that `undici@8.x` removed/renamed; overriding to `undici@^8.9.0` breaks every DOM-environment
+  test with `Cannot find module 'undici/lib/handler/wrap-handler.js'` (`7.29.0` is the latest
+  `7.x` release). Pre-existing `npm audit` findings (`@hono/node-server`/`@modelcontextprotocol/sdk`
+  via `@angular/cli`'s MCP tooling, and `brace-expansion`/`ts-morph` via
+  `@analogjs/vite-plugin-angular`) are unchanged by this sweep; `npm audit fix --force` would
+  downgrade `@angular/cli` to `21.x` and `@analogjs/vite-plugin-angular` to a pre-release, both
+  regressions, so they're left for a deliberate follow-up.
 - **Backend dependency sweep** (Dependabot #38/#40/#42): `pytest` 9.0.3→9.1.1, `pytest-asyncio`
   1.3.0→1.4.0, `pytest-cov` 7.0.0→7.1.0, `mypy` 1.19.1→2.3.0, `bandit` 1.9.3→1.9.4,
   `google-genai` 1.75.0→2.14.0. `pydantic` (#39) and `rich` (#41) bumps were held back:
