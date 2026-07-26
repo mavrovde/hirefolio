@@ -1,5 +1,5 @@
 # Multi-stage build for the Angular ADMIN app (CSR-only SPA, no SSR/Node runtime)
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build:shared && npm run build:admin
 
 # Production stage: static files served by nginx only (no Node process)
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine
 
 # Clear default nginx assets and config
 RUN rm -rf /usr/share/nginx/html/* && rm -f /etc/nginx/conf.d/default.conf

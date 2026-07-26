@@ -8,15 +8,22 @@ All notable changes to this project will be documented in this file.
 - Placeholder for next release.
 
 ### Changed
-- **Backend dependency sweep**: `pytest` 9.0.3→9.1.1, `pytest-asyncio` 1.3.0→1.4.0,
-  `pytest-cov` 7.0.0→7.1.0, `mypy` 1.19.1→2.3.0, `bandit` 1.9.3→1.9.4, `google-genai`
-  1.75.0→2.14.0. `pydantic` and `rich` bumps were held back: `crewai==1.15.6` pins
-  `pydantic<2.13` and its `instructor` dependency pins `rich<15.0.0`, so both would break the
-  dependency graph. `ruff` 0.15.2→0.16.0 was also held: 0.16.0 changed its default lint rule set
-  from ~62 to ~416 rules, surfacing 592 unrelated findings across the codebase — out of scope for
-  a dependency-only sweep. The backend `Dockerfile` base image bump to `python:3.14-slim` was
-  held too: `lxml` (pulled in by `linkedin-api`) has no Python 3.14 wheel yet and its sdist build
-  fails (`Please make sure the libxml2 and libxslt development packages are installed`).
+- **Frontend dependency sweep** (Dependabot #33/#34/#36/#37): `@types/node` `^22.20.1` →
+  `^26.1.1`, `jsdom` (Vitest DOM env) `^27.4.0` → `^29.1.1`, `frontend/Dockerfile`
+  `node:24-alpine`/`node:24-slim` → `node:26-alpine`/`node:26-slim`, and
+  `frontend/Dockerfile.admin` `nginx:1.27-alpine` → `nginx:1.31-alpine`. Verified with
+  `npm run test:coverage` (100% across `shared`/`public`/`admin`), `npm run build`, and local
+  `docker build` of both Dockerfiles.
+- **Backend dependency sweep** (Dependabot #38/#40/#42): `pytest` 9.0.3→9.1.1, `pytest-asyncio`
+  1.3.0→1.4.0, `pytest-cov` 7.0.0→7.1.0, `mypy` 1.19.1→2.3.0, `bandit` 1.9.3→1.9.4,
+  `google-genai` 1.75.0→2.14.0. `pydantic` (#39) and `rich` (#41) bumps were held back:
+  `crewai==1.15.6` pins `pydantic<2.13` and its `instructor` dependency pins `rich<15.0.0`, so
+  both would break the dependency graph. `ruff` 0.15.2→0.16.0 was also held: 0.16.0 changed its
+  default lint rule set from ~62 to ~416 rules, surfacing 592 unrelated findings across the
+  codebase — out of scope for a dependency-only sweep. The backend `Dockerfile` base image bump
+  to `python:3.14-slim` (#32) was held too: `lxml` (pulled in by `linkedin-api`) has no Python
+  3.14 wheel yet and its sdist build fails (`Please make sure the libxml2 and libxslt development
+  packages are installed`).
 
 ## [1.7.0] - 2026-07-26
 
