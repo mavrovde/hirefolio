@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Changed
+- **Frontend dependency sweep** (Dependabot #33/#34/#36/#37): `@types/node` `^22.20.1` →
+  `^26.1.1`, `jsdom` (Vitest DOM env) `^27.4.0` → `^29.1.1`, `frontend/Dockerfile`
+  `node:24-alpine`/`node:24-slim` → `node:26-alpine`/`node:26-slim`, and
+  `frontend/Dockerfile.admin` `nginx:1.27-alpine` → `nginx:1.31-alpine`. Verified with
+  `npm run test:coverage` (100% across `shared`/`public`/`admin`), `npm run build`, and local
+  `docker build` of both Dockerfiles.
+
 ## [1.7.0] - 2026-07-26
 
 ### Added
