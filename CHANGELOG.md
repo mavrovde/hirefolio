@@ -13,7 +13,9 @@ All notable changes to this project will be documented in this file.
     static asset), admin `POST /admin/profile/upload`, `GET /admin/profile/versions`,
     `PATCH /admin/profile/versions/{id}/activate`. Alembic migration `a1b2c3d4e5f6`.
   - Public site now loads the profile from the backend (with a static-asset fallback), so an
-    upload is reflected immediately.
+    upload is reflected immediately. Site-enriched fields (`contact`, `recommendations`,
+    `certifications`, `languages`) are optional and every block guards for absence, so a raw
+    scraper `profile_data.json` renders cleanly even when it omits them.
 - **Bulk posts import from `posts_data.json`.** `POST /api/app/linkedin/import-posts-json` and an
   **Upload posts_data.json** button in the admin LinkedIn tab upsert scraper posts by URN as drafts
   (idempotent). Images are downloaded best-effort from LinkedIn's CDN, else the remote URL is kept.
@@ -23,7 +25,8 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 - Full test coverage: backend 100% (new `profile`/`admin_profile`/`linkedin` paths), admin app 100%
-  (service + Profile Data component + posts-JSON upload), plus admin-e2e for the Profile Data page.
+  (service + Profile Data component + posts-JSON upload) and public app 100%, plus **admin-e2e**
+  (Profile Data page) and **public-e2e** (backend profile render + minimal-JSON resilience).
 
 ## [1.6.0] - 2026-07-25
 

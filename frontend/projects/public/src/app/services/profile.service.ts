@@ -13,10 +13,12 @@ export interface Profile {
   experience: Experience[];
   education: Education[];
   skills: string[];
-  certifications: Certification[];
-  languages: Language[];
-  recommendations: Recommendation[];
-  contact: Contact;
+  // Site-enriched / scraper-optional: a raw uploaded profile_data.json may omit
+  // these, so they are optional and every consuming block guards for absence.
+  certifications?: Certification[];
+  languages?: Language[];
+  recommendations?: Recommendation[];
+  contact?: Contact;
 }
 
 export interface Contact {
