@@ -5,7 +5,6 @@ import { BlogService } from '@mavrov/shared';
 import { LanguageService } from '@mavrov/shared';
 import { of, throwError } from 'rxjs';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('BlogComponent (cov2 branch coverage)', () => {
@@ -59,7 +58,7 @@ describe('BlogComponent (cov2 branch coverage)', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [BlogComponent, MockTranslatePipe, NoopAnimationsModule],
+      imports: [BlogComponent, MockTranslatePipe],
       providers: [
         { provide: BlogService, useValue: blogServiceSpy },
         { provide: LanguageService, useValue: languageServiceMock },
