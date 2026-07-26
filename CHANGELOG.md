@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Placeholder for next release.
+
+## [1.7.0] - 2026-07-26
+
+### Added
 - **DB-backed, versioned profile + admin JSON upload.** The scraper's
   `profile_data.json` can now be uploaded from the admin **Profile Data** page and is stored
   **versioned, per language** (EN/DE evolve independently — one active version each).
