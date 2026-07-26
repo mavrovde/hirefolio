@@ -2,11 +2,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.logger import logger
 from app.models.profile_snapshot import ProfileSnapshot
+from app.services.rate_limit import SlidingWindowRateLimiter, rate_limit_dependency
 
 router = APIRouter(prefix="/profile", tags=["profile"])
+
+# Public, unauthenticated GETs on this router are rate-limited per client IP
+# (defense-in-depth against scraping/abuse) — see `app.services.rate_limit`.
+profile_rate_limiter = SlidingWindowRateLimiter(
+    max_requests=settings.profile_rate_limit_requests,
+    window_seconds=settings.profile_rate_limit_window_seconds,
+)
+_enforce_rate_limit = rate_limit_dependency(profile_rate_limiter)
 
 # Languages the site serves. Keep in sync with the frontend LanguageService.
 SUPPORTED_LANGUAGES = ("en", "de")
@@ -47,7 +57,7 @@ def public_profile_view(data: object) -> dict:
     return view
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(_enforce_rate_limit)])
 async def get_active_profile(
     lang: str = Query("en", description="Profile language (en|de)"),
     db: AsyncSession = Depends(get_db),
