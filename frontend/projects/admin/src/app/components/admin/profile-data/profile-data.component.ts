@@ -11,7 +11,7 @@ import { TranslatePipe } from '@mavrov/shared';
 import { Subscription } from 'rxjs';
 import {
   AdminProfileService,
-  ProfileVersion,
+  ProfileSnapshot,
   ProfileLanguage,
 } from '../../../services/admin-profile.service';
 import { ServerTableHelper } from '../../../utils/table-helper-server';
@@ -29,7 +29,7 @@ import { ServerTableHelper } from '../../../utils/table-helper-server';
   styleUrls: ['./profile-data.component.css'],
 })
 export class ProfileDataComponent implements OnInit, OnDestroy {
-  versionsTable = new ServerTableHelper<ProfileVersion>('created_at', 'desc', 10);
+  versionsTable = new ServerTableHelper<ProfileSnapshot>('created_at', 'desc', 10);
 
   uploadForm: FormGroup;
   selectedLanguage: ProfileLanguage = 'en';
@@ -127,7 +127,7 @@ export class ProfileDataComponent implements OnInit, OnDestroy {
       });
   }
 
-  onActivate(version: ProfileVersion): void {
+  onActivate(version: ProfileSnapshot): void {
     if (version.is_active) {
       return;
     }

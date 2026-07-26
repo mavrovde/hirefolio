@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
-class ProfileVersion(Base):
+class ProfileSnapshot(Base):
     """A versioned, per-language snapshot of the profile.
 
     Stores the raw scraper `profile_data.json` as-is (``data``) so the site can
@@ -17,9 +17,9 @@ class ProfileVersion(Base):
     so EN and DE evolve independently (multilanguage).
     """
 
-    __tablename__ = "profile_versions"
+    __tablename__ = "profile_snapshots"
     __table_args__ = (
-        UniqueConstraint("version", "language", name="uq_profile_version_language"),
+        UniqueConstraint("version", "language", name="uq_profile_snapshot_language"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)

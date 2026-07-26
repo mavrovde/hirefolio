@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models.profile_version import ProfileVersion
+from app.models.profile_snapshot import ProfileSnapshot
 
 UPLOAD = f"{settings.api_prefix}/admin/profile/upload"
 VERSIONS = f"{settings.api_prefix}/admin/profile/versions"
@@ -29,9 +29,9 @@ def _file(payload, name="profile.json", content_type="application/json"):
 
 
 async def _rows(db: AsyncSession, language=None):
-    q = select(ProfileVersion)
+    q = select(ProfileSnapshot)
     if language:
-        q = q.where(ProfileVersion.language == language)
+        q = q.where(ProfileSnapshot.language == language)
     return (await db.execute(q)).scalars().all()
 
 
@@ -198,6 +198,35 @@ async def test_versions_empty(client: AsyncClient):
     assert body["items"] == []
 
 
+async def test_versions_sort_by_class_attr_is_safe(client: AsyncClient):
+    """A non-orderable class attribute (e.g. 'metadata') must not 500 — the
+    sort_by allowlist falls back to created_at instead of reaching order_by."""
+    await client.post(
+        UPLOAD, files=_file({"n": 1}), data={"version": "v1", "language": "en"}
+    )
+    r = await client.get(VERSIONS, params={"sort_by": "metadata"})
+    assert r.status_code == 200
+
+
+async def test_versions_sort_by_allowlisted_column(client: AsyncClient):
+    await client.post(
+        UPLOAD, files=_file({"n": 1}), data={"version": "v1", "language": "en"}
+    )
+    r = await client.get(VERSIONS, params={"sort_by": "version", "sort_order": "asc"})
+    assert r.status_code == 200
+
+
+async def test_upload_oversized_is_413(client: AsyncClient, monkeypatch):
+    monkeypatch.setattr("app.api.admin_profile.MAX_PROFILE_JSON_BYTES", 10)
+    r = await client.post(
+        UPLOAD,
+        files=_file({"name": "x" * 50}),
+        data={"version": "v1", "language": "en"},
+    )
+    assert r.status_code == 413
+    assert "exceeds" in r.json()["detail"]
+
+
 # --- activate ---------------------------------------------------------------
 
 
@@ -233,3 +262,42 @@ async def test_activate_db_error_is_500(client: AsyncClient, db_session):
         r = await client.patch(f"{VERSIONS}/{row.id}/activate")
     assert r.status_code == 500
     assert "Failed to activate" in r.json()["detail"]
+
+
+# --- authentication / authorization matrix ---------------------------------
+
+_DUMMY_ID = "00000000-0000-0000-0000-000000000000"
+
+
+async def test_upload_requires_auth(clean_client: AsyncClient):
+    """No session → 401 (never reaches the handler)."""
+    r = await clean_client.post(
+        UPLOAD, files=_file({"n": 1}), data={"version": "v1", "language": "en"}
+    )
+    assert r.status_code == 401
+
+
+async def test_upload_forbidden_for_non_admin(normal_client: AsyncClient):
+    """A logged-in non-admin is forbidden (403)."""
+    r = await normal_client.post(
+        UPLOAD, files=_file({"n": 1}), data={"version": "v1", "language": "en"}
+    )
+    assert r.status_code == 403
+
+
+async def test_versions_requires_auth(clean_client: AsyncClient):
+    assert (await clean_client.get(VERSIONS)).status_code == 401
+
+
+async def test_versions_forbidden_for_non_admin(normal_client: AsyncClient):
+    assert (await normal_client.get(VERSIONS)).status_code == 403
+
+
+async def test_activate_requires_auth(clean_client: AsyncClient):
+    r = await clean_client.patch(f"{VERSIONS}/{_DUMMY_ID}/activate")
+    assert r.status_code == 401
+
+
+async def test_activate_forbidden_for_non_admin(normal_client: AsyncClient):
+    r = await normal_client.patch(f"{VERSIONS}/{_DUMMY_ID}/activate")
+    assert r.status_code == 403

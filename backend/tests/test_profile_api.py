@@ -3,13 +3,13 @@
 from httpx import AsyncClient
 
 from app.config import settings
-from app.models.profile_version import ProfileVersion
+from app.models.profile_snapshot import ProfileSnapshot
 
 URL = f"{settings.api_prefix}/profile"
 
 
 async def _seed(db, *, version, language, data, is_active):
-    row = ProfileVersion(
+    row = ProfileSnapshot(
         version=version, language=language, data=data, is_active=is_active
     )
     db.add(row)
@@ -68,3 +68,79 @@ async def test_get_unsupported_language_is_400(client: AsyncClient):
     r = await client.get(URL, params={"lang": "fr"})
     assert r.status_code == 400
     assert "Unsupported language" in r.json()["detail"]
+
+
+async def test_public_get_needs_no_auth(clean_client: AsyncClient, db_session):
+    """The public profile endpoint is reachable without any session."""
+    await _seed(
+        db_session, version="v1", language="en", data={"name": "Public"}, is_active=True
+    )
+    r = await clean_client.get(URL, params={"lang": "en"})
+    assert r.status_code == 200
+    assert r.json()["name"] == "Public"
+
+
+async def test_get_strips_non_public_pii(client: AsyncClient, db_session):
+    """A raw scraper JSON with PII must NOT leak it on the public endpoint."""
+    await _seed(
+        db_session,
+        version="v1",
+        language="en",
+        data={
+            "name": "Sergii",
+            "headline": "Engineer",
+            "experience": [{"title": "Dev"}],
+            # Non-public fields a LinkedIn export may carry:
+            "phone": "+49 123 456",
+            "birthday": "1990-01-01",
+            "address": "Secret St 1",
+            "connections": ["a", "b"],
+            "contactInfo": {"phone": "x"},
+        },
+        is_active=True,
+    )
+    body = (await client.get(URL, params={"lang": "en"})).json()
+    assert body["name"] == "Sergii"
+    assert body["experience"] == [{"title": "Dev"}]
+    for leaked in ("phone", "birthday", "address", "connections", "contactInfo"):
+        assert leaked not in body
+
+
+async def test_get_projects_contact_to_email_and_linkedin(
+    client: AsyncClient, db_session
+):
+    """`contact` is exposed but reduced to email + linkedin only."""
+    await _seed(
+        db_session,
+        version="v1",
+        language="en",
+        data={
+            "name": "S",
+            "contact": {
+                "email": "me@example.com",
+                "linkedin": "https://linkedin.com/in/me",
+                "phone": "+49 000",
+                "address": "private",
+            },
+        },
+        is_active=True,
+    )
+    contact = (await client.get(URL, params={"lang": "en"})).json()["contact"]
+    assert contact == {
+        "email": "me@example.com",
+        "linkedin": "https://linkedin.com/in/me",
+    }
+
+
+async def test_get_handles_non_dict_stored_data(client: AsyncClient, db_session):
+    """Defensive: a non-object stored payload projects to an empty object."""
+    await _seed(
+        db_session,
+        version="v1",
+        language="en",
+        data=["not", "a", "dict"],
+        is_active=True,
+    )
+    r = await client.get(URL, params={"lang": "en"})
+    assert r.status_code == 200
+    assert r.json() == {}

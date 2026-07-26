@@ -6,7 +6,7 @@ import { PaginatedResponse } from './admin-cv.service';
 
 export type ProfileLanguage = 'en' | 'de';
 
-export interface ProfileVersion {
+export interface ProfileSnapshot {
   id: string;
   version: string;
   language: ProfileLanguage;
@@ -36,7 +36,7 @@ export class AdminProfileService {
     sortBy = 'created_at',
     sortOrder: 'asc' | 'desc' = 'desc',
     language: ProfileLanguage | null = null,
-  ): Observable<PaginatedResponse<ProfileVersion>> {
+  ): Observable<PaginatedResponse<ProfileSnapshot>> {
     const params: Record<string, string> = {
       page: page.toString(),
       page_size: pageSize.toString(),
@@ -46,7 +46,7 @@ export class AdminProfileService {
     if (language) {
       params['language'] = language;
     }
-    return this.http.get<PaginatedResponse<ProfileVersion>>(`${this.apiUrl}/versions`, { params });
+    return this.http.get<PaginatedResponse<ProfileSnapshot>>(`${this.apiUrl}/versions`, { params });
   }
 
   activateVersion(id: string): Observable<unknown> {

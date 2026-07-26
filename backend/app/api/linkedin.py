@@ -509,6 +509,22 @@ def _pick_image_url(entry: dict) -> Optional[str]:
     return images[0] if images else None
 
 
+def _safe_http_url(url: object) -> Optional[str]:
+    """Keep a URL only if it is a real http(s) URL.
+
+    Stored post URLs (`source_url`, fallback `image_url`) come from the uploaded
+    JSON and are rendered by the site — reject `javascript:`/`data:`/other
+    schemes so nothing dangerous is persisted.
+    """
+    if not isinstance(url, str) or not url:
+        return None
+    try:
+        scheme = urlparse(url).scheme.lower()
+    except (ValueError, TypeError, AttributeError):
+        return None
+    return url if scheme in ("http", "https") else None
+
+
 def _is_allowed_image_url(url: str) -> bool:
     """Only https URLs on LinkedIn's CDN are eligible for server-side download.
 
@@ -646,15 +662,17 @@ async def import_posts_json(
             language=(entry.get("language") or "en").lower()[:2],
             published=False,
             tags=_resolve_tags(None, content),
-            source_url=entry.get("url"),
+            source_url=_safe_http_url(entry.get("url")),
             posted_at=_parse_posted_at(entry.get("postedAt")),
             embedding=embedding,
             image_bytes=image_bytes,
             image_type=image_type,
         )
-        # Keep the remote URL when we could not download the image locally.
-        if image_bytes is None and image_url and post.image_url != image_url:
-            post.image_url = image_url
+        # Keep the remote URL when we could not download the image locally —
+        # only if it is a safe http(s) URL.
+        safe_image_url = _safe_http_url(image_url)
+        if image_bytes is None and safe_image_url and post.image_url != safe_image_url:
+            post.image_url = safe_image_url
             await db.commit()
         if was_created:
             created += 1

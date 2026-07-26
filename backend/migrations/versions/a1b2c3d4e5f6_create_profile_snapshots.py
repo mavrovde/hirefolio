@@ -1,4 +1,4 @@
-"""Create profile_versions table (versioned, per-language profile snapshots)
+"""Create profile_snapshots table (versioned, per-language profile snapshots)
 
 Revision ID: a1b2c3d4e5f6
 Revises: c3f8a1d2e947
@@ -21,20 +21,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.create_table(
-        "profile_versions",
+        "profile_snapshots",
         sa.Column("id", sa.Uuid(), primary_key=True, nullable=False),
         sa.Column("version", sa.String(), nullable=False),
         sa.Column("language", sa.String(length=2), nullable=False),
         sa.Column("data", sa.JSON(), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column(
-            "created_at", sa.DateTime(timezone=True), nullable=False
-        ),
-        sa.UniqueConstraint(
-            "version", "language", name="uq_profile_version_language"
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.UniqueConstraint("version", "language", name="uq_profile_snapshot_language"),
     )
 
 
 def downgrade() -> None:
-    op.drop_table("profile_versions")
+    op.drop_table("profile_snapshots")

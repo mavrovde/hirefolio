@@ -8,13 +8,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.logger import logger
-from app.models.profile_version import ProfileVersion
+from app.models.profile_snapshot import ProfileSnapshot
 from app.models.user import User
 from app.services.auth import get_current_admin_user
 
 router = APIRouter(prefix="/admin/profile", tags=["admin-profile"])
 
 SUPPORTED_LANGUAGES = ("en", "de")
+
+# Bound the uploaded profile JSON so even an authenticated admin (or a stolen
+# admin token) can't exhaust memory with a huge body.
+MAX_PROFILE_JSON_BYTES = 5 * 1024 * 1024  # 5 MB
+
+# Only these columns may drive ORDER BY (prevents an uncaught 500 from a
+# non-orderable class attribute reaching order_by).
+SORTABLE_COLUMNS = frozenset({"created_at", "version", "language", "is_active"})
 
 
 def _validate_language(language: str) -> str:
@@ -46,7 +54,12 @@ async def upload_profile(
     if not version_clean:
         raise HTTPException(status_code=400, detail="Version must not be empty.")
 
-    raw = await file.read()
+    raw = await file.read(MAX_PROFILE_JSON_BYTES + 1)
+    if len(raw) > MAX_PROFILE_JSON_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Profile JSON exceeds {MAX_PROFILE_JSON_BYTES // (1024 * 1024)} MB limit.",
+        )
     try:
         data = json.loads(raw)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -58,9 +71,9 @@ async def upload_profile(
 
     # Reject duplicate (version, language) up front for a clean 409.
     existing = await db.scalar(
-        select(ProfileVersion).where(
-            ProfileVersion.version == version_clean,
-            ProfileVersion.language == lang,
+        select(ProfileSnapshot).where(
+            ProfileSnapshot.version == version_clean,
+            ProfileSnapshot.language == lang,
         )
     )
     if existing is not None:
@@ -72,11 +85,11 @@ async def upload_profile(
     try:
         # Deactivate other versions for THIS language only (multilanguage-safe).
         await db.execute(
-            update(ProfileVersion)
-            .where(ProfileVersion.language == lang)
+            update(ProfileSnapshot)
+            .where(ProfileSnapshot.language == lang)
             .values(is_active=False)
         )
-        row = ProfileVersion(
+        row = ProfileSnapshot(
             version=version_clean, language=lang, data=data, is_active=True
         )
         db.add(row)
@@ -96,7 +109,7 @@ async def upload_profile(
 
 
 @router.get("/versions")
-async def get_profile_versions(
+async def get_profile_snapshots(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     sort_by: str = Query("created_at"),
@@ -106,20 +119,20 @@ async def get_profile_versions(
     admin: User = Depends(get_current_admin_user),
 ):
     """Paginated version list (metadata only — the raw ``data`` blob is omitted)."""
-    query = select(ProfileVersion)
+    query = select(ProfileSnapshot)
     if language:
-        query = query.where(ProfileVersion.language == language.lower())
+        query = query.where(ProfileSnapshot.language == language.lower())
 
     total_raw = await db.scalar(select(func.count()).select_from(query.subquery()))
     total = int(total_raw) if total_raw is not None else 0
 
-    if hasattr(ProfileVersion, sort_by):
-        order_column = getattr(ProfileVersion, sort_by)
+    if sort_by in SORTABLE_COLUMNS:
+        order_column = getattr(ProfileSnapshot, sort_by)
         query = query.order_by(
             order_column.desc() if sort_order == "desc" else order_column.asc()
         )
     else:
-        query = query.order_by(ProfileVersion.created_at.desc())
+        query = query.order_by(ProfileSnapshot.created_at.desc())
 
     offset = (page - 1) * page_size
     query = query.offset(offset).limit(page_size)
@@ -153,14 +166,14 @@ async def activate_profile_version(
     admin: User = Depends(get_current_admin_user),
 ):
     """Make an existing version the active one for its language."""
-    row = await db.get(ProfileVersion, version_id)
+    row = await db.get(ProfileSnapshot, version_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Profile version not found.")
 
     try:
         await db.execute(
-            update(ProfileVersion)
-            .where(ProfileVersion.language == row.language)
+            update(ProfileSnapshot)
+            .where(ProfileSnapshot.language == row.language)
             .values(is_active=False)
         )
         row.is_active = True

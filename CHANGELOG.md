@@ -8,10 +8,14 @@ All notable changes to this project will be documented in this file.
 - **DB-backed, versioned profile + admin JSON upload.** The scraper's
   `profile_data.json` can now be uploaded from the admin **Profile Data** page and is stored
   **versioned, per language** (EN/DE evolve independently — one active version each).
-  - Backend: `ProfileVersion` model (unique `(version, language)`), public
-    `GET /api/app/profile?lang=en|de` (active version; 404 → frontend falls back to the bundled
-    static asset), admin `POST /admin/profile/upload`, `GET /admin/profile/versions`,
+  - Backend: `ProfileSnapshot` model (table `profile_snapshots`, unique `(version, language)`),
+    public `GET /api/app/profile?lang=en|de` (active snapshot; 404 → frontend falls back to the
+    bundled static asset), admin `POST /admin/profile/upload`, `GET /admin/profile/versions`,
     `PATCH /admin/profile/versions/{id}/activate`. Alembic migration `a1b2c3d4e5f6`.
+  - **Security**: the public endpoint serves a **field allowlist**, never the raw stored blob, so an
+    uploaded scraper JSON can't leak non-public PII (phone/address/connections); `contact` is
+    reduced to email+linkedin. Admin upload is **size-capped** (413), `sort_by` is allowlisted, and
+    full auth coverage (401 unauth / 403 non-admin) is enforced and tested.
   - Public site now loads the profile from the backend (with a static-asset fallback), so an
     upload is reflected immediately. Site-enriched fields (`contact`, `recommendations`,
     `certifications`, `languages`) are optional and every block guards for absence, so a raw

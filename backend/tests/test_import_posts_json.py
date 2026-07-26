@@ -15,6 +15,7 @@ from app.api.linkedin import (
     _download_image_best_effort,
     _is_allowed_image_url,
     _pick_image_url,
+    _safe_http_url,
 )
 from app.config import settings
 from app.models.post import Post
@@ -63,6 +64,27 @@ async def test_admin_session_authorizes(client: AsyncClient):
             URL, files=_file([{"urn": "urn:1", "content": "Hello world"}])
         )
     assert r.status_code == 200
+
+
+async def test_non_admin_without_token_is_401(normal_client: AsyncClient):
+    """A logged-in non-admin with no machine token cannot import."""
+    r = await normal_client.post(
+        URL, files=_file([{"urn": "urn:x", "content": "nope"}])
+    )
+    assert r.status_code == 401
+
+
+async def test_wrong_token_is_401(clean_client: AsyncClient):
+    r = await clean_client.post(URL, files=_file([]), headers=_hdr("wrong-token"))
+    assert r.status_code == 401
+
+
+async def test_blank_configured_token_never_authenticates(
+    clean_client: AsyncClient, monkeypatch
+):
+    monkeypatch.setattr(settings, "linkedin_import_token", "")
+    r = await clean_client.post(URL, files=_file([]), headers={"X-Import-Token": ""})
+    assert r.status_code == 401
 
 
 # --- endpoint: payload validation ------------------------------------------
@@ -190,6 +212,45 @@ def test_pick_image_url_falls_back_to_list():
 
 def test_pick_image_url_none_when_absent():
     assert _pick_image_url({"imageUrls": []}) is None
+
+
+# --- helper: _safe_http_url (blocks javascript:/data: etc.) -----------------
+
+
+def test_safe_http_url_matrix():
+    assert _safe_http_url("https://x/y.png") == "https://x/y.png"
+    assert _safe_http_url("http://x/y.png") == "http://x/y.png"
+    assert _safe_http_url("javascript:alert(1)") is None
+    assert _safe_http_url("data:text/html;base64,xxx") is None
+    assert _safe_http_url("ftp://x/y") is None
+    assert _safe_http_url("") is None
+    assert _safe_http_url(None) is None
+    assert _safe_http_url(12345) is None
+    # Malformed authority makes urlparse raise → caught → None.
+    assert _safe_http_url("https://[") is None
+
+
+async def test_import_rejects_dangerous_urls(
+    clean_client: AsyncClient, db_session: AsyncSession
+):
+    """javascript: source/image URLs from the uploaded JSON are never stored."""
+    entries = [
+        {
+            "urn": "urn:danger",
+            "content": "post with dangerous urls",
+            "url": "javascript:alert(1)",
+            "imageUrl": "javascript:alert(2)",
+        }
+    ]
+    with patch(
+        "app.api.linkedin._download_image_best_effort",
+        new=AsyncMock(return_value=(None, None)),
+    ):
+        r = await clean_client.post(URL, files=_file(entries), headers=_hdr())
+    assert r.status_code == 200
+    post = await _get(db_session, "urn:danger")
+    assert post.source_url is None
+    assert post.image_url is None
 
 
 # --- helper: _download_image_best_effort ------------------------------------

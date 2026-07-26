@@ -3,9 +3,9 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { of, throwError } from 'rxjs';
 import { ProfileDataComponent } from './profile-data.component';
-import { AdminProfileService, ProfileVersion } from '../../../services/admin-profile.service';
+import { AdminProfileService, ProfileSnapshot } from '../../../services/admin-profile.service';
 
-const page = (items: ProfileVersion[] = []) => ({
+const page = (items: ProfileSnapshot[] = []) => ({
   items,
   total: items.length,
   page: 1,
@@ -13,7 +13,7 @@ const page = (items: ProfileVersion[] = []) => ({
   total_pages: 1,
 });
 
-const version = (over: Partial<ProfileVersion> = {}): ProfileVersion => ({
+const version = (over: Partial<ProfileSnapshot> = {}): ProfileSnapshot => ({
   id: 'id-1',
   version: 'v1',
   language: 'en',
