@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Fixed
+- **Reverted `ruff` 0.16.0 (Dependabot #55) that broke `main`.** Dependabot auto-merged a
+  recreated group PR bumping `ruff` 0.15.2→0.16.0; 0.16's expanded default rule set failed
+  `ruff check .` on the existing codebase (`I001`, …), turning the prod deploy red. Pinned back
+  to `0.15.2` and added a dependabot `ignore` for `ruff >=0.16.0` so it can't re-open the loop.
+  The deliberate 0.16 migration (pin an explicit `[tool.ruff.lint] select`, then triage ~592
+  findings) is tracked in #54.
+
 ### Changed
 - **Frontend dependency sweep** (Dependabot #33/#34/#36/#37): `@types/node` `^22.20.1` →
   `^26.1.1`, `jsdom` (Vitest DOM env) `^27.4.0` → `^29.1.1`, `frontend/Dockerfile`
