@@ -1,9 +1,14 @@
 FROM nginx:alpine
 
-RUN apk add --no-cache openssl curl
+# gettext provides envsubst, used by entrypoint.sh to render server_name from env.
+RUN apk add --no-cache openssl curl gettext
 COPY nginx.conf /etc/nginx/nginx.conf
 
-COPY default.conf /etc/nginx/conf.d/default.conf
+# The site config is a TEMPLATE; entrypoint.sh renders it into conf.d at start so a
+# forker can set their domain via env without editing tracked source. Remove nginx's
+# stock default.conf so only the rendered config is active.
+RUN rm -f /etc/nginx/conf.d/default.conf
+COPY default.conf.template /etc/nginx/templates/default.conf.template
 COPY admin_allowlist.conf /etc/nginx/admin_allowlist.conf
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -23,7 +23,9 @@ echo "backend: 🐍 Running Static Analysis & Tests..."
 docker-compose -f docker-compose.yml up -d --force-recreate db
 # Run checks
 cd backend
-GEMINI_API_KEY="" /Users/sergii.mavrov/miniconda3/envs/workspace/bin/python3 -m pytest tests
+# Portable interpreter: prefer the project venv, else python3. Override with PYTEST_PYTHON.
+PYTEST_PYTHON="${PYTEST_PYTHON:-$([ -x venv/bin/python ] && echo venv/bin/python || command -v python3)}"
+GEMINI_API_KEY="" "$PYTEST_PYTHON" -m pytest tests
 cd ..
 
 # 2. Frontend Checks

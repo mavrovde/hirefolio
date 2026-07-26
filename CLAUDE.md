@@ -49,8 +49,8 @@ specs/      Feature specs (planned/done)
 
 **Full stack / verify / release**:
 - `./manage.sh start|stop|logs` — Docker stack
-- `./verify_all.sh` — full suite incl. Docker E2E (⚠️ line ~26 has a hardcoded conda path; make it
-  portable before relying on it locally)
+- `./verify_all.sh` — full suite incl. Docker E2E (runs backend pytest via `backend/venv` → `python3`;
+  override the interpreter with `PYTEST_PYTHON`)
 - Deploy = **push to `main`** → GitHub Actions builds images + `docker compose -f
   docker-compose.prod.yml up -d`. `release.sh --patch|--minor|--major` bumps version + tags + pushes.
 

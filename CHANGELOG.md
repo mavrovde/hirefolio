@@ -8,6 +8,25 @@ All notable changes to this project will be documented in this file.
 - Placeholder for next release.
 
 ### Changed
+- **Parameterized deployment & infra for a new owner** (#60). Externalized every owner-specific
+  infra literal behind env/config so a forker deploys by editing only `.env`/repo variables — no
+  source edits. A new root [`.env.example`](.env.example) documents each knob.
+  - **Container images:** `docker-compose.yml` dev image names now use the same
+    `${IMAGE_REPO:-mavrovde}-<svc>` scheme as prod (`${IMAGE_REPO:-maverickde/mavrov.de}-<svc>`);
+    `deploy.yml` publishing is overridable via the `REGISTRY` / `IMAGE_NAME` repository variables
+    (defaults keep `ghcr.io/${{ github.repository }}` unchanged for the canonical repo).
+  - **Proxy `server_name`:** `proxy/default.conf` became `proxy/default.conf.template`, rendered at
+    container start by `entrypoint.sh` (envsubst) from `PUBLIC_SERVER_NAME` / `ADMIN_SERVER_NAME`
+    (defaults preserve the canonical hostnames).
+  - **Admin allowlist hardened:** `proxy/admin_allowlist.conf` no longer ships `allow all;` — the
+    admin surface is now CLOSED by default (loopback only) and opened explicitly via
+    `ADMIN_ALLOWED_CIDRS`. E2E opens it via env for the test run only.
+  - **Postgres port:** the `5433` literal became the `POSTGRES_PORT` env knob across both compose
+    files (PGPORT, host mapping, healthcheck, `DATABASE_URL`).
+  - **`verify_all.sh`:** replaced the hardcoded conda python path with a portable interpreter
+    (`backend/venv` → `python3`, override via `PYTEST_PYTHON`); updated `.claude/commands/verify.md`.
+  - **Agents:** `agents/autonomous.py` and `agents/common/tools.py` derive the repo root at runtime
+    (no `/Users/maverick` absolute paths); `A2A_REPO`/`A2A_BACKEND_BIN`/`A2A_BACKEND_PYTHON` override.
 - **CI: pinned & cached third-party base images** (#72, PR #76). Added `.github/base-images.txt`
   as the single source of truth (pinned `ollama/ollama:0.5.7`, `open-webui:v0.5.10`,
   `pgvector/pgvector:pg16`, matching prod compose — removed the `:latest` drift) and replaced both
