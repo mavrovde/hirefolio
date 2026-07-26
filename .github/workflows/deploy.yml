@@ -155,18 +155,72 @@ jobs:
           python -m pip install --upgrade pip
           bash scripts/patch_linkedin.sh
           pip install -r requirements-dev.txt
-      - name: Apply migrations to a fresh database (alembic upgrade head)
+      - name: Create a second database (to simulate the pre-Alembic prod state)
+        working-directory: ./backend
+        run: |
+          python -c "
+          import asyncio
+          import asyncpg
+
+          async def main():
+              conn = await asyncpg.connect(
+                  'postgresql://postgres:postgres@localhost:5432/mavrov_migrations'
+              )
+              await conn.execute('CREATE DATABASE mavrov_migrations_pre')
+              await conn.close()
+
+          asyncio.run(main())
+          "
+      - name: Simulate today's prod DB (tables via create_all, no alembic_version)
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations_pre
+          SECRET_KEY: test-secret-key-for-ci
+        run: |
+          python -c "
+          import asyncio
+          import app.models  # noqa: F401
+          from app.database import Base, engine
+          from sqlalchemy import text
+
+          async def create():
+              async with engine.begin() as conn:
+                  await conn.execute(text('CREATE EXTENSION IF NOT EXISTS vector'))
+                  await conn.run_sync(Base.metadata.create_all)
+              await engine.dispose()
+
+          asyncio.run(create())
+          "
+      - name: Self-adopt the pre-Alembic DB via the real entrypoint (must NOT crash)
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations_pre
+          SECRET_KEY: test-secret-key-for-ci
+        run: ./docker-entrypoint.sh true
+      - name: Verify the pre-Alembic DB is now stamped at head
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations_pre
+          SECRET_KEY: test-secret-key-for-ci
+        run: alembic current | grep -q "(head)"
+      - name: Re-run entrypoint on the now-managed pre-Alembic DB (idempotent)
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations_pre
+          SECRET_KEY: test-secret-key-for-ci
+        run: ./docker-entrypoint.sh true
+      - name: Self-adopt a fresh, empty DB via the real entrypoint
         working-directory: ./backend
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations
           SECRET_KEY: test-secret-key-for-ci
-        run: alembic upgrade head
-      - name: Re-run upgrade head (must be a no-op / idempotent)
+        run: ./docker-entrypoint.sh true
+      - name: Re-run entrypoint on the now-managed fresh DB (idempotent)
         working-directory: ./backend
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations
           SECRET_KEY: test-secret-key-for-ci
-        run: alembic upgrade head
+        run: ./docker-entrypoint.sh true
       - name: Drift guard (models vs. migrations must match exactly)
         working-directory: ./backend
         env:
