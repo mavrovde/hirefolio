@@ -23,6 +23,26 @@ All notable changes to this project will be documented in this file.
   regression coverage: `ssr-http-backend.spec.ts`, updated `blog-post.component.spec.ts`, and a
   strengthened `e2e/public/blog-display.spec.ts` direct-slug-load test that tracks navigations and
   asserts the app never redirects to `/`.
+- **Schema drift: Alembic is now the sole, authoritative schema-management mechanism** (#46).
+  `app/main.py` no longer calls `Base.metadata.create_all` or runs ad-hoc `ALTER TABLE cv_requests`
+  checks at startup; `backend/docker-entrypoint.sh` self-adopts the database into Alembic on every
+  container start — no manual step required — before the app starts. It detects which of three
+  states the DB is in (a plain `asyncpg` check for `alembic_version` + a known core table): a fresh
+  DB just gets `alembic upgrade head`; a DB that predates Alembic (built by the old `create_all` —
+  today's prod case) is first stamped at the baseline revision (no DDL) and then upgraded to head,
+  avoiding an "object already exists" crash; a DB already tracked by Alembic just gets `upgrade
+  head` (a no-op at head). Replaced the previously disjoint/incomplete migration history — the
+  top-level `migrations/00N_*.py` scripts (never even on Alembic's discovery path) and the
+  `migrations/versions/*` chain (incremental diffs that assumed tables already existed via
+  `create_all` and could never run against an empty database) — with a single `baseline0001`
+  revision that creates the full current schema (`users`, `cv_documents`, `cv_requests`, `posts`
+  incl. pgvector `embedding` and the partial unique index on `source_urn`, `profile_snapshots`).
+  Verified byte-identical (via `pg_dump --schema-only`) to what `create_all` previously produced.
+  Also fixed `migrations/env.py` (missing `sys.path` bootstrap + missing model imports) and
+  `app/models/__init__.py` (missing `User` import), which silently left autogenerate blind to most
+  of the schema. Added a CI `backend-migrations` job that exercises the real entrypoint against a
+  simulated pre-Alembic DB and a fresh DB (each re-run to confirm idempotency), plus `alembic check`
+  (drift guard), on every push to `main`.
 
 ### Security
 - **Rate-limited the public `GET /api/app/profile` endpoint** (#47): a small, self-contained

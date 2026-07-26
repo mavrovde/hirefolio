@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
 from app.api.admin_cv import router as admin_cv_router
 from app.api.admin_profile import router as admin_profile_router
@@ -20,7 +19,7 @@ from app.api.stats import router as stats_router
 from app.api.tags import router as tags_router
 from app.api.years import router as years_router
 from app.config import settings
-from app.database import Base, async_session, engine
+from app.database import async_session
 
 
 def _read_file_bytes(path: str) -> bytes:
@@ -53,58 +52,11 @@ async def lifespan(app: FastAPI):
             f"[{datetime.now(UTC)}] INFRA CHECK WARNING: Ollama connectivity check failed: {e}"
         )
 
-    # Create pgvector extension and tables on startup
-    print(f"[{datetime.now(UTC)}] DB START: Running migrations and extension checks...")
-    try:
-        async with engine.begin() as conn:
-            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            await conn.run_sync(Base.metadata.create_all)
-
-            # Run migrations for existing databases
-            # Check if cv_requests table has the new download tracking columns
-            result = await conn.execute(
-                text("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'cv_requests' 
-                AND column_name IN ('downloaded_at', 'download_count')
-            """)
-            )
-            existing_columns = {row[0] for row in result}
-
-            # Add downloaded_at if it doesn't exist
-            if "downloaded_at" not in existing_columns:
-                print(
-                    f"[{datetime.now(UTC)}] DB MIGRATION: Adding downloaded_at column to cv_requests table..."
-                )
-                await conn.execute(
-                    text("""
-                    ALTER TABLE cv_requests 
-                    ADD COLUMN downloaded_at TIMESTAMP WITH TIME ZONE
-                """)
-                )
-                print(
-                    f"[{datetime.now(UTC)}] DB MIGRATION: ✓ downloaded_at column added"
-                )
-
-            # Add download_count if it doesn't exist
-            if "download_count" not in existing_columns:
-                print(
-                    f"[{datetime.now(UTC)}] DB MIGRATION: Adding download_count column to cv_requests table..."
-                )
-                await conn.execute(
-                    text("""
-                    ALTER TABLE cv_requests 
-                    ADD COLUMN download_count INTEGER NOT NULL DEFAULT 0
-                """)
-                )
-                print(
-                    f"[{datetime.now(UTC)}] DB MIGRATION: ✓ download_count column added"
-                )
-
-    except Exception as e:
-        # Table might not exist yet (first run), which is fine
-        print(f"[{datetime.now(UTC)}] DB MIGRATION ERROR: Migration check: {e}")
+    # Schema management is now exclusively Alembic's job: the container
+    # entrypoint (see Dockerfile / docker-entrypoint.sh) runs `alembic upgrade
+    # head` before this process starts, so by the time lifespan runs, the
+    # schema (including the `vector` extension) is already up to date. See
+    # "Database Migrations" in the root README.md for the full workflow.
 
     # Check and seed default admin user if no users exist
     print(f"[{datetime.now(UTC)}] DB SEED: Checking default admin user...")

@@ -69,6 +69,7 @@ RUN find /opt/venv -name "package_index.py" -exec sed -i "s/name.replace('..', '
 
 # Copy application code
 COPY . .
+RUN chmod +x docker-entrypoint.sh
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -77,5 +78,8 @@ ENV PYTHONUNBUFFERED=1
 # Expose port
 EXPOSE 8000
 
-# Command to run the application
+# Alembic is the authoritative schema-management mechanism: the entrypoint
+# runs `alembic upgrade head` before every container start (idempotent), then
+# execs the app. See "Database Migrations" in the root README.md.
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
