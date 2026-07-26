@@ -7,6 +7,15 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Changed
+- **Backend dependency sweep**: `pytest` 9.0.3→9.1.1, `pytest-asyncio` 1.3.0→1.4.0,
+  `pytest-cov` 7.0.0→7.1.0, `mypy` 1.19.1→2.3.0, `bandit` 1.9.3→1.9.4, `google-genai`
+  1.75.0→2.14.0, and the backend `Dockerfile` base image `python:3.12-slim`→`python:3.14-slim`.
+  `pydantic` and `rich` bumps were held back: `crewai==1.15.6` pins `pydantic<2.13` and its
+  `instructor` dependency pins `rich<15.0.0`, so both would break the dependency graph. `ruff`
+  0.15.2→0.16.0 was also held: 0.16.0 changed its default lint rule set from ~62 to ~416 rules,
+  surfacing 592 unrelated findings across the codebase — out of scope for a dependency-only sweep.
+
 ## [1.7.0] - 2026-07-26
 
 ### Added
