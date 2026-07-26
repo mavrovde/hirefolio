@@ -216,7 +216,6 @@ async def test_main_infra_check_exception():
             "Ollama Down"
         )
         with (
-            patch("app.main.engine"),
             patch("app.main.async_session", mock_session_factory),
             patch("os.path.exists", return_value=False),
         ):

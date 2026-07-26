@@ -96,6 +96,31 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
+> **Alembic is the single, authoritative schema-management mechanism** — the backend no longer
+> calls `Base.metadata.create_all` at startup. Docker images run `alembic upgrade head` via
+> `backend/docker-entrypoint.sh` before the app starts (idempotent — a no-op once the DB is at
+> head); running it manually is only needed for local dev outside Docker. See
+> [`backend/migrations/`](./backend/migrations/) and
+> [How to write a migration](#how-to-write-a-migration) below.
+
+#### How to write a migration
+
+```bash
+cd backend
+# 1. Change a model in app/models/*.py
+# 2. Generate a migration from the diff (review it — autogenerate misses some things,
+#    e.g. data backfills, column renames it sees as drop+add, and check constraints):
+alembic revision --autogenerate -m "describe the change"
+# 3. Apply it locally and confirm it's the diff you expect:
+alembic upgrade head
+# 4. Guard against drift — this must report "No new upgrade operations detected.":
+alembic check
+```
+
+A non-additive change (column type change, `NOT NULL` backfill, rename, new constraint) goes
+through the same `alembic revision --autogenerate` + hand-edit workflow — Alembic (unlike
+`create_all`) can express and apply these safely.
+
 #### Frontend
 
 ```bash
@@ -266,9 +291,10 @@ All three columns are `NULL` for posts not imported from LinkedIn. Two posts may
 
 | Revision | Description |
 |---|---|
-| `68db39a6f58e` | Add `image_url` to posts (initial) |
-| `d45b3e9ce716` | Add `image_blob` + `image_type` to posts |
-| `c3f8a1d2e947` | Add LinkedIn provenance columns (`source_urn`, `source_url`, `posted_at`) |
+| `baseline0001` | Baseline schema — all current tables (`users`, `cv_documents`, `cv_requests`, `posts` incl. `image_url`/`image_blob`/`image_type` and LinkedIn provenance columns, `profile_snapshots`). Consolidates what used to be several disjoint/incomplete revisions (see #46). |
+
+New changes get their own revision on top of this baseline — see
+[How to write a migration](#how-to-write-a-migration) above.
 
 ### Health Check
 

@@ -38,10 +38,7 @@ async def test_lifespan_seeds_cv(db_session, init_db):
     mock_session_factory.return_value = mock_session_cm()
 
     # Patch modules
-    with (
-        patch("app.main.engine", init_db),
-        patch("app.main.async_session", side_effect=mock_session_cm),
-    ):
+    with patch("app.main.async_session", side_effect=mock_session_cm):
         # Mock file system and network calls
         def exists_side_effect(path):
             return str(path).endswith("cv.pdf") or str(path).endswith(".env.local")
@@ -127,7 +124,6 @@ async def test_lifespan_env_local_without_gemini_key(db_session, init_db, monkey
         yield db_session
 
     with (
-        patch("app.main.engine", init_db),
         patch("app.main.async_session", side_effect=mock_session_cm),
         patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get,
         patch(

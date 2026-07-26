@@ -7,6 +7,22 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Fixed
+- **Schema drift: Alembic is now the sole, authoritative schema-management mechanism** (#46).
+  `app/main.py` no longer calls `Base.metadata.create_all` or runs ad-hoc `ALTER TABLE cv_requests`
+  checks at startup; `backend/docker-entrypoint.sh` now runs `alembic upgrade head` (idempotent) as
+  the container entrypoint before the app starts. Replaced the previously disjoint/incomplete
+  migration history — the top-level `migrations/00N_*.py` scripts (never even on Alembic's
+  discovery path) and the `migrations/versions/*` chain (incremental diffs that assumed tables
+  already existed via `create_all` and could never run against an empty database) — with a single
+  `baseline0001` revision that creates the full current schema (`users`, `cv_documents`,
+  `cv_requests`, `posts` incl. pgvector `embedding` and the partial unique index on `source_urn`,
+  `profile_snapshots`). Verified byte-identical (via `pg_dump --schema-only`) to what `create_all`
+  previously produced. Also fixed `migrations/env.py` and `app/models/__init__.py` (missing `User`
+  import), which silently left autogenerate blind to most of the schema. Added a CI
+  `backend-migrations` job that applies migrations to a fresh DB, re-applies them (idempotency), and
+  runs `alembic check` (drift guard) on every push to `main`.
+
 ### Changed
 - **CI: pinned & cached third-party base images** (#72, PR #76). Added `.github/base-images.txt`
   as the single source of truth (pinned `ollama/ollama:0.5.7`, `open-webui:v0.5.10`,
