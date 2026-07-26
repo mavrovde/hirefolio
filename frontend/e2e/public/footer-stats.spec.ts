@@ -48,11 +48,8 @@ test.describe('Footer Stats', () => {
         const feVersion = page.getByText('FE: v');
         await expect(feVersion).toBeVisible();
 
-        // The backend version only appears once the client-side /stats/public
-        // fetch resolves; give it a generous window so a slow (but successful)
-        // request is not a false failure (see issue #94).
         const beVersion = page.getByText(/BE: v\d+\.\d+\.\d+/);
-        await expect(beVersion).toBeVisible({ timeout: 20000 });
+        await expect(beVersion).toBeVisible();
     });
 
     test('should handle API error gracefully', async ({ page }) => {

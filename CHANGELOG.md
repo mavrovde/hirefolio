@@ -10,21 +10,6 @@ All notable changes to this project will be documented in this file.
 ## [1.8.0] - 2026-07-26
 
 ### Fixed
-- **Fixed flaky blog-post SSR routing: direct `/blog/:slug` no longer flashes to home after
-  hydration** (#25, frontend). Root cause: the SSR URL-rewriting logic lived in an
-  `HttpInterceptorFn` (`ssr.interceptor.ts`), which runs *before* Angular's HTTP transfer-cache
-  interceptor. That made the SSR pass compute its transfer-cache key from the rewritten absolute
-  backend URL while the browser computed its key from the original relative URL, so the client
-  never found the SSR-cached response and always re-fetched the post on hydration — any transient
-  failure of that unnecessary re-fetch then unconditionally navigated the visitor to `/`
-  (`BlogPostComponent`'s `catchError`). Fix: moved the URL rewrite into a new `SsrHttpBackend`
-  (an `HttpBackend`, not an interceptor) so it runs *after* the transfer cache reads/writes its
-  entry — the client now reuses the SSR response instead of re-fetching. As defense-in-depth,
-  `BlogPostComponent` now only navigates home on a genuine 404 (`HttpErrorResponse` with
-  `status === 404`); other/transient errors leave the already-rendered post in place. Added
-  regression coverage: `ssr-http-backend.spec.ts`, updated `blog-post.component.spec.ts`, and a
-  strengthened `e2e/public/blog-display.spec.ts` direct-slug-load test that tracks navigations and
-  asserts the app never redirects to `/`.
 - **Schema drift: Alembic is now the sole, authoritative schema-management mechanism** (#46).
   `app/main.py` no longer calls `Base.metadata.create_all` or runs ad-hoc `ALTER TABLE cv_requests`
   checks at startup; `backend/docker-entrypoint.sh` self-adopts the database into Alembic on every
@@ -45,14 +30,15 @@ All notable changes to this project will be documented in this file.
   of the schema. Added a CI `backend-migrations` job that exercises the real entrypoint against a
   simulated pre-Alembic DB and a fresh DB (each re-run to confirm idempotency), plus `alembic check`
   (drift guard), on every push to `main`.
-- **Enabled `withFetch()` for the public app's HttpClient** (#94). The public app overrides
-  `HttpBackend` with `SsrHttpBackend` (from #25), which delegates to Angular's `FetchBackend`, but
-  `provideHttpClient()` was called without `withFetch()` — leaving the fetch backend without its
-  `FetchFactory`, so client-side requests issued through it failed at the network layer
-  (`net::ERR_FAILED`). The footer's `GET /api/app/stats/public` — the site's only genuine
-  browser-side fetch — was the visible casualty (backend version stuck on "Unknown"), which
-  deterministically failed the E2E `footer-stats` spec and blocked the deploy. Added `withFetch()`
-  and gave the footer version assertion a generous timeout.
+
+### Reverted
+- **Reverted the #25 blog-post SSR routing fix** (and its follow-up #94 `withFetch()` change).
+  The #25 approach overrode Angular's `HttpBackend` with a custom `SsrHttpBackend` (delegating to
+  `FetchBackend`); in the prod E2E this deterministically broke the public site's only genuine
+  browser-side fetch (`GET /api/app/stats/public` → `net::ERR_FAILED`), blocking the deploy — and
+  adding `withFetch()` did not resolve it. Restored the prior interceptor-based SSR URL rewriting
+  (browser HttpClient back on the XHR backend). Issue #25 is reopened to be redone with a
+  browser-safe approach validated against the full E2E stack before merge.
 
 ### Security
 - **Rate-limited the public `GET /api/app/profile` endpoint** (#47): a small, self-contained
