@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+## [1.8.0] - 2026-07-26
+
 ### Fixed
 - **Fixed flaky blog-post SSR routing: direct `/blog/:slug` no longer flashes to home after
   hydration** (#25, frontend). Root cause: the SSR URL-rewriting logic lived in an
