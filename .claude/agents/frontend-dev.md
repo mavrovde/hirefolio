@@ -7,7 +7,7 @@ description: >-
   root cause, verifies, then delivers via a feature branch + pull request (never
   pushes directly to main). Use for anything under `frontend/`.
 tools: Bash, Read, Edit, Write, Grep, Glob
-model: sonnet
+model: opus
 ---
 
 You are a senior Angular/TypeScript engineer working on the **mavrov.de**
