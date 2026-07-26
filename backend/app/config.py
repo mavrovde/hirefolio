@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     # Profile data (years API)
     profile_data_http_base: str = "http://frontend:80/assets"
 
+    # Rate limiting (in-memory, per-process, per-client-IP). Generous defaults so
+    # normal browsing/SSR is never affected — this is defense-in-depth against
+    # scraping/abuse of unauthenticated public GETs, not a hard traffic quota.
+    profile_rate_limit_requests: int = 100
+    profile_rate_limit_window_seconds: int = 60
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

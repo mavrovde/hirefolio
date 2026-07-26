@@ -31,6 +31,22 @@ def mock_embedding():
 
 
 @pytest.fixture(autouse=True)
+def _reset_rate_limiters():
+    """Reset in-memory rate-limiter state before and after every test.
+
+    The limiters hold module-level state keyed by client IP; without this,
+    request counts from one test would bleed into the next (all httpx
+    ASGI-transport test requests share the same synthetic client IP), making
+    tests order-dependent.
+    """
+    from app.services.rate_limit import reset_all_rate_limiters
+
+    reset_all_rate_limiters()
+    yield
+    reset_all_rate_limiters()
+
+
+@pytest.fixture(autouse=True)
 def mock_embedding_global(mocker):
     """Global mock for embeddings to prevent external API calls during tests."""
     val = [0.1] * 768
