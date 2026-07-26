@@ -6,7 +6,6 @@ import { LanguageService } from '@mavrov/shared';
 import { of, Observable, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('BlogComponent', () => {
@@ -97,7 +96,7 @@ describe('BlogComponent', () => {
     fetchSpy.mockReturnValue(mockFetchResponse(initialFetchData));
 
     await TestBed.configureTestingModule({
-      imports: [BlogComponent, MockTranslatePipe, NoopAnimationsModule],
+      imports: [BlogComponent, MockTranslatePipe],
       providers: [
         { provide: BlogService, useValue: blogServiceSpy },
         { provide: LanguageService, useValue: languageServiceMock },

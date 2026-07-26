@@ -5,7 +5,6 @@ import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { BehaviorSubject } from 'rxjs';
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 describe('AdminLayoutComponent', () => {
   let component: AdminLayoutComponent;
@@ -28,7 +27,7 @@ describe('AdminLayoutComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [AdminLayoutComponent, RouterTestingModule, NoopAnimationsModule],
+      imports: [AdminLayoutComponent, RouterTestingModule],
       providers: [{ provide: AuthService, useValue: authServiceSpy }],
     }).compileComponents();
   });

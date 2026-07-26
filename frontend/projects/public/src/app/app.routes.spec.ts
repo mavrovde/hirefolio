@@ -5,7 +5,6 @@ import { TestBed } from '@angular/core/testing';
 import { Location } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 describe('AppRoutes', () => {
     it('should have routes defined', () => {
@@ -54,7 +53,6 @@ describe('AppRoutes Integration', () => {
                 provideRouter(routes),
                 provideHttpClient(),
                 provideHttpClientTesting(),
-                provideNoopAnimations(),
             ]
         });
 
