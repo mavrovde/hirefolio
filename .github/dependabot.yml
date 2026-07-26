@@ -78,6 +78,11 @@ updates:
     ignore:
       # linkedin-api is pinned to 2.2.1 (prod installs a patched wheel) — never auto-bump.
       - dependency-name: "linkedin-api"
+      # ruff 0.16 expanded its default rule set (~62 → ~416 rules; ~592 new findings) and
+      # cannot land as a plain dep bump — it needs a deliberate lint-rule migration (see #54).
+      # Hold at 0.15.x until pyproject pins an explicit [tool.ruff.lint] select.
+      - dependency-name: "ruff"
+        versions: [">=0.16.0"]
 
   # ---------- GitHub Actions ----------
   - package-ecosystem: "github-actions"
