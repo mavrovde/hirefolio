@@ -199,7 +199,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mavrov.de API",
     description="Backend API for mavrov.de",
-    version="1.7.0",
+    version="1.7.1",
     lifespan=lifespan,
 )
 
