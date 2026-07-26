@@ -99,6 +99,47 @@ specs/      Feature specs (planned/done)
    (CodeQL + Dependabot) every release** and triage them. Confirm before anything irreversible or
    outward-facing (merging to `main` triggers a prod deploy).
 
+## Issue tracking, milestones & labels (development flow)
+
+The repo is **PUBLIC** (`github.com/mavrovde/mavrov.de`). This flow is the shared source of truth
+for issue-driven work — humans and AI agents both follow it.
+
+1. **Issues are the project notebook.** Every idea, plan, bug, deferred fix, shipped milestone, and
+   research decision lives as a GitHub issue on `mavrovde/mavrov.de` — never only in chat or personal
+   memory. Register work as an issue up front; **close-the-loop** when it lands (see rule 7).
+2. **Full issue template (every issue):** Summary → Why it matters → Impact (project / developers /
+   visitors) → Current state (grounded, cite `path:line`) → Proposed action → **Acceptance criteria**
+   (checkable list) → **How to verify (test steps)** → Links.
+3. **No orphan issues.** Every issue MUST carry a **milestone** (theme), a **priority** label
+   (`P0-critical` / `P1-high` / `P2-medium` / `P3-low`), and **≥1 area label**.
+4. **Milestones are reusable thematic buckets, NOT per-version.** Reuse an existing theme for similar
+   work (e.g. every dependency task → *Dependency modernization*); add a new theme milestone only for
+   a genuinely new theme. Current buckets:
+   - **Dependency modernization** — dep upgrades + upstream-blocked bumps.
+   - **Security & hardening** — vuln remediation, rate-limiting, secret hygiene.
+   - **Reliability & bug fixes** — flakes, schema/data drift, session bugs.
+   - **CI/CD, tooling & docs** — pipeline, gates, tooling, doc accuracy.
+   - **Content & localization** — content + translations.
+   - **Transfer to general portfolio** — the product/template transformation.
+5. **Label scheme** = type + area + priority:
+   - type: `bug` / `enhancement` / `documentation` / `dependencies` / `security`
+   - area: `backend` / `frontend` / `infra` / `ci-cd` / `performance` / `tech-debt` /
+     `architecture` / `content` / `i18n`
+   - priority: `P0-critical` / `P1-high` / `P2-medium` / `P3-low`
+6. **PRs link issues.** Use `Closes #NN` / `Fixes #NN` for issues a merge resolves, `Refs #NN` for
+   partial/related work. State how the PR satisfies each of the issue's **acceptance criteria**; keep
+   the PR checklist current.
+7. **Close-the-loop (verify before closing).** When work lands, comment on the issue with what was
+   done + links, **verify against its acceptance criteria / test steps**, then close it (or note the
+   remaining status if partial). Never close on assumption.
+8. **No secrets in public issues/PRs.** Never paste credentials, tokens, private keys, or
+   step-by-step live-exploit instructions. Reference config locations (`path:line`) instead of the
+   secret values.
+9. **Tooling.** The `github` MCP server + `gh` CLI manage issues/PRs/milestones/labels; the
+   `security-guidance` plugin supports security triage. The **`issue-workflow` skill**
+   (`.claude/skills/issue-workflow/`) captures this end-to-end flow with copy-paste `gh` commands;
+   `/issue-triage` sweeps the backlog for orphan issues.
+
 ## Execution protocol
 
 Reconnaissance (read the target + its deps + its tests) → blast-radius analysis → define types

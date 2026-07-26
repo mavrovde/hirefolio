@@ -64,6 +64,19 @@ Other: `Proxy Config Audit`, `Build * Image`, and E2E/deploy jobs.
    at which point summarize what was tried and why it's still failing, and ask
    the user how to proceed.
 
+## Issue workflow — close-the-loop after a green deploy
+Once the pipeline is green for a merge that `Closes #NN` / `Fixes #NN` / `Refs #NN` (see `CLAUDE.md`
+→ *Issue tracking, milestones & labels*):
+1. **Verify the deploy against the issue's acceptance criteria / How-to-verify steps** — never on
+   assumption. Check the live result where the issue says to (e.g. the deployed version, the endpoint,
+   the page).
+2. **Comment on each linked issue** with what shipped + links (the PR, the green run URL, the release
+   tag), noting how the acceptance criteria were met.
+3. **Close** the issue if fully satisfied (`Closes #NN` auto-closes on merge — confirm it did);
+   otherwise reopen/leave open and note the remaining status. `Refs #NN` issues stay open — just
+   comment the partial progress.
+Use `gh issue comment #NN --body "…"` / `gh issue close #NN`. Never paste secrets into public issues.
+
 ## Rules
 - Never make the pipeline pass by deleting/skipping tests, lowering coverage
   thresholds, adding blanket ignores, or editing the workflow to remove checks.
