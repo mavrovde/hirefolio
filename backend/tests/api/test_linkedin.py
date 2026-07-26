@@ -457,4 +457,22 @@ async def test_get_linkedin_status(override_get_current_admin_user):
         ) as client:
             response = await client.get("/api/app/linkedin/status")
             assert response.status_code == 200
-            assert response.json()["logged_in"] is True
+            body = response.json()
+            assert body["logged_in"] is True
+            assert body["message"] == "LinkedIn session is active."
+
+
+@pytest.mark.asyncio
+async def test_get_linkedin_status_not_logged_in(override_get_current_admin_user):
+    with patch(
+        "app.api.linkedin.linkedin_service.is_logged_in", new_callable=AsyncMock
+    ) as mock_status:
+        mock_status.return_value = False
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.get("/api/app/linkedin/status")
+            assert response.status_code == 200
+            body = response.json()
+            assert body["logged_in"] is False
+            assert "No active LinkedIn session" in body["message"]

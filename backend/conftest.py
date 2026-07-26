@@ -1,5 +1,16 @@
+import os
 import sys
+import tempfile
 from unittest.mock import MagicMock
+
+# The LinkedIn session directory defaults to a persistent, mounted volume
+# (/data/linkedin_cookies) that isn't writable on dev/CI machines. Point it at a
+# writable temp dir for the test run before any 'app' import instantiates the
+# settings / LinkedInService (which os.makedirs the directory at import time).
+os.environ.setdefault(
+    "LINKEDIN_COOKIES_DIR",
+    os.path.join(tempfile.gettempdir(), "linkedin_cookies_test"),
+)
 
 # Global mocks for dependencies that require Rust/tiktoken or other system deps
 # Must be before any 'app' imports which might trigger nested imports of these
@@ -120,7 +131,6 @@ mock_crewai.Agent = MagicMock
 mock_crewai.Task = MagicMock
 mock_crewai.Crew = MagicMock
 
-import os
 from collections.abc import AsyncGenerator
 from datetime import UTC
 

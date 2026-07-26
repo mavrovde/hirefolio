@@ -4,8 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- Placeholder for next release.
+### Fixed
+- **LinkedIn session now persists across container recreates/deploys** (#44). The saved LinkedIn
+  login session was stored under `/tmp/linkedin_cookies` inside the backend container — part of the
+  ephemeral container layer — so every deploy or restart wiped it and forced the admin to
+  re-authenticate. The session directory is now driven by the new env-overridable
+  `LINKEDIN_COOKIES_DIR` setting (defaulting to `/data/linkedin_cookies`) and is backed by a new
+  `linkedin_cookies` named volume mounted on the `backend` service in both `docker-compose.yml` and
+  `docker-compose.prod.yml`, so the saved session survives container recreation. The `/linkedin/status`
+  response now also returns a human-readable `message` explaining whether a session is active.
 
 ## [1.8.0] - 2026-07-26
 

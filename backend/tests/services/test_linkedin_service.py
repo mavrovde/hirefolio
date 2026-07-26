@@ -2,7 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.linkedin import LinkedInService
+from app.config import settings
+from app.services.linkedin import COOKIES_DIR, LinkedInService
 
 
 @pytest.fixture
@@ -10,6 +11,28 @@ def service():
     svc = LinkedInService()
     svc._client = None
     return svc
+
+
+def test_cookies_dir_derives_from_settings():
+    """The session dir is driven by the env-overridable settings knob, not a
+    hardcoded ephemeral /tmp path (regression for issue #44)."""
+    assert COOKIES_DIR == settings.linkedin_cookies_dir
+    assert not COOKIES_DIR.startswith("/tmp/")
+
+
+def test_cookies_dir_default_is_persistent_volume_path():
+    """The default (unset env) points at the mounted persistent volume path."""
+    assert (
+        type(settings).model_fields["linkedin_cookies_dir"].default
+        == "/data/linkedin_cookies"
+    )
+
+
+def test_init_creates_cookies_dir():
+    """LinkedInService.__init__ ensures the session directory exists."""
+    with patch("app.services.linkedin.os.makedirs") as mock_makedirs:
+        LinkedInService()
+        mock_makedirs.assert_called_once_with(COOKIES_DIR, exist_ok=True)
 
 
 @pytest.mark.asyncio
@@ -38,7 +61,7 @@ async def test_get_client_initializes_on_first_call(service, mocker):
             "pass",
             cookies=None,
             authenticate=False,
-            cookies_dir="/tmp/linkedin_cookies",
+            cookies_dir=COOKIES_DIR,
         )
 
 
@@ -80,9 +103,7 @@ async def test_get_client_fallback_to_cookie_dir(service, mocker):
     ):
         client = service._get_client()
         assert client is mock_linkedin
-        mock_cls.assert_any_call(
-            "", "", authenticate=True, cookies_dir="/tmp/linkedin_cookies"
-        )
+        mock_cls.assert_any_call("", "", authenticate=True, cookies_dir=COOKIES_DIR)
 
 
 @pytest.mark.asyncio
@@ -115,7 +136,7 @@ async def test_login_success(service):
             "u",
             "p",
             authenticate=True,
-            cookies_dir="/tmp/linkedin_cookies",
+            cookies_dir=COOKIES_DIR,
             refresh_cookies=True,
         )
 
