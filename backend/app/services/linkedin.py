@@ -219,7 +219,6 @@ linkedin_service = LinkedInService()
 # ---------------------------------------------------------------------------
 
 _ZERO_WIDTH = re.compile(r"[\u200b\u200e\u200f\ufeff]")
-_HASHTAG_LINE = re.compile(r"[ \t]*hashtag[ \t]*\n", re.IGNORECASE)
 _EXCESS_NEWLINES = re.compile(r"\n{3,}")
 _HASHTAG_TOKEN = re.compile(r"#([A-Za-z]\w*)")
 
@@ -232,8 +231,12 @@ def normalize_linkedin_text(text: str) -> str:
     text = _ZERO_WIDTH.sub("", text)
     # NBSP → regular space
     text = text.replace("\u00a0", " ")
-    # Remove bare 'hashtag' label lines (LinkedIn UI artefact)
-    text = _HASHTAG_LINE.sub("", text)
+    # Remove bare 'hashtag' label lines (LinkedIn UI artefact) — line-based scan is
+    # linear / ReDoS-safe (the old `[ \t]*hashtag[ \t]*\n` regex was O(n^2) on crafted
+    # whitespace input; CodeQL py/polynomial-redos, alert #28).
+    text = "\n".join(
+        line for line in text.split("\n") if line.strip().lower() != "hashtag"
+    )
     # Collapse 3+ consecutive newlines to exactly two
     text = _EXCESS_NEWLINES.sub("\n\n", text)
     # Trim leading/trailing whitespace

@@ -3,6 +3,8 @@ Unit tests for the pure LinkedIn text-normalization helpers.
 No I/O, no network, no fixtures required.
 """
 
+import time
+
 import pytest
 
 from app.services.linkedin import extract_hashtags, normalize_linkedin_text
@@ -93,6 +95,20 @@ def test_normalize_real_sample_no_hashtag_token() -> None:
     assert "hashtag" not in result.split()
     assert "#EngineeringManagement" in result
     assert "#SoftwareArchitecture" in result
+
+
+def test_normalize_linkedin_text_no_redos_on_whitespace() -> None:
+    """A long whitespace run with no 'hashtag' label line must not blow up.
+
+    Regression for CodeQL py/polynomial-redos (alert #28): the previous
+    ``[ \\t]*hashtag[ \\t]*\\n`` regex was polynomial (O(n^2)) on this input;
+    the line-based scan is linear.
+    """
+    evil = " \t" * 100_000  # 200k whitespace chars, no "hashtag" label line
+    start = time.perf_counter()
+    result = normalize_linkedin_text(evil + "tail")
+    assert time.perf_counter() - start < 0.5
+    assert result == "tail"
 
 
 # ── extract_hashtags ─────────────────────────────────────────────────────────
