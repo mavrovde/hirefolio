@@ -24,6 +24,25 @@ All notable changes to this project will be documented in this file.
   v1.8.0 #84 revert). Prompt strings only — no change to role keys, ports, dependencies or the
   A2A architecture; the `agents/tests/` suite (55 tests) still passes.
 
+### Changed
+- **CI: parallelize the backend test suite with `pytest-xdist` (`-n auto`)** (#91). The `Backend
+  Tests` job ran serially against a single shared Postgres. `backend/conftest.py` now derives a
+  per-worker database (`<db>_<worker>`, e.g. `test_mavrov_gw0`) from `PYTEST_XDIST_WORKER` —
+  creating it on `pytest_configure` (via the `postgres` maintenance DB) and dropping it
+  `WITH (FORCE)` on session end — so workers never collide on `ux_post_slug_lang` /
+  `ix_post_source_urn`; serial runs (no `-n`) and the `master` controller keep the exact prior
+  single-shared-DB behavior. Added `pytest-xdist==3.8.0` to `requirements-dev.txt`. Measured in
+  real CI: the `Backend Tests` job dropped **298s → 191s (−36%)** with 100% coverage aggregation
+  preserved and zero correctness regressions.
+- **CI: remove the redundant standalone "Proxy Verification" job** (#91). The `proxy-startup-test`
+  job spun the full prod stack up a **second time** just to grep the Nginx start banner, and all
+  four `publish-*` jobs blocked on it — pure critical-path waste (~284s in the last run). The
+  `e2e-tests` job already starts the same stack (including `global_proxy`) and waits for HTTP
+  200/302 on `:80` (a stronger check); its unique log-grep assertion is now folded into `e2e-tests`
+  as a "Verify Proxy Startup (Smoke)" step, and `publish-{backend,frontend,admin-frontend,proxy}`
+  now depend on `e2e-tests` directly. No verification dropped; one full stack bring-up removed from
+  the serial deploy tail.
+
 ### Fixed
 - **LinkedIn session now persists across container recreates/deploys** (#44). The saved LinkedIn
   login session was stored under `/tmp/linkedin_cookies` inside the backend container — part of the

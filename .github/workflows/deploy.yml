@@ -569,6 +569,28 @@ jobs:
           timeout 60s bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:80 | grep "200\|302"; do sleep 2; done'
           echo "Stack is up!"
 
+      # Proxy smoke check — folded in from the former standalone "Proxy
+      # Verification" job (removed as a redundant second stack bring-up). The
+      # full stack above already proves the proxy serves HTTP 200/302 on :80
+      # (a stronger check); here we additionally assert the container is up and
+      # Nginx logged its start banner, preserving the old job's exact guarantee.
+      - name: Verify Proxy Startup (Smoke)
+        run: |
+          if [ "$(docker inspect -f '{{.State.Running}}' global_proxy)" != "true" ]; then
+            echo "❌ Proxy container died!"
+            docker logs global_proxy
+            exit 1
+          fi
+          LOGS=$(docker logs global_proxy 2>&1)
+          echo "=== PROXY LOGS ==="
+          echo "$LOGS"
+          if echo "$LOGS" | grep -q "Starting Nginx..."; then
+            echo "✅ Nginx started"
+          else
+            echo "❌ Nginx start log missing"
+            exit 1
+          fi
+
       - name: Seed E2E Data
         run: |
           docker compose -f docker-compose.prod.yml exec -T backend python scripts/seed_e2e_user.py
@@ -604,7 +626,7 @@ jobs:
   publish-backend:
     name: Publish Backend
     runs-on: ubuntu-latest
-    needs: [proxy-startup-test]
+    needs: [e2e-tests]
     permissions:
       contents: read
       packages: write
@@ -634,7 +656,7 @@ jobs:
   publish-frontend:
     name: Publish Frontend
     runs-on: ubuntu-latest
-    needs: [proxy-startup-test]
+    needs: [e2e-tests]
     permissions:
       contents: read
       packages: write
@@ -664,7 +686,7 @@ jobs:
   publish-admin-frontend:
     name: Publish Admin Frontend
     runs-on: ubuntu-latest
-    needs: [proxy-startup-test]
+    needs: [e2e-tests]
     permissions:
       contents: read
       packages: write
@@ -694,7 +716,7 @@ jobs:
   publish-proxy:
     name: Publish Proxy
     runs-on: ubuntu-latest
-    needs: [proxy-startup-test]
+    needs: [e2e-tests]
     permissions:
       contents: read
       packages: write
@@ -720,91 +742,3 @@ jobs:
           docker tag $SHA_TAG $REPO_BASE-proxy:$VERSION
           docker push $REPO_BASE-proxy:latest
           docker push $REPO_BASE-proxy:$VERSION
-
-  # ============================================
-  # SMOKE TESTS (Fast Verification)
-  # ============================================
-  proxy-startup-test:
-    name: Proxy Verification (Smoke Test)
-    needs: [e2e-tests]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Prune Pre-Run (Free Space)
-        run: |
-          docker system prune -a -f --volumes
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Node.js (for Playwright)
-        uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-
-      - name: Restore cached base images
-        id: cache-base-images
-        uses: actions/cache@v6
-        with:
-          path: /tmp/base-images
-          key: base-images-${{ hashFiles('.github/base-images.txt') }}
-
-      - name: Load or pull base images
-        run: |
-          set -eo pipefail
-          mkdir -p /tmp/base-images
-          TAR=/tmp/base-images/images.tar
-          IMAGES="$(grep -vE '^\s*#|^\s*$' .github/base-images.txt)"
-          if [ -f "$TAR" ]; then
-            echo "Cache hit — loading pinned base images from tarball (no pull):"
-            echo "$IMAGES"
-            docker load -i "$TAR"
-          else
-            echo "Cache miss — pulling pinned base images:"
-            echo "$IMAGES"
-            for img in $IMAGES; do docker pull "$img"; done
-            docker save $IMAGES -o "$TAR"
-          fi
-
-      - name: Start Proxy Stack
-        env:
-          # Use "sha-<hash>" tag to pull the candidate images
-          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          IMAGE_TAG: sha-${{ github.sha }}
-        run: |
-          # Start proxy (Certbot is gone from compose.prod)
-          docker compose -f docker-compose.prod.yml up -d proxy
-
-      - name: Wait for Bootstrap
-        run: sleep 10
-
-      - name: Check Container Status
-        run: |
-          if [ "$(docker inspect -f '{{.State.Running}}' global_proxy)" != "true" ]; then
-            echo "Proxy container died!"
-            docker logs global_proxy
-            exit 1
-          fi
-
-      - name: Verify Proxy Start
-        run: |
-          LOGS=$(docker logs global_proxy 2>&1)
-
-          echo "=== PROXY LOGS ==="
-          echo "$LOGS"
-
-          if echo "$LOGS" | grep -q "Starting Nginx..."; then
-             echo "✅ Nginx started"
-          else
-             echo "❌ Nginx start log missing"
-             exit 1
-          fi
