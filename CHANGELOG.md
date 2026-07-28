@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Parallelize the CI `Backend Tests` job with `pytest-xdist` (`-n auto`)** (#91, lever 3). The
+  backend suite ran serially (`deploy.yml`), making it the ~5.2-min head of the deploy critical
+  path. It now runs across all available cores. The single shared Postgres service (one DB) made
+  naive parallelism collide on unique constraints (`ux_post_slug_lang` / `ix_post_source_urn`), so
+  `backend/conftest.py` now gives **each xdist worker its own database**: it derives a per-worker DB
+  name from `PYTEST_XDIST_WORKER` (`test_mavrov_gw0`, `_gw1`, …), creates it if absent via asyncpg
+  against the `postgres` maintenance DB in `pytest_configure`, points the async engine + schema
+  `create_all` at it, and drops it (`WITH (FORCE)`) at session end. Serial runs (no `-n`) and the
+  xdist controller keep the original single-shared-DB behavior unchanged. `pytest-cov` aggregates
+  coverage across workers, so the 100% gate is preserved. Added `pytest-xdist==3.8.0` to
+  `requirements-dev.txt`. Local wall-clock: serial vs `-n auto` (see PR). Other #91 levers (Ollama
+  weights cache, proxy-job dedup, backend-build cache) remain open.
+
 ### Docs
 - **Reconcile the root `agents/` A2A roster prompts with the `.claude/agents/` charters** (#99).
   The A2A delivery-team `system_prompt`s in `agents/common/roster.py` predated the richer Claude
