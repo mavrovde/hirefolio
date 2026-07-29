@@ -19,6 +19,25 @@ All notable changes to this project will be documented in this file.
   bonus (smaller attack surface). Validated against the full Docker E2E (backend builds, starts, and
   serves the stack with no Playwright). `libpq5`/`postgresql-client`/`curl` retained.
 
+### Fixed
+- **Public app committed to zoneless change detection** (#105). The public build ships no `zone.js`
+  polyfill (`frontend/angular.json`) yet declared no change-detection driver, so async property
+  mutations silently never repaint in the browser (the #94 class) — fine in unit tests that bundle
+  `zone.js`, frozen live. `app.config.ts` now provides `provideZonelessChangeDetection()` and the
+  components that mutated plain template props in async callbacks trigger CD explicitly via
+  `ChangeDetectorRef.markForCheck()` (`cv.component`, `header.component`, `blog.component`'s browser
+  fetch/fallback/search paths). The dead `NgZone.run(...)` wrappers in `blog.component` (NgZone is a
+  no-op under zoneless) were removed. A `public-e2e` guard asserts a purely-async region — the footer
+  uptime counter (`setInterval` + `markForCheck`) — actually advances live.
+- **Real HTTP 404 for unknown blog slugs on SSR** (#109). `blog-post.component` resolved a
+  missing/unpublished slug to a graceful not-found panel but SSR served it `200` (a soft-404 that
+  pollutes crawler indexes). When the view resolves to not-found on the **server**, the component now
+  sets the outgoing SSR response status to `404` via the `RESPONSE_INIT` injection token
+  (`@angular/core`), and marks the page `noindex` with a "Post not found" title (new
+  `SeoService.setNotFound()`) on both platforms. Known slugs still return `200`; the client-rendered
+  not-found panel is unchanged. Guarded by a `public-e2e` assertion (`404` for an unknown slug, `200`
+  for known routes).
+
 ### Docs
 - **Fold the v1.8.1 SSR/zoneless lessons into the agent charters** (`.claude/agents/frontend-dev.md`,
   `.claude/agents/pr-reviewer.md`, `agents/common/roster.py`). Documented the three hard-won gotchas

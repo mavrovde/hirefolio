@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Inject, PLATFORM_ID, NgZone, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, Input, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BlogService, BlogPost, BlogSearchResult } from '@mavrov/shared';
 import { Observable, map } from 'rxjs';
@@ -37,7 +37,6 @@ export class BlogComponent implements OnInit {
     private blogService: BlogService,
     private seoService: SeoService,
     private router: Router,
-    private ngZone: NgZone,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
   ) { }
@@ -124,21 +123,19 @@ export class BlogComponent implements OnInit {
         throw new Error(`HTTP ${resp.status}`);
       }
       const response = await resp.json();
-      // Run inside Angular's zone to trigger change detection
-      this.ngZone.run(() => {
-        const existingIds = new Set(this.posts.map((p: BlogPost) => p.id));
-        const newPosts = (response.items || []).filter((p: BlogPost) => !existingIds.has(p.id));
-        this.posts = [...this.posts, ...newPosts];
-        this.hasMore = this.posts.length < response.total;
-        this.isLoading = false;
-        this.cdr.markForCheck();
-      });
+      // Zoneless app (#105): the `async`/`fetch` callback mutates plain props read
+      // by the template — trigger change detection explicitly via `markForCheck()`
+      // (the old `NgZone.run` wrapper was dead code: NgZone is a no-op here).
+      const existingIds = new Set(this.posts.map((p: BlogPost) => p.id));
+      const newPosts = (response.items || []).filter((p: BlogPost) => !existingIds.has(p.id));
+      this.posts = [...this.posts, ...newPosts];
+      this.hasMore = this.posts.length < response.total;
+      this.isLoading = false;
+      this.cdr.markForCheck();
     } catch (err) {
       console.error('Failed to load more posts via fetch, using fallback', err);
-      this.ngZone.run(() => {
-        this.usingFallback = true;
-        this.loadFallbackPosts(this.loadMoreSize);
-      });
+      this.usingFallback = true;
+      this.loadFallbackPosts(this.loadMoreSize);
     }
   }
 
@@ -148,9 +145,13 @@ export class BlogComponent implements OnInit {
         this.posts = [...this.posts, ...response.items];
         this.hasMore = this.posts.length < response.total;
         this.isLoading = false;
+        // Zoneless (#105): async subscribe mutating template props needs an explicit
+        // CD trigger — the old NgZone.run wrapper that used to drive this is gone.
+        this.cdr.markForCheck();
       },
       error: () => {
         this.isLoading = false;
+        this.cdr.markForCheck();
       }
     });
   }
@@ -181,6 +182,7 @@ export class BlogComponent implements OnInit {
       if (!query || query.trim().length < 3) {
         this.searchResults$ = null;
         this.isSearching = false;
+        this.cdr.markForCheck(); // zoneless: repaint after async debounce mutation
         return;
       }
 
@@ -191,6 +193,7 @@ export class BlogComponent implements OnInit {
           return results;
         }),
       );
+      this.cdr.markForCheck(); // zoneless: let the async pipe pick up the new results stream
     });
   }
 
@@ -200,6 +203,7 @@ export class BlogComponent implements OnInit {
       this.currentQuery = '';
       this.searchResults$ = null;
       this.isSearching = false;
+      this.cdr.markForCheck(); // zoneless: repaint after async clear
     });
   }
 

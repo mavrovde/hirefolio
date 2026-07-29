@@ -208,7 +208,7 @@ describe('HeaderComponent', () => {
   it('scrollToYear should navigate directly and return if not in browser environment', () => {
     const langService = TestBed.inject(LanguageService);
     const yearsService = TestBed.inject(YearsService);
-    const serverComponent = new HeaderComponent(langService, yearsService, router, 'server');
+    const serverComponent = new HeaderComponent(langService, yearsService, router, 'server', { markForCheck: vi.fn() } as any);
     serverComponent.scrollToYear(2020);
     expect(router.navigate).toHaveBeenCalledWith(['/'], { fragment: 'experience' });
   });

@@ -1,5 +1,5 @@
-import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { Component, OnInit, Inject, PLATFORM_ID, RESPONSE_INIT } from '@angular/core';
+import { CommonModule, isPlatformBrowser, isPlatformServer } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { BlogService, BlogPost } from '@mavrov/shared';
 import { Observable, switchMap, catchError, of, tap, map, startWith } from 'rxjs';
@@ -132,7 +132,12 @@ export class BlogPostComponent implements OnInit {
     private router: Router,
     private blogService: BlogService,
     private seoService: SeoService,
-    @Inject(PLATFORM_ID) private platformId: Object
+    @Inject(PLATFORM_ID) private platformId: Object,
+    // On the server this is the mutable `ResponseInit` the @angular/ssr engine
+    // uses to build the outgoing Response; on the browser (and in unit tests) the
+    // platform factory yields `null`. Mutating `.status` during render lets us
+    // turn a soft-404 into a real HTTP 404 for unknown blog slugs (#109).
+    @Inject(RESPONSE_INIT) private responseInit: ResponseInit | null
   ) { }
 
   ngOnInit() {
@@ -151,15 +156,36 @@ export class BlogPostComponent implements OnInit {
           tap(vm => {
             if (vm.status === 'found') {
               this.applySeo(vm.post);
+            } else {
+              // Empty-body (published-but-missing) not-found.
+              this.handleNotFound();
             }
           }),
-          // A missing/unpublished post (404) or a transient error resolves to a
-          // graceful not-found panel instead of redirecting home (#25).
-          catchError(() => of<BlogPostVm>({ status: 'notfound' })),
+          // A missing/unpublished post (404 from the API → HttpClient throws) or a
+          // transient error resolves to a graceful not-found panel instead of
+          // redirecting home (#25). Runs the same not-found side-effects (noindex
+          // SEO + SSR 404, #109) for the thrown-error path.
+          catchError(() => {
+            this.handleNotFound();
+            return of<BlogPostVm>({ status: 'notfound' as const });
+          }),
           startWith<BlogPostVm>({ status: 'loading' })
         );
       })
     );
+  }
+
+  /**
+   * Not-found handling for an unknown/unpublished slug: emit a `noindex` robots
+   * meta + not-found title (so a 404 body is never indexed), and — when this
+   * resolves on the SERVER during SSR — set the outgoing HTTP status to 404 so
+   * the response is a real 404 rather than a soft-404 served as 200 (#109).
+   */
+  private handleNotFound(): void {
+    this.seoService.setNotFound();
+    if (isPlatformServer(this.platformId) && this.responseInit) {
+      this.responseInit.status = 404;
+    }
   }
 
   private applySeo(post: BlogPost): void {

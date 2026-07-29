@@ -274,12 +274,30 @@ test.describe('Blog post SSR/hydration (#25) — no retry tolerance', () => {
     test('unknown /blog/:slug shows a graceful not-found panel, not a home redirect', async ({ page }) => {
         const missingSlug = `does-not-exist-${Date.now()}`;
 
-        await page.goto(`/blog/${missingSlug}`);
+        const response = await page.goto(`/blog/${missingSlug}`);
         await page.waitForLoadState('networkidle');
+
+        // #109: SSR must serve a real HTTP 404 for an unknown slug (a soft-404
+        // served as 200 pollutes search indexes and lies to crawlers). The
+        // document navigation response itself carries the status.
+        expect(response?.status()).toBe(404);
 
         // Graceful not-found (criterion 3): the not-found panel is shown and we
         // stay on /blog/:slug — the old behavior redirected to '/'.
         await expect(page.getByTestId('post-not-found')).toBeVisible({ timeout: 10000 });
         await expect(page).toHaveURL(new RegExp(`/blog/${missingSlug}$`));
+
+        // #109: the 404 body must be marked noindex so it is never indexed.
+        await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+    });
+
+    // #109: a request-level 404 assertion that also proves a KNOWN route stays 200.
+    test('SSR returns HTTP 404 for an unknown slug but 200 for a known route', async ({ request }) => {
+        const missingSlug = `ghost-${Date.now()}`;
+        const notFound = await request.get(`/blog/${missingSlug}`, { failOnStatusCode: false });
+        expect(notFound.status()).toBe(404);
+
+        const home = await request.get('/', { failOnStatusCode: false });
+        expect(home.status()).toBe(200);
     });
 });

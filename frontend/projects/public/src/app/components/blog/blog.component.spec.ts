@@ -282,13 +282,13 @@ describe('BlogComponent', () => {
 
   it('should use blogService.getPosts in non-browser SSR environments', async () => {
     // Re-create the component with 'server' instead of an object to trigger SSR logic path
-    const serverComponent = new BlogComponent(blogServiceSpy, {} as any, {} as any, {} as any, {} as any, 'server');
+    const serverComponent = new BlogComponent(blogServiceSpy, {} as any, {} as any, { markForCheck: vi.fn() } as any, 'server');
     serverComponent.loadPosts();
     expect(blogServiceSpy.getPosts).toHaveBeenCalledWith(true, null, null, 1, 10);
   });
 
   it('should fall back to using static posts when SSR blogService.getPosts fails', async () => {
-    const serverComponent = new BlogComponent(blogServiceSpy, {} as any, {} as any, {} as any, {} as any, 'server');
+    const serverComponent = new BlogComponent(blogServiceSpy, {} as any, {} as any, { markForCheck: vi.fn() } as any, 'server');
     blogServiceSpy.getPosts.mockReturnValueOnce(throwError(() => new Error('SSR load error')));
     serverComponent.loadPosts();
     expect(blogServiceSpy.getStaticPosts).toHaveBeenCalledWith(1, 10);

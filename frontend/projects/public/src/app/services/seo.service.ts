@@ -67,6 +67,17 @@ export class SeoService {
         this.jsonLdSchema$.next(schema);
     }
 
+    /**
+     * Mark the current page as a genuine "not found": a not-found <title> plus a
+     * `robots: noindex` meta so crawlers never index a 404 body. Rendered into the
+     * SSR HTML (alongside the real 404 status set by the component) and kept after
+     * hydration (#109).
+     */
+    setNotFound(): void {
+        this.titleService.setTitle('Post not found | Sergii Mavrov');
+        this.metaService.updateTag({ name: 'robots', content: 'noindex' });
+    }
+
     private updateCanonicalUrl(url: string): void {
         let link: HTMLLinkElement | null = document.querySelector("link[rel='canonical']");
         if (!link) {
