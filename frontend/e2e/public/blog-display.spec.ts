@@ -1,5 +1,24 @@
 import { test, expect } from '@playwright/test';
-import { config } from '../config';
+import { config, API_PREFIX } from '../config';
+
+/**
+ * Poll the PUBLIC posts API until a freshly-created post is queryable by slug.
+ * A just-published post is not in the SSR/transfer-cached list immediately; this
+ * decouples the create→view tests from that propagation race (tracked in #107)
+ * so they exercise the actual render/hydration behavior, not eventual
+ * consistency, and stop flaking against the tight per-assertion timeout.
+ */
+async function waitForPostQueryable(
+    request: { get: (url: string) => Promise<{ status: () => number }> },
+    slug: string,
+): Promise<void> {
+    await expect
+        .poll(async () => (await request.get(`${config.baseUrl}${API_PREFIX}/posts/${slug}`)).status(), {
+            timeout: 20000,
+            intervals: [200, 500, 1000],
+        })
+        .toBe(200);
+}
 
 test.describe('Blog Display on Page Load', () => {
     test.beforeEach(async ({ page }) => {
@@ -40,13 +59,15 @@ test.describe('Blog Display on Page Load', () => {
         await expect(page).toHaveURL(/\/dashboard/);
 
         // Create 15 published posts (enough to trigger load-more after initial 10)
+        let lastSlug = '';
         for (let i = 0; i < 15; i++) {
             const uniqueId = Date.now() + i;
+            lastSlug = `blog-display-e2e-${uniqueId}`;
             await page.goto(`${config.adminUrl}/posts`);
             await page.click('.btn-new');
 
             await page.fill('input[id="title"]', `Blog Display E2E ${uniqueId}`);
-            await page.fill('input[id="slug"]', `blog-display-e2e-${uniqueId}`);
+            await page.fill('input[id="slug"]', lastSlug);
             await page.selectOption('select[id="language"]', 'en');
             await page.fill('textarea[id="content"]', `Content for blog display test ${i}`);
             await page.fill('textarea[id="summary"]', `Summary for post ${i}`);
@@ -61,6 +82,8 @@ test.describe('Blog Display on Page Load', () => {
         // Wait for logout to settle (admin origin → /login) before the cross-origin
         // navigation to the public site, so the goto below isn't interrupted mid-flight.
         await page.waitForURL(/\/login/, { timeout: 15000 });
+        // Ensure the last-created post is queryable before loading the public list.
+        await waitForPostQueryable(page.request, lastSlug);
         await page.goto('/blog');
         await page.waitForLoadState('networkidle');
 
@@ -138,6 +161,7 @@ test.describe('Blog Display on Page Load', () => {
         // Wait for logout to settle (admin origin → /login) before the cross-origin
         // navigation to the public site, so the goto below isn't interrupted mid-flight.
         await page.waitForURL(/\/login/, { timeout: 15000 });
+        await waitForPostQueryable(page.request, `e2e-title-check-${uniqueId}`);
         await page.goto('/blog');
         await page.waitForLoadState('networkidle');
 
@@ -172,6 +196,7 @@ test.describe('Blog Display on Page Load', () => {
         // Wait for logout to settle (admin origin → /login) before the cross-origin
         // navigation to the public site, so the goto below isn't interrupted mid-flight.
         await page.waitForURL(/\/login/, { timeout: 15000 });
+        await waitForPostQueryable(page.request, slug);
 
         // Navigate directly to the slug URL to verify SSR/Routing fix
         const response = await page.goto(`/blog/${slug}`);
@@ -186,5 +211,75 @@ test.describe('Blog Display on Page Load', () => {
         
         const postContentOnPage = page.getByText('Direct URL load content');
         await expect(postContentOnPage).toBeVisible({ timeout: 10000 });
+    });
+});
+
+/**
+ * #25 hydration regression guard — runs with retries:0 so a flash-to-home or a
+ * home-bounce on a genuine 404 fails loudly instead of being masked by the
+ * global retry policy. These tests are decoupled from the brand-new-post
+ * propagation race (they poll until the post is queryable, or use a slug that is
+ * deliberately absent), so any flake here is a real regression, not timing.
+ */
+test.describe('Blog post SSR/hydration (#25) — no retry tolerance', () => {
+    test.describe.configure({ retries: 0 });
+
+    test.beforeEach(async ({ page }) => {
+        await page.addInitScript(() => window.localStorage.setItem('cookie_consent', 'true'));
+        await page.route('**/google-analytics.com/**', route => route.abort());
+        await page.route('**/googletagmanager.com/**', route => route.abort());
+    });
+
+    test('direct /blog/:slug renders the post and never flashes to the home page', async ({ page }) => {
+        const uniqueId = Date.now();
+        const title = `No Flash Test ${uniqueId}`;
+        const slug = `no-flash-${uniqueId}`;
+
+        // Create + publish via admin.
+        await page.goto(`${config.adminUrl}/login`);
+        await page.fill('input[name="username"]', 'admin');
+        await page.fill('input[name="password"]', 'admin123');
+        await page.click('button[type="submit"]');
+        await expect(page).toHaveURL(/\/dashboard/);
+        await page.goto(`${config.adminUrl}/posts`);
+        await page.click('.btn-new');
+        await page.fill('input[id="title"]', title);
+        await page.fill('input[id="slug"]', slug);
+        await page.selectOption('select[id="language"]', 'en');
+        await page.fill('textarea[id="content"]', 'No flash content body');
+        await page.fill('textarea[id="summary"]', 'No flash summary');
+        await page.click('button:has-text("[ Publish ]")');
+        await page.waitForURL(/\/posts/);
+        await page.click('.logout-btn');
+        await page.waitForURL(/\/login/, { timeout: 15000 });
+
+        // Decouple from propagation timing: only test hydration once the post is
+        // server-queryable (so SSR renders it and hydration must preserve it).
+        await waitForPostQueryable(page.request, slug);
+
+        const response = await page.goto(`/blog/${slug}`);
+        expect(response?.ok()).toBeTruthy();
+        await page.waitForLoadState('networkidle');
+
+        // The post must be shown AND the URL must remain /blog/:slug — a flash to
+        // home would leave the hero, not the post <h1>, and change the URL to '/'.
+        await expect(page.locator('h1', { hasText: title })).toBeVisible({ timeout: 10000 });
+        await expect(page).toHaveURL(new RegExp(`/blog/${slug}$`));
+        // Give hydration a beat and re-assert we did not get bounced home.
+        await page.waitForTimeout(1500);
+        await expect(page).toHaveURL(new RegExp(`/blog/${slug}$`));
+        await expect(page.locator('h1', { hasText: title })).toBeVisible();
+    });
+
+    test('unknown /blog/:slug shows a graceful not-found panel, not a home redirect', async ({ page }) => {
+        const missingSlug = `does-not-exist-${Date.now()}`;
+
+        await page.goto(`/blog/${missingSlug}`);
+        await page.waitForLoadState('networkidle');
+
+        // Graceful not-found (criterion 3): the not-found panel is shown and we
+        // stay on /blog/:slug — the old behavior redirected to '/'.
+        await expect(page.getByTestId('post-not-found')).toBeVisible({ timeout: 10000 });
+        await expect(page).toHaveURL(new RegExp(`/blog/${missingSlug}$`));
     });
 });

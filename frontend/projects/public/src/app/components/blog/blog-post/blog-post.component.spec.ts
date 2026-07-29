@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { BlogPostComponent } from './blog-post.component';
+import { BlogPostComponent, BlogPostVm } from './blog-post.component';
 import { BlogService } from '@mavrov/shared';
 import { SeoService } from '../../../services/seo.service';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
@@ -90,16 +90,20 @@ describe('BlogPostComponent', () => {
             keywords: 'tag1'
         });
         expect(seoServiceSpy.setJsonLd).toHaveBeenCalled();
-        
-        component.post$?.subscribe((post) => {
-            expect(post).toEqual(mockPost);
-        });
+
+        const emissions: BlogPostVm[] = [];
+        component.vm$?.subscribe((vm) => emissions.push(vm));
+        expect(emissions.at(-1)).toEqual({ status: 'found', post: mockPost });
     });
 
-    it('should handle undefined post gracefully', () => {
+    it('should resolve to not-found (no SEO, no home redirect) when the post is missing', () => {
         blogServiceSpy.getPost.mockReturnValue(of(undefined));
         fixture.detectChanges();
         expect(seoServiceSpy.updateSeo).not.toHaveBeenCalled();
+        expect(routerSpy.navigate).not.toHaveBeenCalledWith(['/']);
+        const emissions: BlogPostVm[] = [];
+        component.vm$?.subscribe((vm) => emissions.push(vm));
+        expect(emissions.at(-1)?.status).toBe('notfound');
     });
 
     it('should handle SEO description fallback to content substring if summary is empty', () => {
@@ -129,10 +133,15 @@ describe('BlogPostComponent', () => {
         expect(routerSpy.navigate).toHaveBeenCalledWith(['/']);
     });
 
-    it('should redirect home on service error', () => {
+    it('should show not-found (not redirect home) on a service error — #25 regression', () => {
         blogServiceSpy.getPost.mockReturnValue(throwError(() => new Error('Not found')));
         fixture.detectChanges();
-        expect(routerSpy.navigate).toHaveBeenCalledWith(['/']);
+        // The old behavior bounced the visitor home (the "flash to home"); now a
+        // transient error / genuine 404 resolves to a graceful not-found panel.
+        expect(routerSpy.navigate).not.toHaveBeenCalledWith(['/']);
+        const emissions: BlogPostVm[] = [];
+        component.vm$?.subscribe((vm) => emissions.push(vm));
+        expect(emissions.at(-1)?.status).toBe('notfound');
     });
 
     it('should navigate back on goBack()', () => {

@@ -62,7 +62,13 @@ All notable changes to this project will be documented in this file.
   `FetchBackend` and broke the only genuine browser fetch, `GET /api/app/stats/public` →
   `net::ERR_FAILED`), this backend delegates to **`HttpXhrBackend`** — the exact backend the app has
   always used on both platforms — so the browser dispatch is byte-identical to the long-working
-  baseline and #94 cannot regress. Removed the old `ssr.interceptor.ts`.
+  baseline and #94 cannot regress. Removed the old `ssr.interceptor.ts`. Follow-up: `BlogPostComponent`
+  now resolves a genuine 404 / transient fetch error to a **graceful "post not found" panel** instead
+  of `router.navigate(['/'])` (the old home-bounce, now removed) — a `vm$` of `loading|found|notfound`
+  rendered via the `async` pipe. Added a **retries:0** E2E guard (`blog-display.spec.ts`) that asserts a
+  direct `/blog/:slug` load renders the post and keeps the URL (no flash-to-home) and that an unknown
+  slug shows the not-found panel without redirecting home; the existing create→view E2E tests now poll
+  the public API until the new post is queryable, removing the brand-new-post propagation flake (#107).
 - **Footer system-stats now render on the public site (backend version, uptime, memory)** (#94). The
   full Docker E2E surfaced a second, deeper root cause behind the footer showing `BE: vUnknown`: the
   public app bundles **no `zone.js`** (`angular.json` has no `polyfills` entry) and declares no
