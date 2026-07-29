@@ -102,7 +102,7 @@ async def sync_linkedin_profile(
     current_user: User = Depends(get_current_admin_user),
 ):
     """
-    Fetches the LinkedIn profile data using the Playwright scraper.
+    Fetches the LinkedIn profile data via the Python `linkedin-api` HTTP client.
     """
     logger.info(
         "[LinkedIn] profile-sync requested by user=%s | creds_configured: email=%s, public_id=%s",
@@ -136,7 +136,7 @@ async def get_linkedin_posts(
     current_user: User = Depends(get_current_admin_user),
 ):
     """
-    Fetches recent LinkedIn posts using the Playwright scraper.
+    Fetches recent LinkedIn posts via the Python `linkedin-api` HTTP client.
     """
     logger.info(
         "[LinkedIn] /posts requested by user=%s | creds_configured: email=%s, public_id=%s",

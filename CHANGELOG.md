@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Backend image: drop the unused Node.js + Playwright + Chromium install** (#91, backend-build
+  lever). Investigation of why `Build Backend Image` stayed ~5min despite an existing `type=gha`
+  layer cache found the base stage running `npx playwright install --with-deps chromium` (plus a
+  Node.js 20 install + `npm i -g playwright dotenv cross-env`) — **~500MB+ of browser tooling the
+  FastAPI backend never uses at runtime**. Verified exhaustively: LinkedIn ingest uses the pure-HTTP
+  Python `linkedin-api` client (`app/services/linkedin.py`, docstring "no Node.js"), the entrypoint
+  is Python/alembic, `main.py` uses the Python `python-dotenv`, and the only subprocess is `pg_dump`
+  (postgresql-client) — nothing imports/execs Node, Playwright, or Chromium (the "Playwright scraper"
+  references were stale docstrings, now corrected). Removing it shrinks the image by ~500MB+, cuts the
+  dominant base-stage build step, and shrinks the `type=gha` cache (whose slow restore of that giant
+  layer was the "5min despite cache" cause — same net-negative pattern as #72/#78), with a security
+  bonus (smaller attack surface). Validated against the full Docker E2E (backend builds, starts, and
+  serves the stack with no Playwright). `libpq5`/`postgresql-client`/`curl` retained.
+
 ### Docs
 - **Fold the v1.8.1 SSR/zoneless lessons into the agent charters** (`.claude/agents/frontend-dev.md`,
   `.claude/agents/pr-reviewer.md`, `agents/common/roster.py`). Documented the three hard-won gotchas
