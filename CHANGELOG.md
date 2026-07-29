@@ -62,8 +62,18 @@ All notable changes to this project will be documented in this file.
   `FetchBackend` and broke the only genuine browser fetch, `GET /api/app/stats/public` →
   `net::ERR_FAILED`), this backend delegates to **`HttpXhrBackend`** — the exact backend the app has
   always used on both platforms — so the browser dispatch is byte-identical to the long-working
-  baseline and #94 cannot regress. Removed the old `ssr.interceptor.ts`. Validated against the full
-  Docker E2E stack (`footer-stats` + blog specs) before merge, not just unit tests.
+  baseline and #94 cannot regress. Removed the old `ssr.interceptor.ts`.
+- **Footer system-stats now render on the public site (backend version, uptime, memory)** (#94). The
+  full Docker E2E surfaced a second, deeper root cause behind the footer showing `BE: vUnknown`: the
+  public app bundles **no `zone.js`** (`angular.json` has no `polyfills` entry) and declares no
+  zoneless change-detection provider, so it runs effectively zoneless — yet `SystemStatsComponent`
+  updated **plain properties** inside `subscribe`/`setInterval` callbacks, which never trigger change
+  detection, leaving the footer frozen at its SSR-initial values (`vUnknown`, `00:00:00`, `24MB`).
+  The `/api/app/stats/public` fetch itself was fine (HTTP 200); only the repaint was missing. Fixed
+  by injecting `ChangeDetectorRef` and calling `markForCheck()` after each async mutation — the same
+  pattern the sibling `blog.component` already uses. (The broader "no CD driver configured" ambiguity
+  is tracked separately for a deliberate zone-vs-zoneless decision.) Both #25 and #94 were validated
+  against the full Docker E2E stack (`footer-stats` + blog specs) before merge, not just unit tests.
 - **LinkedIn session now persists across container recreates/deploys** (#44). The saved LinkedIn
   login session was stored under `/tmp/linkedin_cookies` inside the backend container — part of the
   ephemeral container layer — so every deploy or restart wiped it and forced the admin to
