@@ -3,18 +3,21 @@ FROM python:3.12-slim AS base
 
 WORKDIR /app
 
-# Install runtime dependencies once in base
+# Install runtime dependencies once in base.
+# NOTE: the backend does NOT run any browser/Node tooling at runtime — LinkedIn
+# ingest uses the pure-HTTP Python `linkedin-api` client (see
+# app/services/linkedin.py, "no Node.js"), the entrypoint is Python/alembic, and
+# the only subprocess is `pg_dump` (postgresql-client). The former
+# Node.js + `playwright install --with-deps chromium` install was vestigial dead
+# weight (~500MB+, the dominant build-time + a slow `type=gha` cache layer) and
+# has been removed (#91). `libpq5` = asyncpg/libpq; `postgresql-client` = pg_dump
+# (admin SQL export) + psql; `curl` kept for debugging/health probes.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y \
     libpq5 \
     postgresql-client \
     curl \
-    gnupg \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install -g playwright dotenv cross-env \
-    && npx playwright install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/*
 
 # Builder stage for compiling dependencies
