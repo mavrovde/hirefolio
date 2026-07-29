@@ -149,11 +149,15 @@ test.describe('Blog Interactions', () => {
         await expect(page.locator('text=End of file')).toBeVisible();
     });
 
-    test('should redirect to home for invalid slug', async ({ page }) => {
-        await page.goto('/blog/non-existent-completely-fake-slug-12345');
+    test('should show a graceful not-found panel for an invalid slug (no home redirect)', async ({ page }) => {
+        const missingSlug = 'non-existent-completely-fake-slug-12345';
+        await page.goto(`/blog/${missingSlug}`);
+        await page.waitForLoadState('networkidle');
 
-        // Should be redirected back to home
-        await expect(page).toHaveURL('/');
+        // Graceful not-found (#25 criterion 3): the not-found panel is shown and
+        // we stay on /blog/:slug — the old behavior redirected to '/'.
+        await expect(page.getByTestId('post-not-found')).toBeVisible({ timeout: 10000 });
+        await expect(page).toHaveURL(new RegExp(`/blog/${missingSlug}$`));
     });
 
     test('should support terminal commands in UI', async ({ page }) => {

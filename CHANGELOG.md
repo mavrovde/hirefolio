@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **E2E: correct the stale `blog-interactions` invalid-slug test to the shipped graceful not-found
+  behavior** (Refs #25). PR #108 (issue #25, criterion 3) removed the old home-bounce so
+  `BlogPostComponent` now renders a "post not found" panel while staying on `/blog/:slug`, but the
+  leftover `should redirect to home for invalid slug` test in
+  `frontend/e2e/public/blog-interactions.spec.ts` still asserted the removed redirect and failed the
+  public-e2e shard deterministically. Retitled it to
+  `should show a graceful not-found panel for an invalid slug (no home redirect)` and aligned its
+  assertion with the authoritative `blog-display.spec.ts` guard — it now expects the
+  `post-not-found` panel visible and the URL to stay on `/blog/:slug`. Test-only; no app change.
+
 ### Changed
 - **Parallelize the CI `Backend Tests` job with `pytest-xdist` (`-n auto`)** (#91, lever 3). The
   backend suite ran serially (`deploy.yml`), making it the ~5.2-min head of the deploy critical
