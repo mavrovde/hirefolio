@@ -182,6 +182,7 @@ export class BlogComponent implements OnInit {
       if (!query || query.trim().length < 3) {
         this.searchResults$ = null;
         this.isSearching = false;
+        this.cdr.markForCheck(); // zoneless: repaint after async debounce mutation
         return;
       }
 
@@ -192,6 +193,7 @@ export class BlogComponent implements OnInit {
           return results;
         }),
       );
+      this.cdr.markForCheck(); // zoneless: let the async pipe pick up the new results stream
     });
   }
 
@@ -201,6 +203,7 @@ export class BlogComponent implements OnInit {
       this.currentQuery = '';
       this.searchResults$ = null;
       this.isSearching = false;
+      this.cdr.markForCheck(); // zoneless: repaint after async clear
     });
   }
 
