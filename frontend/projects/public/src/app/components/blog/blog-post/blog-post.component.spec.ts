@@ -36,6 +36,7 @@ describe('BlogPostComponent', () => {
         seoServiceSpy = {
             updateSeo: vi.fn(),
             setJsonLd: vi.fn(),
+            setNotFound: vi.fn(),
         };
 
         paramMapSubject = new BehaviorSubject({ get: (key: string) => (key === 'slug' ? 'test-post' : null) });
@@ -196,7 +197,7 @@ describe('BlogPostComponent Server Rendering', () => {
                 provideRouter([]),
                 { provide: BlogService, useValue: blogServiceSpy },
                 { provide: PLATFORM_ID, useValue: 'server' }, // Set platform server
-                { provide: SeoService, useValue: { updateSeo: vi.fn(), setJsonLd: vi.fn() } },
+                { provide: SeoService, useValue: { updateSeo: vi.fn(), setJsonLd: vi.fn(), setNotFound: vi.fn() } },
                 {
                     provide: ActivatedRoute,
                     useValue: {

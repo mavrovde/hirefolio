@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CvService } from '../../services/cv.service';
@@ -22,7 +22,8 @@ export class CvComponent implements OnInit {
     constructor(
         private fb: FormBuilder,
         private cvService: CvService,
-        private seoService: SeoService
+        private seoService: SeoService,
+        private cdr: ChangeDetectorRef
     ) {
         this.cvForm = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(2)]],
@@ -62,6 +63,9 @@ export class CvComponent implements OnInit {
                     window.open(fullUrl, '_blank');
                     this.cvForm.reset();
                 }
+                // Zoneless: this async callback mutates plain props read by the
+                // template (isLoading/successMessage) — trigger CD explicitly (#105).
+                this.cdr.markForCheck();
             },
             error: (error) => {
                 this.isLoading = false;
@@ -71,6 +75,8 @@ export class CvComponent implements OnInit {
                     this.errorMessage = 'CV.ERROR_SUBMIT';
                 }
                 console.error('CV Request Error:', error);
+                // Zoneless: repaint after mutating isLoading/errorMessage (#105).
+                this.cdr.markForCheck();
             }
         });
     }

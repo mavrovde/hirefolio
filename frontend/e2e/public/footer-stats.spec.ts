@@ -52,6 +52,27 @@ test.describe('Footer Stats', () => {
         await expect(beVersion).toBeVisible();
     });
 
+    // #105 — zoneless change-detection guard. The footer uptime is a PURELY async
+    // region: a `setInterval` mutates a plain `uptime` property every second and
+    // relies solely on `ChangeDetectorRef.markForCheck()` to repaint (the public
+    // app bundles no zone.js). If the app silently reverted to relying on an
+    // implicit zone, the counter would freeze in the browser while unit tests
+    // (which bundle zone.js) still pass — so assert it actually advances live.
+    test('footer uptime advances over time (zoneless CD repaints async mutations)', async ({ page }) => {
+        await page.goto('/');
+        await page.setViewportSize({ width: 1920, height: 1080 });
+
+        const uptime = page.getByTestId('footer-uptime');
+        await expect(uptime).toBeVisible();
+        await expect(uptime).toHaveText(/^\d{2}:\d{2}:\d{2}$|^\d+d /);
+
+        const first = await uptime.innerText();
+        // The counter ticks once per second; wait long enough to cross ≥2 ticks.
+        await expect
+            .poll(async () => uptime.innerText(), { timeout: 5000, intervals: [500] })
+            .not.toBe(first);
+    });
+
     test('should handle API error gracefully', async ({ page }) => {
         // Mock failed API response
         await page.route('**/api/app/stats/public', async route => {

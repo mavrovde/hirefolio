@@ -1,4 +1,8 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import {
+  ApplicationConfig,
+  provideBrowserGlobalErrorListeners,
+  provideZonelessChangeDetection,
+} from '@angular/core';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { HttpBackend, provideHttpClient } from '@angular/common/http';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
@@ -10,6 +14,13 @@ import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    // The public app declares NO change-detection driver otherwise: `angular.json`
+    // ships no zone.js polyfill for the public build, so relying on an implicit
+    // zone means async property mutations silently never repaint in the browser
+    // (the #94 class of bug). Commit explicitly to zoneless change detection (#105)
+    // — components mutating plain props in async callbacks must trigger CD via
+    // `ChangeDetectorRef.markForCheck()`, signals, or the `async` pipe.
+    provideZonelessChangeDetection(),
     provideBrowserGlobalErrorListeners(),
     provideRouter(
       routes,

@@ -1,4 +1,4 @@
-import { Component, Inject, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Language, LanguageService } from '@mavrov/shared';
@@ -32,9 +32,15 @@ export class HeaderComponent {
     private languageService: LanguageService,
     private yearsService: YearsService,
     private router: Router,
-    @Inject(PLATFORM_ID) private platformId: Object
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private cdr: ChangeDetectorRef
   ) {
-    this.languageService.currentLang$.subscribe((lang) => (this.currentLang = lang));
+    this.languageService.currentLang$.subscribe((lang) => {
+      this.currentLang = lang;
+      // Zoneless: a post-load language switch is an async emission that mutates a
+      // plain template binding — repaint explicitly (#105).
+      this.cdr.markForCheck();
+    });
 
     // Subscribe in the constructor (an injection context) rather than ngOnInit so that
     // a synchronous `shareReplay(1)` replay from YearsService populates `years` /
@@ -45,6 +51,9 @@ export class HeaderComponent {
       // Reverse to ascending order: oldest (left) → newest (right)
       this.years = [...years].reverse();
       this.selectedYearIndex = this.years.length - 1; // default to newest
+      // Zoneless: an async (non-replayed) emission mutates plain slider bindings —
+      // repaint explicitly so the year slider appears (#105).
+      this.cdr.markForCheck();
     });
   }
 
