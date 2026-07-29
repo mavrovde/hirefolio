@@ -15,8 +15,18 @@ All notable changes to this project will be documented in this file.
   `create_all` at it, and drops it (`WITH (FORCE)`) at session end. Serial runs (no `-n`) and the
   xdist controller keep the original single-shared-DB behavior unchanged. `pytest-cov` aggregates
   coverage across workers, so the 100% gate is preserved. Added `pytest-xdist==3.8.0` to
-  `requirements-dev.txt`. Local wall-clock: serial vs `-n auto` (see PR). Other #91 levers (Ollama
-  weights cache, proxy-job dedup, backend-build cache) remain open.
+  `requirements-dev.txt`. Measured in real CI (deploy run 30404645861): the `Backend Tests` job
+  dropped **298s → 191s (−36%)**, coverage aggregated at 100%, zero correctness regressions.
+- **CI: remove the redundant standalone "Proxy Verification" job** (#91, lever 2). The
+  `proxy-startup-test` job spun the full prod stack up a **second time** just to grep the Nginx
+  start banner, and all four `publish-*` jobs blocked on it — pure critical-path waste (~284s). The
+  `e2e-tests` job already starts the same stack (including `global_proxy`) and waits for HTTP
+  200/302 on `:80` (a stronger check); its unique log-grep assertion is now folded into `e2e-tests`
+  as a "Verify Proxy Startup (Smoke)" step, and `publish-{backend,frontend,admin-frontend,proxy}`
+  now depend on `e2e-tests` directly. No verification dropped. Measured in real CI (deploy run
+  30406891756): end-to-end deploy wall-clock **29.45min → 24.85min (−15.6%)**. Remaining #91 lever:
+  the ~5.5-min backend-image build (the Ollama-weights and base-image caches were both measured
+  net-negative and reverted, #78/#72).
 
 ### Docs
 - **Reconcile the root `agents/` A2A roster prompts with the `.claude/agents/` charters** (#99).
@@ -38,26 +48,32 @@ All notable changes to this project will be documented in this file.
   v1.8.0 #84 revert). Prompt strings only — no change to role keys, ports, dependencies or the
   A2A architecture; the `agents/tests/` suite (55 tests) still passes.
 
-### Changed
-- **CI: parallelize the backend test suite with `pytest-xdist` (`-n auto`)** (#91). The `Backend
-  Tests` job ran serially against a single shared Postgres. `backend/conftest.py` now derives a
-  per-worker database (`<db>_<worker>`, e.g. `test_mavrov_gw0`) from `PYTEST_XDIST_WORKER` —
-  creating it on `pytest_configure` (via the `postgres` maintenance DB) and dropping it
-  `WITH (FORCE)` on session end — so workers never collide on `ux_post_slug_lang` /
-  `ix_post_source_urn`; serial runs (no `-n`) and the `master` controller keep the exact prior
-  single-shared-DB behavior. Added `pytest-xdist==3.8.0` to `requirements-dev.txt`. Measured in
-  real CI: the `Backend Tests` job dropped **298s → 191s (−36%)** with 100% coverage aggregation
-  preserved and zero correctness regressions.
-- **CI: remove the redundant standalone "Proxy Verification" job** (#91). The `proxy-startup-test`
-  job spun the full prod stack up a **second time** just to grep the Nginx start banner, and all
-  four `publish-*` jobs blocked on it — pure critical-path waste (~284s in the last run). The
-  `e2e-tests` job already starts the same stack (including `global_proxy`) and waits for HTTP
-  200/302 on `:80` (a stronger check); its unique log-grep assertion is now folded into `e2e-tests`
-  as a "Verify Proxy Startup (Smoke)" step, and `publish-{backend,frontend,admin-frontend,proxy}`
-  now depend on `e2e-tests` directly. No verification dropped; one full stack bring-up removed from
-  the serial deploy tail.
-
 ### Fixed
+- **Blog deep-links no longer flash back to the home page on hydration; the public site's
+  `/stats/public` browser fetch keeps working** (#25, #94). The SSR relative→absolute URL rewrite
+  (`/api/...` → `http://backend:8000/...`) lived in an `HttpInterceptorFn`, which runs *before*
+  Angular's HTTP transfer-cache interceptor — so the server keyed the transfer cache on the
+  *rewritten* absolute URL while the browser keyed it on the *relative* URL. The keys never matched,
+  so on hydration the browser re-fetched every request; a transient failure of the needless blog
+  re-fetch hit `BlogPostComponent`'s `catchError`, which navigates to `/` — the "flash to home". The
+  rewrite now lives in a custom `HttpBackend` (`SsrHttpBackend`), which runs *after* the transfer
+  cache has keyed the original (server/client-identical) relative URL, so the browser reuses the SSR
+  response instead of re-fetching. Unlike the first attempt (reverted #84, which delegated to
+  `FetchBackend` and broke the only genuine browser fetch, `GET /api/app/stats/public` →
+  `net::ERR_FAILED`), this backend delegates to **`HttpXhrBackend`** — the exact backend the app has
+  always used on both platforms — so the browser dispatch is byte-identical to the long-working
+  baseline and #94 cannot regress. Removed the old `ssr.interceptor.ts`.
+- **Footer system-stats now render on the public site (backend version, uptime, memory)** (#94). The
+  full Docker E2E surfaced a second, deeper root cause behind the footer showing `BE: vUnknown`: the
+  public app bundles **no `zone.js`** (`angular.json` has no `polyfills` entry) and declares no
+  zoneless change-detection provider, so it runs effectively zoneless — yet `SystemStatsComponent`
+  updated **plain properties** inside `subscribe`/`setInterval` callbacks, which never trigger change
+  detection, leaving the footer frozen at its SSR-initial values (`vUnknown`, `00:00:00`, `24MB`).
+  The `/api/app/stats/public` fetch itself was fine (HTTP 200); only the repaint was missing. Fixed
+  by injecting `ChangeDetectorRef` and calling `markForCheck()` after each async mutation — the same
+  pattern the sibling `blog.component` already uses. (The broader "no CD driver configured" ambiguity
+  is tracked separately for a deliberate zone-vs-zoneless decision.) Both #25 and #94 were validated
+  against the full Docker E2E stack (`footer-stats` + blog specs) before merge, not just unit tests.
 - **LinkedIn session now persists across container recreates/deploys** (#44). The saved LinkedIn
   login session was stored under `/tmp/linkedin_cookies` inside the backend container — part of the
   ephemeral container layer — so every deploy or restart wiped it and forced the admin to

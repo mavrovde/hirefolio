@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -29,7 +29,8 @@ export class SystemStatsComponent implements OnInit, OnDestroy {
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private statsService: StatsService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
@@ -45,6 +46,9 @@ export class SystemStatsComponent implements OnInit, OnDestroy {
         filter(event => event instanceof NavigationEnd)
       ).subscribe((event: NavigationEnd) => {
         this.checkVisibility(event.urlAfterRedirects || event.url);
+        // The public app bundles no zone.js (see angular.json — no polyfills),
+        // so async callbacks must notify change detection explicitly.
+        this.cdr.markForCheck();
       });
     }
   }
@@ -65,12 +69,16 @@ export class SystemStatsComponent implements OnInit, OnDestroy {
           // Fallback if no start time provided
           this.uptime = stats.uptime;
         }
+        // Zoneless (no zone.js polyfill): repaint the footer with the fetched
+        // values, otherwise it stays frozen at 'Unknown' (#94 footer-stats).
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Failed to fetch public stats:', err);
         this.visitorIp = 'Unavailable';
         this.backendVersion = 'Error';
         this.startUptimeCounter(); // Fallback to client uptime if API fails
+        this.cdr.markForCheck();
       }
     });
   }
@@ -89,6 +97,7 @@ export class SystemStatsComponent implements OnInit, OnDestroy {
       const now = Date.now();
       const diff = now - startTime;
       this.uptime = this.formatTime(Math.max(0, diff)); // Ensure non-negative
+      this.cdr.markForCheck(); // zoneless: tick the uptime display each second
     }, 1000);
 
     // Initial call
@@ -116,6 +125,7 @@ export class SystemStatsComponent implements OnInit, OnDestroy {
       setInterval(() => {
         // Fluctuate between 20MB and 60MB
         this.memoryUsage = Math.floor(Math.random() * (60 - 20 + 1) + 20);
+        this.cdr.markForCheck(); // zoneless: repaint the memory display
       }, 5000);
     }
   }
