@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -7,6 +8,7 @@ from app.database import get_db
 from app.logger import logger
 from app.models.profile_snapshot import ProfileSnapshot
 from app.services.rate_limit import SlidingWindowRateLimiter, rate_limit_dependency
+from app.services.readiness import is_undefined_table_error
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -75,12 +77,26 @@ async def get_active_profile(
             detail=f"Unsupported language '{lang}'. Supported: {', '.join(SUPPORTED_LANGUAGES)}.",
         )
 
-    result = await db.execute(
-        select(ProfileSnapshot).where(
-            ProfileSnapshot.is_active.is_(True),
-            ProfileSnapshot.language == language,
+    try:
+        result = await db.execute(
+            select(ProfileSnapshot).where(
+                ProfileSnapshot.is_active.is_(True),
+                ProfileSnapshot.language == language,
+            )
         )
-    )
+    except ProgrammingError as exc:
+        # Startup race (#124): the entrypoint's `alembic upgrade head` has not
+        # created `profile_snapshots` yet. Return a graceful, retryable 503
+        # instead of leaking a raw 500 UndefinedTableError during warm-up.
+        if is_undefined_table_error(exc):
+            logger.warning(
+                "profile_snapshots not yet migrated (startup warm-up, #124): %s", exc
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Service is starting up, please retry shortly.",
+            ) from exc
+        raise
     profile = result.scalar_one_or_none()
     if profile is None:
         logger.info("No active profile for language=%s", language)

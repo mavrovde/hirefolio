@@ -1,6 +1,9 @@
 """Tests for the public GET /profile endpoint."""
 
+import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 
 from app.config import settings
 from app.models.profile_snapshot import ProfileSnapshot
@@ -166,6 +169,38 @@ async def test_get_active_profile_single_request_not_rate_limited(
     )
     r = await client.get(URL, params={"lang": "en"})
     assert r.status_code == 200
+
+
+async def test_get_returns_503_during_schema_warmup(client: AsyncClient, db_session):
+    """Startup race (#124): a missing table yields a graceful, retryable 503,
+    NOT a raw 500 UndefinedTableError."""
+    await db_session.execute(text("DROP TABLE profile_snapshots"))
+    await db_session.commit()
+
+    r = await client.get(URL, params={"lang": "en"})
+    assert r.status_code == 503
+    assert "starting up" in r.json()["detail"]
+
+
+async def test_get_reraises_non_undefined_table_db_error(client: AsyncClient):
+    """A DB ProgrammingError that is NOT a missing table must not be masked as
+    503 — it propagates (real error), so we never hide genuine failures."""
+    from app.database import get_db
+    from app.main import app
+
+    class _FakeUndefinedColumn(Exception):
+        sqlstate = "42703"  # undefined_column, not undefined_table
+
+    class _RaisingSession:
+        async def execute(self, *args, **kwargs):
+            raise ProgrammingError("SELECT 1", {}, _FakeUndefinedColumn())
+
+    async def _override():
+        yield _RaisingSession()
+
+    app.dependency_overrides[get_db] = _override
+    with pytest.raises(ProgrammingError):
+        await client.get(URL, params={"lang": "en"})
 
 
 async def test_get_handles_non_dict_stored_data(client: AsyncClient, db_session):

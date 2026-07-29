@@ -20,6 +20,20 @@ All notable changes to this project will be documented in this file.
   serves the stack with no Playwright). `libpq5`/`postgresql-client`/`curl` retained.
 
 ### Fixed
+- **E2E startup race: no more transient `500 UndefinedTableError` on cold start** (#124). On a
+  fresh stack the backend exposed no true readiness signal — `GET /api/app/health` returned `200`
+  unconditionally — so an orchestrator / the E2E gate hammered endpoints while the container's
+  `alembic upgrade head` (run by `docker-entrypoint.sh` before uvicorn) was still bringing the
+  schema up, and `GET /api/app/profile` leaked a raw `500`
+  (`asyncpg.UndefinedTableError: relation "profile_snapshots" does not exist`) that flipped to `200`
+  once init finished. `/api/app/health` is now a real **readiness** probe (new
+  `app/services/readiness.schema_ready`): `200 {"status":"healthy","ready":true}` only when the
+  required tables exist, else a retryable `503 {"status":"initializing","ready":false}` (also on a
+  DB-connectivity error), so E2E/orchestrators can gate on it (`/api/app/ping` stays pure liveness).
+  As defense-in-depth the public `GET /api/app/profile` read now downgrades a warm-up
+  `UndefinedTableError` to a graceful, retryable `503` instead of a raw `500` (genuine, non-missing-table
+  DB errors still propagate). Regression tests cover the pre-init path for both the health probe and
+  the profile read.
 - **Public app committed to zoneless change detection** (#105). The public build ships no `zone.js`
   polyfill (`frontend/angular.json`) yet declared no change-detection driver, so async property
   mutations silently never repaint in the browser (the #94 class) — fine in unit tests that bundle

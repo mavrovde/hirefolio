@@ -330,7 +330,12 @@ New changes get their own revision on top of this baseline — see
 ### Health Check
 
 - `GET /` - Welcome message
-- `GET /api/health` - Health status
+- `GET /api/app/ping` - Liveness (always `200 {"ping": "ok"}` once the process is up)
+- `GET /api/app/health` - **Readiness** — `200 {"status": "healthy", "ready": true}` only once the
+  schema (Alembic migrations) is present. During the cold-start window where uvicorn is up but
+  `alembic upgrade head` (run by `docker-entrypoint.sh`) has not finished, it returns a retryable
+  `503 {"status": "initializing", "ready": false}` so orchestrators / the E2E gate wait on true
+  readiness instead of racing into a raw `500 UndefinedTableError` (see #124).
 
 ## 🤖 Ollama Integration
 
