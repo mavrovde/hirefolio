@@ -4,16 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Fixed
-- **E2E: correct the stale `blog-interactions` invalid-slug test to the shipped graceful not-found
-  behavior** (Refs #25). PR #108 (issue #25, criterion 3) removed the old home-bounce so
-  `BlogPostComponent` now renders a "post not found" panel while staying on `/blog/:slug`, but the
-  leftover `should redirect to home for invalid slug` test in
-  `frontend/e2e/public/blog-interactions.spec.ts` still asserted the removed redirect and failed the
-  public-e2e shard deterministically. Retitled it to
-  `should show a graceful not-found panel for an invalid slug (no home redirect)` and aligned its
-  assertion with the authoritative `blog-display.spec.ts` guard — it now expects the
-  `post-not-found` panel visible and the URL to stay on `/blog/:slug`. Test-only; no app change.
+### Added
+- Placeholder for next release.
+
+## [1.8.1] - 2026-07-29
 
 ### Changed
 - **Parallelize the CI `Backend Tests` job with `pytest-xdist` (`-n auto`)** (#91, lever 3). The
@@ -38,26 +32,6 @@ All notable changes to this project will be documented in this file.
   30406891756): end-to-end deploy wall-clock **29.45min → 24.85min (−15.6%)**. Remaining #91 lever:
   the ~5.5-min backend-image build (the Ollama-weights and base-image caches were both measured
   net-negative and reverted, #78/#72).
-
-### Docs
-- **Reconcile the root `agents/` A2A roster prompts with the `.claude/agents/` charters** (#99).
-  The A2A delivery-team `system_prompt`s in `agents/common/roster.py` predated the richer Claude
-  Code subagent charters added in #89 and had drifted. Enriched the overlapping role prompts with
-  the hard-won guidance from the matching charters: `code-reviewer` ← `pr-reviewer` (mandatory
-  test-coverage + user/edge-case analysis — "coverage executed ≠ behavior asserted" — and a clear
-  severity-tagged APPROVED/REJECTED verdict); `release-manager` ← `release-manager` (SemVer bump by
-  content, never default to minor; the CHANGELOG `[Unreleased]`→version rotation trap; tag on the
-  full SHA; `deploy.yml` has no concurrency guard so serialize; babysit to green, fix-forward on
-  red); `security-reviewer` ← `security-triage` (pull & triage CodeQL + Dependabot real-vs-noise,
-  file grounded issues, verify a release's fixed alerts show `fixed`, no exploit details in a public
-  repo); `spec-analyst`/`story-writer` ← `issue-author` (ground every claim in real code with
-  `path:line`, the full issue template + milestone/priority/area labels). Also fixed factual drift:
-  the `frontend-dev` prompt no longer claims Angular "signals" (the app uses RxJS Observables + the
-  `async` pipe, per #29 — Signals only sparingly for local state), and `PROJECT_PLAYBOOK` now states
-  Python **3.12** in prod/CI (dev venv may be 3.13) and adds the lesson that SSR/`HttpBackend`/
-  interceptor/transfer-cache changes must be validated against the full Docker E2E before merge (the
-  v1.8.0 #84 revert). Prompt strings only — no change to role keys, ports, dependencies or the
-  A2A architecture; the `agents/tests/` suite (55 tests) still passes.
 
 ### Fixed
 - **Blog deep-links no longer flash back to the home page on hydration; the public site's
@@ -99,6 +73,35 @@ All notable changes to this project will be documented in this file.
   `linkedin_cookies` named volume mounted on the `backend` service in both `docker-compose.yml` and
   `docker-compose.prod.yml`, so the saved session survives container recreation. The `/linkedin/status`
   response now also returns a human-readable `message` explaining whether a session is active.
+- **E2E: correct the stale `blog-interactions` invalid-slug test to the shipped graceful not-found
+  behavior** (Refs #25). PR #108 (issue #25, criterion 3) removed the old home-bounce so
+  `BlogPostComponent` now renders a "post not found" panel while staying on `/blog/:slug`, but the
+  leftover `should redirect to home for invalid slug` test in
+  `frontend/e2e/public/blog-interactions.spec.ts` still asserted the removed redirect and failed the
+  public-e2e shard deterministically. Retitled it to
+  `should show a graceful not-found panel for an invalid slug (no home redirect)` and aligned its
+  assertion with the authoritative `blog-display.spec.ts` guard — it now expects the
+  `post-not-found` panel visible and the URL to stay on `/blog/:slug`. Test-only; no app change.
+
+### Docs
+- **Reconcile the root `agents/` A2A roster prompts with the `.claude/agents/` charters** (#99).
+  The A2A delivery-team `system_prompt`s in `agents/common/roster.py` predated the richer Claude
+  Code subagent charters added in #89 and had drifted. Enriched the overlapping role prompts with
+  the hard-won guidance from the matching charters: `code-reviewer` ← `pr-reviewer` (mandatory
+  test-coverage + user/edge-case analysis — "coverage executed ≠ behavior asserted" — and a clear
+  severity-tagged APPROVED/REJECTED verdict); `release-manager` ← `release-manager` (SemVer bump by
+  content, never default to minor; the CHANGELOG `[Unreleased]`→version rotation trap; tag on the
+  full SHA; `deploy.yml` has no concurrency guard so serialize; babysit to green, fix-forward on
+  red); `security-reviewer` ← `security-triage` (pull & triage CodeQL + Dependabot real-vs-noise,
+  file grounded issues, verify a release's fixed alerts show `fixed`, no exploit details in a public
+  repo); `spec-analyst`/`story-writer` ← `issue-author` (ground every claim in real code with
+  `path:line`, the full issue template + milestone/priority/area labels). Also fixed factual drift:
+  the `frontend-dev` prompt no longer claims Angular "signals" (the app uses RxJS Observables + the
+  `async` pipe, per #29 — Signals only sparingly for local state), and `PROJECT_PLAYBOOK` now states
+  Python **3.12** in prod/CI (dev venv may be 3.13) and adds the lesson that SSR/`HttpBackend`/
+  interceptor/transfer-cache changes must be validated against the full Docker E2E before merge (the
+  v1.8.0 #84 revert). Prompt strings only — no change to role keys, ports, dependencies or the
+  A2A architecture; the `agents/tests/` suite (55 tests) still passes.
 
 ### Reverted
 - **Reverted the Ollama model-weights CI cache** (#78). After it deployed, before/after
