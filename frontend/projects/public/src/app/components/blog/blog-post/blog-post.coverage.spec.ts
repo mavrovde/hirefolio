@@ -50,7 +50,7 @@ describe('BlogPostComponent SEO branches', () => {
     );
 
     fixture.detectChanges();
-    component.post$?.subscribe();
+    component.vm$?.subscribe();
 
     expect(updateSeoSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -67,7 +67,7 @@ describe('BlogPostComponent SEO branches', () => {
     blogServiceSpy.getPost.mockReturnValue(of(undefined));
 
     fixture.detectChanges();
-    component.post$?.subscribe();
+    component.vm$?.subscribe();
 
     expect(updateSeoSpy).not.toHaveBeenCalled();
   });
