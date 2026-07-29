@@ -4,8 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- Placeholder for next release.
+### Docs
+- **Fold the v1.8.1 SSR/zoneless lessons into the agent charters** (`.claude/agents/frontend-dev.md`,
+  `.claude/agents/pr-reviewer.md`, `agents/common/roster.py`). Documented the three hard-won gotchas
+  from the #25/#94 fixes so future agents catch them at review/implementation time instead of at the
+  deploy E2E: (1) the public app is effectively **zoneless** (no `zone.js` polyfill) so async
+  property mutations need the `async` pipe / signals / `markForCheck()` to repaint (#94 class); (2)
+  SSR URL rewrites belong in an `HttpBackend` delegating to `HttpXhrBackend`, never `FetchBackend`
+  (#25 / reverted #84); (3) changing a user-visible behavior means grepping ALL e2e specs for the old
+  assertion (the #108→#110 stale-test fix-forward). Also corrected `pr-reviewer.md`'s stale
+  "Signals-primary" claim to the actual RxJS-Observables-+-async-pipe reality (rule 5).
 
 ## [1.8.1] - 2026-07-29
 

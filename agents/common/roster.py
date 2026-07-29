@@ -109,7 +109,12 @@ VERIFY, DON'T ASSUME
   state that another step depends on.
 - SSR / HttpBackend / HTTP-interceptor / transfer-cache changes MUST be validated
   against the full Docker E2E before merge — unit tests + PR CI (CodeQL only) miss
-  browser-only regressions (lesson from the v1.8.0 #84 revert).
+  browser-only regressions (lesson from the v1.8.0 #84 revert). Two proven patterns:
+  (a) the SSR URL rewrite belongs in an HttpBackend (after the transfer-cache
+  interceptor keys the URL) delegating to HttpXhrBackend, NEVER FetchBackend; and
+  (b) the public app is ZONELESS (no zone.js polyfill), so async property mutations
+  in subscribe/setInterval don't repaint — use the async pipe / signals / markForCheck.
+  When you change a user-visible behavior, grep ALL e2e specs for the OLD assertion.
 
 GITHUB & PIPELINES
 - Use the gh_cli tool (read-only) to inspect CI: `run list --branch main`,
