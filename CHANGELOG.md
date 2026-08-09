@@ -91,6 +91,26 @@ All notable changes to this project will be documented in this file.
   container-registry tags — the newest commit is always published last. `cancel-in-progress: false`
   avoids aborting a half-published deploy.
 
+### Fixed
+- **`open-webui` crash-loop: pin the image forward to `v0.11.0` to match the volume schema** (#123).
+  `docker-compose.prod.yml` pinned `ghcr.io/open-webui/open-webui:v0.5.10`, but the persistent
+  `mavrovde_open-webui_data` volume had already been migrated to a **newer** schema (head alembic
+  revision `f0bd01a18a3d`, `add_unique_normalized_user_email_index`) — the dev `docker-compose.yml`
+  ran `:latest`, which forward-migrated the shared volume. The old pinned v0.5.10 then crashed on
+  boot (`Can't locate revision identified by 'f0bd01a18a3d'`, `sqlite3.OperationalError: no such
+  column: config.id`), and because nginx resolves the `open-webui` upstream at startup, `global_proxy`
+  crash-looped downstream (`host not found in upstream "open-webui"`). Revision `f0bd01a18a3d` is a
+  migration that first ships in open-webui **v0.11.0** (present in the `v0.11.0` tag, absent in
+  `v0.10.2`), so v0.11.0 is the minimum version whose migration chain already contains the volume's
+  head — it reads the existing volume forward with **no data loss** (no volume wipe). Both compose
+  files are now pinned to the specific, current stable `v0.11.0` (dev switched off the floating
+  `:latest` so dev and prod agree and the volume schema stops drifting ahead of the prod pin). Because
+  the E2E stack starts from a fresh volume it can't reproduce the persistent-volume mismatch; the fix
+  is validated by pulling the pinned image and by both `docker compose config` files parsing clean.
+  Residual manual step on the prod host: `docker compose -f docker-compose.prod.yml pull open-webui &&
+  docker compose -f docker-compose.prod.yml up -d open-webui`, then confirm it reaches `healthy` and
+  `global_proxy` stabilizes.
+
 ## [1.8.2] - 2026-08-09
 
 ### Security
