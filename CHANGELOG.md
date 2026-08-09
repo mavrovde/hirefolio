@@ -15,6 +15,19 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Fixed
+- **Gemini no longer defaults to a premium model or double-bills on fallback** (#144). `_generate_text_gemini`
+  (and `chat_with_gemini`) in `app/services/ai.py` previously hardcoded the premium `gemini-3.1-pro`
+  (an invalid model name) and, on **any** exception, retried with a second billable call to a
+  different model — so one logical suggestion could bill twice. The model is now **config-driven**
+  via `settings.gemini_model` / `settings.gemini_model_fallback` (env `GEMINI_MODEL` /
+  `GEMINI_MODEL_FALLBACK`), defaulting to the cheap flash tier (`gemini-2.5-flash`, fallback
+  `gemini-2.0-flash` — both valid in the installed `google-genai` 2.16.0). The fallback model is now
+  attempted **only** on a genuine "model unavailable" (HTTP 404 / `NOT_FOUND`) error — which is
+  raised before any inference runs, so it never double-bills; every other error returns `None` so the
+  existing free local Ollama fallback in `suggest_*` takes over. Net: at most one billable Gemini call
+  in the normal path.
+
 ### Changed
 - **Frontend within-major dependency bumps** — consolidates Dependabot PRs #129, #130, #136, #137,
   #139 into one validated PR (they all touch `frontend/package-lock.json` and conflict pairwise, so
@@ -35,6 +48,10 @@ All notable changes to this project will be documented in this file.
   `main` in quick succession queue instead of running overlapping pipelines that race on the shared
   container-registry tags — the newest commit is always published last. `cancel-in-progress: false`
   avoids aborting a half-published deploy.
+- **Replace DEBUG `print()` with the structured logger in `app/services/ai.py`** (#145). The
+  module-load import trace and `_get_gemini_client` diagnostics now use `logger.debug(...)` instead of
+  `print("DEBUG: ...")`, so they no longer pollute prod stdout and honour log-level config. No
+  credential value is ever logged — only a presence boolean (`Has key? {bool(api_key)}`).
 
 ## [1.8.2] - 2026-08-09
 
