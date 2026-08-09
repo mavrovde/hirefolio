@@ -8,9 +8,9 @@ description: >-
   test or CI job that touches an external service, or shipping a release. Encodes the zoneless-CD +
   SSR-HttpBackend traps, pytest local-DB isolation, the GHA multi-GB-cache net-negative,
   SemVer-by-content, the green-pipeline release rule, the no-irreversible-local-destruction
-  guardrail, and the STRICT no-real-API-keys/paid-credentials-in-tests-or-CI rule. Grep it or load
-  it when a task matches — it exists so fresh contexts and teammates don't re-research answers we
-  already have.
+  guardrail, the STRICT no-real-API-keys/paid-credentials-in-tests-or-CI rule, and the mandatory
+  independent-review-gate-before-merge rule. Grep it or load it when a task matches — it exists so
+  fresh contexts and teammates don't re-research answers we already have.
 ---
 
 # Lessons learned — mavrov.de (do not repeat)
@@ -174,6 +174,23 @@ credential. In review, treat a real paid-service secret in a test stack — or a
 test — as a **blocker**. In this repo: `deploy.yml` passes `GEMINI_API_KEY: ""` to the E2E stack (→
 Ollama fallback) and the admin AI-suggestion specs mock `/posts/suggest-*`. This is **CLAUDE.md
 rule 10**.
+
+## 11. Every PR needs an INDEPENDENT pr-reviewer verdict before merge — no exceptions
+
+**Trap.** Under time pressure it is tempting to merge on "green CI", "a dev agent (backend-dev/
+frontend-dev) already validated it", "it's a trivial one-line CI/docs change", or "the user was
+directing it in real time". **None of those is an independent review.** Merging without a posted
+`pr-reviewer` verdict skips the two-party gate, leaves no audit trail, and lets plausible-but-wrong
+changes through — exactly the class the reviewer exists to catch.
+
+**How to apply.** A PR is mergeable only when **all gates are green AND a `pr-reviewer` APPROVE verdict
+is posted to the PR**. This holds for EVERY PR with no carve-outs — hotfixes/emergencies, dependency
+bumps, trivial/CI/docs changes, and user-directed changes. Urgent → the review is **expedited, not
+skipped**. The implementing dev agent delivers the PR and does **not** merge; its own passing suite is
+necessary but not sufficient. Every merged PR must carry a visible review comment. If one ever slips
+through un-reviewed, post a **retrospective** review on the merged PR and fix-forward on any finding
+(as was done for the four un-gated merges in the incident that produced this rule). This is **CLAUDE.md
+rule 11**, enforced via the `pr-reviewer` agent.
 
 ---
 

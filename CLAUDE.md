@@ -141,6 +141,19 @@ specs/      Feature specs (planned/done)
     needlessly exposes the credential to CI logs. Treat any such wiring as a critical bug to fix, not
     to run. (In this repo: CI passes `GEMINI_API_KEY: ""` so the E2E falls back to the local Ollama;
     paid-API specs are also mocked.)
+11. **Independent review gate — EVERY PR requires a `pr-reviewer` verdict before merge. NO
+    EXCEPTIONS.** No pull request is merged until an **independent** `pr-reviewer` review (an APPROVE
+    verdict) is **posted to the PR**. Green CI, a passing local/pre-push suite, and validation by the
+    implementing dev agent (`backend-dev`/`frontend-dev`) are **necessary but NOT sufficient** — none
+    of them is an independent review. This gate applies to **every** PR with **no carve-outs**:
+    hotfixes and emergencies, dependency bumps, trivial/one-line/CI/docs changes, and changes the user
+    directed in real time. **"The user was directing it" and "a dev agent validated it" are NOT
+    substitutes** for the review verdict. If a change is urgent, the review is **expedited, not
+    skipped**. The only state that authorizes a merge is: **all gates green AND a posted `pr-reviewer`
+    APPROVAL**. Therefore every merged PR must carry a visible review verdict as its audit trail; if
+    one was ever merged without it, post a retrospective review and fix-forward on any finding.
+    (`pr-reviewer` posts a `gh pr review`/`gh pr comment` verdict; same-identity `--approve` may be
+    blocked, so a clear COMMENT verdict counts.)
 
 ## Issue tracking, milestones & labels (development flow)
 
