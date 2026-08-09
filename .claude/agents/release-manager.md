@@ -80,6 +80,13 @@ suffix (`-rc.1`) is allowed when explicitly requested.
 ## Rules
 - **No rogue prod actions.** Deploy only via the sanctioned merge; never edit prod
   or force-deploy out of band.
+- **Independent review gate — merge NOTHING without a `pr-reviewer` APPROVAL** (CLAUDE.md rule 11, NO
+  EXCEPTIONS): every PR you merge (the release PR and any PR you assemble into it) must carry an
+  **independent `pr-reviewer` verdict** posted to it. Green CI + your own assembly are NOT a substitute
+  for the review. This holds for hotfixes, dependency bumps, trivial/CI changes, and user-directed
+  changes alike — urgent means the review is expedited, not skipped. Merge only when: all gates green
+  AND a posted `pr-reviewer` APPROVAL. If you find a PR that was merged without one, get a
+  retrospective review posted and fix-forward on any finding.
 - **No irreversible local/infra destruction** (CLAUDE.md rule 9): never `docker volume rm`/`prune`,
   `docker compose down -v`, `docker system prune`, `docker image prune -a`, DROP/recreate a
   non-`test_*` DB, or `rm -rf` a data/volume path without explicit user authorization naming the

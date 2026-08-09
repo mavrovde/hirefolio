@@ -36,7 +36,6 @@
   "private": true,
   "packageManager": "npm@11.8.0",
   "overrides": {
-    "undici": "^7.29.0",
     "@hono/node-server": "^2.0.5"
   },
   "dependencies": {
@@ -65,13 +64,12 @@
     "@types/node": "^26.1.2",
     "@vitest/browser-playwright": "^4.1.10",
     "@vitest/coverage-v8": "^4.1.10",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "ng-packagr": "^22.0.2",
     "stylelint": "^17.14.1",
     "stylelint-config-standard": "^40.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
-    "undici": "^7.29.0",
     "vitest": "^4.1.10"
   }
 }
