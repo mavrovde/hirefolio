@@ -3,8 +3,11 @@ import os
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.admin_cv import router as admin_cv_router
 from app.api.admin_profile import router as admin_profile_router
@@ -19,7 +22,8 @@ from app.api.stats import router as stats_router
 from app.api.tags import router as tags_router
 from app.api.years import router as years_router
 from app.config import settings
-from app.database import async_session
+from app.database import async_session, get_db
+from app.services.readiness import schema_ready
 
 
 def _read_file_bytes(path: str) -> bytes:
@@ -189,8 +193,25 @@ async def root():
 
 
 @app.get(f"{settings.api_prefix}/health")
-async def health_check():
-    return {"status": "healthy"}
+async def health_check(db: AsyncSession = Depends(get_db)) -> JSONResponse:
+    """Readiness probe: 200 only once the schema (migrations) is present.
+
+    Returns a retryable ``503`` during the startup window where uvicorn is up
+    but ``alembic upgrade head`` (run by ``docker-entrypoint.sh``) has not yet
+    created the tables (issue #124), so orchestrators / the E2E gate can wait on
+    *true* readiness instead of racing into a raw ``500`` UndefinedTableError.
+    """
+    try:
+        ready = await schema_ready(db)
+    except SQLAlchemyError:
+        # DB unreachable / connection still coming up — not ready, retry later.
+        ready = False
+    if not ready:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "initializing", "ready": False},
+        )
+    return JSONResponse(content={"status": "healthy", "ready": True})
 
 
 @app.get(f"{settings.api_prefix}/ping")
