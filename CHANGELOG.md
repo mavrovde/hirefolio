@@ -18,6 +18,15 @@ All notable changes to this project will be documented in this file.
   `jsdom` is intentionally held at 29.x (the 30.x major is a separate, deliberate effort, #131).
   Validated against the full frontend gate: `npm run build` (shared → public → admin) and
   `npm run test:coverage` (100% statements/branches/functions/lines on all three projects).
+- **Backend within-major dependency bumps** (#128) — `fastapi` 0.140.0 → 0.141.1, `uvicorn` 0.51.0 →
+  0.52.0, `google-genai` 2.14.0 → 2.16.0, `ruff` 0.16.0 → 0.16.1. Validated: `pytest` 100% coverage,
+  `ruff check`/`ruff format --check`, `mypy` all green; the `google-genai` bump is compatible with
+  `app/services/ai.py`'s `genai.Client` / `client.models.generate_content` call sites.
+- **CI: serialize prod deploys with a `concurrency` guard** (#147). `deploy.yml` gained
+  `concurrency: { group: deploy-${{ github.ref }}, cancel-in-progress: false }`, so two pushes to
+  `main` in quick succession queue instead of running overlapping pipelines that race on the shared
+  container-registry tags — the newest commit is always published last. `cancel-in-progress: false`
+  avoids aborting a half-published deploy.
 
 ## [1.8.2] - 2026-08-09
 
