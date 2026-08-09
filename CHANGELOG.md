@@ -7,6 +7,18 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Changed
+- **Frontend within-major dependency bumps** — consolidates Dependabot PRs #129, #130, #136, #137,
+  #139 into one validated PR (they all touch `frontend/package-lock.json` and conflict pairwise, so
+  they can't merge independently). Bumps the `@angular/*` group 22.0.8 → 22.1.x (core / common /
+  compiler / forms / platform-browser / platform-server / router → 22.1.1; build / cli /
+  compiler-cli / ssr / platform-browser-dynamic → 22.1.3), `@playwright/test` 1.62.0 → 1.62.1, and
+  `@types/node` 26.1.1 → 26.2.0, and pulls the patched dev/transitive `hono` 4.13.1, `js-yaml`
+  4.3.1, and `fast-uri` 3.1.5 — clearing the dev-only Dependabot alerts #162 / #164 / #165–167.
+  `jsdom` is intentionally held at 29.x (the 30.x major is a separate, deliberate effort, #131).
+  Validated against the full frontend gate: `npm run build` (shared → public → admin) and
+  `npm run test:coverage` (100% statements/branches/functions/lines on all three projects).
+
 ## [1.8.2] - 2026-08-09
 
 ### Security
