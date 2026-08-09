@@ -85,7 +85,7 @@ async def lifespan(app: FastAPI):
         from sqlalchemy import select
 
         from app.models.user import User
-        from app.services.auth import get_password_hash
+        from app.services.auth import get_password_hash, verify_password
 
         user_result = await session.execute(select(User))
         user = user_result.scalars().first()
@@ -121,14 +121,37 @@ async def lifespan(app: FastAPI):
                 print(
                     f"[{datetime.now(UTC)}] DB SEED: Default admin user 'admin' created successfully."
                 )
-        elif gemini_key_seed and not user.gemini_api_key:
-            # Optional: Update existing admin if key is missing and we have one locally
-            print(
-                f"[{datetime.now(UTC)}] DB SEED: Admin exists but has no key. Injecting from local env..."
-            )
-            user.gemini_api_key = gemini_key_seed
-            session.add(user)
-            await session.commit()
+        else:
+            # A user already exists — run idempotent, automatic maintenance on
+            # every startup (issue #142):
+            #   1. Rotate a *still-weak-default* admin. On the long-lived prod DB
+            #      the seed above never runs (a user already exists), so without
+            #      this the historical ``admin``/``admin`` login would survive the
+            #      deploy. When ADMIN_PASSWORD is set AND the stored password still
+            #      verifies against the old ``admin`` default, rotate it. Gating on
+            #      the weak-default check means a password an operator legitimately
+            #      set via the UI is never clobbered.
+            #   2. Backfill a missing Gemini key from the local env (dev only).
+            changed = False
+            if settings.admin_password and verify_password(
+                "admin", user.hashed_password
+            ):
+                print(
+                    f"[{datetime.now(UTC)}] DB SEED: Existing admin still uses the "
+                    "weak default password — rotating it to ADMIN_PASSWORD."
+                )
+                user.hashed_password = get_password_hash(settings.admin_password)
+                changed = True
+            if gemini_key_seed and not user.gemini_api_key:
+                # Optional: update existing admin if key is missing and we have one locally
+                print(
+                    f"[{datetime.now(UTC)}] DB SEED: Admin exists but has no key. Injecting from local env..."
+                )
+                user.gemini_api_key = gemini_key_seed
+                changed = True
+            if changed:
+                session.add(user)
+                await session.commit()
 
     # Check and seed default CV if no CVs exist
     import uuid
