@@ -66,6 +66,11 @@ services:
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # SECURITY (issue #142): initial admin password. REQUIRED — the backend
+      # refuses to seed a login-able default admin when this is empty, so prod
+      # can never ship the historical admin/admin login. Set a strong value in
+      # the root .env before deploying.
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
       - LINKEDIN_EMAIL=${LINKEDIN_EMAIL:-}
       - LINKEDIN_PASSWORD=${LINKEDIN_PASSWORD:-}
       - LINKEDIN_PUBLIC_ID=${LINKEDIN_PUBLIC_ID:-}

@@ -91,22 +91,36 @@ async def lifespan(app: FastAPI):
         user = user_result.scalars().first()
 
         if not user:
-            print(
-                f"[{datetime.now(UTC)}] DB SEED: No users found. Creating default admin user 'admin'..."
-            )
-            default_admin = User(
-                username="admin",
-                email="admin@mavrov.de",
-                hashed_password=get_password_hash("admin"),
-                is_admin=True,
-                is_active=True,
-                gemini_api_key=gemini_key_seed,
-            )
-            session.add(default_admin)
-            await session.commit()
-            print(
-                f"[{datetime.now(UTC)}] DB SEED: Default admin user 'admin' created successfully."
-            )
+            # SECURITY (issue #142): never auto-seed a login-able admin with a
+            # weak hardcoded password. The initial admin password MUST be
+            # supplied via ADMIN_PASSWORD; if it is empty we refuse to create a
+            # default admin so prod can never ship the historical
+            # ``admin``/``admin`` login. Local dev / E2E seed their own
+            # throwaway credentials via ``scripts/seed_e2e_user.py``.
+            if not settings.admin_password:
+                print(
+                    f"[{datetime.now(UTC)}] DB SEED ERROR: No users found and "
+                    "ADMIN_PASSWORD is not set — refusing to create a "
+                    "weak-default admin. Set ADMIN_PASSWORD and restart, or run "
+                    "'python scripts/seed_e2e_user.py' for local/E2E."
+                )
+            else:
+                print(
+                    f"[{datetime.now(UTC)}] DB SEED: No users found. Creating default admin user 'admin'..."
+                )
+                default_admin = User(
+                    username="admin",
+                    email=settings.default_admin_email,
+                    hashed_password=get_password_hash(settings.admin_password),
+                    is_admin=True,
+                    is_active=True,
+                    gemini_api_key=gemini_key_seed,
+                )
+                session.add(default_admin)
+                await session.commit()
+                print(
+                    f"[{datetime.now(UTC)}] DB SEED: Default admin user 'admin' created successfully."
+                )
         elif gemini_key_seed and not user.gemini_api_key:
             # Optional: Update existing admin if key is missing and we have one locally
             print(

@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+- **Remove the hardcoded default admin password; require `ADMIN_PASSWORD` in prod** (#142). The
+  startup DB-seed in `backend/app/main.py` created the initial admin with `get_password_hash("admin")`
+  — a weak `admin`/`admin` login that shipped to prod with no override, letting anyone into the admin
+  console (and read the stored Gemini key via `/auth/me`). The seed now reads the new `ADMIN_PASSWORD`
+  setting (`app/config.py`, default empty): with it set, the seeded admin uses that password; with it
+  empty it **refuses** to create a login-able default admin (logs a clear error and skips), so prod can
+  never ship `admin`/`admin`. Local dev / E2E keep working via `scripts/seed_e2e_user.py` (its own
+  throwaway `admin123`). `ensure_admin.py` and `scripts/reset_admin_password.py` likewise source the
+  password from `ADMIN_PASSWORD` instead of a hardcoded default, and `docker-compose.prod.yml` +
+  `.env.example` now document/require it. Regression tests cover all three paths (set → uses it,
+  unset-prod → refuses, E2E seed → still works).
+
 ### Added
 - Placeholder for next release.
 

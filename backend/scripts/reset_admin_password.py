@@ -13,8 +13,19 @@ from app.services.auth import get_password_hash
 
 
 async def fixing_admin_hash():
+    # SECURITY (issue #142): source the new password from ADMIN_PASSWORD rather
+    # than hardcoding a weak default. Refuse to run without it so we never reset
+    # the admin to a guessable/empty login.
+    new_password = settings.admin_password
+    if not new_password:
+        print(
+            "ERROR: ADMIN_PASSWORD is not set — refusing to reset the admin "
+            "password to a weak default. Set ADMIN_PASSWORD and retry."
+        )
+        return
+
     print("Generating hash using app.services.auth...")
-    hashed_pw = get_password_hash("admin123")
+    hashed_pw = get_password_hash(new_password)
     print(f"Generated Hash: {hashed_pw}")
 
     engine = create_async_engine(settings.database_url)
