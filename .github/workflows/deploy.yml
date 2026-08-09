@@ -521,6 +521,12 @@ jobs:
           # mock these endpoints as defense-in-depth. Real prod gets its key from the host
           # env, NOT from CI.
           GEMINI_API_KEY: ""
+          # Admin E2E hits admin.localhost through the Docker bridge (source IP is the
+          # gateway, not loopback, and no X-Forwarded-For is set so real_ip can't recover
+          # a real client), so open the allowlist for the test run only. The prod default
+          # ships CLOSED (empty ADMIN_ALLOWED_CIDRS -> loopback only) — see #86 /
+          # proxy/admin_allowlist.conf. This value is test-scoped, never a real secret.
+          ADMIN_ALLOWED_CIDRS: 0.0.0.0/0
         run: |
           # Start stack
           docker compose -f docker-compose.prod.yml up -d

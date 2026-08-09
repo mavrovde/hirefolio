@@ -194,6 +194,46 @@ rule 11**, enforced via the `pr-reviewer` agent.
 
 ---
 
+## 11. Admin IP allowlist is meaningless without `real_ip` — and don't gate startup on the FULL `nginx -t`
+
+**Trap.** In the containerized prod topology the admin subdomain sits behind a front proxy (1panel)
++ Docker NAT, so nginx sees the **Docker bridge gateway** as `$remote_addr` for *every* external
+client. An `allow/deny` allowlist on `$remote_addr` therefore can't distinguish operators — and
+flipping it to `deny all;` locks the owner out too (#86, split from #60, which is exactly why the
+hardening was deferred once). The fix is nginx `real_ip`: `set_real_ip_from <trusted upstream CIDR>`
++ `real_ip_header X-Forwarded-For` + `real_ip_recursive on` (in the **http** context) so
+`$remote_addr` becomes the real client IP *before* the allowlist runs. This only works if the front
+proxy actually forwards the real client IP in that header and its egress falls inside the trusted
+CIDR — **verify the proxy access logs show the real external IP**, not the gateway, before trusting
+the allowlist. That runtime check can't be reproduced locally (needs the live front-proxy topology).
+
+**Second trap (the one that bites at deploy time).** Don't add an entrypoint fail-safe that gates on
+a **full-config** `nginx -t`. The rendered config's `proxy_pass http://backend:8000` upstreams
+resolve **only inside the compose network**; a standalone `nginx -t` (or a startup DNS race) fails
+with `host not found in upstream "backend"`, which has nothing to do with the allowlist. Under
+`set -e` that can abort the entrypoint and **crash the proxy — taking the public site down too**, or
+misattribute the failure and overwrite the allowlist. Validate **only your generated snippets, in
+isolation**, with a throwaway minimal `nginx -t -c` config (an `http{}` including `real_ip.conf` + a
+dummy `server{}` including `admin_allowlist.conf`), and keep the check non-aborting.
+
+**How to apply.**
+1. Generate `real_ip.conf` + `admin_allowlist.conf` at container start from env
+   (`proxy/generate-admin-config.sh`: `TRUSTED_PROXY_CIDRS`, `REAL_IP_HEADER`, `ADMIN_ALLOWED_CIDRS`).
+   **Validate every env entry against an IPv4/IPv6/CIDR regex** — an unvalidated value injects
+   arbitrary nginx directives into the included file.
+2. Ship **CLOSED**: empty `ADMIN_ALLOWED_CIDRS` → `deny all;` (loopback only), **never** a blanket
+   `allow all;` as the default. Regex-valid ≠ nginx-valid (e.g. `999.999.999.999` passes `[0-9]{1,3}`
+   but nginx rejects it) — so the isolated-`nginx -t` fail-safe reverts to the closed default and the
+   real `exec nginx` still starts clean.
+3. Give the owner a **break-glass** that never depends on their dynamic IP: loopback from on the box
+   (`docker compose exec proxy wget … --header 'Host: admin.<domain>' https://127.0.0.1/`).
+4. E2E hits `admin.localhost` through the bridge with **no** `X-Forwarded-For`, so `real_ip` can't
+   recover a client — open the allowlist for the test run **only** via env
+   (`docker-compose.e2e.yml` + `deploy.yml` set `ADMIN_ALLOWED_CIDRS=0.0.0.0/0`), never in the shipped
+   default. Unit-test the generator deterministically (`proxy/test-generate-admin-config.sh`).
+
+---
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–9, issue-tracking flow,

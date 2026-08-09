@@ -270,12 +270,30 @@ identifies you. Every knob has a safe default that preserves the canonical behav
 | `REGISTRY`, `IMAGE_NAME` | GitHub **repository variables** | `ghcr.io`, `${{ github.repository }}` | Where `deploy.yml` publishes images (override to retarget the CI publish) |
 | `PUBLIC_SERVER_NAME` | `.env` (proxy) | `mavrov.de www.mavrov.de` | Public site hostname(s) the reverse proxy answers on |
 | `ADMIN_SERVER_NAME` | `.env` (proxy) | `admin.mavrov.de admin.localhost` | Admin console hostname(s) |
+| `ADMIN_ALLOWED_CIDRS` | `.env` (proxy) | *empty → CLOSED (loopback only)* | Trusted operator IPs/CIDRs allowed to reach the admin console. **Never `0.0.0.0/0` in prod.** |
+| `TRUSTED_PROXY_CIDRS` | `.env` (proxy) | `172.16.0.0/12` (Docker bridge) | Upstream CIDR(s) nginx trusts for the forwarded-for header (real client IP recovery) |
+| `REAL_IP_HEADER` | `.env` (proxy) | `X-Forwarded-For` | Header carrying the real client IP (set `X-Real-IP` if your front proxy uses it) |
 | `POSTGRES_PORT` | `.env` (compose) | `5433` | Postgres listen port + host mapping + backend `DATABASE_URL` |
 
 The reverse proxy renders its `server_name` from `PUBLIC_SERVER_NAME`/`ADMIN_SERVER_NAME` at
-container start (`proxy/entrypoint.sh` → envsubst on `proxy/default.conf.template`). Admin-console
-access is currently controlled by `proxy/admin_allowlist.conf`; making it config-driven (with nginx
-real_ip so trusted CIDRs work behind the Docker gateway) is tracked in issue #86. Pinned base images
+container start (`proxy/entrypoint.sh` → envsubst on `proxy/default.conf.template`).
+
+**Admin console access (#86).** The admin subdomain ships **CLOSED** to the public. Because Docker
+NAT masks every external client to the bridge gateway inside the container, the proxy first uses
+nginx `real_ip` to recover the true client IP from the front proxy's forwarded header
+(`set_real_ip_from ${TRUSTED_PROXY_CIDRS}` + `real_ip_header ${REAL_IP_HEADER}` +
+`real_ip_recursive on`, generated into `proxy/real_ip.conf`), then filters that IP against the
+allowlist generated from `ADMIN_ALLOWED_CIDRS` into `proxy/admin_allowlist.conf` (both by
+`proxy/generate-admin-config.sh` at start; the committed files are the safe defaults + fallback).
+With `ADMIN_ALLOWED_CIDRS` empty only loopback reaches admin; set your operator IPs/CIDRs to open
+it. **Prerequisite:** your front proxy must forward the real client IP in `REAL_IP_HEADER` and its
+egress must fall inside `TRUSTED_PROXY_CIDRS` — verify the proxy access logs show the real external
+client IP (not the gateway) before relying on the allowlist. A fail-safe re-tests the generated
+config (`nginx -t`) and falls back to a closed default if it is invalid, so a bad allowlist can
+never crash nginx or silently misfilter. **Break-glass** (works even with an empty allowlist): reach
+admin over loopback from on the box, e.g. `docker compose exec proxy wget -qO- --no-check-certificate
+--header 'Host: admin.<your-domain>' https://127.0.0.1/`, or an SSH tunnel that originates inside the
+proxy container. Pinned base images
 (`pgvector/pgvector:pg16`, `ollama/ollama:0.5.7`, `ghcr.io/open-webui/open-webui:v0.5.10`) live in
 `docker-compose.prod.yml` + `.github/base-images.txt`. The **Ollama model weights** the stack
 prewarms (`nomic-embed-text`, `llama3.2`, `llama3.2:1b`) are listed in `.github/ollama-models.txt`;

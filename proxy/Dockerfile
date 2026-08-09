@@ -9,9 +9,14 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # stock default.conf so only the rendered config is active.
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY default.conf.template /etc/nginx/templates/default.conf.template
+# Committed safe defaults (real_ip trust + CLOSED admin allowlist). entrypoint.sh
+# regenerates both from env at start via generate-admin-config.sh; these are the
+# baked-in fallbacks so `nginx -t` and startup always have a valid file to include.
+COPY real_ip.conf /etc/nginx/real_ip.conf
 COPY admin_allowlist.conf /etc/nginx/admin_allowlist.conf
+COPY generate-admin-config.sh /generate-admin-config.sh
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh /generate-admin-config.sh
 
 EXPOSE 80 443
 

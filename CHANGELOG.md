@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+- **Harden admin console access: nginx `real_ip` + `ADMIN_ALLOWED_CIDRS`** (#86, split from #60).
+  The admin subdomain filtered on `$remote_addr`, but in the containerized prod topology Docker NAT
+  masks every external client to the bridge gateway, so the allowlist could not distinguish real
+  operators (and flipping to `deny all;` would have locked the owner out). The proxy now recovers the
+  real client IP first: `proxy/nginx.conf` includes a generated `real_ip.conf`
+  (`set_real_ip_from ${TRUSTED_PROXY_CIDRS}` default `172.16.0.0/12` + `real_ip_header
+  ${REAL_IP_HEADER}` default `X-Forwarded-For` + `real_ip_recursive on`), then filters that IP against
+  `admin_allowlist.conf` generated from `ADMIN_ALLOWED_CIDRS`. Both are regenerated at container start
+  by `proxy/generate-admin-config.sh` (env values validated as IPv4/IPv6/CIDR so a malformed value
+  cannot inject nginx directives); the committed files are safe defaults + fallback. The admin surface
+  now ships **CLOSED** (empty `ADMIN_ALLOWED_CIDRS` → loopback only; **never** a blanket `allow all;`),
+  opened by listing trusted operator CIDRs. A fail-safe re-tests the generated config (`nginx -t`) and
+  reverts to a known-good closed default if it is invalid, so a bad allowlist can neither crash nginx
+  (which would take the public site down too) nor silently misfilter the owner; a documented loopback
+  break-glass path always works. E2E opens the allowlist via env for the test run only
+  (`docker-compose.e2e.yml` + `deploy.yml`), never a real secret. Docs: `.env.example`, README
+  "Deploying as a new owner", `docker-compose{,.prod}.yml`. Validated with `nginx -t` on the rendered
+  config + a generator unit test (`proxy/test-generate-admin-config.sh`); real-client-IP recovery
+  behind the live front proxy needs manual verification in the prod topology (proxy access logs must
+  show the real external client IP).
+
 ### Docs
 - **Mandatory independent review gate — CLAUDE.md rule 11** (no PR merges without a `pr-reviewer`
   APPROVE verdict posted to it; green CI / dev-agent validation / "user-directed" / trivial changes
