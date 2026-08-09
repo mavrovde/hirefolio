@@ -1,9 +1,28 @@
 import { test, expect } from '@playwright/test';
+import { API_PREFIX } from '../config';
 
 test.describe('AI Suggestions Flow', () => {
-  test.setTimeout(180000); // AI can be slow
+  test.setTimeout(60000); // AI is mocked — no real network latency
 
   test.beforeEach(async ({ page }) => {
+    // SECURITY / COST: mock the AI-suggestion endpoints so the E2E NEVER calls the
+    // paid Gemini API. Previously these ran unmocked against a stack seeded with a real
+    // key, so every pipeline run billed real Gemini usage. Mirror the mocks in posts.spec.ts.
+    await page.route(`**${API_PREFIX}/posts/suggest-tags`, async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ tags: ['AI', 'Tech', 'Playwright'] })
+      });
+    });
+    await page.route(`**${API_PREFIX}/posts/suggest-details`, async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ title: 'AI Suggested Title', slug: 'ai-suggested-slug', summary: 'AI suggested summary' })
+      });
+    });
+
     await page.addInitScript(() => {
       window.localStorage.setItem('cookie_consent', 'true');
     });

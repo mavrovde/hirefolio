@@ -89,3 +89,9 @@ Use `gh issue comment #NN --body "…"` / `gh issue close #NN`. Never paste secr
   non-`test_*` DB, or `rm -rf` a data/volume path to "recover" a red pipeline without explicit user
   authorization naming the resource — a backup is not consent. Prefer non-destructive recovery; if
   stuck, escalate. (`.claude/hooks/guard-destructive.sh` enforces this.)
+- **NEVER use real API keys / paid credentials in tests or CI** (CLAUDE.md rule 10 — STRICTLY
+  FORBIDDEN): CI test stacks must inject empty/placeholder credentials (never `${{ secrets.* }}`) so
+  paid calls fall back to a free local service; no test may authenticate to a paid/metered service
+  with a real credential. If you see a pipeline injecting a real paid-service secret into a test
+  stack, treat it as a critical bug to fix, not to run — a real key there bills on every pipeline run.
+  Real credentials live only in the prod runtime env.

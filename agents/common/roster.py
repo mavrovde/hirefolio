@@ -94,6 +94,19 @@ NO IRREVERSIBLE LOCAL/INFRA DESTRUCTION (ask first — a backup is not consent)
   Origin: the #91 incident (a subagent ran `docker volume rm mavrovde_open-webui_data`
   on its own). The `.claude/hooks/guard-destructive.sh` PreToolUse hook enforces this.
 
+NEVER REAL API KEYS / PAID CREDENTIALS IN TESTS OR CI (strictly forbidden)
+- No test, fixture, seed, E2E spec, or CI test stack may authenticate to a PAID,
+  metered, or rate-limited external service (any API that bills or burns quota per
+  call) with a REAL credential. Either MOCK the call at the test boundary
+  (page.route / monkeypatch / fake), or route it to a FREE local fallback by
+  supplying an EMPTY/dummy credential so no billable request is made. CI test jobs
+  inject empty/placeholder credentials into the test stack — NEVER a real secret.
+  Real credentials belong ONLY to the production runtime environment. Before adding
+  or running any test/CI path, verify it cannot reach a paid service with a live
+  credential. A real key wired into an automated test fires on EVERY pipeline run —
+  silent, unbounded, recurring cost + quota exhaustion + credential exposure in CI
+  logs. Treat any such wiring as a critical bug to fix, not to run.
+
 SIMPLICITY & SCOPE
 - Make the SMALLEST change that satisfies the goal. Do NOT add new files,
   modules, routers, classes or abstractions unless the task truly needs them

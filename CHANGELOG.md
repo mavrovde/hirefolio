@@ -9,6 +9,19 @@ All notable changes to this project will be documented in this file.
 
 ## [1.8.2] - 2026-08-09
 
+### Security
+- **Stop tests/CI from calling the paid Gemini API with a real key** (cost leak). The `e2e-tests` job
+  started the prod-topology stack with `GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}` and
+  `frontend/e2e/admin/ai-suggestions.spec.ts` drove `/posts/suggest-*` **unmocked**, so every push to
+  `main` billed real, premium Gemini calls. Fixed both layers: `deploy.yml` now passes
+  `GEMINI_API_KEY: ""` to the E2E stack (the backend falls back to the free in-stack Ollama, so the
+  flow is still exercised at zero cost — real prod is unaffected, its key comes from the host env), and
+  the AI-suggestion specs now mock `/posts/suggest-tags` + `/posts/suggest-details`. Codified as a hard
+  rule: **NEVER use real API keys / paid credentials in tests or CI** — added as CLAUDE.md **rule 10**
+  and mirrored into every `.claude/agents/*.md` charter, the shared `agents/common/roster.py` playbook,
+  and the `lessons-learned` skill (mock the call, or use a free local fallback with an empty/dummy
+  credential; real credentials belong only to the production runtime environment).
+
 ### Changed
 - **Backend image: drop the unused Node.js + Playwright + Chromium install** (#91, backend-build
   lever). Investigation of why `Build Backend Image` stayed ~5min despite an existing `type=gha`

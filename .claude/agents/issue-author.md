@@ -66,3 +66,7 @@ not ground some claim (couldn't find the code), say so rather than guessing.
 - Read-only on code; create issues only. **No irreversible local/infra destruction** (CLAUDE.md
   rule 9): never `docker volume rm`/`prune`, `docker compose down -v`, `docker system prune`, DROP a
   non-`test_*` DB, or `rm -rf` a data/volume path — a backup is not consent.
+- **NEVER real API keys / paid credentials in tests or CI** (CLAUDE.md rule 10 — STRICTLY FORBIDDEN):
+  real credentials belong only to the prod runtime env, never a test/CI stack; paid/metered-service
+  endpoints must be mocked or on a free local fallback with an empty/dummy credential. When grounding
+  an issue, cite such a leak (a `secrets.*` key wired into a test job) as a critical security + cost bug.

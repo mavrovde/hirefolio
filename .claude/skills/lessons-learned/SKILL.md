@@ -4,11 +4,13 @@ description: >-
   The committed "do-not-repeat" knowledge base for mavrov.de — hard-won operational lessons
   and footguns that unit tests and PR CI do NOT catch. Consult BEFORE touching the frontend
   SSR/HTTP/change-detection path, running backend pytest locally, adding a GitHub Actions
-  cache, deciding a release SemVer bump, running destructive local/infra commands, or shipping
-  a release. Encodes the zoneless-CD + SSR-HttpBackend traps, pytest local-DB isolation, the
-  GHA multi-GB-cache net-negative, SemVer-by-content, the green-pipeline release rule, and the
-  no-irreversible-local-destruction guardrail. Grep it or load it when a task matches — it exists
-  so fresh contexts and teammates don't re-research answers we already have.
+  cache, deciding a release SemVer bump, running destructive local/infra commands, writing any
+  test or CI job that touches an external service, or shipping a release. Encodes the zoneless-CD +
+  SSR-HttpBackend traps, pytest local-DB isolation, the GHA multi-GB-cache net-negative,
+  SemVer-by-content, the green-pipeline release rule, the no-irreversible-local-destruction
+  guardrail, and the STRICT no-real-API-keys/paid-credentials-in-tests-or-CI rule. Grep it or load
+  it when a task matches — it exists so fresh contexts and teammates don't re-research answers we
+  already have.
 ---
 
 # Lessons learned — mavrov.de (do not repeat)
@@ -152,6 +154,26 @@ frontend project tests **and**, for SSR/HTTP/E2E-affecting changes, the Docker E
 pre-push hook (`.claude/hooks/pre-push-tests.sh`) enforces docs + backend + frontend and self-gates
 (only fires on `git push`). When all gates are green and there is no explicit hold order, merge/deploy
 without stopping to ask.
+
+## 10. NEVER use real API keys / paid credentials in tests or CI (strictly forbidden)
+
+**Trap.** A real credential for a paid, metered, or rate-limited service (any LLM/API that bills or
+burns quota per call) wired into an automated test or a CI test stack fires on **every pipeline run** —
+producing silent, unbounded, recurring cost and quota exhaustion, and exposing the credential to CI
+logs. It hides easily: one test spec left unmocked, or a workflow injecting `${{ secrets.* }}` into a
+test job's env "so the feature works", turns green CI into a money leak.
+
+**How to apply (both layers).**
+1. **Mock** the paid call at the test boundary — `page.route` in Playwright, monkeypatch/fake in
+   pytest — so the request never leaves the test.
+2. **Deny the credential** to every test/CI job: inject an **empty/dummy** key so the code path takes
+   a **free local fallback** (e.g. Ollama here) instead of the paid API. In CI, pass `KEY: ""`, never
+   `${{ secrets.* }}`. Real credentials belong **only** to the production runtime environment.
+Before writing or running any test/CI path, verify it cannot reach a paid service with a live
+credential. In review, treat a real paid-service secret in a test stack — or an unmocked paid-API
+test — as a **blocker**. In this repo: `deploy.yml` passes `GEMINI_API_KEY: ""` to the E2E stack (→
+Ollama fallback) and the admin AI-suggestion specs mock `/posts/suggest-*`. This is **CLAUDE.md
+rule 10**.
 
 ---
 
