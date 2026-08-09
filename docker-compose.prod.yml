@@ -66,6 +66,11 @@ services:
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # SECURITY (issue #143): Fernet key encrypting the per-user Gemini API key
+      # at rest. Set a strong value in the root .env; generate with
+      #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      # Empty leaves values as plaintext (backward compatible; not recommended in prod).
+      - GEMINI_ENCRYPTION_KEY=${GEMINI_ENCRYPTION_KEY:-}
       # SECURITY (issue #142): initial admin password. REQUIRED — the backend
       # refuses to seed a login-able default admin when this is empty, so prod
       # can never ship the historical admin/admin login. Set a strong value in

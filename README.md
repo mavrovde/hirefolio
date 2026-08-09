@@ -238,6 +238,11 @@ OLLAMA_URL=http://localhost:11434
 EMBEDDING_MODEL=nomic-embed-text
 GEMINI_API_KEY=your_api_key_here
 
+# Fernet key that encrypts the per-user Gemini API key at rest (issue #143).
+# Empty = plaintext passthrough (backward compatible); set in prod to encrypt.
+# Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+GEMINI_ENCRYPTION_KEY=                          # default: "" (encryption disabled)
+
 # LinkedIn import (optional — leave blank to disable the import endpoint)
 LINKEDIN_IMPORT_TOKEN=your_machine_token_here   # default: "" (disabled)
 IMPORT_MAX_IMAGE_MB=10                          # default: 10 MB

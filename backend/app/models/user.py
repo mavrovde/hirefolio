@@ -4,6 +4,7 @@ from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.services.crypto import EncryptedString
 
 
 def utc_now():
@@ -19,7 +20,10 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    gemini_api_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Encrypted at rest (issue #143): the paid Gemini credential is stored as a
+    # Fernet token via EncryptedString, transparently decrypted on read. Falls
+    # back to plaintext passthrough when GEMINI_ENCRYPTION_KEY is unset.
+    gemini_api_key: Mapped[str | None] = mapped_column(EncryptedString(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
     )

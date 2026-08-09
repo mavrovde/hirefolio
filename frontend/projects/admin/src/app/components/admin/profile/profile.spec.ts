@@ -15,7 +15,7 @@ describe('ProfileComponent', () => {
     username: 'admin',
     email: 'admin@mavrov.de',
     is_admin: true,
-    gemini_api_key: 'initial-key'
+    has_gemini_key: true
   });
 
   beforeEach(async () => {
@@ -42,19 +42,23 @@ describe('ProfileComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should load initial Gemini API Key', () => {
-    expect(component.geminiApiKey).toBe('initial-key');
+  it('should reflect configured key status without reading the secret (#143)', () => {
+    // The raw key is never sent to the browser; the input stays empty (write-only).
+    expect(component.hasGeminiKey).toBe(true);
+    expect(component.geminiApiKey).toBe('');
   });
 
   it('should handle null user from auth stream smoothly', () => {
     currentUserSubject.next(null);
     fixture.detectChanges();
-    expect(component.geminiApiKey).toBe('initial-key'); // Was already set, or handles silently.
+    expect(component.hasGeminiKey).toBe(true); // Left unchanged when user is null.
+    expect(component.geminiApiKey).toBe('');
   });
 
-  it('should handle user without gemini_api_key successfully', () => {
-    currentUserSubject.next({ username: 'test', is_admin: true });
+  it('should show "not configured" for a user without a key', () => {
+    currentUserSubject.next({ username: 'test', is_admin: true, has_gemini_key: false });
     fixture.detectChanges();
+    expect(component.hasGeminiKey).toBe(false);
     expect(component.geminiApiKey).toBe('');
   });
 
@@ -86,10 +90,7 @@ describe('ProfileComponent', () => {
       email: 'admin@mavrov.de',
       id: 1,
       is_admin: true,
-      gemini_api_key: newKey,
-      is_active: true,
-      hashed_password: 'hash',
-      created_at: new Date().toISOString()
+      has_gemini_key: true
     };
     authServiceSpy.updateGeminiKey.mockReturnValue(of(mockUser));
 
@@ -98,7 +99,10 @@ describe('ProfileComponent', () => {
     expect(component.loading).toBe(false);
     expect(component.message).toBe('API Key saved successfully');
     expect(authServiceSpy.updateGeminiKey).toHaveBeenCalledWith(newKey);
-    
+    // The secret is cleared from the field and the status flips to configured.
+    expect(component.geminiApiKey).toBe('');
+    expect(component.hasGeminiKey).toBe(true);
+
     vi.advanceTimersByTime(3000);
     expect(component.message).toBe('');
     vi.useRealTimers();

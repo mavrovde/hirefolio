@@ -170,7 +170,9 @@ async def test_get_me_direct():
     assert result.username == "covme"
     assert result.email == "covme@example.com"
     assert result.is_admin is True
-    assert result.gemini_api_key == "stored-key"
+    # SECURITY (#143): the raw key is never returned — only a boolean flag.
+    assert result.has_gemini_key is True
+    assert not hasattr(result, "gemini_api_key")
 
 
 @pytest.mark.asyncio
@@ -191,6 +193,49 @@ async def test_update_gemini_key_direct(db_session):
     result = await update_gemini_key(key_data=payload, current_user=user, db=db_session)
 
     assert isinstance(result, UserResponse)
-    assert result.gemini_api_key == "new-gemini-key"
+    # SECURITY (#143): write path confirms the key is set without echoing it back.
+    assert result.has_gemini_key is True
+    assert not hasattr(result, "gemini_api_key")
     await db_session.refresh(user)
+    # The model attribute still round-trips the plaintext key for AI callers.
     assert user.gemini_api_key == "new-gemini-key"
+
+
+@pytest.mark.asyncio
+async def test_get_me_no_key_reports_false():
+    """has_gemini_key is False when the user has no key configured (#143)."""
+    user = User(
+        id=7,
+        username="covnokey",
+        email="covnokey@example.com",
+        hashed_password="irrelevant",
+        is_admin=False,
+        is_active=True,
+        gemini_api_key=None,
+    )
+    result = await get_me(current_user=user)
+    assert result.has_gemini_key is False
+
+
+@pytest.mark.asyncio
+async def test_clear_gemini_key_reports_false(db_session):
+    """Clearing the key (api_key=None) reports has_gemini_key False (#143)."""
+    user = User(
+        username="covclear",
+        email="covclear@example.com",
+        hashed_password=get_password_hash("pw"),
+        is_admin=False,
+        is_active=True,
+        gemini_api_key="some-existing-key",
+    )
+    db_session.add(user)
+    await db_session.commit()
+
+    result = await update_gemini_key(
+        key_data=UpdateGeminiKeyRequest(api_key=None),
+        current_user=user,
+        db=db_session,
+    )
+    assert result.has_gemini_key is False
+    await db_session.refresh(user)
+    assert user.gemini_api_key is None

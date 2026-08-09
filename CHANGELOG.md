@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Security
+- **Stop exposing the Gemini API key over the wire and encrypt it at rest** (#143). The per-user
+  Gemini credential (a paid, billable key) was returned to the browser by `GET /auth/me` and stored
+  as plaintext `String(255)`. Now: (1) `UserResponse` (`backend/app/api/auth.py`) returns
+  **`has_gemini_key: bool`** instead of the raw `gemini_api_key` — the key is write-only via
+  `PUT /auth/gemini-key` and never read back; the admin profile page
+  (`frontend/projects/admin/.../profile`) shows "Key configured / Not configured" from
+  `has_gemini_key` and offers a write-only set/replace field (the secret is never pre-filled and is
+  cleared from the DOM after a successful save). (2) The `users.gemini_api_key` column is **encrypted
+  at rest** via a new `EncryptedString` SQLAlchemy type (`backend/app/services/crypto.py`) using
+  `cryptography` **Fernet** (AES-128-CBC + HMAC), transparently decrypted on read for AI callers. The
+  Fernet key comes from the new `GEMINI_ENCRYPTION_KEY` setting (`app/config.py`); when it is empty,
+  encryption is disabled and values pass through as plaintext, so local/dev/E2E keep working, and
+  existing plaintext rows (no `enc:v1:` marker) are read transparently — enabling encryption never
+  breaks or loses data. Decryption fails safe (logs a warning, treats an undecryptable value as
+  unset) rather than crashing `/auth/me` or the AI endpoints. Migration `encrypt0002` widens the
+  column to `TEXT` and encrypts any existing plaintext key in place — guarded by the key
+  (no-op when unset) and idempotent (skips already-marked values). Docs/compose
+  (`docker-compose*.yml`, `.env.example`, `README.md`) document the new env var. Regression tests
+  cover the boolean-only responses, the write/clear paths, and the encrypt/decrypt round-trip
+  including legacy-plaintext passthrough and fail-safe decryption.
 - **Remove the hardcoded default admin password; require `ADMIN_PASSWORD` in prod** (#142). The
   startup DB-seed in `backend/app/main.py` created the initial admin with `get_password_hash("admin")`
   — a weak `admin`/`admin` login that shipped to prod with no override, letting anyone into the admin

@@ -73,6 +73,9 @@ services:
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # SECURITY (issue #143): Fernet key that encrypts the per-user Gemini API
+      # key at rest. Optional locally (empty = plaintext passthrough).
+      - GEMINI_ENCRYPTION_KEY=${GEMINI_ENCRYPTION_KEY:-}
     depends_on:
       db:
         condition: service_healthy

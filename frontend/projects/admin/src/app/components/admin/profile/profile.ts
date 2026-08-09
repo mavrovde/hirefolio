@@ -23,15 +23,19 @@ export class ProfileComponent {
   currentUser$ = this.authService.currentUser$;
 
   geminiApiKey = '';
+  hasGeminiKey = false;
   showKey = false;
   showNewPassword = false;
 
   constructor() { }
 
   ngOnInit() {
+    // SECURITY (issue #143): the raw key is never sent to the browser. We only
+    // learn whether one is configured (has_gemini_key) and offer a write-only
+    // set/replace field that is never pre-filled with the secret.
     this.currentUser$.subscribe(user => {
       if (user) {
-        this.geminiApiKey = user.gemini_api_key || '';
+        this.hasGeminiKey = !!user.has_gemini_key;
       }
     });
   }
@@ -55,7 +59,9 @@ export class ProfileComponent {
         this.message = 'API Key saved successfully';
         this.statusMessage = '';
         this.loading = false;
-        // Update local user state if needed, though auth service subject might handle it
+        this.hasGeminiKey = !!user.has_gemini_key;
+        // Never keep the secret in memory / the DOM after a successful write.
+        this.geminiApiKey = '';
         this.cdr.detectChanges();
         setTimeout(() => this.message = '', 3000);
       },
