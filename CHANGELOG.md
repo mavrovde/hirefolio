@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - Placeholder for next release.
 
 ### Changed
+- **`jsdom` 29 → 30 (major)** — deliberate major upgrade of the Vitest jsdom test environment
+  devDependency (resolved to `30.0.1`), superseding held Dependabot PR #131 (#131). No code or test
+  changes were required: the DOM/HTML-parsing behavior the unit suites rely on is unchanged.
+  Validated against the full frontend gate — `npm run build` (shared → public → admin) and
+  `npm run test:coverage` (100% statements/branches/functions/lines on all three projects, 727 tests).
 - **Frontend within-major dependency bumps** — consolidates Dependabot PRs #129, #130, #136, #137,
   #139 into one validated PR (they all touch `frontend/package-lock.json` and conflict pairwise, so
   they can't merge independently). Bumps the `@angular/*` group 22.0.8 → 22.1.x (core / common /
@@ -15,7 +20,7 @@ All notable changes to this project will be documented in this file.
   compiler-cli / ssr / platform-browser-dynamic → 22.1.3), `@playwright/test` 1.62.0 → 1.62.1, and
   `@types/node` 26.1.1 → 26.2.0, and pulls the patched dev/transitive `hono` 4.13.1, `js-yaml`
   4.3.1, and `fast-uri` 3.1.5 — clearing the dev-only Dependabot alerts #162 / #164 / #165–167.
-  `jsdom` is intentionally held at 29.x (the 30.x major is a separate, deliberate effort, #131).
+  `jsdom` was intentionally held at 29.x here; the 30.x major landed as its own deliberate effort (see above, #131).
   Validated against the full frontend gate: `npm run build` (shared → public → admin) and
   `npm run test:coverage` (100% statements/branches/functions/lines on all three projects).
 - **Backend within-major dependency bumps** (#128) — `fastapi` 0.140.0 → 0.141.1, `uvicorn` 0.51.0 →
