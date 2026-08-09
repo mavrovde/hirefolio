@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Security
+- **Remove the hardcoded default admin password; require `ADMIN_PASSWORD` in prod** (#142). The
+  startup DB-seed in `backend/app/main.py` created the initial admin with `get_password_hash("admin")`
+  — a weak `admin`/`admin` login that shipped to prod with no override, letting anyone into the admin
+  console (and read the stored Gemini key via `/auth/me`). The seed now reads the new `ADMIN_PASSWORD`
+  setting (`app/config.py`, default empty): with it set, the seeded admin uses that password; with it
+  empty it **refuses** to create a login-able default admin (logs a clear error and skips), so prod can
+  never ship `admin`/`admin`. **Automatic rotation of an existing weak admin** — because the long-lived
+  prod DB already has a user (so the fresh-install seed never runs), startup now also rotates a
+  *still-weak-default* admin: when `ADMIN_PASSWORD` is set and the stored password still verifies
+  against the historical `admin` default, it is replaced automatically (idempotent, no manual step),
+  closing the live login on the next deploy. A password an operator already changed via the admin UI is
+  left untouched (rotation is gated on the weak-default check). Local dev / E2E keep working via
+  `scripts/seed_e2e_user.py` (its own throwaway `admin123`). `ensure_admin.py` and
+  `scripts/reset_admin_password.py` likewise source the password from `ADMIN_PASSWORD` instead of a
+  hardcoded default, and `docker-compose.prod.yml` + `.env.example` now document/require it. Regression
+  tests cover fresh-install (set → uses it), prod refusal (unset → no weak admin), rotation (existing
+  weak default → rotated, `admin` no longer verifies), the no-clobber guard (custom password preserved),
+  and the E2E seed.
 - **Harden admin console access: nginx `real_ip` + `ADMIN_ALLOWED_CIDRS`** (#86, split from #60).
   The admin subdomain filtered on `$remote_addr`, but in the containerized prod topology Docker NAT
   masks every external client to the bridge gateway, so the allowlist could not distinguish real

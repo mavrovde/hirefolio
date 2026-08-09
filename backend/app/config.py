@@ -40,9 +40,16 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: str = "http://localhost:4200,https://mavrov.de,https://www.mavrov.de,http://mavrov.de,http://www.mavrov.de"
 
-    # Default admin seeding
+    # Default admin seeding.
+    #
+    # SECURITY (issue #142): there is intentionally NO weak default password.
+    # ``ADMIN_PASSWORD`` MUST be provided in any real deployment; the lifespan
+    # seed (see app.main) refuses to create a login-able default admin when this
+    # is empty, so prod can never ship the historical ``admin``/``admin`` login.
+    # Local dev / E2E seed their own throwaway credentials via
+    # ``scripts/seed_e2e_user.py`` instead of relying on this path.
     default_admin_email: str = "admin@mavrov.de"
-    default_admin_password: str = "admin"
+    admin_password: str = ""
 
     # Profile data (years API)
     profile_data_http_base: str = "http://frontend:80/assets"
