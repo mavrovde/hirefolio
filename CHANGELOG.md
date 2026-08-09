@@ -23,11 +23,54 @@ All notable changes to this project will be documented in this file.
   tests cover fresh-install (set → uses it), prod refusal (unset → no weak admin), rotation (existing
   weak default → rotated, `admin` no longer verifies), the no-clobber guard (custom password preserved),
   and the E2E seed.
+- **Harden admin console access: nginx `real_ip` + `ADMIN_ALLOWED_CIDRS`** (#86, split from #60).
+  The admin subdomain filtered on `$remote_addr`, but in the containerized prod topology Docker NAT
+  masks every external client to the bridge gateway, so the allowlist could not distinguish real
+  operators (and flipping to `deny all;` would have locked the owner out). The proxy now recovers the
+  real client IP first: `proxy/nginx.conf` includes a generated `real_ip.conf`
+  (`set_real_ip_from ${TRUSTED_PROXY_CIDRS}` default `172.16.0.0/12` + `real_ip_header
+  ${REAL_IP_HEADER}` default `X-Forwarded-For` + `real_ip_recursive on`), then filters that IP against
+  `admin_allowlist.conf` generated from `ADMIN_ALLOWED_CIDRS`. Both are regenerated at container start
+  by `proxy/generate-admin-config.sh` (env values validated as IPv4/IPv6/CIDR so a malformed value
+  cannot inject nginx directives); the committed files are safe defaults + fallback. The admin surface
+  now ships **CLOSED** (empty `ADMIN_ALLOWED_CIDRS` → loopback only; **never** a blanket `allow all;`),
+  opened by listing trusted operator CIDRs. A fail-safe re-tests the generated config (`nginx -t`) and
+  reverts to a known-good closed default if it is invalid, so a bad allowlist can neither crash nginx
+  (which would take the public site down too) nor silently misfilter the owner; a documented loopback
+  break-glass path always works. E2E opens the allowlist via env for the test run only
+  (`docker-compose.e2e.yml` + `deploy.yml`), never a real secret. Docs: `.env.example`, README
+  "Deploying as a new owner", `docker-compose{,.prod}.yml`. Validated with `nginx -t` on the rendered
+  config + a generator unit test (`proxy/test-generate-admin-config.sh`); real-client-IP recovery
+  behind the live front proxy needs manual verification in the prod topology (proxy access logs must
+  show the real external client IP).
+
+### Docs
+- **Mandatory independent review gate — CLAUDE.md rule 11** (no PR merges without a `pr-reviewer`
+  APPROVE verdict posted to it; green CI / dev-agent validation / "user-directed" / trivial changes
+  are NOT substitutes; urgent = expedited, not skipped). Mirrored into `agents/common/roster.py`, the
+  `release-manager`/`backend-dev`/`frontend-dev`/`pr-reviewer` charters, and the `lessons-learned`
+  skill. Origin: four PRs merged this cycle without an independent verdict (retrospective reviews
+  posted, all clean).
 
 ### Added
 - Placeholder for next release.
 
 ### Changed
+- **`jsdom` 29 → 30 (major)** — deliberate major upgrade of the Vitest jsdom test environment
+  devDependency (resolved to `30.0.1`), superseding held Dependabot PR #131 (#131). The DOM/HTML-parsing
+  behavior the unit suites rely on is unchanged. **Removed the leftover jsdom-29 `undici` scaffolding**
+  — the `overrides.undici: "^7.29.0"` pin *and* the direct `devDependencies.undici: "^7.29.0"` entry
+  are gone, so jsdom 30 pulls its own `undici@^8` (resolved `8.10.0`). That old pin (added for jsdom 29,
+  which needed undici 7 — see `[1.5.0]` note) inverted the hazard under jsdom 30, which is rewritten for
+  undici 8's module layout: it force-downgraded jsdom's resource-loader dispatcher to undici 7,
+  reintroducing the "Cannot find module …/jsdom-dispatcher" class of failure. Nothing in
+  `frontend/projects/**` imports `undici` directly, so it moves with the jsdom major. The prior
+  undici-7 pin is thereby superseded. Added a regression spec
+  (`projects/shared/src/jsdom-undici-resource-loader.spec.ts`) that asserts undici ≥ 8 is resolved from
+  jsdom and drives jsdom's undici-backed resource loader on a local `data:` subresource (no network) —
+  the existing 727 specs never touch that path because they mock `HttpBackend`. Validated against the
+  full frontend gate — `npm run build` (shared → public → admin) and `npm run test:coverage`
+  (100% statements/branches/functions/lines on all three projects).
 - **Frontend within-major dependency bumps** — consolidates Dependabot PRs #129, #130, #136, #137,
   #139 into one validated PR (they all touch `frontend/package-lock.json` and conflict pairwise, so
   they can't merge independently). Bumps the `@angular/*` group 22.0.8 → 22.1.x (core / common /
@@ -35,7 +78,7 @@ All notable changes to this project will be documented in this file.
   compiler-cli / ssr / platform-browser-dynamic → 22.1.3), `@playwright/test` 1.62.0 → 1.62.1, and
   `@types/node` 26.1.1 → 26.2.0, and pulls the patched dev/transitive `hono` 4.13.1, `js-yaml`
   4.3.1, and `fast-uri` 3.1.5 — clearing the dev-only Dependabot alerts #162 / #164 / #165–167.
-  `jsdom` is intentionally held at 29.x (the 30.x major is a separate, deliberate effort, #131).
+  `jsdom` was intentionally held at 29.x here; the 30.x major landed as its own deliberate effort (see above, #131).
   Validated against the full frontend gate: `npm run build` (shared → public → admin) and
   `npm run test:coverage` (100% statements/branches/functions/lines on all three projects).
 - **Backend within-major dependency bumps** (#128) — `fastapi` 0.140.0 → 0.141.1, `uvicorn` 0.51.0 →

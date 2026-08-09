@@ -54,3 +54,6 @@ importer/state.json
 
 # A2A agents subsystem
 agents/.venv/
+
+# Angular build cache (root-level, if a build ran outside frontend/)
+.angular/

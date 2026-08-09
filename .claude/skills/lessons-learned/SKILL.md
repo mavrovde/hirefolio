@@ -8,9 +8,9 @@ description: >-
   test or CI job that touches an external service, or shipping a release. Encodes the zoneless-CD +
   SSR-HttpBackend traps, pytest local-DB isolation, the GHA multi-GB-cache net-negative,
   SemVer-by-content, the green-pipeline release rule, the no-irreversible-local-destruction
-  guardrail, and the STRICT no-real-API-keys/paid-credentials-in-tests-or-CI rule. Grep it or load
-  it when a task matches — it exists so fresh contexts and teammates don't re-research answers we
-  already have.
+  guardrail, the STRICT no-real-API-keys/paid-credentials-in-tests-or-CI rule, and the mandatory
+  independent-review-gate-before-merge rule. Grep it or load it when a task matches — it exists so
+  fresh contexts and teammates don't re-research answers we already have.
 ---
 
 # Lessons learned — mavrov.de (do not repeat)
@@ -174,6 +174,63 @@ credential. In review, treat a real paid-service secret in a test stack — or a
 test — as a **blocker**. In this repo: `deploy.yml` passes `GEMINI_API_KEY: ""` to the E2E stack (→
 Ollama fallback) and the admin AI-suggestion specs mock `/posts/suggest-*`. This is **CLAUDE.md
 rule 10**.
+
+## 11. Every PR needs an INDEPENDENT pr-reviewer verdict before merge — no exceptions
+
+**Trap.** Under time pressure it is tempting to merge on "green CI", "a dev agent (backend-dev/
+frontend-dev) already validated it", "it's a trivial one-line CI/docs change", or "the user was
+directing it in real time". **None of those is an independent review.** Merging without a posted
+`pr-reviewer` verdict skips the two-party gate, leaves no audit trail, and lets plausible-but-wrong
+changes through — exactly the class the reviewer exists to catch.
+
+**How to apply.** A PR is mergeable only when **all gates are green AND a `pr-reviewer` APPROVE verdict
+is posted to the PR**. This holds for EVERY PR with no carve-outs — hotfixes/emergencies, dependency
+bumps, trivial/CI/docs changes, and user-directed changes. Urgent → the review is **expedited, not
+skipped**. The implementing dev agent delivers the PR and does **not** merge; its own passing suite is
+necessary but not sufficient. Every merged PR must carry a visible review comment. If one ever slips
+through un-reviewed, post a **retrospective** review on the merged PR and fix-forward on any finding
+(as was done for the four un-gated merges in the incident that produced this rule). This is **CLAUDE.md
+rule 11**, enforced via the `pr-reviewer` agent.
+
+---
+
+## 11. Admin IP allowlist is meaningless without `real_ip` — and don't gate startup on the FULL `nginx -t`
+
+**Trap.** In the containerized prod topology the admin subdomain sits behind a front proxy (1panel)
++ Docker NAT, so nginx sees the **Docker bridge gateway** as `$remote_addr` for *every* external
+client. An `allow/deny` allowlist on `$remote_addr` therefore can't distinguish operators — and
+flipping it to `deny all;` locks the owner out too (#86, split from #60, which is exactly why the
+hardening was deferred once). The fix is nginx `real_ip`: `set_real_ip_from <trusted upstream CIDR>`
++ `real_ip_header X-Forwarded-For` + `real_ip_recursive on` (in the **http** context) so
+`$remote_addr` becomes the real client IP *before* the allowlist runs. This only works if the front
+proxy actually forwards the real client IP in that header and its egress falls inside the trusted
+CIDR — **verify the proxy access logs show the real external IP**, not the gateway, before trusting
+the allowlist. That runtime check can't be reproduced locally (needs the live front-proxy topology).
+
+**Second trap (the one that bites at deploy time).** Don't add an entrypoint fail-safe that gates on
+a **full-config** `nginx -t`. The rendered config's `proxy_pass http://backend:8000` upstreams
+resolve **only inside the compose network**; a standalone `nginx -t` (or a startup DNS race) fails
+with `host not found in upstream "backend"`, which has nothing to do with the allowlist. Under
+`set -e` that can abort the entrypoint and **crash the proxy — taking the public site down too**, or
+misattribute the failure and overwrite the allowlist. Validate **only your generated snippets, in
+isolation**, with a throwaway minimal `nginx -t -c` config (an `http{}` including `real_ip.conf` + a
+dummy `server{}` including `admin_allowlist.conf`), and keep the check non-aborting.
+
+**How to apply.**
+1. Generate `real_ip.conf` + `admin_allowlist.conf` at container start from env
+   (`proxy/generate-admin-config.sh`: `TRUSTED_PROXY_CIDRS`, `REAL_IP_HEADER`, `ADMIN_ALLOWED_CIDRS`).
+   **Validate every env entry against an IPv4/IPv6/CIDR regex** — an unvalidated value injects
+   arbitrary nginx directives into the included file.
+2. Ship **CLOSED**: empty `ADMIN_ALLOWED_CIDRS` → `deny all;` (loopback only), **never** a blanket
+   `allow all;` as the default. Regex-valid ≠ nginx-valid (e.g. `999.999.999.999` passes `[0-9]{1,3}`
+   but nginx rejects it) — so the isolated-`nginx -t` fail-safe reverts to the closed default and the
+   real `exec nginx` still starts clean.
+3. Give the owner a **break-glass** that never depends on their dynamic IP: loopback from on the box
+   (`docker compose exec proxy wget … --header 'Host: admin.<domain>' https://127.0.0.1/`).
+4. E2E hits `admin.localhost` through the bridge with **no** `X-Forwarded-For`, so `real_ip` can't
+   recover a client — open the allowlist for the test run **only** via env
+   (`docker-compose.e2e.yml` + `deploy.yml` set `ADMIN_ALLOWED_CIDRS=0.0.0.0/0`), never in the shipped
+   default. Unit-test the generator deterministically (`proxy/test-generate-admin-config.sh`).
 
 ---
 

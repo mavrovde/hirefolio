@@ -14,3 +14,9 @@ services:
 
   proxy:
     build: ./proxy
+    environment:
+      # E2E ONLY: the admin E2E hits admin.localhost through the Docker bridge, so
+      # nginx sees the gateway as $remote_addr and no X-Forwarded-For is set (real_ip
+      # can't recover a real client). Open the allowlist for the test run only.
+      # Production ships CLOSED (empty ADMIN_ALLOWED_CIDRS -> loopback only).
+      - ADMIN_ALLOWED_CIDRS=0.0.0.0/0

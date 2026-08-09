@@ -106,6 +106,12 @@ fi
 echo "🌱 Seeding E2E data..."
 docker-compose -f docker-compose.prod.yml -f docker-compose.e2e.yml exec -T backend python scripts/seed_e2e_user.py
 
+# Admin access-control generator unit test (real_ip + allowlist; #86). Pure shell,
+# stack-independent — asserts the CLOSED-by-default allowlist, valid-CIDR opening,
+# malformed-entry rejection, and never a blanket allow.
+echo "🛡️  Verifying admin access-config generator..."
+sh proxy/test-generate-admin-config.sh
+
 # Run Playwright
 echo "🛡️  Verifying Proxy Routes..."
 python3 -m pip install httpx --quiet --break-system-packages || true
