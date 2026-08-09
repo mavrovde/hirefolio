@@ -91,6 +91,16 @@ def test_encrypt_decrypt_round_trip(fernet_key):
     assert decrypt(encrypt("round-trip-key")) == "round-trip-key"
 
 
+def test_decrypt_malformed_key_returns_none(monkeypatch):
+    """A malformed GEMINI_ENCRYPTION_KEY must NOT 500 the read path (#143).
+
+    The Fernet constructor raises ValueError on a bad key; decrypt() must catch
+    it and fail safe to None rather than propagating (fail-loud) on read.
+    """
+    monkeypatch.setattr(crypto.settings, "gemini_encryption_key", "not-a-valid-key")
+    assert decrypt(f"{_ENC_PREFIX}whatever") is None
+
+
 def test_decrypt_wrong_key_returns_none(monkeypatch):
     # Encrypt under one key...
     k1 = Fernet.generate_key().decode()

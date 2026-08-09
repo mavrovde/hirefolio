@@ -42,12 +42,16 @@ class UserResponse(BaseModel):
 
 def _to_user_response(user: User) -> UserResponse:
     """Map a User row to the safe UserResponse (no raw secret)."""
+    key = user.gemini_api_key
+    # Treat a blank/whitespace-only key as "not configured" (intentional, not an
+    # accident of ``bool("")``): a usable key must have non-whitespace content.
+    has_key = bool(key and key.strip())
     return UserResponse(
         id=user.id,
         username=user.username,
         email=user.email,
         is_admin=user.is_admin,
-        has_gemini_key=bool(user.gemini_api_key),
+        has_gemini_key=has_key,
     )
 
 

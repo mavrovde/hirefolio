@@ -218,6 +218,22 @@ async def test_get_me_no_key_reports_false():
 
 
 @pytest.mark.asyncio
+async def test_get_me_blank_key_reports_false():
+    """A blank/whitespace-only key counts as "not configured" (#143)."""
+    user = User(
+        id=8,
+        username="covblank",
+        email="covblank@example.com",
+        hashed_password="irrelevant",
+        is_admin=False,
+        is_active=True,
+        gemini_api_key="   ",
+    )
+    result = await get_me(current_user=user)
+    assert result.has_gemini_key is False
+
+
+@pytest.mark.asyncio
 async def test_clear_gemini_key_reports_false(db_session):
     """Clearing the key (api_key=None) reports has_gemini_key False (#143)."""
     user = User(

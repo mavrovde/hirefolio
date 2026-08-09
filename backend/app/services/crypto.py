@@ -40,8 +40,12 @@ _ENC_PREFIX = "enc:v1:"
 def _get_fernet() -> Fernet | None:
     """Build a Fernet from the configured key, or ``None`` when unset.
 
-    A malformed key raises (``ValueError`` from ``Fernet``) on purpose: a broken
-    ``GEMINI_ENCRYPTION_KEY`` is a deploy-time misconfiguration worth surfacing.
+    A malformed key raises ``ValueError`` from ``Fernet``. On the **write** path
+    (``encrypt``) that is intentional — a broken ``GEMINI_ENCRYPTION_KEY`` is a
+    deploy-time misconfiguration worth surfacing loudly rather than silently
+    storing a paid credential as plaintext. On the **read** path (``decrypt``)
+    the ``ValueError`` is caught and downgraded to "treat as unset" so a bad key
+    can never 500 ``/auth/me`` or the AI endpoints (see ``decrypt``).
     """
     key = settings.gemini_encryption_key
     if not key:
@@ -68,19 +72,23 @@ def decrypt(value: str | None) -> str | None:
         # Legacy plaintext (or written while encryption was disabled).
         return value
     token = value[len(_ENC_PREFIX) :]
-    fernet = _get_fernet()
-    if fernet is None:
-        logger.warning(
-            "Encrypted secret found but GEMINI_ENCRYPTION_KEY is not set; "
-            "cannot decrypt — treating as unset."
-        )
-        return None
     try:
+        fernet = _get_fernet()
+        if fernet is None:
+            logger.warning(
+                "Encrypted secret found but GEMINI_ENCRYPTION_KEY is not set; "
+                "cannot decrypt — treating as unset."
+            )
+            return None
         return fernet.decrypt(token.encode()).decode()
-    except InvalidToken:
+    except (InvalidToken, ValueError) as exc:
+        # ValueError covers a malformed GEMINI_ENCRYPTION_KEY (raised by the
+        # Fernet constructor in _get_fernet); InvalidToken covers a rotated key
+        # or corrupted ciphertext. Never fail loud on read — degrade to "unset".
         logger.warning(
-            "Failed to decrypt secret (invalid token or rotated key) — "
-            "treating as unset."
+            "Failed to decrypt secret (%s: invalid token, or malformed/rotated "
+            "GEMINI_ENCRYPTION_KEY) — treating as unset.",
+            type(exc).__name__,
         )
         return None
 

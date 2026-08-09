@@ -1,4 +1,5 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
@@ -14,6 +15,7 @@ import { TranslatePipe } from '@mavrov/shared';
 export class ProfileComponent {
   private authService = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
   oldPassword = '';
   newPassword = '';
   loading = false;
@@ -33,7 +35,7 @@ export class ProfileComponent {
     // SECURITY (issue #143): the raw key is never sent to the browser. We only
     // learn whether one is configured (has_gemini_key) and offer a write-only
     // set/replace field that is never pre-filled with the secret.
-    this.currentUser$.subscribe(user => {
+    this.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(user => {
       if (user) {
         this.hasGeminiKey = !!user.has_gemini_key;
       }

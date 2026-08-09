@@ -21,10 +21,21 @@ All notable changes to this project will be documented in this file.
   breaks or loses data. Decryption fails safe (logs a warning, treats an undecryptable value as
   unset) rather than crashing `/auth/me` or the AI endpoints. Migration `encrypt0002` widens the
   column to `TEXT` and encrypts any existing plaintext key in place — guarded by the key
-  (no-op when unset) and idempotent (skips already-marked values). Docs/compose
-  (`docker-compose*.yml`, `.env.example`, `README.md`) document the new env var. Regression tests
-  cover the boolean-only responses, the write/clear paths, and the encrypt/decrypt round-trip
-  including legacy-plaintext passthrough and fail-safe decryption.
+  (no-op when unset) and idempotent (skips already-marked values). The migration `downgrade`
+  **refuses to overwrite an encrypted credential with NULL**: if the key is missing/rotated at
+  rollback (so decryption fails safe to `None`), it aborts with a clear error instead of wiping the
+  value. `decrypt()` also fail-safes on a **malformed** `GEMINI_ENCRYPTION_KEY` (not just an invalid
+  token), so a bad key can never 500 `/auth/me` or the AI endpoints — it degrades to "unset". Because
+  the migration runs once, existing plaintext keys are **not** retroactively encrypted if the key is
+  enabled later; a one-off idempotent backfill (`backend/scripts/backfill_encrypt_gemini_key.py`,
+  `python -m scripts.backfill_encrypt_gemini_key`) or re-saving via the admin UI encrypts them, and
+  the network **exposure** (Part A) is closed regardless of encryption state. Docs/compose
+  (`docker-compose*.yml`, `.env.example`, `README.md`) document the env var and the two-step.
+  Regression tests cover the boolean-only responses (incl. blank-key), the write/clear paths, the
+  encrypt/decrypt round-trip with legacy-plaintext passthrough + fail-safe (invalid **and** malformed
+  key) decryption, and a **real up/down Alembic migration test** against Postgres — key-set
+  (encrypt-in-place + idempotent skip + downgrade decrypts back), key-unset (no-op widen, no wipe),
+  the downgrade null-wipe guard, and the backfill.
 - **Remove the hardcoded default admin password; require `ADMIN_PASSWORD` in prod** (#142). The
   startup DB-seed in `backend/app/main.py` created the initial admin with `get_password_hash("admin")`
   — a weak `admin`/`admin` login that shipped to prod with no override, letting anyone into the admin

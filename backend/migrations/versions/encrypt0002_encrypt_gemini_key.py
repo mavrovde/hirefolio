@@ -78,6 +78,19 @@ def downgrade() -> None:
         if not raw.startswith(_ENC_PREFIX):
             continue
         plain = decrypt(raw)
+        if plain is None:
+            # decrypt() fails safe to None when GEMINI_ENCRYPTION_KEY is
+            # missing/rotated/malformed. Writing that None back would overwrite
+            # the encrypted credential with NULL — an unrecoverable wipe on
+            # rollback. Refuse: abort the whole downgrade (transactional DDL
+            # rolls back any rows already rewritten) so the operator can set the
+            # correct key and retry. Never destroy data on downgrade.
+            raise RuntimeError(
+                f"Cannot decrypt users.gemini_api_key (id={row.id}) during "
+                "downgrade: GEMINI_ENCRYPTION_KEY is missing, rotated, or "
+                "malformed. Set the correct key and re-run the downgrade; "
+                "refusing to overwrite the encrypted credential with NULL."
+            )
         conn.execute(
             sa.text("UPDATE users SET gemini_api_key = :v WHERE id = :id"),
             {"v": plain, "id": row.id},

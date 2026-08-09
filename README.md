@@ -242,6 +242,15 @@ GEMINI_API_KEY=your_api_key_here
 # Empty = plaintext passthrough (backward compatible); set in prod to encrypt.
 # Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 GEMINI_ENCRYPTION_KEY=                          # default: "" (encryption disabled)
+#
+# NOTE (encrypting EXISTING keys): the `encrypt0002` migration runs once at
+# deploy. If GEMINI_ENCRYPTION_KEY was still empty when it ran, existing keys
+# stay plaintext — setting the key later does NOT retroactively encrypt them.
+# After enabling the key, encrypt existing rows by either (a) re-saving the key
+# in the admin profile UI, or (b) running the idempotent backfill once:
+#   cd backend && GEMINI_ENCRYPTION_KEY=... python -m scripts.backfill_encrypt_gemini_key
+# (Regardless of encryption, `/auth/me` never returns the raw key — the network
+# EXPOSURE is closed independently of encryption-at-rest.)
 
 # LinkedIn import (optional — leave blank to disable the import endpoint)
 LINKEDIN_IMPORT_TOKEN=your_machine_token_here   # default: "" (disabled)
