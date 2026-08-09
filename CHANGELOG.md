@@ -53,6 +53,16 @@ All notable changes to this project will be documented in this file.
   for known routes).
 
 ### Docs
+- **In-repo AI knowledge base — stop re-researching what we already know** (#114). Added a committed
+  `lessons-learned` skill (`.claude/skills/lessons-learned/SKILL.md`) distilling the hard-won,
+  test-invisible lessons that previously lived only in machine-local private memory: the zoneless-CD
+  "async mutation doesn't repaint" footgun, the SSR `HttpBackend`→`HttpXhrBackend` (never
+  `FetchBackend`) rule, "SSR/HTTP changes need the Docker E2E" (PR CI is CodeQL-only), backend pytest
+  local-DB isolation (`TEST_DATABASE_URL`/serialize/`--cov` segfault), the GHA multi-GB-cache
+  net-negative, SemVer-by-content, the green-pipeline release rule, and the destruction guardrail —
+  each with *why it bites* + *how to apply* and an AI-config map. `CLAUDE.md` now references the skill
+  from the tooling section and **rule 7 mandates the sync discipline** (a new durable lesson lands in
+  the in-repo knowledge base as part of the change, not only in private memory). No secrets/PII copied.
 - **Guardrail against irreversible local/infra destruction** (#116). Added CLAUDE.md **rule 9** and a
   new `PreToolUse` **`Bash` guard hook** (`.claude/hooks/guard-destructive.sh`, registered in
   `.claude/settings.json`) that BLOCKS — as defense-in-depth beyond the generic permission classifier

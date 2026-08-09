@@ -66,13 +66,22 @@ specs/      Feature specs (planned/done)
   (browser automation), `github` (PRs/issues). Approve on first use.
 - **Subagents** (`.claude/agents/`): `devops-pipeline` (babysit CI after a merge), `backend-dev`,
   `frontend-dev` (reproduce → fix → verify a diagnosis, then deliver via a PR — not a direct push).
-- **Pre-push hook** (`.claude/hooks/pre-push-tests.sh`, via committed `.claude/settings.json`): runs
-  docs + backend pytest + backend lint/type (ruff check + ruff format --check + mypy) + frontend
-  tests before every `git push`; env-configurable (`PREPUSH_RUN_LINT`/`PREPUSH_RUN_RUFF`/
-  `PREPUSH_RUN_MYPY` among others), self-gating.
+- **Hooks** (`.claude/hooks/`, via committed `.claude/settings.json`, both `PreToolUse Bash`):
+  `pre-push-tests.sh` runs docs + backend pytest + backend lint/type (ruff check + ruff format --check
+  + mypy) + frontend tests before every `git push` (env-configurable: `PREPUSH_RUN_LINT`/
+  `PREPUSH_RUN_RUFF`/`PREPUSH_RUN_MYPY` …, self-gating); `guard-destructive.sh` blocks irreversible
+  local/infra destruction (rule 9) — command-position aware, bypass one command with
+  `GUARD_DESTRUCTIVE=0`.
 - **Plugins** (project scope): frontend-design, context7, playwright, pyright-lsp, typescript-lsp,
   security-guidance.
-- **Slash commands** (`.claude/commands/`): project flows — `/verify`, `/release`, `/linkedin-sync`.
+- **Skills** (`.claude/skills/`): `issue-workflow` (issue/PR/milestone/label flow) and
+  **`lessons-learned`** — the committed "do-not-repeat" knowledge base (zoneless-CD + SSR-HttpBackend
+  traps, pytest local-DB isolation, GHA multi-GB-cache net-negative, SemVer-by-content, green-pipeline
+  release rule, destruction guardrail). **Consult `lessons-learned` before** SSR/HTTP/CD changes,
+  local pytest, adding a CI cache, a release, or destructive local commands — it exists so we don't
+  re-research what we already know.
+- **Slash commands** (`.claude/commands/`): project flows — `/verify`, `/release`, `/issue-triage`,
+  `/linkedin-sync`.
 
 ## Engineering rules (non-negotiable)
 
@@ -98,7 +107,11 @@ specs/      Feature specs (planned/done)
    (e.g. Angular, TypeScript) are separate, deliberate efforts. `linkedin-api` stays `2.2.1` (prod
    installs a patched wheel). Update both `requirements.txt` and `requirements-dev.txt` together.
 7. **Docs + changelog with code.** Update `README.md` and `CHANGELOG.md` (`[Unreleased]`) as part of
-   the change. Conventional Commits (`feat:`/`fix:`/`chore:`/`docs:`), atomic.
+   the change. Conventional Commits (`feat:`/`fix:`/`chore:`/`docs:`), atomic. **Commit durable
+   lessons, don't hoard them:** when you learn a hard-won, reusable lesson (a footgun, a non-obvious
+   root cause, a "don't do X"), record it in the **in-repo** `.claude/skills/lessons-learned/` as part
+   of the change — not only in machine-local private memory, which fresh contexts and teammates can't
+   see. Uncommitted knowledge doesn't compound.
 8. **No rogue prod actions.** Deploy only via the sanctioned path (merge to `main` / `release.sh`).
    A release is **confirmed only when the `deploy.yml` pipeline is green end-to-end** — babysit the
    run and react to results (fix forward on red), then tag `vX.Y.Z`. **Check GitHub security reports
