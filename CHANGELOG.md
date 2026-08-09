@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Placeholder for next release.
+
+## [1.8.2] - 2026-08-09
+
 ### Changed
 - **Backend image: drop the unused Node.js + Playwright + Chromium install** (#91, backend-build
   lever). Investigation of why `Build Backend Image` stayed ~5min despite an existing `type=gha`
