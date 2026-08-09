@@ -127,6 +127,20 @@ specs/      Feature specs (planned/done)
    `.claude/hooks/guard-destructive.sh` PreToolUse hook blocks these patterns (bypass a single
    authorized command with `GUARD_DESTRUCTIVE=0` prefixed). Origin: the #91 incident (a subagent ran
    `docker volume rm mavrovde_open-webui_data` on its own initiative).
+10. **NEVER use real API keys or paid-service credentials in tests or CI — STRICTLY FORBIDDEN.** No
+    unit test, integration/E2E test, fixture, seed, or CI test stack may authenticate to a paid,
+    metered, or rate-limited external service (any API that bills or consumes quota per call) with a
+    **real** credential. Every such call MUST be either **(a) mocked/stubbed at the test boundary**
+    (e.g. `page.route` in Playwright, monkeypatch/fake in pytest) **or (b) routed to a free local
+    fallback** by supplying an **empty or dummy** credential so no billable request is made. CI test
+    jobs MUST inject empty/placeholder credentials into the test stack — **never** a real secret
+    (`${{ secrets.* }}`). Real credentials belong **only** to the production runtime environment,
+    never to a test or CI job. Before writing or running any test/CI path, verify it cannot reach a
+    paid service with a live credential. **Rationale:** a real key wired into an automated test fires
+    on *every* pipeline run — causing silent, unbounded, recurring cost and quota exhaustion — and
+    needlessly exposes the credential to CI logs. Treat any such wiring as a critical bug to fix, not
+    to run. (In this repo: CI passes `GEMINI_API_KEY: ""` so the E2E falls back to the local Ollama;
+    paid-API specs are also mocked.)
 
 ## Issue tracking, milestones & labels (development flow)
 

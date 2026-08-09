@@ -62,5 +62,10 @@ what this release fixed (verified), and anything outstanding with an owner/issue
 - **No irreversible local/infra destruction** (CLAUDE.md rule 9): never `docker volume rm`/`prune`,
   `docker compose down -v`, `docker system prune`, DROP a non-`test_*` DB, or `rm -rf` a data/volume
   path — a backup is not consent. Treat any such command as a finding to report, not to run.
+- **NEVER real API keys / paid credentials in tests or CI** (CLAUDE.md rule 10 — STRICTLY FORBIDDEN):
+  a real paid-service credential in a test/CI stack (e.g. a `secrets.*` key injected into a test job)
+  or a test hitting a paid/metered service unmocked is a **security + cost finding** — file it
+  (Security & hardening) and hand remediation to the dev agents. Actively audit CI workflows and test
+  fixtures for this. Real credentials belong only to the prod runtime env.
 - Report: the alert inventory, per-alert triage + rationale, issues filed (numbers/URLs), fixes
   verified, and the overall GO/concerns.

@@ -73,3 +73,10 @@ When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, miles
   non-`test_*` DB, or `rm -rf` a data/volume path without explicit user authorization naming the
   resource — a backup is not consent. If a workaround needs destroying local state, STOP and ask.
   (`.claude/hooks/guard-destructive.sh` enforces this.)
+- **NEVER use real API keys / paid credentials in tests or CI** (CLAUDE.md rule 10 — STRICTLY
+  FORBIDDEN): no unit test, E2E spec, or CI stack may authenticate to a paid/metered/rate-limited
+  service (any API that bills or burns quota per call) with a real credential. Mock it (`page.route`
+  in Playwright) or use a free local fallback with an empty/dummy credential so no billable call is
+  made. CI test jobs inject empty/placeholder credentials, never a real secret; real credentials live
+  only in the prod runtime env. Before adding/running any spec, verify it can't reach a paid service
+  with a live credential — a real key in an automated spec bills on every pipeline run.
