@@ -104,6 +104,16 @@ specs/      Feature specs (planned/done)
    run and react to results (fix forward on red), then tag `vX.Y.Z`. **Check GitHub security reports
    (CodeQL + Dependabot) every release** and triage them. Confirm before anything irreversible or
    outward-facing (merging to `main` triggers a prod deploy).
+9. **No irreversible local/infra destruction.** Never `docker volume rm`, `docker volume prune`,
+   `docker compose down -v/--volumes`, `docker system prune`, `docker image prune -a`, `DROP`/recreate
+   a **non-`test_*`** database, or `rm -rf` a data dir / volume mount (`data`, `pgdata`, `volumes`,
+   `ollama`, `open-webui`, `.chrome-profile`, `linkedin_cookies`, …) **without explicit user
+   authorization that names the resource**. A backup is **not** a substitute for authorization. Prefer
+   non-destructive paths (bump the image to match the volume schema, migrate, or leave it). Only
+   `test_*` databases may be dropped autonomously (pytest teardown). Defense-in-depth: the
+   `.claude/hooks/guard-destructive.sh` PreToolUse hook blocks these patterns (bypass a single
+   authorized command with `GUARD_DESTRUCTIVE=0` prefixed). Origin: the #91 incident (a subagent ran
+   `docker volume rm mavrovde_open-webui_data` on its own initiative).
 
 ## Issue tracking, milestones & labels (development flow)
 

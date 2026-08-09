@@ -80,6 +80,10 @@ suffix (`-rc.1`) is allowed when explicitly requested.
 ## Rules
 - **No rogue prod actions.** Deploy only via the sanctioned merge; never edit prod
   or force-deploy out of band.
+- **No irreversible local/infra destruction** (CLAUDE.md rule 9): never `docker volume rm`/`prune`,
+  `docker compose down -v`, `docker system prune`, `docker image prune -a`, DROP/recreate a
+  non-`test_*` DB, or `rm -rf` a data/volume path without explicit user authorization naming the
+  resource — a backup is not consent. (`.claude/hooks/guard-destructive.sh` enforces this.)
 - Be honest about state: if the deploy is red or a step was skipped, say so with the
   evidence. A release is not "done" until the pipeline is green and the tag exists.
 - Report: the version + bump rationale, the CHANGELOG section, the deploy run result,

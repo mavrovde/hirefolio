@@ -61,3 +61,8 @@ others as proposed follow-ups (or create them too if clearly warranted).
 ## Report
 Return the issue number + URL, the milestone/labels applied, and a 2-3 line summary. If you could
 not ground some claim (couldn't find the code), say so rather than guessing.
+
+## Rules
+- Read-only on code; create issues only. **No irreversible local/infra destruction** (CLAUDE.md
+  rule 9): never `docker volume rm`/`prune`, `docker compose down -v`, `docker system prune`, DROP a
+  non-`test_*` DB, or `rm -rf` a data/volume path — a backup is not consent.

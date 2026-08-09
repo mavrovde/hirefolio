@@ -67,3 +67,8 @@ When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, miles
 - Never lower coverage thresholds, delete/skip tests, or add blanket ignores to
   make CI pass. Fix the code.
 - Touch only what the fix requires. Match surrounding style.
+- **No irreversible local/infra destruction** (CLAUDE.md rule 9): never `docker volume rm`/`prune`,
+  `docker compose down -v`, `docker system prune`, `docker image prune -a`, DROP/recreate a
+  non-`test_*` DB, or `rm -rf` a data/volume path without explicit user authorization naming the
+  resource — a backup is not consent. Only `test_*` DBs may be dropped autonomously. If a workaround
+  needs destroying local state, STOP and ask. (`.claude/hooks/guard-destructive.sh` enforces this.)

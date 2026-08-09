@@ -14,6 +14,7 @@ set -uo pipefail
 #   TEST_DATABASE_URL      Postgres URL for the backend pytest run
 #   PREPUSH_LOG            where the combined log is written
 #   PREPUSH_CHECK_DOCS     1/0 — run the docs check (CHANGELOG [Unreleased] + README)
+#   PREPUSH_RUN_GUARDTEST  1/0 — run the destruction-guard hook self-test (#116)
 #   PREPUSH_RUN_BACKEND    1/0 — run backend pytest (needs the DB above)
 #   PREPUSH_RUN_LINT       1/0 — run backend lint/type leg (ruff + mypy), mirroring CI
 #   PREPUSH_RUN_RUFF       1/0 — within the lint leg, run `ruff check .` + `ruff format --check .`
@@ -23,6 +24,7 @@ set -uo pipefail
 : "${TEST_DATABASE_URL:=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov}"
 : "${PREPUSH_LOG:=/tmp/mavrov-prepush-tests.log}"
 : "${PREPUSH_CHECK_DOCS:=1}"
+: "${PREPUSH_RUN_GUARDTEST:=1}"
 : "${PREPUSH_RUN_BACKEND:=1}"
 : "${PREPUSH_RUN_LINT:=1}"
 : "${PREPUSH_RUN_RUFF:=1}"
@@ -59,6 +61,11 @@ run_checks() {
     echo "== docs check =="
     grep -q "Unreleased" "$ROOT/CHANGELOG.md" || { echo "CHANGELOG.md is missing an [Unreleased] section"; return 1; }
     test -s "$ROOT/README.md" || { echo "README.md is missing or empty"; return 1; }
+  fi
+
+  if [ "$PREPUSH_RUN_GUARDTEST" = "1" ] && [ -f "$ROOT/.claude/hooks/guard-destructive.test.sh" ]; then
+    echo "== destruction-guard self-test =="
+    bash "$ROOT/.claude/hooks/guard-destructive.test.sh" || return 1
   fi
 
   if [ "$PREPUSH_RUN_BACKEND" = "1" ]; then
