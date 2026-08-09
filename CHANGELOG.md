@@ -61,11 +61,17 @@ All notable changes to this project will be documented in this file.
   of a persistent data/volume path (`data`/`pgdata`/`volumes`/`ollama`/`open-webui`/`.chrome-profile`/
   `linkedin_cookies`). It is **command-position aware** — it splits the command on shell separators and
   inspects each segment's first token, skipping text/VCS tools (`git`/`grep`/`echo`/`sed`/…), so the
-  same text appearing merely as an *argument* (a commit message, a `grep` pattern, docs) is NOT blocked;
-  only a real invocation is. Passes every ordinary dev/test command through instantly (verified by a
-  committed 31-case self-test `.claude/hooks/guard-destructive.test.sh`; `verify_all.sh`/`manage.sh`
-  use none of the blocked patterns). Bypass a single authorized command with `GUARD_DESTRUCTIVE=0`
-  prefixed (or export it for a session). The rule is mirrored into all seven `.claude/agents/*.md` charters and the shared
+  same text appearing merely as an *argument* is NOT blocked; only a real invocation is. Splitting is
+  **quote-aware** — a separator inside a quoted argument (e.g. a `git commit -m "…| xargs docker volume
+  rm…"` message) stays part of that one text-led segment, while a real unquoted pipe
+  (`cat list | xargs docker volume rm`) is split and each part inspected. It also transparently
+  **unwraps indirection** — `sudo`/`env`/`nohup`/`time`, `xargs [opts]`, and `bash -c`/`sh -c`/`eval
+  "…"` — so `docker volume ls -q | xargs docker volume rm` (the "remove ALL volumes" idiom) and
+  `bash -c "docker volume rm x"` are still caught. Passes every ordinary dev/test command through
+  instantly (verified by a committed **45-case** self-test `.claude/hooks/guard-destructive.test.sh`,
+  now also run by the pre-push hook; `verify_all.sh`/`manage.sh` use none of the blocked patterns).
+  Bypass one authorized command with a **leading** `GUARD_DESTRUCTIVE=0` on that segment (a stray token
+  elsewhere in the line does not disarm it), or export it for a session. The rule is mirrored into all seven `.claude/agents/*.md` charters and the shared
   `agents/common/roster.py` playbook. Origin: the #91 incident where a subagent ran `docker volume rm
   mavrovde_open-webui_data` on its own initiative (a backup is not consent).
 - **Fold the v1.8.1 SSR/zoneless lessons into the agent charters** (`.claude/agents/frontend-dev.md`,
