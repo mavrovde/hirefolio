@@ -10,7 +10,7 @@ pytest-xdist==3.8.0
 
 
 # Linting & Formatting
-ruff==0.16.0
+ruff==0.16.1
 
 # Type Checking
 mypy==2.3.0
