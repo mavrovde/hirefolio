@@ -1,0 +1,166 @@
+---
+name: lessons-learned
+description: >-
+  The committed "do-not-repeat" knowledge base for mavrov.de — hard-won operational lessons
+  and footguns that unit tests and PR CI do NOT catch. Consult BEFORE touching the frontend
+  SSR/HTTP/change-detection path, running backend pytest locally, adding a GitHub Actions
+  cache, deciding a release SemVer bump, running destructive local/infra commands, or shipping
+  a release. Encodes the zoneless-CD + SSR-HttpBackend traps, pytest local-DB isolation, the
+  GHA multi-GB-cache net-negative, SemVer-by-content, the green-pipeline release rule, and the
+  no-irreversible-local-destruction guardrail. Grep it or load it when a task matches — it exists
+  so fresh contexts and teammates don't re-research answers we already have.
+---
+
+# Lessons learned — mavrov.de (do not repeat)
+
+This is the **in-repo** home for durable, hard-won lessons — the things that cost us a revert, a red
+pipeline, or a wasted research loop. It complements `CLAUDE.md` (the rules) with the *why* and the
+concrete reproduction. **Sync discipline:** when you learn a new durable lesson, add it here as part
+of the change — do not leave it only in a machine-local private memory, or it evaporates between
+contexts and contributors.
+
+Each entry: **the trap → why it bites → how to apply.** Most of these are invisible to unit tests and
+PR CI (which runs only CodeQL) — they only surface in the full Docker E2E or in production.
+
+---
+
+## 1. The public app is effectively ZONELESS — async property mutations don't repaint
+
+**Trap.** `frontend/projects/public` bundles **no `zone.js`** at runtime (`angular.json` has no
+`polyfills` entry; zone.js is only in `test-setup.ts` for unit tests). A component that mutates a
+**plain property** inside a `subscribe` / `setInterval` / `setTimeout` / `async`-`fetch` callback will
+**silently never repaint**. This froze the footer at `BE: vUnknown` / `UPTIME 00:00:00` (#94) even
+though the `/stats/public` fetch returned 200.
+
+**Why it bites.** Unit tests DO bundle zone.js, so change detection fires there and the test passes —
+the freeze only appears in the browser / Docker E2E.
+
+**How to apply.** For any public component that updates on a timer or a `subscribe`, repaint
+explicitly: inject `ChangeDetectorRef` and call `markForCheck()` after each async mutation, **or** use
+signals, **or** render an `Observable` via the `async` pipe. The app is committed to zoneless via
+`provideZonelessChangeDetection()` in `app.config.ts` (#105) — the async-mutation rule still holds.
+Grep pattern to audit: `subscribe(` / `setInterval(` / `setTimeout(` in `projects/public` that assign
+`this.<prop> =` without a following `markForCheck()`.
+
+## 2. SSR relative→absolute URL rewrite belongs in an `HttpBackend`, delegating to `HttpXhrBackend`
+
+**Trap.** Doing the SSR URL rewrite in an `HttpInterceptorFn` runs it *before* Angular's
+transfer-cache interceptor, so the server keys the transfer cache on the *rewritten* absolute URL
+while the browser keys it on the *relative* URL → keys never match → the browser re-fetches every
+request on hydration (blog `/blog/:slug` "flash to home", #25).
+
+**Why it bites — and the specific landmine.** Fix by doing the rewrite in a custom `HttpBackend`
+(terminal in the chain, runs *after* transfer-cache keying): `interceptors/ssr-http-backend.ts`
+(`SsrHttpBackend`), wired via `provideHttpClient()` + `{provide: HttpBackend, useClass: SsrHttpBackend}`.
+**CRITICAL: delegate to `HttpXhrBackend`, NOT `FetchBackend`.** The app has always used XHR on both
+platforms. The reverted #84 delegated to `FetchBackend` and *deterministically* broke the browser's
+`GET /api/app/stats/public` (`net::ERR_FAILED`), blocking the deploy across 4 attempts; only reverting
+greened it. `HttpXhrBackend` keeps the browser byte-identical to the baseline.
+
+**How to apply.** Never force the browser onto a different HTTP backend without proving it in the E2E.
+
+## 3. SSR / HTTP / transfer-cache changes MUST be E2E-validated before merge
+
+**Trap.** PR CI here runs **only CodeQL** — the real test suite + Docker E2E run in `deploy.yml` on
+push to `main`. A browser-only regression sails through PR review and 100% unit coverage and only
+surfaces *post-merge* on the prod deploy.
+
+**How to apply.** For any change touching `HttpBackend` / `provideHttpClient` / interceptors /
+transfer-cache / SSR hydration, run the full Docker E2E locally (`./verify_all.sh` or a targeted stack
+repro) **before** merging. `frontend-dev` and `pr-reviewer` should explicitly ask "was this
+E2E-validated?" for such changes. When you change a user-visible behavior, grep **all** e2e specs for
+the OLD assertion (the #108→#110 stale-test fix-forward). Fix-forward on red: revert the offending
+change to ship the rest, then redo it properly (never leave `main` red).
+
+## 4. Backend pytest local DB — isolation rules (or it hangs / wipes the dev DB)
+
+- **Always** export `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov`
+  and `GEMINI_API_KEY=""` before `./venv/bin/pytest`. This is exactly what
+  `.claude/hooks/pre-push-tests.sh` sets. Without it, `conftest.get_test_engine()` falls back to the
+  **live `mavrov` dev DB**, and the per-test `Base.metadata.drop_all` **hangs** on the running backend
+  container's table locks (and would wipe the dev DB if it didn't block).
+- The `test_mavrov` DB lives in the `mavrovde-db-1` container. Create if missing:
+  `docker exec mavrovde-db-1 psql -U postgres -p 5433 -c "CREATE DATABASE test_mavrov"`.
+- **Never run two full pytest suites against `test_mavrov` at once** (e.g. a manual run while the
+  pre-push hook fires). Both do `drop_all`/`create_all` per test on the same DB and clobber each other
+  → dozens of spurious `InvalidRequestError: Could not refresh instance` / count-mismatch failures.
+  Serialize them.
+- `pyproject.toml` addopts already do `--cov=app`. Passing **extra** `--cov=app.api.foo` on the CLI can
+  **segfault** (coverage C-tracer + asyncpg/greenlet). Use the plain full-suite run for the real
+  coverage number; `--no-cov` for quick pass/fail iteration. Full suite ≈ 2.5 min; `pytest -q | tail`
+  buffers until exit — use `-v` or write to a file for live progress.
+
+## 5. GitHub Actions cache for multi-GB Docker artifacts is usually net-NEGATIVE
+
+**Trap.** Caching large (multi-GB) base images or model weights via `actions/cache` does **not** speed
+this pipeline up — the cache *transfer* (download tarball + `docker load`/extract) costs about as much
+as re-pulling from the registry, and it eats the repo's 10 GB cache budget.
+
+**Measured (v1.8.0 cycle).** #78 Ollama model-weights cache (~3.6 GB): +53s restore vs ~11s saved →
+E2E job ~56s **slower**. #72/#76 base-image cache (~2.79 GB): ~30s saving at best (~2% of a 25-min
+pipeline). The real bottleneck is the **sequential critical path**, not downloads: Backend Tests ~5m →
+Build Backend Image ~5m → E2E ~8–9m → Proxy Verify ~5m. Real levers (issue #91): dedupe the two stack
+bring-ups, `pytest-xdist -n auto`, and slim the backend image (done in #91 — dropping unused Node.js +
+Playwright + Chromium cut ~500MB and the dominant build step).
+
+**How to apply.** Before adding an `actions/cache` for a big Docker blob, estimate transfer vs
+re-pull; prefer registry (CDN-backed) pulls. **Always MEASURE** before/after on real runs
+(`gh api .../jobs` timings) — never assume a cache helps.
+
+## 6. Release SemVer bump is decided BY CONTENT of `[Unreleased]` — never by reflex
+
+Stop at the first that matches:
+- **MAJOR `X.0.0`** — any backward-**incompatible** change (removed/renamed API field or endpoint,
+  non-additive DB migration, changed default/auth/config-key meaning). Signal: `feat!:` / `BREAKING
+  CHANGE:`. Rare; confirm first.
+- **MINOR `x.Y.0`** — ONLY if `[Unreleased]` has an `### Added` describing genuinely new,
+  backward-compatible functionality (new endpoint/page/capability/feature-flag). Signal: `feat:`.
+- **PATCH `x.y.Z`** (the maintenance default) — everything else: dependency bumps (even many at once),
+  `### Fixed`, perf, refactors, internal tooling/CI, docs, additive-only migrations. Signals:
+  `fix:`/`chore:`/`refactor:`/`perf:`/`docs:`/`ci:`.
+
+**Rule of thumb:** only `### Changed`/`### Fixed`, no `### Added` feature → **patch**. Internal
+AI-config/tooling/docs changes are patch-level (do not file them under `### Added`, which would
+mislead the bump). Calibration: deps-only sweeps = patch (once wrongly defaulted to a minor — corrected).
+
+## 7. A release is confirmed only when `deploy.yml` is GREEN end-to-end
+
+Publishing is gated behind E2E/smoke, so a red pipeline ships nothing. After merging to `main`,
+actively babysit the run (`gh run view <id> --json ... jobs`), surface each job result, and fix root
+causes on red (fix-forward, never silent rollback). Only then tag `vX.Y.Z` (a tag push does not
+re-trigger the branch pipeline). **Check GitHub security reports every release** — CodeQL
+(`gh api .../code-scanning/alerts`) + Dependabot (`.../dependabot/alerts`) — triage each and note
+pre-existing vs introduced. Caveat: `deploy.yml` currently publishes images but has no host-rollout
+step ("published ≠ live", #112) — don't assume a green publish means the site is updated.
+
+## 8. No irreversible LOCAL/infra destruction without explicit authorization
+
+Never `docker volume rm`/`prune`, `docker compose down -v`/`--volumes`, `docker system prune`,
+`docker image prune -a`, DROP/recreate a **non-`test_*`** database, or `rm -rf` a data dir / volume
+mount **without explicit user authorization naming the resource** — a backup is **not** consent. Only
+`test_*` DBs may be dropped autonomously. Origin: the #91 incident where a subagent ran
+`docker volume rm mavrovde_open-webui_data` on its own initiative. Enforced by CLAUDE.md **rule 9** and
+the `.claude/hooks/guard-destructive.sh` PreToolUse hook (bypass one authorized command with
+`GUARD_DESTRUCTIVE=0` prefixed). Prefer non-destructive paths (bump the image to match the volume
+schema, migrate, or leave it); if a workaround needs destroying local state, STOP and ask.
+
+## 9. Deliver via PR; run the FULL suite before pushing; merge only when green
+
+Never push feature work directly to `main` — branch → PR → merge (the merge is the sanctioned prod
+trigger). Before pushing run the full local round (backend ruff/format + mypy + pytest **and** all
+frontend project tests **and**, for SSR/HTTP/E2E-affecting changes, the Docker E2E). The shared
+pre-push hook (`.claude/hooks/pre-push-tests.sh`) enforces docs + backend + frontend and self-gates
+(only fires on `git push`). When all gates are green and there is no explicit hold order, merge/deploy
+without stopping to ask.
+
+---
+
+## Where the rules live (AI-config map)
+
+- **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–9, issue-tracking flow,
+  execution protocol). This skill is the *why + reproduction* companion.
+- **`.claude/agents/*.md`** + **`agents/common/roster.py`** (`PROJECT_PLAYBOOK`) — the agent charters;
+  keep the two in sync (they restate overlapping lessons).
+- **`.claude/skills/issue-workflow/`** — the issue/PR/milestone/label operational flow.
+- **`.claude/hooks/`** — `pre-push-tests.sh` (test gate), `guard-destructive.sh` (destruction guard).
+- **`.claude/commands/`** — `/verify`, `/release`, `/issue-triage`, `/linkedin-sync`.
