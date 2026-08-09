@@ -36,7 +36,6 @@
   "private": true,
   "packageManager": "npm@11.8.0",
   "overrides": {
-    "undici": "^7.29.0",
     "@hono/node-server": "^2.0.5"
   },
   "dependencies": {
@@ -71,7 +70,6 @@
     "stylelint-config-standard": "^40.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
-    "undici": "^7.29.0",
     "vitest": "^4.1.10"
   }
 }

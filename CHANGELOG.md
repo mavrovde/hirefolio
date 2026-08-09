@@ -9,10 +9,20 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - **`jsdom` 29 → 30 (major)** — deliberate major upgrade of the Vitest jsdom test environment
-  devDependency (resolved to `30.0.1`), superseding held Dependabot PR #131 (#131). No code or test
-  changes were required: the DOM/HTML-parsing behavior the unit suites rely on is unchanged.
-  Validated against the full frontend gate — `npm run build` (shared → public → admin) and
-  `npm run test:coverage` (100% statements/branches/functions/lines on all three projects, 727 tests).
+  devDependency (resolved to `30.0.1`), superseding held Dependabot PR #131 (#131). The DOM/HTML-parsing
+  behavior the unit suites rely on is unchanged. **Removed the leftover jsdom-29 `undici` scaffolding**
+  — the `overrides.undici: "^7.29.0"` pin *and* the direct `devDependencies.undici: "^7.29.0"` entry
+  are gone, so jsdom 30 pulls its own `undici@^8` (resolved `8.10.0`). That old pin (added for jsdom 29,
+  which needed undici 7 — see `[1.5.0]` note) inverted the hazard under jsdom 30, which is rewritten for
+  undici 8's module layout: it force-downgraded jsdom's resource-loader dispatcher to undici 7,
+  reintroducing the "Cannot find module …/jsdom-dispatcher" class of failure. Nothing in
+  `frontend/projects/**` imports `undici` directly, so it moves with the jsdom major. The prior
+  undici-7 pin is thereby superseded. Added a regression spec
+  (`projects/shared/src/jsdom-undici-resource-loader.spec.ts`) that asserts undici ≥ 8 is resolved from
+  jsdom and drives jsdom's undici-backed resource loader on a local `data:` subresource (no network) —
+  the existing 727 specs never touch that path because they mock `HttpBackend`. Validated against the
+  full frontend gate — `npm run build` (shared → public → admin) and `npm run test:coverage`
+  (100% statements/branches/functions/lines on all three projects).
 - **Frontend within-major dependency bumps** — consolidates Dependabot PRs #129, #130, #136, #137,
   #139 into one validated PR (they all touch `frontend/package-lock.json` and conflict pairwise, so
   they can't merge independently). Bumps the `@angular/*` group 22.0.8 → 22.1.x (core / common /
