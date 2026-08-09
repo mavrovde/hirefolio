@@ -15,7 +15,9 @@ export interface User {
   username: string;
   email: string;
   is_admin: boolean;
-  gemini_api_key?: string;
+  // SECURITY (issue #143): the backend never returns the raw Gemini key — only
+  // whether one is configured. The key is write-only via updateGeminiKey().
+  has_gemini_key?: boolean;
 }
 
 @Injectable({

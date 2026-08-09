@@ -160,7 +160,7 @@ describe('AuthService', () => {
   describe('updateGeminiKey', () => {
     it('should call api/auth/gemini-key with PUT method and update current user', () => {
       service = TestBed.inject(AuthService);
-      const mockUser = { id: 1, username: 'test', email: 't@t.com', is_admin: true, gemini_api_key: 'new-key' };
+      const mockUser = { id: 1, username: 'test', email: 't@t.com', is_admin: true, has_gemini_key: true };
       
       service.updateGeminiKey('new-key').subscribe(user => {
         expect(user).toEqual(mockUser as any);

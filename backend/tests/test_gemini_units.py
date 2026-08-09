@@ -59,4 +59,6 @@ async def test_auth_update_gemini_key_unit():
     mock_db.commit.assert_awaited_once()
     mock_db.refresh.assert_awaited_once_with(mock_user)
 
-    assert response.gemini_api_key == "new-key"
+    # SECURITY (#143): response exposes only a boolean, not the raw key.
+    assert response.has_gemini_key is True
+    assert not hasattr(response, "gemini_api_key")

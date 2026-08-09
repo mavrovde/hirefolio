@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     admin_email: str = "admin@mavrov.de"
     api_prefix: str = "/api/app"
     gemini_api_key: str = ""
+    # Fernet key (urlsafe-base64, 32 bytes) used to encrypt the per-user Gemini
+    # API key at rest (see app.services.crypto / issue #143). Empty disables
+    # field encryption (values stored/read as plaintext) so local/dev/E2E setups
+    # keep working; production sets it to encrypt the paid credential at rest.
+    # Generate with: python -c "from cryptography.fernet import Fernet;
+    # print(Fernet.generate_key().decode())"
+    gemini_encryption_key: str = ""
     # Gemini model selection. Suggestion/tagging tasks (tags, title, slug,
     # summary) are cheap and use the flash-tier model by default; override via
     # GEMINI_MODEL / GEMINI_MODEL_FALLBACK. The fallback is only used when the

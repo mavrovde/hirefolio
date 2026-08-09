@@ -32,9 +32,27 @@ class UserResponse(BaseModel):
     username: str
     email: str
     is_admin: bool
-    gemini_api_key: str | None = None
+    # SECURITY (issue #143): never return the raw Gemini API key to the client.
+    # Expose only whether a key is configured; the key is write-only via
+    # ``PUT /auth/gemini-key`` and never read back over the wire.
+    has_gemini_key: bool = False
 
     model_config = ConfigDict(from_attributes=True)
+
+
+def _to_user_response(user: User) -> UserResponse:
+    """Map a User row to the safe UserResponse (no raw secret)."""
+    key = user.gemini_api_key
+    # Treat a blank/whitespace-only key as "not configured" (intentional, not an
+    # accident of ``bool("")``): a usable key must have non-whitespace content.
+    has_key = bool(key and key.strip())
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        is_admin=user.is_admin,
+        has_gemini_key=has_key,
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -83,13 +101,7 @@ async def login(
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
     """Get current authenticated user information."""
-    return UserResponse(
-        id=current_user.id,
-        username=current_user.username,
-        email=current_user.email,
-        is_admin=current_user.is_admin,
-        gemini_api_key=current_user.gemini_api_key,
-    )
+    return _to_user_response(current_user)
 
 
 class ChangePasswordRequest(BaseModel):
@@ -134,10 +146,4 @@ async def update_gemini_key(
     await db.commit()
     await db.refresh(current_user)
 
-    return UserResponse(
-        id=current_user.id,
-        username=current_user.username,
-        email=current_user.email,
-        is_admin=current_user.is_admin,
-        gemini_api_key=current_user.gemini_api_key,
-    )
+    return _to_user_response(current_user)

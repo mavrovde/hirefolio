@@ -28,7 +28,9 @@ async def test_update_gemini_key(client: AsyncClient, db_session: AsyncSession):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["gemini_api_key"] == new_key
+    # SECURITY (#143): response confirms a key is set but never echoes it back.
+    assert data["has_gemini_key"] is True
+    assert "gemini_api_key" not in data
 
     # Note: We skip direct DB verification because client fixture uses overridden dependency
     # which returns a mock user that might not be persisted in the session in the same way.
@@ -45,7 +47,7 @@ async def test_update_gemini_key_remove(client: AsyncClient, db_session: AsyncSe
     response = await client.put("/api/app/auth/gemini-key", json={"api_key": None})
 
     assert response.status_code == 200
-    assert response.json()["gemini_api_key"] is None
+    assert response.json()["has_gemini_key"] is False
 
 
 async def test_ai_service_uses_user_key(

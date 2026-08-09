@@ -1,4 +1,5 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
@@ -14,6 +15,7 @@ import { TranslatePipe } from '@mavrov/shared';
 export class ProfileComponent {
   private authService = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
   oldPassword = '';
   newPassword = '';
   loading = false;
@@ -23,15 +25,19 @@ export class ProfileComponent {
   currentUser$ = this.authService.currentUser$;
 
   geminiApiKey = '';
+  hasGeminiKey = false;
   showKey = false;
   showNewPassword = false;
 
   constructor() { }
 
   ngOnInit() {
-    this.currentUser$.subscribe(user => {
+    // SECURITY (issue #143): the raw key is never sent to the browser. We only
+    // learn whether one is configured (has_gemini_key) and offer a write-only
+    // set/replace field that is never pre-filled with the secret.
+    this.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(user => {
       if (user) {
-        this.geminiApiKey = user.gemini_api_key || '';
+        this.hasGeminiKey = !!user.has_gemini_key;
       }
     });
   }
@@ -55,7 +61,9 @@ export class ProfileComponent {
         this.message = 'API Key saved successfully';
         this.statusMessage = '';
         this.loading = false;
-        // Update local user state if needed, though auth service subject might handle it
+        this.hasGeminiKey = !!user.has_gemini_key;
+        // Never keep the secret in memory / the DOM after a successful write.
+        this.geminiApiKey = '';
         this.cdr.detectChanges();
         setTimeout(() => this.message = '', 3000);
       },
