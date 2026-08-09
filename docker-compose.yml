@@ -136,6 +136,11 @@ services:
       # the canonical mavrov.de behavior; a forker overrides these in the root .env.
       - PUBLIC_SERVER_NAME=${PUBLIC_SERVER_NAME:-mavrov.de www.mavrov.de}
       - ADMIN_SERVER_NAME=${ADMIN_SERVER_NAME:-admin.mavrov.de admin.localhost}
+      # Admin console hardening (#86). Closed by default (loopback only); set
+      # trusted operator CIDRs to open. See docker-compose.prod.yml for details.
+      - ADMIN_ALLOWED_CIDRS=${ADMIN_ALLOWED_CIDRS:-}
+      - TRUSTED_PROXY_CIDRS=${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
+      - REAL_IP_HEADER=${REAL_IP_HEADER:-X-Forwarded-For}
     ports:
       - "4200:80"
       - "443:443"
