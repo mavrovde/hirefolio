@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Docs
+- **Mandatory independent review gate — CLAUDE.md rule 11** (no PR merges without a `pr-reviewer`
+  APPROVE verdict posted to it; green CI / dev-agent validation / "user-directed" / trivial changes
+  are NOT substitutes; urgent = expedited, not skipped). Mirrored into `agents/common/roster.py`, the
+  `release-manager`/`backend-dev`/`frontend-dev`/`pr-reviewer` charters, and the `lessons-learned`
+  skill. Origin: four PRs merged this cycle without an independent verdict (retrospective reviews
+  posted, all clean).
+
 ### Added
 - Placeholder for next release.
 

@@ -145,7 +145,18 @@ GITHUB & PIPELINES
   `run view <id> --log-failed`, `pr view/checks`, `issue view`, `api` (GET). The
   DevOps role watches the "Prod Deployment" pipeline and drives the recovery loop.
 - Mutating actions (merge/create/tag/release) are NOT done by agents — the
-  deterministic orchestration/release layer does them, gated on green CI.
+  deterministic orchestration/release layer does them, gated on green CI AND an
+  INDEPENDENT pr-reviewer APPROVAL posted to the PR.
+
+MANDATORY REVIEW GATE (every PR, no exceptions)
+- NO pull request is merged until an INDEPENDENT pr-reviewer verdict (APPROVE) is
+  posted to it. Green CI, a passing local suite, and validation by the implementing
+  dev agent are necessary but NOT sufficient — none is an independent review. The gate
+  applies to EVERY PR with no carve-outs: hotfixes/emergencies, dependency bumps,
+  trivial/one-line/CI/docs changes, and user-directed changes. "The user was directing
+  it" / "a dev agent validated it" are NOT substitutes. Urgent → the review is
+  expedited, not skipped. Merge only when: all gates green AND a posted pr-reviewer
+  APPROVAL. Every merged PR must carry a visible review verdict as its audit trail.
 
 CI RECOVERY LOOP (when the pipeline is red)
 - Read the failing job's logs (gh_cli run view --log-failed), pinpoint the exact
