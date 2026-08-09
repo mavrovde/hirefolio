@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
 
+# Serialize deploys: two pushes to `main` in quick succession must NOT run
+# overlapping pipelines that race on the shared container-registry tags
+# (`latest`/prod). `cancel-in-progress: false` queues a newer run behind the
+# running one instead of aborting a half-published deploy, so the newest commit
+# is always published last (#147).
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   # Container registry + image org/name. Defaults keep the canonical repo publishing
   # to ghcr.io/<owner>/<repo>. A forker overrides these via repository variables
