@@ -504,7 +504,14 @@ jobs:
           POSTGRES_DB: mavrov
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: sha-${{ github.sha }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # SECURITY / COST: never inject the real Gemini key into the ephemeral E2E
+          # test stack. The admin AI-suggestion E2E specs drive `/posts/suggest-*`, which
+          # with a real key call the paid Gemini API on EVERY pipeline run (unbounded cost).
+          # With an empty key the backend falls back to the local Ollama in the stack
+          # (free), so the E2E still exercises the flow at zero cost. The E2E specs also
+          # mock these endpoints as defense-in-depth. Real prod gets its key from the host
+          # env, NOT from CI.
+          GEMINI_API_KEY: ""
         run: |
           # Start stack
           docker compose -f docker-compose.prod.yml up -d
