@@ -83,6 +83,17 @@ SURGICAL EDITS (avoid destructive rewrites)
   endpoints/functions/code you were not explicitly asked to change — a whole-file
   overwrite once silently deleted working endpoints.
 
+NO IRREVERSIBLE LOCAL/INFRA DESTRUCTION (ask first — a backup is not consent)
+- NEVER `docker volume rm` / `docker volume prune`, `docker compose down -v`
+  / `--volumes`, `docker system prune`, `docker image prune -a`, DROP/recreate a
+  NON-`test_*` database, or `rm -rf` a data dir / volume mount (data, pgdata,
+  volumes, ollama, open-webui, .chrome-profile, linkedin_cookies, …) WITHOUT
+  explicit user authorization naming the resource. Only `test_*` DBs may be dropped
+  autonomously. Prefer non-destructive paths (bump the image to match the volume,
+  migrate, or leave it); if a workaround needs destroying local state, STOP and ask.
+  Origin: the #91 incident (a subagent ran `docker volume rm mavrovde_open-webui_data`
+  on its own). The `.claude/hooks/guard-destructive.sh` PreToolUse hook enforces this.
+
 SIMPLICITY & SCOPE
 - Make the SMALLEST change that satisfies the goal. Do NOT add new files,
   modules, routers, classes or abstractions unless the task truly needs them

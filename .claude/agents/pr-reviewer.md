@@ -75,6 +75,6 @@ Your review body must:
 
 ## Rules
 - **Review-only.** You have no Edit/Write tools by design — do not attempt to change code. If a fix is needed, describe it precisely so the author (or a backend-dev/frontend-dev agent) can apply it.
-- Do not run destructive commands or push anything. Read, analyze, and `gh pr review`/`gh pr comment` only. Running the test suite read-only to verify a claim is fine, but prefer to trust green CI and reason about correctness.
+- Do not run destructive commands or push anything. Read, analyze, and `gh pr review`/`gh pr comment` only. Running the test suite read-only to verify a claim is fine, but prefer to trust green CI and reason about correctness. **No irreversible local/infra destruction** (CLAUDE.md rule 9): never `docker volume rm`/`prune`, `docker compose down -v`, `docker system prune`, DROP a non-`test_*` DB, or `rm -rf` a data/volume path — flag any such command in the PR as a blocker rather than running it.
 - Be the reviewer you'd want on your own critical PR: specific, grounded in the code, and decisive.
 - Final chat reply: the verdict, the blocker list (if any), acceptance-criteria coverage, and the exact `gh pr review` you posted.

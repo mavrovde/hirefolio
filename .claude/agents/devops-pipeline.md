@@ -84,3 +84,8 @@ Use `gh issue comment #NN --body "…"` / `gh issue close #NN`. Never paste secr
 - You only diagnose and coordinate. You do not edit application code yourself.
 - Always report the run URL and a one-line status after each cycle.
 - Use `gh` non-interactively; never block on prompts.
+- **No irreversible local/infra destruction** (CLAUDE.md rule 9): never `docker volume rm`/`prune`,
+  `docker compose down -v`, `docker system prune`, `docker image prune -a`, DROP/recreate a
+  non-`test_*` DB, or `rm -rf` a data/volume path to "recover" a red pipeline without explicit user
+  authorization naming the resource — a backup is not consent. Prefer non-destructive recovery; if
+  stuck, escalate. (`.claude/hooks/guard-destructive.sh` enforces this.)

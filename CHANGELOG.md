@@ -53,6 +53,21 @@ All notable changes to this project will be documented in this file.
   for known routes).
 
 ### Docs
+- **Guardrail against irreversible local/infra destruction** (#116). Added CLAUDE.md **rule 9** and a
+  new `PreToolUse` **`Bash` guard hook** (`.claude/hooks/guard-destructive.sh`, registered in
+  `.claude/settings.json`) that BLOCKS — as defense-in-depth beyond the generic permission classifier
+  — `docker volume rm`/`prune`, `docker compose down -v`/`--volumes`, `docker system prune`,
+  `docker image prune -a`, `dropdb`/`DROP DATABASE|SCHEMA` on a **non-`test_*`** target, and `rm -rf`
+  of a persistent data/volume path (`data`/`pgdata`/`volumes`/`ollama`/`open-webui`/`.chrome-profile`/
+  `linkedin_cookies`). It is **command-position aware** — it splits the command on shell separators and
+  inspects each segment's first token, skipping text/VCS tools (`git`/`grep`/`echo`/`sed`/…), so the
+  same text appearing merely as an *argument* (a commit message, a `grep` pattern, docs) is NOT blocked;
+  only a real invocation is. Passes every ordinary dev/test command through instantly (verified by a
+  committed 31-case self-test `.claude/hooks/guard-destructive.test.sh`; `verify_all.sh`/`manage.sh`
+  use none of the blocked patterns). Bypass a single authorized command with `GUARD_DESTRUCTIVE=0`
+  prefixed (or export it for a session). The rule is mirrored into all seven `.claude/agents/*.md` charters and the shared
+  `agents/common/roster.py` playbook. Origin: the #91 incident where a subagent ran `docker volume rm
+  mavrovde_open-webui_data` on its own initiative (a backup is not consent).
 - **Fold the v1.8.1 SSR/zoneless lessons into the agent charters** (`.claude/agents/frontend-dev.md`,
   `.claude/agents/pr-reviewer.md`, `agents/common/roster.py`). Documented the three hard-won gotchas
   from the #25/#94 fixes so future agents catch them at review/implementation time instead of at the

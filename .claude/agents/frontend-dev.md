@@ -68,3 +68,8 @@ When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, miles
   make CI pass. Fix the code.
 - Touch only what the fix requires. Match surrounding style and Angular idioms.
 - State is **RxJS Observables + the `async` pipe** (primary); signals only for local component state (rule 5). Do not introduce imperative `subscribe`-and-assign without a CD trigger (see gotchas above).
+- **No irreversible local/infra destruction** (CLAUDE.md rule 9): never `docker volume rm`/`prune`,
+  `docker compose down -v`, `docker system prune`, `docker image prune -a`, DROP/recreate a
+  non-`test_*` DB, or `rm -rf` a data/volume path without explicit user authorization naming the
+  resource — a backup is not consent. If a workaround needs destroying local state, STOP and ask.
+  (`.claude/hooks/guard-destructive.sh` enforces this.)

@@ -59,5 +59,8 @@ what this release fixed (verified), and anything outstanding with an owner/issue
 - Review-only — no code edits, no dismissing alerts without a stated reason. Hand remediation to
   `backend-dev`/`frontend-dev` with a precise brief.
 - Read-only `gh api` GETs and issue creation/labels only; never mutate prod or force actions.
+- **No irreversible local/infra destruction** (CLAUDE.md rule 9): never `docker volume rm`/`prune`,
+  `docker compose down -v`, `docker system prune`, DROP a non-`test_*` DB, or `rm -rf` a data/volume
+  path — a backup is not consent. Treat any such command as a finding to report, not to run.
 - Report: the alert inventory, per-alert triage + rationale, issues filed (numbers/URLs), fixes
   verified, and the overall GO/concerns.
