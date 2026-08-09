@@ -86,6 +86,19 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Fixed
+- **Gemini no longer defaults to a premium model or double-bills on fallback** (#144). `_generate_text_gemini`
+  (and `chat_with_gemini`) in `app/services/ai.py` previously hardcoded the premium `gemini-3.1-pro`
+  (an invalid model name) and, on **any** exception, retried with a second billable call to a
+  different model — so one logical suggestion could bill twice. The model is now **config-driven**
+  via `settings.gemini_model` / `settings.gemini_model_fallback` (env `GEMINI_MODEL` /
+  `GEMINI_MODEL_FALLBACK`), defaulting to the cheap flash tier (`gemini-2.5-flash`, fallback
+  `gemini-2.0-flash` — both valid in the installed `google-genai` 2.16.0). The fallback model is now
+  attempted **only** on a genuine "model unavailable" (HTTP 404 / `NOT_FOUND`) error — which is
+  raised before any inference runs, so it never double-bills; every other error returns `None` so the
+  existing free local Ollama fallback in `suggest_*` takes over. Net: at most one billable Gemini call
+  in the normal path.
+
 ### Changed
 - **`jsdom` 29 → 30 (major)** — deliberate major upgrade of the Vitest jsdom test environment
   devDependency (resolved to `30.0.1`), superseding held Dependabot PR #131 (#131). The DOM/HTML-parsing
@@ -121,6 +134,30 @@ All notable changes to this project will be documented in this file.
   `main` in quick succession queue instead of running overlapping pipelines that race on the shared
   container-registry tags — the newest commit is always published last. `cancel-in-progress: false`
   avoids aborting a half-published deploy.
+- **Replace DEBUG `print()` with the structured logger in `app/services/ai.py`** (#145). The
+  module-load import trace and `_get_gemini_client` diagnostics now use `logger.debug(...)` instead of
+  `print("DEBUG: ...")`, so they no longer pollute prod stdout and honour log-level config. No
+  credential value is ever logged — only a presence boolean (`Has key? {bool(api_key)}`).
+
+### Fixed
+- **`open-webui` crash-loop: pin the image forward to `v0.11.0` to match the volume schema** (#123).
+  `docker-compose.prod.yml` pinned `ghcr.io/open-webui/open-webui:v0.5.10`, but the persistent
+  `mavrovde_open-webui_data` volume had already been migrated to a **newer** schema (head alembic
+  revision `f0bd01a18a3d`, `add_unique_normalized_user_email_index`) — the dev `docker-compose.yml`
+  ran `:latest`, which forward-migrated the shared volume. The old pinned v0.5.10 then crashed on
+  boot (`Can't locate revision identified by 'f0bd01a18a3d'`, `sqlite3.OperationalError: no such
+  column: config.id`), and because nginx resolves the `open-webui` upstream at startup, `global_proxy`
+  crash-looped downstream (`host not found in upstream "open-webui"`). Revision `f0bd01a18a3d` is a
+  migration that first ships in open-webui **v0.11.0** (present in the `v0.11.0` tag, absent in
+  `v0.10.2`), so v0.11.0 is the minimum version whose migration chain already contains the volume's
+  head — it reads the existing volume forward with **no data loss** (no volume wipe). Both compose
+  files are now pinned to the specific, current stable `v0.11.0` (dev switched off the floating
+  `:latest` so dev and prod agree and the volume schema stops drifting ahead of the prod pin). Because
+  the E2E stack starts from a fresh volume it can't reproduce the persistent-volume mismatch; the fix
+  is validated by pulling the pinned image and by both `docker compose config` files parsing clean.
+  Residual manual step on the prod host: `docker compose -f docker-compose.prod.yml pull open-webui &&
+  docker compose -f docker-compose.prod.yml up -d open-webui`, then confirm it reaches `healthy` and
+  `global_proxy` stabilizes.
 
 ## [1.8.2] - 2026-08-09
 

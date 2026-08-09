@@ -6,40 +6,57 @@ import httpx
 from app.config import settings
 from app.logger import get_logger
 
+logger = get_logger(__name__)
+
 try:
     from google import genai
+    from google.genai import errors as genai_errors
 
     HAS_GEMINI = True
-    print("DEBUG: google.genai imported successfully.")
+    logger.debug("google.genai imported successfully.")
 except ImportError as e:  # pragma: no cover
     HAS_GEMINI = False
-    print(f"DEBUG: Failed to import google.genai: {e}")
-
-logger = get_logger(__name__)
+    logger.debug("google.genai import failed: %s", e)
 
 
 def _get_gemini_client(user_api_key: str | None = None):
     """Configures and returns a Gemini client instance."""
     api_key = user_api_key or settings.gemini_api_key
 
-    print(f"DEBUG: _get_gemini_client called. Has key? {bool(api_key)}")
+    logger.debug("_get_gemini_client called. Has key? %s", bool(api_key))
 
     if not HAS_GEMINI:
-        print("DEBUG: HAS_GEMINI is False.")
+        logger.debug("HAS_GEMINI is False; Gemini unavailable.")
         return None
 
     if not api_key:
-        print("DEBUG: No API Key provided.")
+        logger.debug("No Gemini API key provided.")
         return None
 
     try:
         client = genai.Client(api_key=api_key)
-        print("DEBUG: Gemini Client created successfully.")
+        logger.debug("Gemini client created successfully.")
         return client
     except Exception as e:
         logger.error(f"Failed to configure Gemini client: {e}")
-        print(f"DEBUG: Client creation failed: {e}")
         return None
+
+
+def _is_model_unavailable_error(exc: Exception) -> bool:
+    """True only for a "model not found / unavailable" (HTTP 404) API error.
+
+    Such a 404 is returned *before* any inference runs, so retrying a
+    different model does not double-bill. Every other error (rate limit,
+    quota, server error, bad request) returns False so we do NOT make a second
+    billable Gemini call and instead let the caller fall back to the free
+    local Ollama path.
+    """
+    if not HAS_GEMINI:  # pragma: no cover - no client can exist without the SDK
+        return False
+    if isinstance(exc, genai_errors.APIError):
+        status = str(getattr(exc, "status", "") or "").upper()
+        return getattr(exc, "code", None) == 404 or status == "NOT_FOUND"
+    return False
 
 
 async def _generate_text_gemini(
@@ -50,29 +67,35 @@ async def _generate_text_gemini(
     if not client:
         return None
 
+    # The new SDK `google-genai` uses the synchronous
+    # `client.models.generate_content`.
+    model = settings.gemini_model
     try:
-        # The new SDK might allow sync calls, but we should wrap in asyncio.to_thread if strictly sync
-        # Checking docs: client.models.generate_content is sync.
-        # We should use aio if available or run in thread.
-        # Actually, for the new SDK, let's try the sync call first as it's safer than guessing async method names
-        # without documentation access. Fast generation is okayish for sync in a pinch,
-        # but better to offload if possible.
-        # However, for simplicity and correctness with the new SDK, we'll confirm strict usage.
-
-        # NOTE: The new SDK `google-genai` uses `client.models.generate_content`.
-        response = client.models.generate_content(
-            model="gemini-3.1-pro", contents=prompt
-        )
+        response = client.models.generate_content(model=model, contents=prompt)
         return response.text
-    except Exception:
-        # Fallback to gemini-1.5-flash if 2.0 not available
+    except Exception as exc:
+        # Only retry with the fallback model when the primary model itself is
+        # unavailable (HTTP 404) — that error is raised before any billing, so
+        # the retry is at most one paid call. Any other error must NOT trigger
+        # a second billable request: return None so the caller falls back to
+        # the free local Ollama path.
+        if not _is_model_unavailable_error(exc):
+            logger.error(f"Gemini generation error: {exc}")
+            return None
+
+        fallback = settings.gemini_model_fallback
+        if not fallback or fallback == model:
+            logger.error(f"Gemini model '{model}' unavailable: {exc}")
+            return None
+
+        logger.warning(
+            f"Gemini model '{model}' unavailable; retrying with '{fallback}'"
+        )
         try:
-            response = client.models.generate_content(
-                model="gemini-3.1-flash", contents=prompt
-            )
+            response = client.models.generate_content(model=fallback, contents=prompt)
             return response.text
-        except Exception as e2:
-            logger.error(f"Gemini generation error: {e2}")
+        except Exception as exc2:
+            logger.error(f"Gemini generation error: {exc2}")
             return None
 
 
@@ -357,15 +380,27 @@ async def chat_with_gemini(
             if content:
                 gemini_history.append({"role": role, "parts": [{"text": content}]})
 
-        # Use a model that supports chat
-        chat = client.chats.create(model="gemini-3.1-pro", history=gemini_history)
+        # Use the configured (cheap flash-tier) model for chat.
+        model = settings.gemini_model
+        chat = client.chats.create(model=model, history=gemini_history)
 
         response = chat.send_message(message)
         return response.text
-    except Exception:
-        # Fallback to 1.5
+    except Exception as exc:
+        # Only retry with the fallback model when the primary model is
+        # unavailable (HTTP 404); any other error must not fire a second
+        # billable call.
+        if not _is_model_unavailable_error(exc):
+            logger.exception("Error in chat_with_gemini")
+            return "Error communicating with AI service."
+
+        fallback = settings.gemini_model_fallback
+        if not fallback or fallback == settings.gemini_model:
+            logger.exception("Error in chat_with_gemini")
+            return "Error communicating with AI service."
+
         try:
-            chat = client.chats.create(model="gemini-3.1-flash", history=gemini_history)
+            chat = client.chats.create(model=fallback, history=gemini_history)
             response = chat.send_message(message)
             return response.text
         except Exception:

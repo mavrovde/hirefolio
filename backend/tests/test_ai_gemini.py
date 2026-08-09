@@ -1,8 +1,17 @@
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
+from google.genai import errors as genai_errors
 
 from app.services import ai
+
+
+def _model_not_found_error() -> genai_errors.APIError:
+    """Build a genuine 'model unavailable' (HTTP 404) Gemini API error."""
+    return genai_errors.ClientError(
+        404,
+        {"error": {"status": "NOT_FOUND", "message": "model is not found"}},
+    )
 
 
 @pytest.mark.asyncio
@@ -51,21 +60,40 @@ async def test_generate_text_gemini_success():
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
         result = await ai._generate_text_gemini("prompt")
         assert result == "Generated Text"
+        # Model name is config-driven (default cheap flash tier), not hardcoded.
         mock_client.models.generate_content.assert_called_with(
-            model="gemini-3.1-pro", contents="prompt"
+            model=ai.settings.gemini_model, contents="prompt"
         )
 
 
 @pytest.mark.asyncio
-async def test_generate_text_gemini_fallback():
-    """Test _generate_text_gemini fallback to 1.5."""
+async def test_generate_text_gemini_model_is_config_driven():
+    """The primary model comes from settings; overriding it changes the call."""
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    type(mock_response).text = PropertyMock(return_value="ok")
+    mock_client.models.generate_content.return_value = mock_response
+
+    with (
+        patch("app.services.ai._get_gemini_client", return_value=mock_client),
+        patch("app.services.ai.settings.gemini_model", "gemini-custom-model"),
+    ):
+        await ai._generate_text_gemini("prompt")
+        mock_client.models.generate_content.assert_called_once_with(
+            model="gemini-custom-model", contents="prompt"
+        )
+
+
+@pytest.mark.asyncio
+async def test_generate_text_gemini_fallback_on_model_unavailable():
+    """Fallback model is used ONLY on a genuine 'model unavailable' (404) error."""
     mock_client = MagicMock()
     mock_response = MagicMock()
     type(mock_response).text = PropertyMock(return_value="Fallback Text")
 
-    # First call raises, second succeeds
+    # Primary model 404s (unavailable), fallback succeeds.
     mock_client.models.generate_content.side_effect = [
-        Exception("2.0 fail"),
+        _model_not_found_error(),
         mock_response,
     ]
 
@@ -73,17 +101,52 @@ async def test_generate_text_gemini_fallback():
         result = await ai._generate_text_gemini("prompt")
         assert result == "Fallback Text"
         assert mock_client.models.generate_content.call_count == 2
+        _args, kwargs = mock_client.models.generate_content.call_args_list[1]
+        assert kwargs["model"] == ai.settings.gemini_model_fallback
 
 
 @pytest.mark.asyncio
-async def test_generate_text_gemini_fail_all():
-    """Test _generate_text_gemini returns None on total failure."""
+async def test_generate_text_gemini_generic_error_no_second_call():
+    """A generic exception must NOT trigger a second (billable) Gemini call."""
     mock_client = MagicMock()
-    mock_client.models.generate_content.side_effect = Exception("All fail")
+    mock_client.models.generate_content.side_effect = Exception("transient 500")
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
         result = await ai._generate_text_gemini("prompt")
         assert result is None
+        # Exactly one Gemini call — no double-billing on generic errors.
+        assert mock_client.models.generate_content.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_generate_text_gemini_no_fallback_when_same_model():
+    """No retry when the fallback model equals (or is unset for) the primary."""
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = _model_not_found_error()
+
+    with (
+        patch("app.services.ai._get_gemini_client", return_value=mock_client),
+        patch("app.services.ai.settings.gemini_model", "gemini-x"),
+        patch("app.services.ai.settings.gemini_model_fallback", "gemini-x"),
+    ):
+        result = await ai._generate_text_gemini("prompt")
+        assert result is None
+        assert mock_client.models.generate_content.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_generate_text_gemini_fallback_also_fails():
+    """When the unavailable-model fallback also fails, return None."""
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = [
+        _model_not_found_error(),
+        Exception("fallback boom"),
+    ]
+
+    with patch("app.services.ai._get_gemini_client", return_value=mock_client):
+        result = await ai._generate_text_gemini("prompt")
+        assert result is None
+        assert mock_client.models.generate_content.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -115,39 +178,80 @@ async def test_chat_with_gemini_success():
         res = await ai.chat_with_gemini("hello", history)
         assert res == "Chat Response"
 
-        # Verify history conversion
+        # Verify history conversion + config-driven model.
         expected_history = [{"role": "user", "parts": [{"text": "hi"}]}]
         mock_client.chats.create.assert_called_with(
-            model="gemini-3.1-pro", history=expected_history
+            model=ai.settings.gemini_model, history=expected_history
         )
 
 
 @pytest.mark.asyncio
-async def test_chat_with_gemini_fallback():
+async def test_chat_with_gemini_fallback_on_model_unavailable():
     mock_client = MagicMock()
     mock_chat = MagicMock()
     mock_response = MagicMock()
     type(mock_response).text = PropertyMock(return_value="Fallback Chat")
     mock_chat.send_message.return_value = mock_response
 
-    # First create fails, second succeeds
-    mock_client.chats.create.side_effect = [Exception("2.0 fail"), mock_chat]
+    # Primary model 404s (unavailable), fallback succeeds.
+    mock_client.chats.create.side_effect = [_model_not_found_error(), mock_chat]
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
         res = await ai.chat_with_gemini("hello")
         assert res == "Fallback Chat"
         assert mock_client.chats.create.call_count == 2
         _args, kwargs = mock_client.chats.create.call_args_list[1]
-        assert kwargs["model"] == "gemini-3.1-flash"
+        assert kwargs["model"] == ai.settings.gemini_model_fallback
 
 
 @pytest.mark.asyncio
-async def test_chat_with_gemini_error():
+async def test_chat_with_gemini_generic_error_no_second_call():
+    """A generic chat error must NOT trigger a second (billable) call."""
     mock_client = MagicMock()
-    mock_client.chats.create.side_effect = Exception("Total fail")
+    mock_client.chats.create.side_effect = Exception("transient 500")
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
-        await ai.chat_with_gemini("hello")
+        res = await ai.chat_with_gemini("hello")
+        assert "Error communicating" in res
+        assert mock_client.chats.create.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_chat_with_gemini_no_fallback_when_same_model():
+    mock_client = MagicMock()
+    mock_client.chats.create.side_effect = _model_not_found_error()
+
+    with (
+        patch("app.services.ai._get_gemini_client", return_value=mock_client),
+        patch("app.services.ai.settings.gemini_model", "gemini-x"),
+        patch("app.services.ai.settings.gemini_model_fallback", "gemini-x"),
+    ):
+        res = await ai.chat_with_gemini("hello")
+        assert "Error communicating" in res
+        assert mock_client.chats.create.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_chat_with_gemini_fallback_also_fails():
+    mock_client = MagicMock()
+    mock_client.chats.create.side_effect = [
+        _model_not_found_error(),
+        Exception("fallback boom"),
+    ]
+
+    with patch("app.services.ai._get_gemini_client", return_value=mock_client):
+        res = await ai.chat_with_gemini("hello")
+        assert "Error communicating" in res
+        assert mock_client.chats.create.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_no_debug_print_in_ai_module():
+    """Regression for #145: no print() statements remain in ai.py."""
+    import inspect
+
+    source = inspect.getsource(ai)
+    assert "print(" not in source
 
 
 @pytest.mark.asyncio

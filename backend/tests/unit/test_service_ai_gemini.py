@@ -1,8 +1,17 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from google.genai import errors as genai_errors
 
 from app.services import ai
+
+
+def _model_not_found_error() -> genai_errors.APIError:
+    """Build a genuine 'model unavailable' (HTTP 404) Gemini API error."""
+    return genai_errors.ClientError(
+        404,
+        {"error": {"status": "NOT_FOUND", "message": "model is not found"}},
+    )
 
 
 @pytest.mark.asyncio
@@ -39,14 +48,14 @@ async def test_get_gemini_client_exception():
 
 @pytest.mark.asyncio
 async def test_generate_text_gemini_fallback(mocker):
-    """Test fallback to 1.5-flash when 2.0-flash fails."""
+    """Fallback model used only when the primary model is unavailable (404)."""
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.text = "Fallback Success"
 
-    # First call failed, second call success
+    # Primary model 404s (unavailable), fallback succeeds.
     mock_client.models.generate_content.side_effect = [
-        Exception("2.0 failed"),
+        _model_not_found_error(),
         mock_response,
     ]
 
@@ -129,8 +138,8 @@ async def test_chat_with_gemini_fallback():
     mock_response.text = "Chat Success"
     mock_chat.send_message.return_value = mock_response
 
-    # client.chats.create fails first time
-    mock_client.chats.create.side_effect = [Exception("2.0 chat failed"), mock_chat]
+    # client.chats.create reports the model unavailable (404) first time
+    mock_client.chats.create.side_effect = [_model_not_found_error(), mock_chat]
 
     with patch("app.services.ai._get_gemini_client", return_value=mock_client):
         result = await ai.chat_with_gemini("msg")

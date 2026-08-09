@@ -120,7 +120,7 @@ services:
       - app-network
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:v0.5.10
+    image: ghcr.io/open-webui/open-webui:v0.11.0
     container_name: open-webui
     restart: always
     environment:

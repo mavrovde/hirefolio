@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     # Generate with: python -c "from cryptography.fernet import Fernet;
     # print(Fernet.generate_key().decode())"
     gemini_encryption_key: str = ""
+    # Gemini model selection. Suggestion/tagging tasks (tags, title, slug,
+    # summary) are cheap and use the flash-tier model by default; override via
+    # GEMINI_MODEL / GEMINI_MODEL_FALLBACK. The fallback is only used when the
+    # primary model is reported *unavailable* (HTTP 404), never on generic
+    # errors — those fall through to the free local Ollama models instead of
+    # making a second billable Gemini call.
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_model_fallback: str = "gemini-2.0-flash"
     cv_version: str = "v1.0"
 
     # LinkedIn
