@@ -52,7 +52,7 @@
     "zone.js": "^0.16.2"
   },
   "devDependencies": {
-    "@analogjs/vite-plugin-angular": "^2.6.4",
+    "@analogjs/vite-plugin-angular": "^2.7.0",
     "@angular/build": "^22.1.0",
     "@angular/cli": "^22.1.0",
     "@angular/compiler-cli": "^22.1.0",
