@@ -67,9 +67,12 @@ async def verify_proxy_routes():
                 "url": f"{base_url}/login",
                 "headers": {"Host": "admin.localhost"},
                 "expected_status": 200,
+                # The admin nginx SPA-fallbacks every path to index.html, so a bare
+                # 200 proves nothing — assert the admin bundle's title is served.
+                "expected_text": "mavrov.de | Admin",
                 "label": "Admin Host Login Route"
             },
-            # 5c. Public host /admin/* is an unmatched SPA route post-split: the
+            # 5b-2. Public host /admin/* is an unmatched SPA route post-split: the
             # SSR engine deopts and Express falls through to 404 — asserting this
             # documents that the admin surface is NOT reachable on the public host.
             {

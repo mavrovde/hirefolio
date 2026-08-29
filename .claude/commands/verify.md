@@ -27,7 +27,9 @@ Against Postgres on `127.0.0.1:5433` (a `test_*` DB via `TEST_DATABASE_URL`/`DAT
 10. Wait for health: backend `http://localhost/health`, frontend `http://localhost`, open-webui
     `http://localhost/open/health`.
 11. Seed E2E data: `docker compose -f docker-compose.prod.yml -f docker-compose.e2e.yml exec -T backend python scripts/seed_e2e_user.py`
-12. Proxy routes: `PROXY_PORT=80 python3 verify_proxy_routes.py`
+12. Proxy routes: `PROXY_PORT=80 python3 verify_proxy_routes.py` — the "Admin Host Login Route"
+    check needs the E2E overlay's `ADMIN_ALLOWED_CIDRS=0.0.0.0/0` (docker-compose.e2e.yml);
+    against a plain prod-compose stack the admin allowlist denies non-loopback with 403.
 13. Playwright: `cd frontend && CI=true BASE_URL=http://localhost npx playwright test --grep-invert "profile"`
 14. Tear down when done: `docker compose -f docker-compose.prod.yml -f docker-compose.e2e.yml down`
 
