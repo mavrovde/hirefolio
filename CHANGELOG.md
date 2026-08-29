@@ -4,8 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- Placeholder for next release.
+### Security
+- **`cryptography` 49.0.0 → 50.0.0** (`backend/requirements.txt`) — fixes Dependabot alert #169
+  (high): *PKCS#7 EnvelopedData decryption exposes a Bleichenbacher oracle through distinguishable
+  errors and timing*. Our Fernet usage (`app/services/crypto.py`, #143) never calls the vulnerable
+  PKCS#7 APIs, so this is a hygiene forward-bump, not an active exposure (#160). Supersedes
+  Dependabot PRs #163/#158. Validated: crypto + migration tests pass in the full backend suite.
+
+### Fixed
+- **Stale proxy-verification check** (`verify_proxy_routes.py`) — the "Frontend Admin Login
+  Route" check still expected `mavrov.de/admin/login` → 200, encoding the pre-workspace-split
+  layout (admin SPA inside the public app). Since the July 2026 split the admin SPA is served on
+  the dedicated admin host and the public app has no `/admin/*` routes, so any freshly built
+  frontend correctly 404s there — the check failed `verify_all.sh` on an unmodified `main` build
+  (verified empirically). Replaced with two checks matching the intended architecture:
+  `admin.localhost/login` → 200 and public-host `/admin/login` → 404. It previously appeared to
+  pass only against prod, whose running frontend image still predates the split (tracked
+  separately).
+
+### Changed
+- **Backend within-major dependency bumps** — consolidates Dependabot PR #168: `uvicorn` 0.52.0 →
+  0.52.4, `pydantic-settings` 2.14.2 → 2.15.0, `python-dotenv` 1.2.2 → 1.2.3, `sqlalchemy` 2.0.51 →
+  2.0.52, `alembic` 1.18.5 → 1.19.1, `langchain-openai` 1.4.1 → 1.6.0, `google-genai` 2.16.0 →
+  2.19.0; dev tools `ruff` 0.16.1 → 0.16.4, `mypy` 2.3.0 → 2.3.1. Validated: `pytest` (778 passed,
+  100% coverage), `ruff check`/`ruff format --check`, `mypy`, `bandit` all green.
+- **Frontend within-major dependency bumps** — consolidates Dependabot PRs #164 and #167 (they both
+  touch `frontend/package-lock.json` and conflict pairwise): the `@angular/*` group 22.1.1 →
+  22.1.4 (core / common / compiler / compiler-cli / forms / platform-browser /
+  platform-browser-dynamic / platform-server / router) and 22.1.3 → 22.1.6 (build / cli / ssr),
+  `@analogjs/vite-plugin-angular` 2.6.4 → 2.7.1, `@vitest/browser-playwright` (and the Vitest
+  family) 4.1.10 → 4.1.11. The lockfile was regenerated from the updated ranges because npm's
+  exact-version Angular peer pins can't be upgraded incrementally. Validated: `npm run build`
+  (shared → public → admin) and `npm run test:coverage` (100% statements/branches/functions/lines
+  on all three projects).
 
 ## [1.8.3] - 2026-08-09
 

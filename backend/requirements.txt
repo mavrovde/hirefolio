@@ -1,27 +1,27 @@
 fastapi==0.141.1
-uvicorn[standard]==0.52.0
+uvicorn[standard]==0.52.4
 pydantic>=2.12.5
-pydantic-settings==2.14.2
-python-dotenv==1.2.2
-sqlalchemy[asyncio]==2.0.51
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+sqlalchemy[asyncio]==2.0.52
 asyncpg==0.31.0
 pgvector==0.5.0
-alembic==1.18.5
+alembic==1.19.1
 httpx==0.28.1
 python-jose[cryptography]==3.5.0
 # Direct dependency (issue #143): Fernet field-level encryption of the Gemini
 # API key at rest. Already present transitively via python-jose[cryptography];
 # pinned explicitly now that app.services.crypto imports it directly.
-cryptography==49.0.0
+cryptography==50.0.0
 passlib[bcrypt]==1.7.4
 email-validator==2.3.0
 python-multipart==0.0.32
 Pillow==12.3.0
 setuptools==83.0.0
 crewai==1.15.6
-langchain-openai==1.4.1
+langchain-openai==1.6.0
 
 
-google-genai==2.16.0
+google-genai==2.19.0
 respx==0.23.1
 linkedin-api==2.2.1

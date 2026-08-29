@@ -60,12 +60,26 @@ async def verify_proxy_routes():
                 "expected_status": 200,
                 "label": "Domain HTTPS -> Frontend"
             },
-            # 5b. Admin Login Route (Frontend)
+            # 5b. Admin Login Route — served on the dedicated admin host since the
+            # admin/public workspace split (the E2E overlay opens the allowlist;
+            # production ships CLOSED). The public host no longer routes /admin/*.
+            {
+                "url": f"{base_url}/login",
+                "headers": {"Host": "admin.localhost"},
+                "expected_status": 200,
+                # The admin nginx SPA-fallbacks every path to index.html, so a bare
+                # 200 proves nothing — assert the admin bundle's title is served.
+                "expected_text": "mavrov.de | Admin",
+                "label": "Admin Host Login Route"
+            },
+            # 5b-2. Public host /admin/* is an unmatched SPA route post-split: the
+            # SSR engine deopts and Express falls through to 404 — asserting this
+            # documents that the admin surface is NOT reachable on the public host.
             {
                 "url": f"{ssl_base_url}/admin/login",
                 "headers": {"Host": "mavrov.de"},
-                "expected_status": 200,
-                "label": "Frontend Admin Login Route"
+                "expected_status": 404,
+                "label": "Public Host /admin Split (404)"
             },
             # 5c. Backend Auth Endpoint (Method Not Allowed for GET)
             {
