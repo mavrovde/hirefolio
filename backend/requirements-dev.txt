@@ -10,10 +10,10 @@ pytest-xdist==3.8.0
 
 
 # Linting & Formatting
-ruff==0.16.1
+ruff==0.16.4
 
 # Type Checking
-mypy==2.3.0
+mypy==2.3.1
 types-passlib==1.7.7.20260211
 
 # Security
