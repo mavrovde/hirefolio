@@ -9,7 +9,9 @@ description: >-
   SSR-HttpBackend traps, pytest local-DB isolation, the GHA multi-GB-cache net-negative,
   SemVer-by-content, the green-pipeline release rule, the no-irreversible-local-destruction
   guardrail, the STRICT no-real-API-keys/paid-credentials-in-tests-or-CI rule, and the mandatory
-  independent-review-gate-before-merge rule. Grep it or load it when a task matches — it exists so
+  independent-review-gate-before-merge rule, the bisect-gate-failures-against-a-clean-main-build
+  triage method, and the @angular/* exact-peer single-pass-update/lockfile-regeneration rule.
+  Grep it or load it when a task matches — it exists so
   fresh contexts and teammates don't re-research answers we already have.
 ---
 
@@ -194,7 +196,7 @@ rule 11**, enforced via the `pr-reviewer` agent.
 
 ---
 
-## 11. Admin IP allowlist is meaningless without `real_ip` — and don't gate startup on the FULL `nginx -t`
+## 12. Admin IP allowlist is meaningless without `real_ip` — and don't gate startup on the FULL `nginx -t`
 
 **Trap.** In the containerized prod topology the admin subdomain sits behind a front proxy (1panel)
 + Docker NAT, so nginx sees the **Docker bridge gateway** as `$remote_addr` for *every* external
@@ -234,7 +236,7 @@ dummy `server{}` including `admin_allowlist.conf`), and keep the check non-abort
 
 ---
 
-## 12. A failing local gate is NOT proof your change broke it — bisect against a clean `main` build first
+## 13. A failing local gate is NOT proof your change broke it — bisect against a clean `main` build first
 
 **The trap (2026-08-29, the #170 dep sweep):** `./verify_all.sh` failed its proxy-route check
 (`mavrov.de/admin/login` expected 200, got 404) right after the Angular/SSR bump — which
@@ -252,16 +254,19 @@ public app.
    A check validated only against a stale deployment validates nothing.
 3. Local E2E details that cost time: the proxy's HTTPS is published on host port **10443**
    (`https://localhost:10443`, see `PROXY_SSL_PORT` in `verify_proxy_routes.py`) — plain
-   `https://localhost/` curls give `000`. Express's default `Cannot GET /x` body = the SSR engine
-   deopted (returned null) and fell through — that's the unmatched-route signature, not an nginx 404.
+   `https://localhost/` curls give `000`. Express's default `Cannot GET /x` body = no Angular route
+   matched, so `angularApp.handle()` returned null and Express fell through — that's the
+   unmatched-route signature, not an nginx 404.
 
-## 13. `@angular/*` framework packages pin EXACT peer versions — partial updates can never resolve
+## 14. `@angular/*` framework packages pin EXACT peer versions — partial updates can never resolve
 
 Angular publishes every framework package with exact-version peers (`@angular/forms@22.1.1` needs
 `@angular/common@"22.1.1"`, not `^22.1.1`). Consequences (hit during #170):
 1. `npm install @angular/common@^22.1.4 …` with only *some* of the packages → ERESOLVE, always:
-   any package left out (e.g. dev-dep `@angular/platform-browser-dynamic`) anchors the whole tree
-   to the old exact version. Update **every** `@angular/*` dependency (deps AND devDeps, incl.
+   any **exact-peer framework package** left out (e.g. dev-dep `@angular/platform-browser-dynamic`)
+   anchors the whole tree to the old exact version (tooling like `build`/`cli`/`ssr` uses ranged
+   `^22.0.0` peers and doesn't anchor — but update it in the same pass anyway). Update **every**
+   `@angular/*` dependency (deps AND devDeps, incl.
    `build`/`cli`/`ssr`/`compiler-cli`) in **one** resolver pass.
 2. Even the all-at-once pass can fail when the *installed* tree anchors arborist. The reliable
    escape is regenerating from ranges: update `package.json`, then `rm -rf node_modules
