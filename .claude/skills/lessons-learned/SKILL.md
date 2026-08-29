@@ -9,7 +9,9 @@ description: >-
   SSR-HttpBackend traps, pytest local-DB isolation, the GHA multi-GB-cache net-negative,
   SemVer-by-content, the green-pipeline release rule, the no-irreversible-local-destruction
   guardrail, the STRICT no-real-API-keys/paid-credentials-in-tests-or-CI rule, and the mandatory
-  independent-review-gate-before-merge rule. Grep it or load it when a task matches — it exists so
+  independent-review-gate-before-merge rule, the bisect-gate-failures-against-a-clean-main-build
+  triage method, and the @angular/* exact-peer single-pass-update/lockfile-regeneration rule.
+  Grep it or load it when a task matches — it exists so
   fresh contexts and teammates don't re-research answers we already have.
 ---
 
@@ -194,7 +196,7 @@ rule 11**, enforced via the `pr-reviewer` agent.
 
 ---
 
-## 11. Admin IP allowlist is meaningless without `real_ip` — and don't gate startup on the FULL `nginx -t`
+## 12. Admin IP allowlist is meaningless without `real_ip` — and don't gate startup on the FULL `nginx -t`
 
 **Trap.** In the containerized prod topology the admin subdomain sits behind a front proxy (1panel)
 + Docker NAT, so nginx sees the **Docker bridge gateway** as `$remote_addr` for *every* external
@@ -231,6 +233,48 @@ dummy `server{}` including `admin_allowlist.conf`), and keep the check non-abort
    recover a client — open the allowlist for the test run **only** via env
    (`docker-compose.e2e.yml` + `deploy.yml` set `ADMIN_ALLOWED_CIDRS=0.0.0.0/0`), never in the shipped
    default. Unit-test the generator deterministically (`proxy/test-generate-admin-config.sh`).
+
+---
+
+## 13. A failing local gate is NOT proof your change broke it — bisect against a clean `main` build first
+
+**The trap (2026-08-29, the #170 dep sweep):** `./verify_all.sh` failed its proxy-route check
+(`mavrov.de/admin/login` expected 200, got 404) right after the Angular/SSR bump — which
+pattern-matches perfectly to "the SSR upgrade changed unmatched-route handling." It hadn't.
+Building the frontend from an **unmodified `main` worktree with the committed lockfile**
+(`git worktree add … main && npm ci && npm run build:public`, serve `dist/public/server/server.mjs`,
+curl the route) reproduced the exact same 404: the check itself was stale, written before the
+July-2026 admin/public workspace split when the admin SPA still lived at `/admin/*` inside the
+public app.
+1. Before root-causing a gate failure *inside your diff*, spend the ~5 minutes to reproduce it on
+   a clean `main` build. If main fails too, you're fixing a latent gate bug, not your regression —
+   different fix, different PR framing.
+2. **Live prod behavior is NOT ground truth for a check while rollout is broken (#112):** the stale
+   check "passed" against prod only because prod itself was running a months-stale pre-split image.
+   A check validated only against a stale deployment validates nothing.
+3. Local E2E details that cost time: the proxy's HTTPS is published on host port **10443**
+   (`https://localhost:10443`, see `PROXY_SSL_PORT` in `verify_proxy_routes.py`) — plain
+   `https://localhost/` curls give `000`. Express's default `Cannot GET /x` body = no Angular route
+   matched, so `angularApp.handle()` returned null and Express fell through — that's the
+   unmatched-route signature, not an nginx 404.
+
+## 14. `@angular/*` framework packages pin EXACT peer versions — partial updates can never resolve
+
+Angular publishes every framework package with exact-version peers (`@angular/forms@22.1.1` needs
+`@angular/common@"22.1.1"`, not `^22.1.1`). Consequences (hit during #170):
+1. `npm install @angular/common@^22.1.4 …` with only *some* of the packages → ERESOLVE, always:
+   any **exact-peer framework package** left out (e.g. dev-dep `@angular/platform-browser-dynamic`)
+   anchors the whole tree to the old exact version (tooling like `build`/`cli`/`ssr` uses ranged
+   `^22.0.0` peers and doesn't anchor — but update it in the same pass anyway). Update **every**
+   `@angular/*` dependency (deps AND devDeps, incl.
+   `build`/`cli`/`ssr`/`compiler-cli`) in **one** resolver pass.
+2. Even the all-at-once pass can fail when the *installed* tree anchors arborist. The reliable
+   escape is regenerating from ranges: update `package.json`, then `rm -rf node_modules
+   package-lock.json && npm install`. Expect a large lock diff — review it programmatically
+   (registry hosts, unexpected majors, root-deps-vs-package.json identity), not line-by-line.
+3. Framework and tooling move on separate patch trains (framework 22.1.4 vs build/cli/ssr 22.1.6
+   the same day) — matching their patch numbers is wrong; matching each group internally is what
+   must hold.
 
 ---
 

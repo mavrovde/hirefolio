@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Docs
+- **lessons-learned §13–14** — two durable lessons from the #170 dependency sweep: bisect a
+  failing local gate against an unmodified `main` build before blaming your diff (the stale
+  pre-split admin-login proxy check failed on `main` too; prod "passing" was an artifact of the
+  #112 rollout gap), and `@angular/*` exact-peer lockstep (single-pass group updates, lockfile
+  regeneration escape hatch). Also renumbers the pre-existing duplicate §11 heading.
+
 ## [1.8.4] - 2026-08-29
 
 ### Changed
