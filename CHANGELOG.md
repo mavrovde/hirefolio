@@ -4,23 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Security
-- **`cryptography` 49.0.0 → 50.0.0** (`backend/requirements.txt`) — fixes Dependabot alert #169
-  (high): *PKCS#7 EnvelopedData decryption exposes a Bleichenbacher oracle through distinguishable
-  errors and timing*. Our Fernet usage (`app/services/crypto.py`, #143) never calls the vulnerable
-  PKCS#7 APIs, so this is a hygiene forward-bump, not an active exposure (#160). Supersedes
-  Dependabot PRs #163/#158. Validated: crypto + migration tests pass in the full backend suite.
+### Added
+- Placeholder for next release.
 
-### Fixed
-- **Stale proxy-verification check** (`verify_proxy_routes.py`) — the "Frontend Admin Login
-  Route" check still expected `mavrov.de/admin/login` → 200, encoding the pre-workspace-split
-  layout (admin SPA inside the public app). Since the July 2026 split the admin SPA is served on
-  the dedicated admin host and the public app has no `/admin/*` routes, so any freshly built
-  frontend correctly 404s there — the check failed `verify_all.sh` on an unmodified `main` build
-  (verified empirically). Replaced with two checks matching the intended architecture:
-  `admin.localhost/login` → 200 and public-host `/admin/login` → 404. It previously appeared to
-  pass only against prod, whose running frontend image still predates the split (tracked
-  separately).
+## [1.8.4] - 2026-08-29
 
 ### Changed
 - **Backend within-major dependency bumps** — consolidates Dependabot PR #168: `uvicorn` 0.52.0 →
@@ -37,6 +24,24 @@ All notable changes to this project will be documented in this file.
   exact-version Angular peer pins can't be upgraded incrementally. Validated: `npm run build`
   (shared → public → admin) and `npm run test:coverage` (100% statements/branches/functions/lines
   on all three projects).
+
+### Fixed
+- **Stale proxy-verification check** (`verify_proxy_routes.py`) — the "Frontend Admin Login
+  Route" check still expected `mavrov.de/admin/login` → 200, encoding the pre-workspace-split
+  layout (admin SPA inside the public app). Since the July 2026 split the admin SPA is served on
+  the dedicated admin host and the public app has no `/admin/*` routes, so any freshly built
+  frontend correctly 404s there — the check failed `verify_all.sh` on an unmodified `main` build
+  (verified empirically). Replaced with two checks matching the intended architecture:
+  `admin.localhost/login` → 200 and public-host `/admin/login` → 404. It previously appeared to
+  pass only against prod, whose running frontend image still predates the split (tracked
+  separately).
+
+### Security
+- **`cryptography` 49.0.0 → 50.0.0** (`backend/requirements.txt`) — fixes Dependabot alert #169
+  (high): *PKCS#7 EnvelopedData decryption exposes a Bleichenbacher oracle through distinguishable
+  errors and timing*. Our Fernet usage (`app/services/crypto.py`, #143) never calls the vulnerable
+  PKCS#7 APIs, so this is a hygiene forward-bump, not an active exposure (#160). Supersedes
+  Dependabot PRs #163/#158. Validated: crypto + migration tests pass in the full backend suite.
 
 ## [1.8.3] - 2026-08-09
 
