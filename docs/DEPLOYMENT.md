@@ -93,6 +93,28 @@ Host-side hardening checklist: dedicated `deploy` user in the `docker` group
 only, `authorized_keys` restricted to that key, password auth off, fail2ban or
 an IP allowlist on sshd. The key in GitHub should exist nowhere else.
 
+## Upgrading a host across the #141 rename
+
+The Gemini variables are project-scoped since #141. Before rolling out a release that contains it,
+rename them in the host `.env`:
+
+```diff
+-GEMINI_API_KEY=...
+-GEMINI_ENCRYPTION_KEY=...
++HIREFOLIO_GEMINI_API_KEY=...
++HIREFOLIO_GEMINI_ENCRYPTION_KEY=...
+```
+
+Leaving the old names is **not** fatal — the app ignores them, AI features fall back to the in-stack
+Ollama, and the backend prints a `CONFIG WARNING` naming each stale variable at startup (the compose
+files pass the legacy *names*, never their values, so nothing sensitive enters the container).
+`GEMINI_MODEL`/`GEMINI_MODEL_FALLBACK` follow the same rule; they are namespaced because model choice
+is a cost control.
+
+If a host had `GEMINI_ENCRYPTION_KEY` set and rows already encrypted (`enc:v1:` prefix), renaming
+without carrying the value over makes those values read as unset — recoverable by setting
+`HIREFOLIO_GEMINI_ENCRYPTION_KEY` to the same key.
+
 ## Registry notes
 
 - **One-time action after the rename to `hirefolio` (#88/#189):** CI publishes to

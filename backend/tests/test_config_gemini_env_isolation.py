@@ -10,6 +10,8 @@ Every test constructs ``Settings(_env_file=None)`` so a developer's real ``.env`
 cannot mask an assertion.
 """
 
+import contextlib
+
 import pytest
 
 from app.config import Settings
@@ -98,4 +100,36 @@ def test_direct_construction_uses_the_alias_not_the_field_name():
     assert (
         Settings(_env_file=None, HIREFOLIO_GEMINI_API_KEY="direct").gemini_api_key
         == "direct"
+    )
+
+
+@pytest.mark.asyncio
+async def test_startup_warns_about_a_legacy_variable_still_set(monkeypatch, capsys):
+    """A stale host `.env` must degrade LOUDLY, not silently (#141).
+
+    Covered explicitly so the warning's coverage does not depend on whether the
+    machine running the suite happens to export the legacy name — an
+    environment-dependent 100% is not a gate.
+    """
+    from app.main import app, lifespan
+
+    monkeypatch.setenv("HIREFOLIO_GEMINI_API_KEY", "set-so-startup-succeeds")
+    monkeypatch.setenv("GEMINI_ENCRYPTION_KEY", "legacy-still-set")
+    monkeypatch.delenv("HIREFOLIO_GEMINI_ENCRYPTION_KEY", raising=False)
+    # ...and a legacy name reported by the host through the container-safe list.
+    monkeypatch.setenv("LEGACY_GEMINI_ENV", "GEMINI_MODEL")
+    monkeypatch.delenv("HIREFOLIO_GEMINI_MODEL", raising=False)
+
+    # Startup may fail later for unrelated reasons (DB/Ollama in a unit run);
+    # the warning is printed before any of that, so swallow-and-inspect.
+    with contextlib.suppress(Exception):
+        async with lifespan(app):
+            pass
+
+    out = capsys.readouterr().out
+    assert "GEMINI_ENCRYPTION_KEY is set but is IGNORED" in out
+    assert "HIREFOLIO_GEMINI_ENCRYPTION_KEY" in out, "the message must name the fix"
+    assert "GEMINI_MODEL is set but is IGNORED" in out, (
+        "a legacy name reported via LEGACY_GEMINI_ENV must warn too — in a "
+        "container the legacy variable itself is never present"
     )

@@ -22,8 +22,13 @@ All notable changes to this project will be documented in this file.
   these two keys in the host `.env` before the next rollout; a stale `GEMINI_API_KEY` will simply be
   ignored (AI falls back to Ollama) rather than failing loudly. `GEMINI_ENCRYPTION_KEY` is renamed
   for the same namespacing reason — it is a local Fernet key for encrypting the per-user Gemini key
-  at rest (#143), not a Gemini credential; no data migration is needed because no encrypted values
-  exist in production yet (prod predates #143). `GEMINI_MODEL`/`GEMINI_MODEL_FALLBACK` are namespaced
+  at rest (#143), not a Gemini credential; the rename is expected to need no data migration, on this
+  evidence: the live deployment self-reports `backend_version 1.2.27`, while #143 first shipped in
+  `v1.8.3` — so the running code cannot have written `enc:v1:` ciphertext. That is inference from the
+  public stats endpoint, **not** an inspection of the host's `.env` or database, which is not
+  accessible from here. The failure mode if it is wrong is bounded and reversible: `decrypt()`
+  fail-safes to "treat as unset", so AI degrades to the Ollama fallback and nothing is lost —
+  restoring the old value under the new name recovers it. `GEMINI_MODEL`/`GEMINI_MODEL_FALLBACK` are namespaced
   too — model choice is a **cost** control, and an ambient value pointing at a premium tier would
   silently raise the price of every suggestion. A **startup warning** now names any legacy variable
   that is still set but ignored, so a stale host `.env` degrades loudly instead of silently falling
