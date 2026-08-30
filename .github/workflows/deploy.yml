@@ -841,14 +841,31 @@ jobs:
           set -euo pipefail
           umask 077
           cd "$DEPLOY_DIR"
+          # .env holds every prod secret. Refuse to touch it unless it is a
+          # readable file, and never install a rewrite that lost lines — a
+          # swallowed grep failure (unreadable/root-owned .env) would otherwise
+          # replace the whole file with just the two image lines and destroy
+          # POSTGRES_PASSWORD / JWT_SECRET_KEY / ADMIN_PASSWORD.
+          if [ ! -f .env ] || [ ! -r .env ]; then
+            echo "FATAL: $DEPLOY_DIR/.env is missing or unreadable by $(id -un) — refusing to roll out." >&2
+            exit 1
+          fi
+          before=$(grep -c '' .env)
           # Record ONLY the previous image coordinates for rollback — never a
-          # full copy of .env (it holds every prod secret).
+          # full copy of .env.
           { grep '^IMAGE_TAG=' .env || true; grep '^IMAGE_REPO=' .env || true; } > .env.rollback
-          grep -v '^IMAGE_TAG=' .env | grep -v '^IMAGE_REPO=' > .env.new || true
+          grep -v -e '^IMAGE_TAG=' -e '^IMAGE_REPO=' .env > .env.new || true
+          kept=$(grep -c '' .env.new)
+          # Every non-coordinate line must survive (at most 2 lines dropped).
+          if [ "$((before - kept))" -gt 2 ]; then
+            echo "FATAL: .env rewrite would drop $((before - kept)) lines (before=$before kept=$kept) — aborting, .env untouched." >&2
+            rm -f .env.new
+            exit 1
+          fi
           # Immutable coordinate: rollback to the previous sha tag is meaningful,
           # unlike a mutable version tag that both runs would resolve identically.
           printf 'IMAGE_REPO=%s\nIMAGE_TAG=%s\n' "$IMAGE_REPO" "$SHA_TAG" >> .env.new
-          mv .env.new .env
+          cp -a .env .env.bak.$$ && mv .env.new .env && rm -f .env.bak.$$
           chmod 600 .env
           # Only the four app images: db/ollama/open-webui images + volumes are
           # never rolled by CI (rule 9 / #123 schema-drift class).
@@ -898,9 +915,16 @@ jobs:
           set -euo pipefail
           umask 077
           cd "$DEPLOY_DIR"
-          if [ -s .env.rollback ]; then
+          if [ -s .env.rollback ] && [ -f .env ] && [ -r .env ]; then
             # .env.rollback holds only the previous IMAGE_REPO/IMAGE_TAG lines.
-            grep -v '^IMAGE_TAG=' .env | grep -v '^IMAGE_REPO=' > .env.new || true
+            before=$(grep -c '' .env)
+            grep -v -e '^IMAGE_TAG=' -e '^IMAGE_REPO=' .env > .env.new || true
+            kept=$(grep -c '' .env.new)
+            if [ "$((before - kept))" -gt 2 ]; then
+              echo "FATAL: rollback rewrite would drop $((before - kept)) lines — aborting, .env untouched." >&2
+              rm -f .env.new
+              exit 1
+            fi
             cat .env.rollback >> .env.new
             mv .env.new .env
             chmod 600 .env
@@ -909,7 +933,7 @@ jobs:
             docker compose -f docker-compose.prod.yml up -d --no-deps $APP_SERVICES
             echo "Rolled back."
           else
-            echo "No usable .env.rollback (first deploy?) — manual intervention required." >&2
+            echo "No usable .env.rollback, or .env is missing/unreadable — manual intervention required." >&2
             exit 1
           fi
           REMOTE
