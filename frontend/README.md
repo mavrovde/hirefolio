@@ -51,7 +51,7 @@ npm run test:coverage:public   # per-project coverage
 To run a single spec file, pass the project's config explicitly:
 
 ```bash
-npx vitest run --config projects/public/vitest.config.ts src/app/services/api.service.spec.ts
+npx vitest run --config projects/public/vitest.config.ts src/app/services/cv.service.spec.ts
 ```
 
 ## End-to-end tests (Playwright)

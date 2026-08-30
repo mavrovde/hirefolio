@@ -30,7 +30,7 @@ own name and domain.
 
 ### Frontend
 
-- **Framework**: Angular 22 (Standalone Components, Signals, Native SSR `server.mjs`)
+- **Framework**: Angular 22 (Standalone Components, RxJS + `async` pipe for state — Signals only for local component state, Native SSR `server.mjs`)
 - **Styling**: TailwindCSS 4.x, Dark/Light mode
 - **State Management**: RxJS 7.8 Observables
 - **Testing**: Vitest 4.1 (Unit, replaced Jasmine/Karma), Playwright 1.62 (E2E)
@@ -57,7 +57,7 @@ own name and domain.
   - Security Scanning (Bandit)
   - Unit Tests (Frontend & Backend)
   - E2E Tests (Playwright with real Ollama integration)
-- **Optimization**: Caching for third-party Docker base images (`.github/base-images.txt`) and Playwright browsers — deliberately **not** for multi-GB AI model weights (restoring them is as slow as re-pulling)
+- **Optimization**: Playwright-browser caching in CI — deliberately **no** multi-GB caches for Docker base images or AI model weights (measured net-negative; see `.claude/skills/lessons-learned/SKILL.md` §5)
 
 ## 📋 Prerequisites
 
@@ -466,9 +466,9 @@ ghcr.io/mavrovde/mavrov.de-proxy:sha-<gitsha>
 ```
 
 After a green E2E each `sha-<gitsha>` image is also promoted to the
-`<VERSION>` and `latest` tags. GHCR is the project's registry — the compose
-files' `IMAGE_REPO` default still names a legacy Docker Hub location, so set
-`IMAGE_REPO` explicitly (below).
+`<VERSION>` and `latest` tags. GHCR is the project's registry, and the prod compose
+files already default `IMAGE_REPO` to it — override it only when deploying from
+a different registry/org (below).
 
 ### Rolling out to the host
 

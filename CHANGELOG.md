@@ -132,6 +132,8 @@ All notable changes to this project will be documented in this file.
   `.github/workflows/copilot-setup-steps.yml` pre-installing deps for the Copilot coding agent.
   `CLAUDE.md` remains the single source of truth; all Copilot files summarize and point back.
 - **lessons-learned §13–14** — two durable lessons from the #170 dependency sweep: bisect a
+  failing local gate against an unmodified `main` build before blaming your diff, and `@angular/*`
+  exact-peer lockstep (single-pass group updates, lockfile regeneration).
 - **Pre-release accuracy sweep** (Refs #61) — brings the user-facing docs back in line with the
   code: honest `SECURITY.md` (supported 1.8.x, GitHub Security Advisories reporting — replaces the
   unedited GitHub boilerplate with its fictional 5.1.x/4.0.x version table); `frontend/README.md`
@@ -140,9 +142,8 @@ All notable changes to this project will be documented in this file.
   SQLAlchemy 2.0.52, Vitest 4.1, Playwright 1.62, Ruff 0.16, Node 22; drops the false ESLint claim),
   redrawn project tree, real ruff/coverage/E2E commands, correct frontend env paths, `encrypt0002`
   migration row, and a truthful deployment section (GHCR `sha-<gitsha>`/version/latest publishing,
-  no automated host rollout yet — manual `IMAGE_REPO`/`IMAGE_TAG` + compose pull/up, Refs #112
-  #156); `.github/base-images.txt` open-webui pin fixed to v0.11.0 to match
-  `docker-compose.prod.yml` (invalidates the CI base-image cache once); `.env.example` image
+  and the secrets-gated `Roll Out To Prod Host` job — a green run rolls the host only when the
+  `DEPLOY_*` secrets are configured, #175/#112/#156); `.env.example` image
   registry/tag comments refreshed (GHCR, 1.8.4); dead importer spec link fixed; scraper
   `WORKFLOW.md` gains posts/env-vars/tests sections; `README_TESTING.md` updated (Python 3.12,
   Node 22, test-DB isolation via `TEST_DATABASE_URL` + `create_test_db.py`, per-project Vitest
