@@ -216,6 +216,21 @@ Run the entire test suite (Lint, Type Check, Unit, E2E) in one go:
 ./verify_all.sh
 ```
 
+### 4. Tooling self-tests
+
+The scripts that *guard* the repo are themselves tested — they run on throwaway
+fixtures and never touch your working tree:
+
+```bash
+bash test-bump-version.sh                      # version carriers + CHANGELOG rotation (#186/#193)
+bash .claude/hooks/guard-destructive.test.sh   # destructive-command guard (#116/#188)
+sh proxy/test-generate-admin-config.sh         # admin allowlist / real_ip generator (#86)
+```
+
+`test-bump-version.sh` also runs in CI: the `version-consistency` job executes it
+plus `./bump_version.sh --check`, and every image-build job depends on that job, so
+a version-carrier mismatch fails the pipeline before anything is published.
+
 ## 📁 Project Structure
 
 ```text
