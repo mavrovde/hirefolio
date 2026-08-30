@@ -401,8 +401,32 @@ line_is_all_text_tools() {
 #   3. the terminator actually appears later — otherwise "skip to the end" would
 #      swallow the rest of the command, including anything destructive in it.
 # Any doubt on any of the three and the body stays fully inspected.
+# The file a line redirects stdout into (`> path` / `>> path`), or empty. Only a
+# redirect OUTSIDE quotes counts, so a `>` inside a message is not a target.
+redirect_target() {
+  local masked head rest
+  masked="$(mask_quotes "$1")"
+  case "$masked" in *">"*) ;; *) return 0 ;; esac
+  head="${masked%%>*}"
+  rest="${1:${#head}}"
+  printf '%s' "$rest" | sed -nE 's/^>>?[[:space:]]*([^[:space:];|&<>]+).*/\1/p'
+}
+
+# Does the command execute this path anywhere? Covers the interpreter forms
+# (`bash f`, `sh f`, `source f`, `. f`) and the direct form (`./f`, `chmod +x f`
+# then `./f`). Matched on the basename too, since `cat > ./s.sh` and `bash s.sh`
+# name the same file differently.
+executes_path() {
+  local cmd="$1" path="$2" base="${2##*/}"
+  [ -z "$base" ] && return 1
+  local esc="${base//./\\.}"
+  printf '%s' "$cmd" | grep -Eq "(^|[;|&[:space:]])(bash|sh|zsh|dash|source|\.)[[:space:]]+[^[:space:];|&]*${esc}([[:space:]]|$|;|\||&)" && return 0
+  printf '%s' "$cmd" | grep -Eq "(^|[;|&[:space:]])\./[^[:space:];|&]*${esc}([[:space:]]|$|;|\||&)" && return 0
+  return 1
+}
+
 strip_text_heredocs() {
-  local input="$1" out="" line delim i j n end
+  local input="$1" out="" line delim i j n end target
   local -a lines=()
   while IFS= read -r line; do lines+=("$line"); done <<< "$input"
   n=${#lines[@]}
@@ -421,6 +445,14 @@ strip_text_heredocs() {
       fi
     done
     [ "$end" -lt 0 ] && continue   # no terminator: strip nothing
+
+    # A document is only a document until something runs it. If this heredoc is
+    # redirected into a file and any LATER part of the same command executes that
+    # file, the body was a script all along — keep it and inspect it (#212).
+    target="$(redirect_target "$line")"
+    if [ -n "$target" ] && executes_path "$input" "$target"; then
+      continue
+    fi
 
     i=$end                          # skip the body AND the terminator line
   done

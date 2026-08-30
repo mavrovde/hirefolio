@@ -349,6 +349,54 @@ check "packed: benign bash -c"       "bash -c \"echo hello world\""             
 check "packed: prose in bash -c"     "bash -c \"echo 'note: $D $T is bad'\""      allow
 check "pipe: grep into wc, no shell" "grep -r \"$D $T\" docs/ | wc -l"            allow
 
+# --- A DOCUMENT IS ONLY A DOCUMENT UNTIL SOMETHING RUNS IT (#212) -----------
+# The heredoc exemption exists so writing notes about destructive commands stops
+# being blocked. But a heredoc redirected into a file that the SAME command then
+# executes was never a document — it is a script written in two steps, and the
+# exemption was skipping its body.
+check "write then bash"              "cat > s.sh <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                       deny
+check "write then sh"                "cat > s.sh <<'EOF'
+$D $T
+EOF
+sh s.sh"                                                                         deny
+check "write then source"            "cat > s.sh <<'EOF'
+$DV $V
+EOF
+source s.sh"                                                                     deny
+check "write then dot-space"         "cat > s.sh <<'EOF'
+$DV $V
+EOF
+. s.sh"                                                                          deny
+check "write, chmod, then ./"        "cat > s.sh <<'EOF'
+$D $T
+EOF
+chmod +x s.sh && ./s.sh"                                                         deny
+check "write to a path then bash"    "cat > ./tmp/s.sh <<'EOF'
+$DV $V
+EOF
+bash ./tmp/s.sh"                                                                 deny
+check "append then bash"             "cat >> s.sh <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                       deny
+
+# ...and a document that is never executed stays allowed — including one that is
+# merely read back, and one written alongside an unrelated script being run.
+check "doc never executed"           "cat > notes.md <<'EOF'
+$D $T happened
+EOF"                                                                             allow
+check "doc then cat it back"         "cat > notes.md <<'EOF'
+$D $T
+EOF
+cat notes.md"                                                                    allow
+check "doc then run OTHER script"    "cat > notes.md <<'EOF'
+$D $T
+EOF
+bash other.sh"                                                                   allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0
