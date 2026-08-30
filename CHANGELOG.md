@@ -4,30 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Fixed
-- **`main` unblocked: the `max_turns` test no longer runs the app lifespan** — the test added in
-  #187 used `TestClient(app)`, which starts the FastAPI **lifespan**; the lifespan seeds the admin
-  user, so it needs a schema the xdist worker DB does not have. Green in a serial local run, red
-  under CI's `pytest -n auto` (`relation "users" does not exist`), which reddened the deploy. It now
-  uses the shared async `client` fixture like every other API test. Verified with CI's exact
-  invocation this time — `pytest -n auto --cov-fail-under=100` → 788 passed, 100%.
-### Docs
-- **lessons-learned §16–20 + the rules distributed across every AI config** — today's milestone
-  sweep produced five durable lessons, now committed rather than left in a transcript: mutation-check
-  any test that claims to pin a fix (it passed against the *unfixed* code four separate times, and
-  `git stash -- <file>` silently no-ops for committed changes); a signature or behaviour change needs the **full** suite *as CI runs it*
-  (`pytest -n auto`), because stale siblings in other files are invisible to `-k` — caught twice in
-  review, and once only after it reddened `main`, where it had passed every serial local run; verify that claimed gates actually gate (CI ran pytest with no `--cov-fail-under` for the
-  project's whole history, and `--check` lived only in a local hook); fix the *duplication*, not the
-  instance (a copy-pasted revert block meant a fix reached one of three abort paths); and a repo
-  rename does not carry container packages — new GHCR packages are created private and visibility
-  does not follow a rename. The operational half is mirrored into `pr-reviewer` (mutation-check as a
-  review step), `backend-dev`/`frontend-dev` (full-suite discipline), `CLAUDE.md` rule 7 (a
-  `Closes #NN` auto-close is **not** close-the-loop — link the PR, SHA, pipeline and criteria; report
-  what you measured), plus `AGENTS.md`, `.github/copilot-instructions.md`, the path-scoped backend
-  instructions, the `issue-workflow` skill (close-the-loop must name **who** verified and **what**
-  they ran) and the A2A `PROJECT_PLAYBOOK` injected into every agent's prompt.
-
 ### Added
 - **CI now enforces the 100% coverage standard** — the backend test job ran
   `pytest --cov=app --cov-report=...` with **no `--cov-fail-under`**, and `pyproject.toml`'s
@@ -47,7 +23,6 @@ All notable changes to this project will be documented in this file.
   verified end-to-end, plus both "the pattern vanished" guards and the write-side anchor.
   Mutation-checked against the pre-fix script: **7 cases fail**, one per defect. It also runs in
   `verify_all.sh` and the pre-push hook, not only CI, so a tooling edit fails locally first.
-
 - **`POST /ai/multi-chat` accepts a bounded `max_turns`** (#187) — previously the twenty-turn
   failsafe was fixed, so any caller (including a contract test) had to wait for twenty sequential
   local-LLM generations. The request schema now takes `max_turns` with `ge=1, le=20`: callers can
@@ -70,10 +45,15 @@ All notable changes to this project will be documented in this file.
   fails and a bare "some content" check would pass with no model at all.
   **Verified by reproduction:** reintroducing the #180 failure mode makes it fail in ~1 s; restoring
   the fix makes it pass in ~5 s.
-
 - Placeholder for next release.
 
 ### Changed
+- **Public `/api/app/` gets the same streaming guarantees as the admin block** (#198) —
+  `proxy_buffering off`, `proxy_cache off`, and `proxy_read_timeout 300`. **Measured first, and the issue's
+  premise did not reproduce:** per-chunk timings through the public proxy showed nginx already
+  forwarding incrementally (365 chunks, first at 1.6 s, spread over 99 s) *without* the directives.
+  This ships as an explicit guarantee rather than a bug fix — today's behaviour is incidental on
+  chunk sizes versus nginx's default buffers — and removes the public/admin asymmetry.
 - **Dropped the unused `crewai` + `langchain-openai` pins, unblocking the caps they forced** (#185,
   closes #53's dependency half). After #184 removed the vestigial agent-framework plumbing, nothing
   in `backend/app/` imported either package — they were dead weight that nonetheless dictated the
@@ -83,6 +63,12 @@ All notable changes to this project will be documented in this file.
   Python 3.13 environment: `pip check` clean, **787 passed, 7 skipped, 100% coverage**.
 
 ### Fixed
+- **`main` unblocked: the `max_turns` test no longer runs the app lifespan** — the test added in
+  #187 used `TestClient(app)`, which starts the FastAPI **lifespan**; the lifespan seeds the admin
+  user, so it needs a schema the xdist worker DB does not have. Green in a serial local run, red
+  under CI's `pytest -n auto` (`relation "users" does not exist`), which reddened the deploy. It now
+  uses the shared async `client` fixture like every other API test. Verified with CI's exact
+  invocation this time — `pytest -n auto --cov-fail-under=100` → 788 passed, 100%.
 - **Version tooling follow-ups from the #178 review** (#186) — the backend version read *and* write
   are now anchored to `^    version="`, so the seeded `CvDocument(version="1.0.0-fallback")` literal
   can never be matched instead of the FastAPI app version; the two `grep`-derived carriers
@@ -109,6 +95,35 @@ All notable changes to this project will be documented in this file.
   (`./src/app/data-table`, `build/metadata`, `rm -f ./data/file.txt`) that pin the *absence* of
   false positives. Reverting the guard fails exactly the new deny cases, so the coverage is proven
   rather than assumed.
+
+### Docs
+- **lessons-learned §16–20 + the rules distributed across every AI config** — today's milestone
+  sweep produced five durable lessons, now committed rather than left in a transcript: mutation-check
+  any test that claims to pin a fix (it passed against the *unfixed* code four separate times, and
+  `git stash -- <file>` silently no-ops for committed changes); a signature or behaviour change needs the **full** suite *as CI runs it*
+  (`pytest -n auto`), because stale siblings in other files are invisible to `-k` — caught twice in
+  review, and once only after it reddened `main`, where it had passed every serial local run; verify that claimed gates actually gate (CI ran pytest with no `--cov-fail-under` for the
+  project's whole history, and `--check` lived only in a local hook); fix the *duplication*, not the
+  instance (a copy-pasted revert block meant a fix reached one of three abort paths); and a repo
+  rename does not carry container packages — new GHCR packages are created private and visibility
+  does not follow a rename. The operational half is mirrored into `pr-reviewer` (mutation-check as a
+  review step), `backend-dev`/`frontend-dev` (full-suite discipline), `CLAUDE.md` rule 7 (a
+  `Closes #NN` auto-close is **not** close-the-loop — link the PR, SHA, pipeline and criteria; report
+  what you measured), plus `AGENTS.md`, `.github/copilot-instructions.md`, the path-scoped backend
+  instructions, the `issue-workflow` skill (close-the-loop must name **who** verified and **what**
+  they ran) and the A2A `PROJECT_PLAYBOOK` injected into every agent's prompt.
+- **A missing Ollama model no longer reads as generated content** (#199) — `/api/chat` answers **404**
+  when the configured model is not pulled, and the streaming loop ignored the status, so the canned
+  goal-fallback text (`"I believe we must focus on my goal: …"`) reached the client as if it were a
+  real turn. A half-provisioned stack therefore looked *healthy* to every gate: well-formed stream,
+  `done:true`, plausible prose. Non-200 responses now log the status **and the model name** for the
+  operator and emit the degraded chunk instead. Regression test asserts the fallback text is absent
+  and the log names the model; it fails against the unfixed service.
+- **`_generate_agent_name` no longer swallows failures silently** (#191) — every exception became
+  `"Agent"` with nothing logged, so a real failure (model down, timeout, malformed reply) was
+  indistinguishable from a legitimate default and left the operator no signal (rule 1). The fallback
+  is unchanged; the failure is now logged with its traceback, and a test asserts that.
+
 
 ## [1.9.0] - 2026-08-30
 

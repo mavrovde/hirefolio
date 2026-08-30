@@ -55,6 +55,14 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # The AI endpoints stream NDJSON incrementally and the UI renders tokens
+        # as they arrive; buffering holds chunks until the buffer fills or the
+        # upstream closes, so the page appears frozen and then dumps everything
+        # at once. The admin block already did this — the public one did not
+        # (#198). `X-Accel-Buffering: no` covers any front proxy too.
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_set_header X-Accel-Buffering no;
     }
 
     # Frontend

@@ -88,6 +88,12 @@ async def _generate_agent_name(description: str) -> str:
 
         return name.strip().strip('"').strip("'")
     except Exception:
+        # Rule 1: the fallback is correct behaviour, the SILENCE was not — a real
+        # failure (model down, timeout, malformed reply) used to be
+        # indistinguishable from a legitimate default (#191).
+        logger.exception(
+            "Agent-name generation failed; falling back to the default name"
+        )
         return "Agent"
 
 

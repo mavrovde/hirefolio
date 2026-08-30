@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -341,3 +341,56 @@ async def test_multi_chat_max_turns_is_bounded_and_forwarded(client, monkeypatch
     for bad in (0, -1, 21, 100):
         rejected = await client.post(url, json={**body, "max_turns": bad})
         assert rejected.status_code == 422, f"max_turns={bad} must be rejected"
+
+
+
+
+@pytest.mark.asyncio
+async def test_multi_chat_non_200_from_ollama_is_not_silent(caplog):
+    """#199: a missing model answers 404 — that must NOT read as generated text.
+
+    Ignoring the status let the canned goal-fallback reach the client, so a
+    model-less deployment looked healthy to every gate.
+    """
+    import logging
+
+    agents = [AgentConfig(id=1, description="d", role="R", goal="g")]
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.get.return_value.status_code = 200
+
+    resp = AsyncMock()
+    resp.status_code = 404  # model not pulled
+
+    async def aiter_lines():
+        return
+        yield  # pragma: no cover - never reached on a 404
+
+    resp.aiter_lines = aiter_lines
+
+    class Ctx:
+        async def __aenter__(self):
+            return resp
+
+        async def __aexit__(self, *a):
+            return False
+
+    mock_client.stream = MagicMock(return_value=Ctx())
+
+    with caplog.at_level(logging.ERROR):
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            chunks = [
+                json.loads(c)
+                async for c in multi_agent_conversation(agents, "topic", max_turns=1)
+            ]
+
+    content = "".join(c.get("content", "") for c in chunks)
+    assert "language model is unavailable" in content
+    # The canned goal-fallback must NOT be what the client sees.
+    assert "I believe we must focus on my goal" not in content
+    # And the operator gets the status + model name in the log.
+    assert any("404" in r.getMessage() for r in caplog.records)
+    assert any("llama" in r.getMessage() for r in caplog.records), (
+        "the log must name the model so an operator can act on it"
+    )

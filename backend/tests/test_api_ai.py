@@ -57,6 +57,35 @@ async def test_generate_name_exception_fallback(mock_chat_service, client: Async
 
 
 @pytest.mark.asyncio
+@patch("app.api.ai.chat_with_llm")
+async def test_generate_name_failure_is_logged(
+    mock_chat_service, client: AsyncClient, caplog
+):
+    """#191: the fallback is fine, the SILENCE was not.
+
+    A real failure (model down, timeout, malformed reply) used to be
+    indistinguishable from a legitimate default — nothing reached the logs, so an
+    operator seeing every agent named "Agent" had no signal at all (rule 1).
+    """
+    import logging
+
+    mock_chat_service.side_effect = Exception("LLM exploded")
+
+    with caplog.at_level(logging.ERROR):
+        response = await client.post(
+            f"{settings.api_prefix}/ai/generate-name", json={"description": "boom"}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Agent"
+    assert any("Agent-name generation failed" in r.message for r in caplog.records), (
+        "the failure must be logged, not swallowed"
+    )
+    # The exception itself must be in the log record, not only the message.
+    assert any(r.exc_info for r in caplog.records)
+
+
+@pytest.mark.asyncio
 async def test_gemini_chat_endpoint(client: AsyncClient):
     with patch(
         "app.services.ai.chat_with_gemini", return_value="Chat Response"
