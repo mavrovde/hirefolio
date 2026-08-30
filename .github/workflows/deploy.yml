@@ -340,6 +340,21 @@ jobs:
   # ============================================
   # PROXY QA
   # ============================================
+  version-consistency:
+    name: Version Consistency
+    runs-on: ubuntu-latest
+    # Fast, dependency-free gate (#193): every version carrier must agree with
+    # VERSION before anything is built or published. Previously `--check` ran
+    # only in the machine-local pre-push hook, so a hook-bypassing push could
+    # reintroduce #172-class drift (e.g. a stale shared/package.json) and it
+    # would only surface at deploy time.
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check version carriers agree
+        run: ./bump_version.sh --check
+      - name: Self-test the checker itself
+        run: bash test-bump-version.sh
+
   proxy-config-audit:
     name: Proxy Config Audit
     runs-on: ubuntu-latest
@@ -359,7 +374,7 @@ jobs:
   build-backend:
     name: Build Backend Image
     runs-on: ubuntu-latest
-    needs: [backend-tests, backend-migrations]
+    needs: [backend-tests, backend-migrations, version-consistency]
     permissions:
       contents: read
       packages: write
@@ -385,7 +400,7 @@ jobs:
   build-frontend:
     name: Build Public Frontend Image
     runs-on: ubuntu-latest
-    needs: [frontend-shared-tests, frontend-public-tests]
+    needs: [frontend-shared-tests, frontend-public-tests, version-consistency]
     permissions:
       contents: read
       packages: write
@@ -416,7 +431,7 @@ jobs:
   build-admin-frontend:
     name: Build Admin Frontend Image
     runs-on: ubuntu-latest
-    needs: [frontend-shared-tests, frontend-admin-tests]
+    needs: [frontend-shared-tests, frontend-admin-tests, version-consistency]
     permissions:
       contents: read
       packages: write
@@ -447,7 +462,7 @@ jobs:
   build-proxy:
     name: Build Proxy Image
     runs-on: ubuntu-latest
-    needs: [proxy-config-audit]
+    needs: [proxy-config-audit, version-consistency]
     permissions:
       contents: read
       packages: write

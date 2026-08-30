@@ -55,6 +55,8 @@ fi
 # docker-compose.prod.yml image-tag defaults and
 # frontend/projects/shared/package.json (#172).
 echo "Step 1: Bumping version ($BUMP_TYPE)..."
+# Remember the pre-bump version so an abort can restore the gitignored .env too (#186).
+CURRENT_VERSION=$(tr -d '[:space:]' < VERSION)
 ./bump_version.sh "$BUMP_TYPE"
 VERSION=$(tr -d '[:space:]' < VERSION)
 export IMAGE_TAG="$VERSION"
@@ -76,6 +78,16 @@ else
     git checkout -- VERSION backend/app/main.py frontend/package.json frontend/package-lock.json \
         frontend/projects/shared/package.json frontend/projects/public/src/app/version.ts \
         docker-compose.prod.yml CHANGELOG.md
+    # .env is gitignored, so `git checkout` cannot restore it — put IMAGE_TAG back
+    # to the pre-bump version explicitly (#186).
+    if [ -f .env ] && grep -q '^IMAGE_TAG=' .env; then
+        if [ "$(uname)" = "Darwin" ]; then
+            sed -i '' "s/^IMAGE_TAG=.*/IMAGE_TAG=$CURRENT_VERSION/" .env
+        else
+            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$CURRENT_VERSION/" .env
+        fi
+        echo "  reverted .env IMAGE_TAG -> $CURRENT_VERSION"
+    fi
     echo "Fix the issues and try again."
     exit 1
 fi

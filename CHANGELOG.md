@@ -27,6 +27,31 @@ All notable changes to this project will be documented in this file.
   rather than assumed.
 
 ### Added
+- **CI now gates version-carrier consistency** (#193, closes #186's last item) — a fast,
+  dependency-free `version-consistency` job runs `./bump_version.sh --check` plus the new
+  `test-bump-version.sh` self-test, and all four image-build jobs `needs:` it, so drift fails the
+  pipeline before anything is published. Previously `--check` ran only in the machine-local
+  pre-push hook, so a hook-bypassing push could reintroduce #172-class drift unnoticed.
+- **`test-bump-version.sh`** — a 15-case self-test for the load-bearing version tooling, built on
+  throwaway fixtures (it never touches the working tree): every carrier's drift is detected *and
+  named*, the `version="1.0.0-fallback"` literal is not mistaken for the app version, `VERSION`
+  newline hygiene is enforced both ways, `--dry-run` is proven inert, and CHANGELOG rotation is
+  verified end-to-end. Mutation-checked: reverting the rotation fix fails exactly the case that
+  pins it.
+
+### Fixed
+- **Version tooling follow-ups from the #178 review** (#186) — the backend version read *and* write
+  are now anchored to `^    version="`, so the seeded `CvDocument(version="1.0.0-fallback")` literal
+  can never be matched instead of the FastAPI app version; the two `grep`-derived carriers
+  (`package-lock.json`, compose `IMAGE_TAG` defaults) no longer die silently under
+  `set -euo pipefail` when a pattern stops matching — they name the file and say the format changed;
+  `release.sh`'s abort path now also restores `IMAGE_TAG` in the gitignored `.env` (which
+  `git checkout` cannot revert), so an aborted release no longer leaves it bumped; and the CHANGELOG
+  rotation is rewritten in three explicit steps that cannot split a real `### Added` list — the old
+  placeholder-anchored regex inserted the release header mid-list, leaving the heading behind in
+  `[Unreleased]` and the real bullets bare under the version header.
+
+### Added
 - Placeholder for next release.
 
 ## [1.9.0] - 2026-08-30
