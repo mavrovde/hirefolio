@@ -60,6 +60,30 @@ is_text_tool() {
 
 REASON=""
 
+# Stand-in for a newline that appeared INSIDE quotes. Chosen as a control
+# character so it can never occur in a real command and is not whitespace, which
+# keeps it intact through the space-collapsing normaliser below.
+NL_SENTINEL=$'\x01'
+
+# A quoted argument that turns out to be shell code: put the newlines back, split
+# it like a real script, and inspect every command in it. Returns 0 (and leaves
+# REASON set) when something in there is blocked.
+inspect_inner_script() {
+  local body="$1" inner
+  case "$body" in
+    *"$NL_SENTINEL"*) ;;
+    *) return 1 ;;   # single-line: the caller's normal path already covers it
+  esac
+  body="${body//$NL_SENTINEL/$'\n'}"
+  local OLD="$IFS"; IFS=$'\n'
+  for inner in $(quote_split "$body"); do
+    [ -n "$REASON" ] && break
+    inspect_segment "$inner"
+  done
+  IFS="$OLD"
+  [ -n "$REASON" ]
+}
+
 # Inspect one command segment (already separator-split). Sets REASON on a hit.
 inspect_segment() {
   local seg="$1"
@@ -95,11 +119,20 @@ inspect_segment() {
       done
       changed=1
     fi
-    # bash -c "…" / sh -c '…' / zsh -c … / eval … — inspect the inner command.
+    # bash -c "…" / sh -c '…' / zsh -c … / eval … / ssh host "…" — the quoted
+    # argument is a SCRIPT, so inspect the command(s) inside it.
     if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +-c '; then
       seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +-c +//; s/^[\"']//")"; changed=1
+      inspect_inner_script "$seg" && return 0
     elif printf '%s' "$seg" | grep -Eq '^eval '; then
       seg="$(printf '%s' "$seg" | sed -E "s/^eval +//; s/^[\"']//")"; changed=1
+      inspect_inner_script "$seg" && return 0
+    elif printf '%s' "$seg" | grep -Eq '^ssh '; then
+      # `ssh host "…"` runs its argument on the remote shell. Same reasoning, and
+      # the blast radius there is someone else's machine.
+      seg="$(printf '%s' "$seg" | sed -E "s/^ssh +//; s/^(-[^ ]+ +)*//; s/^[^ ]+ +//; s/^[\"']//")"
+      changed=1
+      inspect_inner_script "$seg" && return 0
     fi
   done
 
@@ -110,6 +143,12 @@ inspect_segment() {
     [ -n "$post" ] && [ "$post" != "$seg" ] && inspect_segment "$post"
     [ -n "$REASON" ] && return 0
   fi
+
+  # Anything still carrying sentinels is NOT shell code (the branches above would
+  # have recursed), so those newlines really were data: flatten them to spaces so
+  # the segment reads as the one quoted argument it is.
+  seg="${seg//$NL_SENTINEL/ }"
+  seg="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
 
   local first="${seg%% *}"
   [ -z "$first" ] && return 0
@@ -182,14 +221,17 @@ quote_split() {
   for (( i=0; i<n; i++ )); do
     c="${s:i:1}"
     if [ -n "$q" ]; then
-      # INSIDE quotes everything is data — including newlines. Emit a space for a
-      # quoted newline so a multi-line quoted argument stays ONE segment (#204).
-      # Keeping the raw newline made the later split on $'\n' cut the argument
-      # into pieces, so a line of prose that merely *starts* with a destructive
-      # verb was inspected as if it were a command — which blocked writing
-      # documentation about the very commands this guard exists for, and trained
-      # reflexive GUARD_DESTRUCTIVE=0 use.
-      if [ "$c" = $'\n' ]; then out+=" "; else out+="$c"; fi
+      # INSIDE quotes a newline is DATA, not a separator, so it must not end the
+      # segment — otherwise a line of prose that merely *starts* with a
+      # destructive verb gets inspected as an invocation, which is #204.
+      #
+      # But a quoted newline is not always data: `bash -c "echo hi\n<destroy>"`
+      # is a two-command script, and flattening it to one segment would hide the
+      # second command behind a benign first token. So the newline is replaced
+      # with a SENTINEL that is neither a separator nor whitespace. Segments that
+      # turn out to be executed as shell code restore it (see restore_newlines);
+      # everything else flattens it to a space and treats it as prose.
+      if [ "$c" = $'\n' ]; then out+="$NL_SENTINEL"; else out+="$c"; fi
       [ "$c" = "$q" ] && q=""
       continue
     fi
@@ -199,10 +241,40 @@ quote_split() {
       *) out+="$c" ;;
     esac
   done
+  # An UNTERMINATED quote means we never really knew where the data ended, so the
+  # protection above was based on a guess. Fall back to treating those newlines
+  # as separators — the conservative direction.
+  [ -n "$q" ] && out="${out//$NL_SENTINEL/$'\n'}"
   printf '%s' "$out"
 }
 
-SEGMENTS="$(quote_split "$CMD")"
+# A heredoc fed to a TEXT tool is a document being written, not a script being
+# run: `cat > notes.md <<'EOF' … EOF`. Its body must not be inspected, or writing
+# documentation about a destructive command is blocked — the #204 symptom, and
+# the reason this guard kept firing on notes about itself.
+#
+# The body is dropped ONLY when the opening line's command is a known text tool.
+# A heredoc fed to anything else — `bash <<'EOF'`, `ssh host bash -s <<'EOF'`,
+# `python3 - <<'EOF'` — keeps its body and stays fully inspected, because there
+# the body really is executable.
+strip_text_heredocs() {
+  local input="$1" out="" line delim="" skipping=0 first
+  while IFS= read -r line; do
+    if [ "$skipping" = "1" ]; then
+      [ "$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//')" = "$delim" ] && skipping=0
+      continue
+    fi
+    out+="$line"$'\n'
+    if printf '%s' "$line" | grep -Eq '<<-?[[:space:]]*["'\'']?[A-Za-z_][A-Za-z0-9_]*'; then
+      delim="$(printf '%s' "$line" | sed -E 's/.*<<-?[[:space:]]*["'\'']?([A-Za-z_][A-Za-z0-9_]*).*/\1/')"
+      first="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//' | cut -d' ' -f1)"
+      is_text_tool "$first" && skipping=1
+    fi
+  done <<< "$input"
+  printf '%s' "$out"
+}
+
+SEGMENTS="$(quote_split "$(strip_text_heredocs "$CMD")")"
 OLDIFS="$IFS"; IFS=$'\n'
 for seg in $SEGMENTS; do
   [ -n "$REASON" ] && break

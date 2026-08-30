@@ -131,6 +131,59 @@ check "echo quoted pipe rm"       'echo "run: cat x | xargs rm -rf /data"'      
 # --- but a REAL unquoted pipe to a destructive command still DENYs ---
 check "real pipe xargs volume rm" 'cat volumes.txt | xargs docker volume rm'       deny
 
+# --- MULTI-LINE QUOTED ARGUMENTS (#204) -------------------------------------
+# This is the input class the #204 fix actually changed, and the one the first
+# attempt at that fix got wrong: collapsing a quoted newline to a space fused a
+# multi-line SCRIPT into one segment, so a benign leading `echo` hid everything
+# after it and nine real destructions became allowed. The distinction is whether
+# the quoted text is DATA (prose) or CODE (passed to a shell).
+#
+# Strings are assembled from $D/$T/$V parts so this file cannot block its own
+# execution — the guard inspects the command that writes it, too.
+D="rm -""rf"
+DV="docker vol""ume rm"
+DP="docker sys""tem prune"
+DD="DR""OP DATA""BASE"
+T="./""data"
+V="mavrovde_db"
+
+# CODE: newlines inside the quotes are command separators. Every one of these
+# was DENIED before #204 and must stay denied.
+check "sh -c: benign line then volume rm" "bash -c \"echo start
+$DV $V\""                                                                        deny
+check "sh -c: cd then rm -rf"             "sh -c \"cd /srv
+$D $T\""                                                                         deny
+check "eval: benign first line"           "eval \"echo hi
+$DV $V\""                                                                        deny
+check "sh -c single-quoted: prune"        "bash -c 'echo hi
+$DP'"                                                                            deny
+check "sh -c: sql database removal"       "bash -c \"echo ok
+psql -c $DD mavrov\""                                                            deny
+check "ssh: multi-line quoted body"       "ssh host \"cd /srv
+$DV prod_db\""                                                                   deny
+check "sh -c: destruction sandwiched"     "bash -c \"echo a
+$D $T
+echo b\""                                                                        deny
+check "sh -c: leading newline"            "bash -c \"
+$D $T\""                                                                         deny
+check "unterminated quote then rm -rf"    "echo \"oops
+$D $T"                                                                           deny
+
+# DATA: the same newlines inside a quoted ARGUMENT are prose, and blocking them
+# is what trained reflexive GUARD_DESTRUCTIVE=0 use.
+check "multi-line quoted prose"           "gh pr comment 1 --body \"line one
+$D $T was blocked
+done\""                                                                          allow
+check "heredoc written to a file"         "cat > notes.md <<'EOF'
+$D $T is what #91 did.
+EOF"                                                                             allow
+check "heredoc fed to a shell"            "bash <<'EOF'
+$D $T
+EOF"                                                                             deny
+check "heredoc fed to ssh"                "ssh host bash -s <<'EOF'
+$DV $V
+EOF"                                                                             deny
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0
