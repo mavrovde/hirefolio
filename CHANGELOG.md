@@ -15,6 +15,11 @@ All notable changes to this project will be documented in this file.
   publishes to `ghcr.io/${{ github.repository }}-*`, so builds now land at
   `ghcr.io/mavrovde/hirefolio-*` while previously published tags remain at
   `ghcr.io/mavrovde/mavrov.de-*` — pin `IMAGE_REPO` explicitly when deploying a pre-rename tag.
+  **Requires a one-time owner action:** the four new GHCR packages are created *private* (package
+  visibility does not follow a repository rename) and the prod host pulls without a `docker login`,
+  so they must be made public once. The rollout job now preflights anonymous pullability and fails
+  with the package name before touching the host. `.env.example` and `verify_proxy_startup.sh`
+  (which gates `release.sh`) also stop naming the retired Docker Hub org.
 
 ### Security
 - **Admin JWTs can no longer be signed with a publicly-known secret** (#177). `jwt_secret_key`

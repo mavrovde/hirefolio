@@ -11,7 +11,10 @@ own name and domain.
 > `mavrov.de` remains the maintainer's own deployment of it, not the product name.
 > Container images publish to `ghcr.io/mavrovde/hirefolio-*` from the first build after the rename;
 > images published earlier still live at `ghcr.io/mavrovde/mavrov.de-*`, so pin `IMAGE_REPO`
-> explicitly when deploying a pre-rename tag.
+> explicitly when deploying a pre-rename tag. **One-time owner action:** those four new GHCR
+> packages are created **private** (visibility does not follow a repo rename) — make them public
+> once, or the host, which pulls without a login, cannot fetch them. See
+> [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md#registry-notes).
 
 ## 🚀 Features
 

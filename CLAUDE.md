@@ -1,4 +1,4 @@
-# CLAUDE.md — mavrov.de
+# CLAUDE.md — Hirefolio (repo: mavrovde/hirefolio; the maintainer deploys it at mavrov.de)
 
 Primary AI configuration for this repository. **Claude (Claude Code) is the main AI tool for
 this project.** This file is the single source of truth for how AI assistants work here; the

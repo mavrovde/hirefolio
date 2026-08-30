@@ -828,6 +828,34 @@ jobs:
             echo "  StrictHostKeyChecking yes"
           } >> ~/.ssh/config
 
+      - name: Preflight — images must be anonymously pullable
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          SHA_TAG: sha-${{ github.sha }}
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        run: |
+          # The prod host pulls WITHOUT a docker login, so every app image must be
+          # public. Newly created GHCR packages default to PRIVATE and visibility
+          # does NOT follow a repository rename (#88/#189) — check before touching
+          # the host so this surfaces as an actionable message, not a mid-rollout
+          # denial. Fix: make the four packages public once, under
+          # https://github.com/users/<owner>/packages (see docs/DEPLOYMENT.md).
+          fail=0
+          for svc in backend frontend admin-frontend proxy; do
+            repo="${IMAGE_NAME}-$svc"
+            token=$(curl -s "https://ghcr.io/token?scope=repository:${repo}:pull" | python3 -c "import json,sys; print(json.load(sys.stdin).get('token',''))" || true)
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" \
+              -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+              "https://ghcr.io/v2/${repo}/manifests/${SHA_TAG}")
+            if [ "$code" != "200" ]; then
+              echo "::error title=Image not anonymously pullable::${IMAGE_REPO}-$svc:${SHA_TAG} returned HTTP $code. Make the GHCR package public (Packages → $repo → Package settings → Change visibility), then re-run."
+              fail=1
+            else
+              echo "OK: ${IMAGE_REPO}-$svc:${SHA_TAG}"
+            fi
+          done
+          [ "$fail" -eq 0 ] || exit 1
+
       - name: Roll out validated images
         if: steps.gate.outputs.enabled == 'true'
         id: rollout

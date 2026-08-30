@@ -1,4 +1,4 @@
-# AGENTS.md — mavrov.de
+# AGENTS.md — Hirefolio
 
 Instructions for AI coding agents (GitHub Copilot coding agent, and any other tool that reads
 `AGENTS.md`). **`CLAUDE.md` at the repo root is the authoritative, complete AI configuration** —

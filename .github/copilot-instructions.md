@@ -1,4 +1,4 @@
-# Copilot instructions — mavrov.de
+# Copilot instructions — Hirefolio
 
 **`CLAUDE.md` at the repo root is the single source of truth for how AI assistants work here.**
 This file summarizes it for GitHub Copilot; if anything below seems to conflict with `CLAUDE.md`,
