@@ -4,7 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Operational timeouts and bulk-import caps are configurable from `.env`** (#207) — the LLM request
+  ceiling was the literal `300.0` repeated at five call sites, and the Ollama liveness probe used a
+  different budget in each of the three places it appears (10 s at startup, 5 s in multi-chat, 2 s in
+  the stats endpoint, where it decides the reported AI status). These values are host-dependent by
+  nature: a cold model on a small VPS needs a long ceiling, while a fast host would rather fail fast
+  than hold a worker. They are now `Settings` fields, each defaulting to the exact literal it
+  replaced, so an unchanged `.env` reproduces the previous behaviour. The bulk posts-JSON import
+  guards got the same treatment — they were module constants while their `import_max_image_mb`
+  neighbour was already configurable, so an operator could raise one cap but not the other.
+  Pagination defaults, `max_turns`, and text truncations were deliberately left alone: they are
+  per-request parameters or presentation rules, not host-dependent operations, and moving them would
+  add configuration surface without giving an operator anything actionable.
+
 ### Fixed
+- **The admin restore-timeout message reported a hardcoded `300s`** (#207) whatever the real ceiling
+  was, so an operator debugging a timeout would have been told the wrong number. It now reports the
+  configured value.
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 
