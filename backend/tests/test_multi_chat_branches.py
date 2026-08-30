@@ -168,7 +168,10 @@ async def test_multi_agent_generic_error():
         chunks = [json.loads(c) async for c in gen]
 
     all_content = "".join(c.get("content", "") for c in chunks)
-    assert "[Error:" in all_content
+    # The exception reason is logged, never streamed (py/stack-trace-exposure):
+    # pin its ABSENCE, or a leaking "[Error: boom generic]" would satisfy this too.
+    assert "boom generic" not in all_content
+    assert "the conversation ended unexpectedly" in all_content
 
 
 @pytest.mark.asyncio

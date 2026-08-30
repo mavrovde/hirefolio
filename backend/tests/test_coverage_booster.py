@@ -25,6 +25,9 @@ async def test_multi_agent_conversation_infra_error():
             gen = multi_agent_conversation(agents, "topic")
             items = [i async for i in gen]
             assert any("Infrastructure Error" in i for i in items)
+            # The configured Ollama URL must never reach the public stream —
+            # config disclosure is not covered by CodeQL, so this is the only guard.
+            assert not any("http://error" in i for i in items)
 
 
 class MockStreamResponse:
