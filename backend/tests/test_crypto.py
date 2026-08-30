@@ -92,7 +92,7 @@ def test_encrypt_decrypt_round_trip(fernet_key):
 
 
 def test_decrypt_malformed_key_returns_none(monkeypatch):
-    """A malformed GEMINI_ENCRYPTION_KEY must NOT 500 the read path (#143).
+    """A malformed HIREFOLIO_GEMINI_ENCRYPTION_KEY must NOT 500 the read path (#143).
 
     The Fernet constructor raises ValueError on a bad key; decrypt() must catch
     it and fail safe to None rather than propagating (fail-loud) on read.

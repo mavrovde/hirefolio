@@ -276,19 +276,19 @@ Create `backend/.env`:
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov
 OLLAMA_URL=http://localhost:11434
 EMBEDDING_MODEL=nomic-embed-text
-GEMINI_API_KEY=your_api_key_here
+HIREFOLIO_GEMINI_API_KEY=your_api_key_here
 
 # Fernet key that encrypts the per-user Gemini API key at rest (issue #143).
 # Empty = plaintext passthrough (backward compatible); set in prod to encrypt.
 # Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-GEMINI_ENCRYPTION_KEY=                          # default: "" (encryption disabled)
+HIREFOLIO_GEMINI_ENCRYPTION_KEY=                          # default: "" (encryption disabled)
 #
 # NOTE (encrypting EXISTING keys): the `encrypt0002` migration runs once at
-# deploy. If GEMINI_ENCRYPTION_KEY was still empty when it ran, existing keys
+# deploy. If HIREFOLIO_GEMINI_ENCRYPTION_KEY was still empty when it ran, existing keys
 # stay plaintext — setting the key later does NOT retroactively encrypt them.
 # After enabling the key, encrypt existing rows by either (a) re-saving the key
 # in the admin profile UI, or (b) running the idempotent backfill once:
-#   cd backend && GEMINI_ENCRYPTION_KEY=... python -m scripts.backfill_encrypt_gemini_key
+#   cd backend && HIREFOLIO_GEMINI_ENCRYPTION_KEY=... python -m scripts.backfill_encrypt_gemini_key
 # (Regardless of encryption, `/auth/me` never returns the raw key — the network
 # EXPOSURE is closed independently of encryption-at-rest.)
 
@@ -399,7 +399,7 @@ All three columns are `NULL` for posts not imported from LinkedIn. Two posts may
 | Revision | Description |
 |---|---|
 | `baseline0001` | Baseline schema — all current tables (`users`, `cv_documents`, `cv_requests`, `posts` incl. `image_url`/`image_blob`/`image_type` and LinkedIn provenance columns, `profile_snapshots`). Consolidates what used to be several disjoint/incomplete revisions (see #46). |
-| `encrypt0002` | Encrypts stored per-user Gemini API keys at rest (Fernet via `GEMINI_ENCRYPTION_KEY`); one-time backfill of existing plaintext keys — a no-op if the key env var is empty when it runs (see #143 and the note in the backend env section above). |
+| `encrypt0002` | Encrypts stored per-user Gemini API keys at rest (Fernet via `HIREFOLIO_GEMINI_ENCRYPTION_KEY`); one-time backfill of existing plaintext keys — a no-op if the key env var is empty when it runs (see #143 and the note in the backend env section above). |
 
 New changes get their own revision on top of this baseline — see
 [How to write a migration](#how-to-write-a-migration) above.

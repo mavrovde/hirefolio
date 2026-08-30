@@ -17,7 +17,7 @@ import { API_PREFIX } from '../config';
  * runner) — the failure mode being guarded against is structural, so one turn
  * proves it exactly as well as twenty.
  *
- * Rule 10: the E2E stack runs with an empty GEMINI_API_KEY, so generation falls
+ * Rule 10: the E2E stack runs with an empty HIREFOLIO_GEMINI_API_KEY, so generation falls
  * back to the in-stack Ollama. No paid API is reachable.
  */
 test.describe('Multi-Agent Conversation — unmocked contract', () => {

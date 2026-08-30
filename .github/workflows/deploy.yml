@@ -129,6 +129,10 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
           SECRET_KEY: test-secret-key-for-ci
           OLLAMA_BASE_URL: http://localhost:11434
+          # Rule 10 (#141): explicit, not safe-by-absence. The job was relying on
+          # the runner simply not having this variable; state it so the guarantee
+          # survives someone adding a repo-level env or variable later.
+          HIREFOLIO_GEMINI_API_KEY: ""
         run: |
           # --cov-fail-under=100 makes the project's stated coverage standard an
           # actual gate: without it CI printed the percentage and passed regardless,
@@ -545,7 +549,7 @@ jobs:
           # (free), so the E2E still exercises the flow at zero cost. The E2E specs also
           # mock these endpoints as defense-in-depth. Real prod gets its key from the host
           # env, NOT from CI.
-          GEMINI_API_KEY: ""
+          HIREFOLIO_GEMINI_API_KEY: ""
           # Admin E2E hits admin.localhost through the Docker bridge (source IP is the
           # gateway, not loopback, and no X-Forwarded-For is set so real_ip can't recover
           # a real client), so open the allowlist for the test run only. The prod default

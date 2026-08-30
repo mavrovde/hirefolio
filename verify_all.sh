@@ -41,7 +41,7 @@ cd backend
 # Portable interpreter: prefer the project venv, else python3. Override with PYTEST_PYTHON.
 # shellcheck disable=SC2015  # A && B || C is intentional here: B is a bare echo that cannot fail.
 PYTEST_PYTHON="${PYTEST_PYTHON:-$([ -x venv/bin/python ] && echo venv/bin/python || command -v python3)}"
-GEMINI_API_KEY="" "$PYTEST_PYTHON" -m pytest tests
+HIREFOLIO_GEMINI_API_KEY="" "$PYTEST_PYTHON" -m pytest tests
 cd ..
 
 # 2. Frontend Checks

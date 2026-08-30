@@ -70,7 +70,7 @@ async def think(system_prompt: str, user_text: str, *, role_title: str = "agent"
                     continue
                 return await _anthropic(system_prompt, user_text, model)
             if prov == "gemini":
-                if not os.getenv("GEMINI_API_KEY"):
+                if not os.getenv("HIREFOLIO_GEMINI_API_KEY"):
                     continue
                 return await _gemini(system_prompt, user_text, model)
             if prov == "stub":
@@ -94,7 +94,7 @@ async def think_with_tools(system_prompt: str, user_text: str, *, role_title: st
         try:
             if prov == "ollama":
                 return await _ollama_tools(system_prompt, user_text, model, max_iters, allowed)
-            if prov == "gemini" and os.getenv("GEMINI_API_KEY"):
+            if prov == "gemini" and os.getenv("HIREFOLIO_GEMINI_API_KEY"):
                 return await _gemini_tools(system_prompt, user_text, model, max_iters, allowed)
             if prov == "anthropic" and _anthropic_ready():
                 return await _anthropic_tools(system_prompt, user_text, model, max_iters, allowed)
@@ -164,7 +164,7 @@ async def _gemini_tools(system_prompt: str, user_text: str, model: str | None,
         tools=[types.Tool(function_declarations=fdecls)],
         automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
     )
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    client = genai.Client(api_key=os.environ["HIREFOLIO_GEMINI_API_KEY"])
     mdl = model or os.getenv("A2A_MODEL") or DEFAULT_GEMINI_MODEL
     contents = [types.Content(role="user", parts=[types.Part(text=user_text)])]
     for _ in range(max_iters):
@@ -323,7 +323,7 @@ async def _gemini(system_prompt: str, user_text: str, model: str | None) -> str:
     from google import genai
     from google.genai import types
 
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    client = genai.Client(api_key=os.environ["HIREFOLIO_GEMINI_API_KEY"])
     resp = await client.aio.models.generate_content(
         model=model or os.getenv("A2A_MODEL") or "gemini-2.0-flash",
         contents=user_text,

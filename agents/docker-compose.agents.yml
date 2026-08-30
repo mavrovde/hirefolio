@@ -15,7 +15,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8010:8010"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -30,7 +30,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8011:8011"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -45,7 +45,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8012:8012"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -60,7 +60,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8013:8013"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -75,7 +75,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8014:8014"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -90,7 +90,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8015:8015"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -105,7 +105,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8016:8016"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -120,7 +120,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8017:8017"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -135,7 +135,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8018:8018"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -150,7 +150,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8019:8019"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -165,7 +165,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8020:8020"
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -180,7 +180,7 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - A2A_MODEL=${A2A_MODEL:-claude-sonnet-4-6}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY:-}
     ports:
       - "8021:8021"
     extra_hosts: ["host.docker.internal:host-gateway"]

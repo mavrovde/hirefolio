@@ -118,7 +118,7 @@ xdg-open coverage/public/index.html  # Linux
   `docker-compose.e2e.yml`: what `./verify_all.sh` (and CI) run the Playwright
   suite against. The E2E overlay switches the prod images to local builds and
   opens the admin allowlist for the test run only; CI additionally injects an
-  **empty** `GEMINI_API_KEY` so the E2E falls back to local Ollama and no paid
+  **empty** `HIREFOLIO_GEMINI_API_KEY` so the E2E falls back to local Ollama and no paid
   API is ever hit (CLAUDE.md rule 10).
 
   ```bash

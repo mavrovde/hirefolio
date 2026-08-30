@@ -29,7 +29,7 @@ cp .env.example .env
 #    POSTGRES_PASSWORD, LINKEDIN_IMPORT_TOKEN (for the posts importer),
 #    PUBLIC_SERVER_NAME / ADMIN_SERVER_NAME, ADMIN_ALLOWED_CIDRS (keep empty =
 #    loopback-only admin until you add your operator IPs).
-#    Optional: GEMINI_API_KEY (+ GEMINI_ENCRYPTION_KEY) — without it the AI
+#    Optional: HIREFOLIO_GEMINI_API_KEY (+ HIREFOLIO_GEMINI_ENCRYPTION_KEY) — without it the AI
 #    features fall back to the in-stack Ollama.
 #    Image coordinates: IMAGE_REPO defaults to ghcr.io/mavrovde/hirefolio;
 #    set IMAGE_TAG to the release you are deploying (e.g. 1.9.0).
@@ -92,6 +92,39 @@ are never touched (CLAUDE.md rule 9).
 Host-side hardening checklist: dedicated `deploy` user in the `docker` group
 only, `authorized_keys` restricted to that key, password auth off, fail2ban or
 an IP allowlist on sshd. The key in GitHub should exist nowhere else.
+
+## Upgrading a host across the #141 rename
+
+The Gemini variables are project-scoped since #141. Before rolling out a release that contains it,
+rename them in the host `.env`:
+
+```diff
+-GEMINI_API_KEY=...
+-GEMINI_ENCRYPTION_KEY=...
++HIREFOLIO_GEMINI_API_KEY=...
++HIREFOLIO_GEMINI_ENCRYPTION_KEY=...
+```
+
+Leaving the old names is **not** fatal — the app ignores them, AI features fall back to the in-stack
+Ollama, and the backend prints a `CONFIG WARNING` naming each stale variable at startup (the compose
+files pass the legacy *names*, never their values, so nothing sensitive enters the container).
+`GEMINI_MODEL`/`GEMINI_MODEL_FALLBACK` follow the same rule; they are namespaced because model choice
+is a cost control.
+
+If a host had `GEMINI_ENCRYPTION_KEY` set and rows already encrypted (`enc:v1:` prefix), renaming
+without carrying the value over makes those values read as unset — recoverable by setting
+`HIREFOLIO_GEMINI_ENCRYPTION_KEY` to the same key.
+
+Apply it with `docker compose -f docker-compose.prod.yml up -d backend`, **not** `restart`: compose
+resolves the environment when it *creates* a container, so `restart` reuses the old values and the
+edit appears to have done nothing. Then verify the container actually sees the new names:
+
+```bash
+docker compose -f docker-compose.prod.yml exec backend env | grep GEMINI
+# expect HIREFOLIO_GEMINI_*; a bare GEMINI_API_KEY here means the rename did not take
+docker compose -f docker-compose.prod.yml logs backend | grep 'CONFIG WARNING'
+# any line names a variable still set under its old name on the host
+```
 
 ## Registry notes
 

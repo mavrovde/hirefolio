@@ -210,10 +210,10 @@ async def test_lifespan_seeds_cv(db_session, init_db):
                 else:
                     # For .env files
                     file_mock.__enter__.return_value.read.return_value = (
-                        "GEMINI_API_KEY=test_key"
+                        "HIREFOLIO_GEMINI_API_KEY=test_key"
                     )
                     file_mock.__enter__.return_value.__iter__.return_value = [
-                        "GEMINI_API_KEY=test_key"
+                        "HIREFOLIO_GEMINI_API_KEY=test_key"
                     ]
                 return file_mock
 
@@ -236,12 +236,12 @@ async def test_lifespan_seeds_cv(db_session, init_db):
 
 @pytest.mark.asyncio
 async def test_lifespan_env_local_without_gemini_key(db_session, init_db, monkeypatch):
-    """Covers the `.env.local` present but GEMINI_API_KEY unset/empty branch.
+    """Covers the `.env.local` present but HIREFOLIO_GEMINI_API_KEY unset/empty branch.
 
     Pre-seed a user and a CV so the lifespan's admin/CV seeding blocks are no-ops and only
     the env-file loading branch is under test.
     """
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("HIREFOLIO_GEMINI_API_KEY", raising=False)
     db_session.add(
         User(
             username="admin",

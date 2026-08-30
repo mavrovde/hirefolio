@@ -14,7 +14,7 @@ Preconditions:
   current diff — it may be a latent gate bug.
 
 1. Backend (`cd backend`, use `venv/bin`; Postgres on `127.0.0.1:5433`, a `test_*` DB via
-   `TEST_DATABASE_URL`, `GEMINI_API_KEY=""`):
+   `TEST_DATABASE_URL`, `HIREFOLIO_GEMINI_API_KEY=""`):
    `ruff check .` · `ruff format --check .` · `mypy app --ignore-missing-imports
    --no-error-summary` · `bandit -r app -ll --skip B101` · `pytest` (100% coverage).
 2. Frontend (`cd frontend`):

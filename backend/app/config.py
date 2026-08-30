@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # SECURITY (issue #177): signing-secret values that must never be honoured. The
@@ -44,22 +45,37 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     admin_email: str = "admin@mavrov.de"
     api_prefix: str = "/api/app"
-    gemini_api_key: str = ""
+    # Read from HIREFOLIO_GEMINI_API_KEY, deliberately NOT the generic
+    # GEMINI_API_KEY (#141): that name is commonly exported globally from a
+    # shell profile, and a process environment variable OVERRIDES .env in
+    # docker compose — so the generic name silently bound a developer's live
+    # personal key into the E2E stack. A project-scoped name cannot collide.
+    gemini_api_key: str = Field(default="", validation_alias="HIREFOLIO_GEMINI_API_KEY")
     # Fernet key (urlsafe-base64, 32 bytes) used to encrypt the per-user Gemini
     # API key at rest (see app.services.crypto / issue #143). Empty disables
     # field encryption (values stored/read as plaintext) so local/dev/E2E setups
     # keep working; production sets it to encrypt the paid credential at rest.
     # Generate with: python -c "from cryptography.fernet import Fernet;
     # print(Fernet.generate_key().decode())"
-    gemini_encryption_key: str = ""
+    gemini_encryption_key: str = Field(
+        default="", validation_alias="HIREFOLIO_GEMINI_ENCRYPTION_KEY"
+    )
     # Gemini model selection. Suggestion/tagging tasks (tags, title, slug,
     # summary) are cheap and use the flash-tier model by default; override via
-    # GEMINI_MODEL / GEMINI_MODEL_FALLBACK. The fallback is only used when the
+    # HIREFOLIO_GEMINI_MODEL / HIREFOLIO_GEMINI_MODEL_FALLBACK. The fallback is only used when the
     # primary model is reported *unavailable* (HTTP 404), never on generic
     # errors — those fall through to the free local Ollama models instead of
     # making a second billable Gemini call.
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_model_fallback: str = "gemini-2.0-flash"
+    # Namespaced for the same reason as the key (#141): model choice is a COST
+    # control, and an ambient GEMINI_MODEL pointing at a premium tier would
+    # silently raise the price of every suggestion.
+    gemini_model: str = Field(
+        default="gemini-2.5-flash", validation_alias="HIREFOLIO_GEMINI_MODEL"
+    )
+    gemini_model_fallback: str = Field(
+        default="gemini-2.0-flash",
+        validation_alias="HIREFOLIO_GEMINI_MODEL_FALLBACK",
+    )
     cv_version: str = "v1.0"
 
     # LinkedIn
@@ -98,6 +114,11 @@ class Settings(BaseSettings):
     profile_rate_limit_requests: int = 100
     profile_rate_limit_window_seconds: int = 60
 
+    # populate_by_name is deliberately NOT enabled: it also re-admits the FIELD
+    # NAME as an environment source, which would let the generic GEMINI_API_KEY
+    # bind again and silently undo #141 (caught by
+    # tests/test_config_gemini_env_isolation.py). Construct these fields by their
+    # alias — Settings(HIREFOLIO_GEMINI_API_KEY=...) — not by field name.
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
