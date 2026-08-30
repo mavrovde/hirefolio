@@ -567,34 +567,23 @@ jobs:
         working-directory: ./frontend
         run: npx playwright install --with-deps
 
-      - name: Restore cached base images
-        id: cache-base-images
-        uses: actions/cache@v6
-        with:
-          path: /tmp/base-images
-          key: base-images-${{ hashFiles('.github/base-images.txt') }}
-
-      - name: Load or pull base images
-        run: |
-          set -eo pipefail
-          mkdir -p /tmp/base-images
-          TAR=/tmp/base-images/images.tar
-          IMAGES="$(grep -vE '^\s*#|^\s*$' .github/base-images.txt)"
-          if [ -f "$TAR" ]; then
-            echo "Cache hit — loading pinned base images from tarball (no pull):"
-            echo "$IMAGES"
-            docker load -i "$TAR"
-          else
-            echo "Cache miss — pulling pinned base images:"
-            echo "$IMAGES"
-            for img in $IMAGES; do docker pull "$img"; done
-            docker save $IMAGES -o "$TAR"
-          fi
+      # NOTE (#134): the former "Restore cached base images" / "Load or pull base
+      # images" steps were removed here as dead weight. They ran AFTER "Start Full
+      # Stack" (`docker compose up -d` already pulls every image the stack needs),
+      # so the ~5 GB tarball restore + `docker load` (~2 min on cache hit, ~10 min
+      # on a cache miss: pull + `docker save` + post-job cache upload) sped up
+      # nothing — and the tar even pinned an open-webui version the stack no longer
+      # uses. Base-image pins live in docker-compose.prod.yml (single source of
+      # truth). See also lessons-learned #5: multi-GB actions/cache is net-negative.
 
       - name: Wait for Stack Ready
         run: |
           echo "Waiting for proxy to respond on port 80..."
-          timeout 60s bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:80 | grep "200\|302"; do sleep 2; done'
+          # 180s (was 60s): removing the dead base-image cache steps also removed
+          # ~2 min of incidental slack between `compose up -d` and this check.
+          # Compose only gates on service_healthy for db/ollama — the app services
+          # are bare depends_on, so this loop is now the real readiness buffer.
+          timeout 180s bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:80 | grep "200\|302"; do sleep 2; done'
           echo "Stack is up!"
 
       # Proxy smoke check — folded in from the former standalone "Proxy

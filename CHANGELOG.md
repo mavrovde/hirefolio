@@ -62,6 +62,17 @@ All notable changes to this project will be documented in this file.
   loop's counter — moved to its own loop.
 
 ### Changed
+- **CI: removed the dead E2E base-image cache** (#134) — the e2e-tests job's "Restore cached
+  base images" + "Load or pull base images" steps ran *after* `docker compose up -d` had
+  already pulled every image the stack needs, so the ~5 GB tarball restore + `docker load`
+  bought nothing: ~2 min pure overhead per run on a cache hit, and ~10 min (pull + `docker
+  save` + post-job cache upload) on a cache miss — the whole 18.6 m E2E outlier on run
+  `33230883491`. The tar even pinned `open-webui:v0.5.10`, a version the stack no longer runs.
+  Steps and `.github/base-images.txt` removed; base-image pins live solely in
+  `docker-compose.prod.yml` (README/.env.example pointers updated, incl. the stale
+  ollama-model-cache paragraph left over from the #78 revert). Expected: E2E ~9 m → ~7 m
+  typical and the cache-miss variance spike eliminated. Confirms lessons-learned §5
+  (multi-GB `actions/cache` is net-negative).
 - **`crewai` 1.15.6 → 1.15.18** (within-minor bump, refs #52) — picks up 12 upstream patch
   releases. This does **not** unblock #52: crewai 1.15.18 still declares `pydantic<2.13,>=2.11.9`
   (and its `instructor` dependency still declares `rich<15.0.0,>=13.7.0`), so `pydantic` stays

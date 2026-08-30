@@ -1,7 +1,0 @@
-# Third-party base images used by the E2E + deploy jobs and by docker-compose.prod.yml.
-# Single source of truth: keep these in sync with docker-compose.prod.yml. deploy.yml pins
-# and caches exactly these (docker save/load) so they are not re-pulled every run. A change
-# here invalidates the GitHub Actions cache key (hashFiles) so the new versions are fetched once.
-pgvector/pgvector:pg16
-ollama/ollama:0.5.7
-ghcr.io/open-webui/open-webui:v0.5.10

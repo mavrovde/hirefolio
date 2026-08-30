@@ -111,6 +111,11 @@ Playwright + Chromium cut ~500MB and the dominant build step).
 re-pull; prefer registry (CDN-backed) pulls. **Always MEASURE** before/after on real runs
 (`gh api .../jobs` timings) — never assume a cache helps.
 
+A corollary found in #134: **a cache placed downstream of its consumer is dead weight** — the E2E
+job restored a multi-GB base-image cache *after* `docker compose up -d` had already pulled every
+image, so it never saved a pull and cost 2 min per run (10 min on a miss). Audit step *ordering*,
+not just hit rate.
+
 ## 6. Release SemVer bump is decided BY CONTENT of `[Unreleased]` — never by reflex
 
 Stop at the first that matches:

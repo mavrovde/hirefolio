@@ -307,12 +307,11 @@ config (`nginx -t`) and falls back to a closed default if it is invalid, so a ba
 never crash nginx or silently misfilter. **Break-glass** (works even with an empty allowlist): reach
 admin over loopback from on the box, e.g. `docker compose exec proxy wget -qO- --no-check-certificate
 --header 'Host: admin.<your-domain>' https://127.0.0.1/`, or an SSH tunnel that originates inside the
-proxy container. Pinned base images
-(`pgvector/pgvector:pg16`, `ollama/ollama:0.5.7`, `ghcr.io/open-webui/open-webui:v0.5.10`) live in
-`docker-compose.prod.yml` + `.github/base-images.txt`. The **Ollama model weights** the stack
-prewarms (`nomic-embed-text`, `llama3.2`, `llama3.2:1b`) are listed in `.github/ollama-models.txt`;
-the E2E job (`deploy.yml`) caches the ollama data volume keyed on that list + the pinned ollama
-image, so those multi-GB weights are pulled once and restored (not re-downloaded) on later runs.
+proxy container. Pinned third-party base images (`pgvector/pgvector:pg16`,
+`ollama/ollama:0.5.7`, `ghcr.io/open-webui/open-webui:v0.11.0`) are pinned in one place:
+`docker-compose.prod.yml`. CI does **not** cache these multi-GB images — measured net-negative
+(see `.claude/skills/lessons-learned/SKILL.md` §5); the E2E job pulls them registry-direct
+during `docker compose up`.
 
 ### Frontend Environment
 
