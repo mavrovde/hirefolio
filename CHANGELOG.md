@@ -11,6 +11,43 @@ All notable changes to this project will be documented in this file.
   under CI's `pytest -n auto` (`relation "users" does not exist`), which reddened the deploy. It now
   uses the shared async `client` fixture like every other API test. Verified with CI's exact
   invocation this time — `pytest -n auto --cov-fail-under=100` → 788 passed, 100%.
+### Docs
+- **lessons-learned §16–20 + the rules distributed across every AI config** — today's milestone
+  sweep produced five durable lessons, now committed rather than left in a transcript: mutation-check
+  any test that claims to pin a fix (it passed against the *unfixed* code four separate times, and
+  `git stash -- <file>` silently no-ops for committed changes); a signature or behaviour change needs
+  a **full**-suite run because stale siblings in other files are invisible to `-k` (this shipped red
+  twice); verify that claimed gates actually gate (CI ran pytest with no `--cov-fail-under` for the
+  project's whole history, and `--check` lived only in a local hook); fix the *duplication*, not the
+  instance (a copy-pasted revert block meant a fix reached one of three abort paths); and a repo
+  rename does not carry container packages — new GHCR packages are created private and visibility
+  does not follow a rename. The operational half is mirrored into `pr-reviewer` (mutation-check as a
+  review step), `backend-dev`/`frontend-dev` (full-suite discipline), `CLAUDE.md` rule 7 (a
+  `Closes #NN` auto-close is **not** close-the-loop — link the PR, SHA, pipeline and criteria; report
+  what you measured), plus `AGENTS.md`, `.github/copilot-instructions.md` and the path-scoped backend
+  instructions so Copilot and the A2A roster carry the same rules.
+
+### Changed
+- **Dropped the unused `crewai` + `langchain-openai` pins, unblocking the caps they forced** (#185,
+  closes #53's dependency half). After #184 removed the vestigial agent-framework plumbing, nothing
+  in `backend/app/` imported either package — they were dead weight that nonetheless dictated the
+  whole backend's resolution. With them gone: **`pydantic` >=2.12.5 → >=2.13.0** (resolves 2.13.5)
+  and **`rich` <15.0.0 → >=15.0.0** (resolves 15.0.0), the two caps tracked by the now-closed #52
+  (crewai pinned `pydantic<2.13`; its `instructor` dependency pinned `rich<15`). Verified on a clean
+  Python 3.13 environment: `pip check` clean, **787 passed, 7 skipped, 100% coverage**.
+### Security
+- **`guard-destructive.sh` now blocks *any* recursive `rm` at a protected data path** (#188) — it
+  previously required `-r` **and** `-f` together, so `rm -R ./data` walked straight through. The
+  force flag only suppresses prompts for write-protected files; it is not what makes the delete
+  irreversible, so it is no longer part of the condition. The path regex is unchanged, so deletes
+  outside the protected set (`frontend/dist`, `node_modules`, scratchpads) are still allowed.
+  A **quoted** path (`rm -R "./data"`) also no longer slips through: a trailing quote defeated the
+  path regex's boundary, so the guard's own documented `bash -c` coverage was incomplete — the
+  boundaries now accept a surrounding quote. Twelve self-test cases added — five deny (`-R`, `-r`, `--recursive` against data/pgdata/volumes/
+  ollama/open-webui) and two allow — bringing the suite to 63 — including near-miss allow-cases
+  (`./src/app/data-table`, `build/metadata`, `rm -f ./data/file.txt`) that pin the *absence* of
+  false positives. Reverting the guard fails exactly the new deny cases, so the coverage is proven
+  rather than assumed.
 
 ### Added
 - **CI now enforces the 100% coverage standard** — the backend test job ran

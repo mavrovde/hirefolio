@@ -24,6 +24,12 @@ by fixing the real cause — never by weakening tests or checks.
 
 ## Reproduce & verify commands (from `frontend/`)
 - All unit suites + coverage (mirrors CI): `npm run test:coverage`
+- ⚠️ **A signature or behavior change means the FULL suite, never just the edited spec.** Stale
+  siblings in other files (a mock with the old arity, a patch of a symbol you deleted) are invisible
+  to a targeted run and have twice shipped red. And when you add a test for a fix, **mutation-check
+  it**: revert the fix (`git checkout origin/main -- <file>`; `git stash` is a no-op for committed
+  changes) and confirm the test fails — a test that passes both ways pins nothing
+  (`lessons-learned` §16–17).
 - One project: `npm run test:coverage:shared` | `:public` | `:admin`
 - One file: `npx vitest run --config projects/<proj>/vitest.config.ts <path-or-name>`
 - Build (catches template/type errors): `npm run build`

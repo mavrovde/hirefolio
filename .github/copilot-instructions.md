@@ -91,6 +91,18 @@ Full stack: `./manage.sh start|stop|logs` · `./verify_all.sh` (full suite incl.
 - **Label every PR** with ≥1 type label (`bug`/`enhancement`/`documentation`/`dependencies`/
   `security`) + ≥1 area label — same scheme as issues (`gh pr create --label` / `gh pr edit --add-label`).
 
+## Working discipline (learned the hard way — see `.claude/skills/lessons-learned/`)
+
+- **Mutation-check tests that pin a fix**: revert the fix and confirm the test fails — a test that
+  passes both ways pins nothing (`git stash -- <file>` is a no-op for committed changes; use
+  `git checkout origin/main -- <file>`).
+- **Signature/behavior changes need the FULL suite**, never `-k` — stale mocks and patches of
+  deleted symbols live in other files and have twice shipped red.
+- **Verify gates actually gate**: ask what would fail if the standard were violated right now.
+- **Close-the-loop links the PR**: a `Closes #NN` auto-close leaves no record — comment with the PR,
+  merge SHA, pipeline result and each acceptance criterion.
+- **Report what you measured, not what you expect.**
+
 ## Execution protocol
 
 Reconnaissance (read the target + its deps + its tests) → blast-radius analysis → define types

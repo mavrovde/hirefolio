@@ -309,6 +309,64 @@ that mocks the library, the validation is vacuous — check what the tests actua
 
 ---
 
+## 16. A test that passes before AND after the fix pins nothing — mutation-check it
+
+**The trap (2026-08-30, the milestone sweep):** four separate times a test looked like it guarded a
+fix and did not. A guard self-test passed against the *unfixed* guard. A "the fallback literal is not
+mistaken for the version" case passed against the *unanchored* script (the real literal
+`1.0.0-fallback` can never match `version="[0-9.]*"`, so the assertion was unreachable). A
+leak-prevention test asserted `"[Error:" in content`, which the leaking string satisfies just as well
+as the fixed one. A rotation test asserted the bullets moved but not that their heading came with
+them — the exact thing that broke.
+
+**The discipline:** after writing a test for a fix, *revert the fix and watch the test fail.* Report
+the number ("mutation: 7 of 19 cases fail against the pre-fix script"), because that number — not the
+green run — is the evidence the test is load-bearing. Two corollaries learned the hard way:
+`git stash -- file` is a **no-op when the change is already committed** (it silently "passes"); use
+`git checkout origin/main -- file` instead. And build the fixture to mirror reality — ours put a
+nested literal *after* the target line while the real file has it *before*, so the read-side anchor
+was never exercised until the ordering was fixed (4 mutation failures → 6).
+
+## 17. After a signature or behavior change, run the FULL suite — `-k` cannot see stale siblings
+
+Twice in one day a change went out red because only the edited module was re-run: tests in *other*
+files still patched a removed symbol (`multi_chat.ChatOpenAI`), and a mock still had the old arity
+(`mock_multi_stream(agents, topic)` vs a new third argument). Both are invisible to a targeted run
+and both would have reddened the deploy — the second one only after `--cov-fail-under=100` started
+actually gating. **Changing a function's signature, or deleting a name, means a full-suite run before
+push, no exceptions.**
+
+## 18. Verify that your gates actually gate
+
+`deploy.yml` ran `pytest --cov=app --cov-report=...` with **no `--cov-fail-under`** for the project's
+entire history, and `pyproject.toml`'s `addopts` set no threshold either — so the headline "100%
+coverage" standard printed a number and passed regardless. Separately, `bump_version.sh --check` ran
+only in a machine-local pre-push hook, so any hook-bypassing push could reintroduce the drift it was
+written to prevent. **A documented standard is not a gate until something fails when it is violated.**
+Periodically ask of each claimed gate: *what would break if I violated this right now?* — and if the
+answer is "nothing", it is documentation, not enforcement.
+
+## 19. Fix the duplication, not the instance
+
+`release.sh` had the version-revert block copy-pasted into each abort branch. A fix (restoring the
+gitignored `.env`) was applied to one copy and silently missed two others — one of which was reachable
+and left a bumped `.env` behind, i.e. *exactly the bug being fixed, still live*. The correct fix was
+one `revert_bump()` called from all three paths. **When a fix lands in a copy-pasted block, the copy
+is the bug**: extract it, or the next fix will miss a branch too (rule 1, applied to shell).
+
+## 20. Renaming a repo does not carry the container packages with it
+
+Renaming `mavrovde/mavrov.de` → `mavrovde/hirefolio` changed CI's publish target, because it derives
+from `${{ github.repository }}`. The consequences are not obvious: **new GHCR packages are created
+private, and package visibility does not follow a repository rename**, while the prod host pulls
+anonymously with no `docker login`. Previously published tags stay at the *old* path forever, so
+deploying a pre-rename version needs `IMAGE_REPO` pinned explicitly. Mitigation shipped: the rollout
+job preflights anonymous pullability of every image and fails naming the package. Beware also that an
+unauthenticated `curl` of a GHCR manifest returns 401 even for a *public* package — that is the token
+handshake, not a visibility signal, and it will produce a false alarm if used as the check.
+
+---
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–11, issue-tracking flow,

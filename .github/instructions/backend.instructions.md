@@ -32,3 +32,12 @@ applyTo: "backend/**"
   use an empty/dummy key so the free local fallback (Ollama) is taken.
 - Keep `requirements.txt` and `requirements-dev.txt` in sync; `linkedin-api` stays `2.2.1`;
   within-major upgrades only.
+
+- **Mutation-check tests that pin a fix**: revert the fix and confirm the test fails — a test that
+  passes both ways pins nothing (`git stash -- <file>` is a no-op for committed changes; use
+  `git checkout origin/main -- <file>`).
+- **Signature/behavior changes need the FULL suite**, never `-k` — stale mocks and patches of deleted
+  symbols live in other files and have twice shipped red.
+- **Verify gates actually gate**: ask what would fail if the standard were violated right now.
+- **Close-the-loop links the PR**: a `Closes #NN` auto-close leaves no record — comment with the PR,
+  merge SHA, pipeline result and each acceptance criterion.

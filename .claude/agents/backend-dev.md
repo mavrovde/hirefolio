@@ -38,6 +38,13 @@ the real cause — never by weakening tests or checks.
   tables. If a live stack is using that DB, run against an isolated DB instead:
   `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/mavrov_fix venv/bin/python -m pytest ...`
   (create it once: `docker exec mavrovde-db-1 psql -U postgres -p 5433 -c "CREATE DATABASE mavrov_fix;"`).
+  ⚠️ **A signature or behavior change means a FULL-suite run before push — never just `-k` or the
+  edited file.** Stale siblings in other modules (an old mock arity, a patch of a symbol you
+  deleted) are invisible to a targeted run and have twice shipped red. And when you add a test for
+  a fix, **mutation-check it**: revert the fix (`git checkout origin/main -- <file>`; `git stash`
+  is a no-op for committed changes) and confirm the test fails. A test that passes both ways pins
+  nothing — see `lessons-learned` §16–17.
+
   ⚠️ **NEVER run backend pytest while another suite is running.** Check `pgrep -f pytest` first and
   wait until it returns nothing. Two suites on the shared `test_mavrov` DB clobber each other
   (per-test `drop_all`/`create_all`) → dozens of spurious `InvalidRequestError`/count-mismatch
