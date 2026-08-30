@@ -50,7 +50,7 @@ Full stack: `./manage.sh start|stop|logs` · full verification incl. Docker E2E:
    green, when `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` are unset; #112/#156). Check that job
    before claiming prod is updated. Check CodeQL + Dependabot every release.
 9. **No irreversible local/infra destruction** (`docker volume rm/prune`, `compose down -v`,
-   `system prune`, dropping non-`test_*` DBs, `rm -rf` of data dirs) without explicit user
+   `system prune`, dropping non-`test_*` DBs, recursive `rm` of data dirs) without explicit user
    authorization naming the resource.
 10. **No real API keys / paid-service credentials in any test or CI job** — mock the call or use an
     empty/dummy credential (free local fallback). CI passes `GEMINI_API_KEY: ""`.

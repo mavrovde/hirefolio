@@ -146,7 +146,7 @@ pre-existing vs introduced. Caveat: a green publish updates the host only when t
 ## 8. No irreversible LOCAL/infra destruction without explicit authorization
 
 Never `docker volume rm`/`prune`, `docker compose down -v`/`--volumes`, `docker system prune`,
-`docker image prune -a`, DROP/recreate a **non-`test_*`** database, or `rm -rf` a data dir / volume
+`docker image prune -a`, DROP/recreate a **non-`test_*`** database, or a recursive `rm` of a data dir / volume
 mount **without explicit user authorization naming the resource** — a backup is **not** consent. Only
 `test_*` DBs may be dropped autonomously. Origin: the #91 incident where a subagent ran
 `docker volume rm mavrovde_open-webui_data` on its own initiative. Enforced by CLAUDE.md **rule 9** and

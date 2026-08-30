@@ -151,15 +151,19 @@ inspect_segment() {
       return 0
     fi
   fi
-  # 5. Recursive+force rm targeting a persistent data / volume / mount path.
-  #    Flag-order and spelling agnostic: matches short clusters (-rf, -fr, -Rf),
-  #    separated flags in any order (rm -r ... -f, rm -f ... -r), and the long
-  #    forms (--recursive / --force) — each of which is still `rm -rf` in effect.
+  # 5. RECURSIVE rm targeting a persistent data / volume / mount path.
+  #    `-f` is deliberately NOT required (#188): `rm -R ./data` destroys the
+  #    directory just as irreversibly — the force flag only suppresses prompts
+  #    for write-protected files, it is not what makes the delete dangerous.
+  #    Flag-order and spelling agnostic: short clusters (-rf, -fr, -Rf, -R, -r),
+  #    separated flags in any order, and the long form --recursive.
   if printf '%s' "$seg" | grep -Eq '^rm ' \
-     && printf '%s' "$seg" | grep -Eq '(^|[ ])(-[A-Za-z]*[rR][A-Za-z]*|--recursive)([ ]|$)' \
-     && printf '%s' "$seg" | grep -Eq '(^|[ ])(-[A-Za-z]*f[A-Za-z]*|--force)([ ]|$)'; then
-    if printf '%s' "$seg" | grep -Eiq '(^|[ =/])(data|pgdata|postgres[-_]?data|db[-_]?data|volumes?|ollama|open-webui|\.chrome-profile|linkedin_cookies)([/ ]|$)'; then
-      REASON="BLOCKED: 'rm -rf' targeting a persistent data/volume path (data/pgdata/volumes/ollama/open-webui/.chrome-profile/…). Irreversible and unauthorized. Prefix GUARD_DESTRUCTIVE=0 only for a path the user explicitly told you to delete."
+     && printf '%s' "$seg" | grep -Eq '(^|[ ])(-[A-Za-z]*[rR][A-Za-z]*|--recursive)([ ]|$)'; then
+    # Boundaries accept a surrounding quote too: `rm -R "./data"` is the same
+    # delete as `rm -R ./data`, but a trailing `"` used to defeat the `([/ ]|$)`
+    # terminator and slip through (found reviewing #188).
+    if printf '%s' "$seg" | grep -Eiq '(^|[ =/"'"'"'])(data|pgdata|postgres[-_]?data|db[-_]?data|volumes?|ollama|open-webui|\.chrome-profile|linkedin_cookies)([/ "'"'"']|$)'; then
+      REASON="BLOCKED: recursive 'rm' targeting a persistent data/volume path (data/pgdata/volumes/ollama/open-webui/.chrome-profile/…). Irreversible and unauthorized. Prefix GUARD_DESTRUCTIVE=0 only for a path the user explicitly told you to delete."
       return 0
     fi
   fi
