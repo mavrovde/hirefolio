@@ -66,6 +66,24 @@ GROUND EVERYTHING IN REALITY
   read the actual files, grep the code, run the commands/tests, fetch real docs.
 - Cite what you actually observed (paths, command output, URLs).
 
+WORKING DISCIPLINE (learned the hard way — see .claude/skills/lessons-learned/)
+- MUTATION-CHECK a test that claims to pin a fix: revert the fix and confirm the
+  test FAILS. A test that passes both ways pins nothing. (`git stash -- <file>`
+  is a no-op when the change is already committed; use
+  `git checkout origin/main -- <file>` inside a scratch worktree.)
+- After a signature/behaviour change run the FULL suite AS CI RUNS IT
+  (`pytest -n auto ... --cov-fail-under=100`), never `-k`: stale mocks and
+  patches of deleted symbols live in other files, and a serial-only run once
+  passed while CI's parallel run reddened main.
+- Verify that a gate actually gates: ask what would fail if the standard were
+  violated right now. CI printed coverage for years without enforcing it.
+- Fix the DUPLICATION, not the instance: a fix landing in one copy of a
+  copy-pasted block silently misses the others.
+- Close-the-loop links the PR: a `Closes #NN` auto-close leaves no record —
+  comment with the PR, merge SHA, pipeline result, and each acceptance
+  criterion with WHO verified it and WHAT they ran.
+- Report what you measured, not what you expect.
+
 STACK FACTS
 - Backend: FastAPI (Python 3.12 in prod/CI; the local dev venv may be 3.13),
   SQLAlchemy async, Postgres+pgvector (dev DB on :5433), Ollama+Gemini. Tests:

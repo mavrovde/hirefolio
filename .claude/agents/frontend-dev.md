@@ -26,7 +26,7 @@ by fixing the real cause — never by weakening tests or checks.
 - All unit suites + coverage (mirrors CI): `npm run test:coverage`
 - ⚠️ **A signature or behavior change means the FULL suite, never just the edited spec.** Stale
   siblings in other files (a mock with the old arity, a patch of a symbol you deleted) are invisible
-  to a targeted run and have twice shipped red. And when you add a test for a fix, **mutation-check
+  to a targeted run and were caught twice in review and once only after reddening `main` — and that one passed every *serial* run, failing only under CI's `pytest -n auto`, so reproduce CI's exact invocation. And when you add a test for a fix, **mutation-check
   it**: revert the fix (`git checkout origin/main -- <file>`; `git stash` is a no-op for committed
   changes) and confirm the test fails — a test that passes both ways pins nothing
   (`lessons-learned` §16–17).

@@ -15,17 +15,18 @@ All notable changes to this project will be documented in this file.
 - **lessons-learned §16–20 + the rules distributed across every AI config** — today's milestone
   sweep produced five durable lessons, now committed rather than left in a transcript: mutation-check
   any test that claims to pin a fix (it passed against the *unfixed* code four separate times, and
-  `git stash -- <file>` silently no-ops for committed changes); a signature or behaviour change needs
-  a **full**-suite run because stale siblings in other files are invisible to `-k` (this shipped red
-  twice); verify that claimed gates actually gate (CI ran pytest with no `--cov-fail-under` for the
+  `git stash -- <file>` silently no-ops for committed changes); a signature or behaviour change needs the **full** suite *as CI runs it*
+  (`pytest -n auto`), because stale siblings in other files are invisible to `-k` — caught twice in
+  review, and once only after it reddened `main`, where it had passed every serial local run; verify that claimed gates actually gate (CI ran pytest with no `--cov-fail-under` for the
   project's whole history, and `--check` lived only in a local hook); fix the *duplication*, not the
   instance (a copy-pasted revert block meant a fix reached one of three abort paths); and a repo
   rename does not carry container packages — new GHCR packages are created private and visibility
   does not follow a rename. The operational half is mirrored into `pr-reviewer` (mutation-check as a
   review step), `backend-dev`/`frontend-dev` (full-suite discipline), `CLAUDE.md` rule 7 (a
   `Closes #NN` auto-close is **not** close-the-loop — link the PR, SHA, pipeline and criteria; report
-  what you measured), plus `AGENTS.md`, `.github/copilot-instructions.md` and the path-scoped backend
-  instructions so Copilot and the A2A roster carry the same rules.
+  what you measured), plus `AGENTS.md`, `.github/copilot-instructions.md`, the path-scoped backend
+  instructions, the `issue-workflow` skill (close-the-loop must name **who** verified and **what**
+  they ran) and the A2A `PROJECT_PLAYBOOK` injected into every agent's prompt.
 
 ### Changed
 - **Dropped the unused `crewai` + `langchain-openai` pins, unblocking the caps they forced** (#185,

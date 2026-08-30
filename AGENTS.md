@@ -65,8 +65,9 @@ DB clobbers concurrent suites).
 - **Mutation-check tests that pin a fix**: revert the fix and confirm the test fails — a test that
   passes both ways pins nothing (`git stash -- <file>` is a no-op for committed changes; use
   `git checkout origin/main -- <file>`).
-- **Signature/behavior changes need the FULL suite**, never `-k` — stale mocks and patches of deleted
-  symbols live in other files and have twice shipped red.
+- **Signature/behaviour changes need the FULL suite *as CI runs it*** (`pytest -n auto … --cov-fail-under=100`),
+  never `-k` — stale mocks and patches of deleted symbols live in other files; caught twice in review,
+  once only after reddening `main`, where it had passed every serial local run.
 - **Verify gates actually gate**: ask what would fail if the standard were violated right now.
 - **Close-the-loop links the PR**: a `Closes #NN` auto-close leaves no record — comment with the PR,
   merge SHA, pipeline result and each acceptance criterion.
