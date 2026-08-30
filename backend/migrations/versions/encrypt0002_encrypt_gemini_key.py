@@ -7,7 +7,7 @@ encrypts any existing plaintext value in place.
 Safety / issue #143:
 
 * The data step is **guarded by the encryption key**: when
-  ``GEMINI_ENCRYPTION_KEY`` is unset, ``app.services.crypto.encrypt`` returns the
+  ``HIREFOLIO_GEMINI_ENCRYPTION_KEY`` is unset, ``app.services.crypto.encrypt`` returns the
   value unchanged, so nothing is rewritten — the column merely widens (harmless,
   reversible) and rows stay plaintext, still readable via the passthrough. When
   the key IS set, existing plaintext rows are encrypted with the ``enc:v1:``
@@ -79,7 +79,7 @@ def downgrade() -> None:
             continue
         plain = decrypt(raw)
         if plain is None:
-            # decrypt() fails safe to None when GEMINI_ENCRYPTION_KEY is
+            # decrypt() fails safe to None when HIREFOLIO_GEMINI_ENCRYPTION_KEY is
             # missing/rotated/malformed. Writing that None back would overwrite
             # the encrypted credential with NULL — an unrecoverable wipe on
             # rollback. Refuse: abort the whole downgrade (transactional DDL
@@ -87,8 +87,8 @@ def downgrade() -> None:
             # correct key and retry. Never destroy data on downgrade.
             raise RuntimeError(
                 f"Cannot decrypt users.gemini_api_key (id={row.id}) during "
-                "downgrade: GEMINI_ENCRYPTION_KEY is missing, rotated, or "
-                "malformed. Set the correct key and re-run the downgrade; "
+                "downgrade: HIREFOLIO_GEMINI_ENCRYPTION_KEY is missing, rotated, "
+                "or malformed. Set the correct key and re-run the downgrade; "
                 "refusing to overwrite the encrypted credential with NULL."
             )
         conn.execute(

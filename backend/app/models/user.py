@@ -22,7 +22,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Encrypted at rest (issue #143): the paid Gemini credential is stored as a
     # Fernet token via EncryptedString, transparently decrypted on read. Falls
-    # back to plaintext passthrough when GEMINI_ENCRYPTION_KEY is unset.
+    # back to plaintext passthrough when HIREFOLIO_GEMINI_ENCRYPTION_KEY is unset.
     gemini_api_key: Mapped[str | None] = mapped_column(EncryptedString(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now

@@ -11,6 +11,7 @@ cannot mask an assertion.
 """
 
 import contextlib
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -103,6 +104,30 @@ def test_direct_construction_uses_the_alias_not_the_field_name():
     )
 
 
+async def _startup_output(monkeypatch, capsys) -> str:
+    """Run lifespan far enough to emit the config warnings, and return stdout.
+
+    The warning block sits at the very top of ``lifespan``, so this stops
+    startup immediately afterwards: ``async_session`` is replaced with something
+    that raises, which keeps the test from opening a real connection to
+    ``settings.database_url`` — the DEV database by default. A unit test must
+    never write there.
+    """
+    from app.main import app, lifespan
+
+    monkeypatch.setenv("HIREFOLIO_GEMINI_API_KEY", "set-so-startup-succeeds")
+    monkeypatch.setattr("app.main.async_session", MagicMock(side_effect=RuntimeError))
+
+    with (
+        patch("httpx.AsyncClient.get", new_callable=AsyncMock),
+        contextlib.suppress(Exception),
+    ):
+        async with lifespan(app):
+            pass  # pragma: no cover — startup is aborted before it yields
+
+    return capsys.readouterr().out
+
+
 @pytest.mark.asyncio
 async def test_startup_warns_about_a_legacy_variable_still_set(monkeypatch, capsys):
     """A stale host `.env` must degrade LOUDLY, not silently (#141).
@@ -111,25 +136,43 @@ async def test_startup_warns_about_a_legacy_variable_still_set(monkeypatch, caps
     machine running the suite happens to export the legacy name — an
     environment-dependent 100% is not a gate.
     """
-    from app.main import app, lifespan
-
-    monkeypatch.setenv("HIREFOLIO_GEMINI_API_KEY", "set-so-startup-succeeds")
     monkeypatch.setenv("GEMINI_ENCRYPTION_KEY", "legacy-still-set")
     monkeypatch.delenv("HIREFOLIO_GEMINI_ENCRYPTION_KEY", raising=False)
     # ...and a legacy name reported by the host through the container-safe list.
     monkeypatch.setenv("LEGACY_GEMINI_ENV", "GEMINI_MODEL")
     monkeypatch.delenv("HIREFOLIO_GEMINI_MODEL", raising=False)
 
-    # Startup may fail later for unrelated reasons (DB/Ollama in a unit run);
-    # the warning is printed before any of that, so swallow-and-inspect.
-    with contextlib.suppress(Exception):
-        async with lifespan(app):
-            pass
+    out = await _startup_output(monkeypatch, capsys)
 
-    out = capsys.readouterr().out
     assert "GEMINI_ENCRYPTION_KEY is set but is IGNORED" in out
     assert "HIREFOLIO_GEMINI_ENCRYPTION_KEY" in out, "the message must name the fix"
     assert "GEMINI_MODEL is set but is IGNORED" in out, (
         "a legacy name reported via LEGACY_GEMINI_ENV must warn too — in a "
         "container the legacy variable itself is never present"
+    )
+
+
+@pytest.mark.asyncio
+async def test_startup_is_quiet_when_no_legacy_variable_is_set(monkeypatch, capsys):
+    """The negative half of the control, which the positive test cannot prove.
+
+    Without this, replacing the condition with ``if True:`` warns on every clean
+    boot and the whole suite still passes — the warning would cry wolf until
+    operators learned to ignore it, which is the failure this control exists to
+    prevent.
+    """
+    for name in (
+        "GEMINI_API_KEY",
+        "GEMINI_ENCRYPTION_KEY",
+        "GEMINI_MODEL",
+        "GEMINI_MODEL_FALLBACK",
+        "LEGACY_GEMINI_ENV",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    out = await _startup_output(monkeypatch, capsys)
+
+    assert "CONFIG WARNING" not in out, (
+        "a clean environment must boot silently; a warning that always fires "
+        "trains operators to ignore it"
     )
