@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **`main` unblocked: the `max_turns` test no longer runs the app lifespan** — the test added in
+  #187 used `TestClient(app)`, which starts the FastAPI **lifespan**; the lifespan seeds the admin
+  user, so it needs a schema the xdist worker DB does not have. Green in a serial local run, red
+  under CI's `pytest -n auto` (`relation "users" does not exist`), which reddened the deploy. It now
+  uses the shared async `client` fixture like every other API test. Verified with CI's exact
+  invocation this time — `pytest -n auto --cov-fail-under=100` → 788 passed, 100%.
+
 ### Added
 - **CI now enforces the 100% coverage standard** — the backend test job ran
   `pytest --cov=app --cov-report=...` with **no `--cov-fail-under`**, and `pyproject.toml`'s
