@@ -826,14 +826,17 @@ jobs:
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            DEPLOY_DIR="$DEPLOY_DIR" VERSION="$VERSION" IMAGE_REPO="$IMAGE_REPO" 'bash -s' <<'REMOTE'
+            "DEPLOY_DIR='$DEPLOY_DIR' VERSION='$VERSION' IMAGE_REPO='$IMAGE_REPO' bash -s" <<'REMOTE'
           set -euo pipefail
+          umask 077
           cd "$DEPLOY_DIR"
-          # Record the previous coordinates for rollback; update only these two keys.
-          cp .env .env.rollback
+          # Record ONLY the previous image coordinates for rollback — never a full
+          # copy of .env (it holds every prod secret; security finding on #175).
+          { grep '^IMAGE_TAG=' .env || true; grep '^IMAGE_REPO=' .env || true; } > .env.rollback
           grep -v '^IMAGE_TAG=' .env | grep -v '^IMAGE_REPO=' > .env.new || true
           printf 'IMAGE_REPO=%s\nIMAGE_TAG=%s\n' "$IMAGE_REPO" "$VERSION" >> .env.new
           mv .env.new .env
+          chmod 600 .env
           docker compose -f docker-compose.prod.yml pull
           # Recreates only changed services; volumes are NEVER touched (rule 9).
           docker compose -f docker-compose.prod.yml up -d
@@ -872,11 +875,16 @@ jobs:
         run: |
           echo "Rolling back to previous image coordinates..."
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            DEPLOY_DIR="$DEPLOY_DIR" 'bash -s' <<'REMOTE'
+            "DEPLOY_DIR='$DEPLOY_DIR' bash -s" <<'REMOTE'
           set -euo pipefail
           cd "$DEPLOY_DIR"
           if [ -f .env.rollback ]; then
-            mv .env.rollback .env
+            # .env.rollback holds only the previous IMAGE_REPO/IMAGE_TAG lines.
+            grep -v '^IMAGE_TAG=' .env | grep -v '^IMAGE_REPO=' > .env.new || true
+            cat .env.rollback >> .env.new
+            mv .env.new .env
+            chmod 600 .env
+            rm -f .env.rollback
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
             echo "Rolled back."
