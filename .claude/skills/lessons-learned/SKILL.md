@@ -142,8 +142,13 @@ causes on red (fix-forward, never silent rollback). Only then tag `vX.Y.Z` (a ta
 re-trigger the branch pipeline). **Check GitHub security reports every release** — CodeQL
 (`gh api .../code-scanning/alerts`) + Dependabot (`.../dependabot/alerts`) — triage each and note
 pre-existing vs introduced. Caveat: a green publish updates the host only when the secrets-gated
-`deploy` rollout job ran (#175); with `DEPLOY_*` unset it skips and the run is still green
-("published ≠ live", #112) — check the job's status rather than assuming.
+`deploy` rollout job actually rolled (#175). **With `DEPLOY_*` unset the job does NOT show up as
+`skipped` — it runs and reports `success` as a guarded no-op**, logging the notice
+`DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY not configured — images are published but NOT rolled onto a
+host`. So the job *status* is a false positive here: read the job's **log** (or probe the live
+footer / `curl https://mavrov.de`) before ever saying "prod is on vX.Y.Z" ("published ≠ live", #112).
+Confirmed again at the v1.10.0 release: run 33326238612 was 21/21 green with the rollout job
+`success`, while live prod still served v1.2.27.
 
 ## 8. No irreversible LOCAL/infra destruction without explicit authorization
 
