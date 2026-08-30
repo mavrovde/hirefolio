@@ -53,11 +53,6 @@ All notable changes to this project will be documented in this file.
   premise did not reproduce:** per-chunk timings through the public proxy showed nginx already
   forwarding incrementally (365 chunks, first at 1.6 s, spread over 99 s) *without* the directives.
   This ships as an explicit guarantee rather than a bug fix — today's behaviour is incidental on
-  chunk sizes versus nginx's default buffers — and removes the public/admin asymmetry.
-  `proxy_buffering off`, `proxy_cache off`, and `proxy_read_timeout 300`. **Measured first, and the issue's
-  premise did not reproduce:** per-chunk timings through the public proxy showed nginx already
-  forwarding incrementally (365 chunks, first at 1.6 s, spread over 99 s) *without* the directives.
-  This ships as an explicit guarantee rather than a bug fix — today's behaviour is incidental on
   chunk sizes versus nginx's default buffers — and removes the public/admin asymmetry. The change
   also raises `proxy_read_timeout` to 300 s, which is the part with real teeth: a cold model took
   **26 s** to its first chunk against nginx's 60 s default.
@@ -132,15 +127,6 @@ All notable changes to this project will be documented in this file.
   what you measured), plus `AGENTS.md`, `.github/copilot-instructions.md`, the path-scoped backend
   instructions, the `issue-workflow` skill (close-the-loop must name **who** verified and **what**
   they ran) and the A2A `PROJECT_PLAYBOOK` injected into every agent's prompt.
-- **A missing Ollama model no longer reads as generated content** (#199) — `/api/chat` answers **404**
-  when the configured model is not pulled, and the streaming loop ignored the status, so the canned
-  goal-fallback text (`"I believe we must focus on my goal: …"`) reached the client as if it were a
-  real turn. A half-provisioned stack therefore looked *healthy* to every gate: well-formed stream,
-  `done:true`, plausible prose. Non-200 responses now log the status **and the model name** for the
-  operator and emit the degraded chunk instead. Regression test asserts the fallback text is absent
-  and the log names the model; it fails against the unfixed service.
-
-
 ## [1.9.0] - 2026-08-30
 
 ### Added
