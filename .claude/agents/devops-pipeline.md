@@ -64,12 +64,19 @@ Other: `Proxy Config Audit`, `Build * Image`, and E2E/deploy jobs.
    at which point summarize what was tried and why it's still failing, and ask
    the user how to proceed.
 
+## Green pipeline ≠ live on the host (#112 / #156)
+**A green `deploy.yml` run means the images were PUBLISHED to the registry — it does NOT mean the
+prod host is running them.** The pipeline currently has no host-rollout step, so never report
+"prod is updated" / "the site now runs vX.Y.Z" from a green run alone. To claim prod is live on a
+version, verify the live site itself (e.g. the footer `BE: vX.Y.Z`, or the deployed endpoint) —
+otherwise state explicitly that images are published and the host rollout is still pending.
+
 ## Issue workflow — close-the-loop after a green deploy
 Once the pipeline is green for a merge that `Closes #NN` / `Fixes #NN` / `Refs #NN` (see `CLAUDE.md`
 → *Issue tracking, milestones & labels*):
 1. **Verify the deploy against the issue's acceptance criteria / How-to-verify steps** — never on
    assumption. Check the live result where the issue says to (e.g. the deployed version, the endpoint,
-   the page).
+   the page). Remember: green pipeline = published, not live (see above) — check the actual host.
 2. **Comment on each linked issue** with what shipped + links (the PR, the green run URL, the release
    tag), noting how the acceptance criteria were met.
 3. **Close** the issue if fully satisfied (`Closes #NN` auto-closes on merge — confirm it did);

@@ -72,6 +72,13 @@ run_checks() {
 
   if [ "$PREPUSH_RUN_BACKEND" = "1" ]; then
     echo "== backend pytest =="
+    # Never run two pytest suites at once: both use the shared test_mavrov DB and
+    # do drop_all/create_all per test, clobbering each other into dozens of
+    # spurious failures (lessons-learned §4). Fail fast instead of running dirty.
+    if pgrep -f pytest >/dev/null 2>&1; then
+      echo "Another pytest run is already active (pgrep -f pytest). The shared test_mavrov DB cannot host two suites at once — wait for it to finish, then push again."
+      return 1
+    fi
     ( cd "$ROOT/backend" && GEMINI_API_KEY="" ./venv/bin/pytest -q ) || return 1
   fi
 

@@ -1,52 +1,94 @@
-# ⚡ GLOBAL AI MISSION COMMAND FOR MAVROV.DE ⚡
+# Copilot instructions — mavrov.de
 
-**ROLE:** You are an uncompromising, elite Senior Full-Stack Architect. Your output must emulate perfection. You have ZERO TOLERANCE for technical debt, sloppy typing, missing tests, or inefficient resource usage.
+**`CLAUDE.md` at the repo root is the single source of truth for how AI assistants work here.**
+This file summarizes it for GitHub Copilot; if anything below seems to conflict with `CLAUDE.md`,
+`CLAUDE.md` wins. Path-scoped detail lives in `.github/instructions/*.instructions.md`; durable
+operational lessons live in `.claude/skills/lessons-learned/SKILL.md` — read the matching section
+before touching SSR/HTTP code, running backend pytest, adding CI caching, or preparing a release.
 
-## 🛑 NON-NEGOTIABLE DIRECTIVES
-1. **ZERO-GUESSWORK POLICY:** You are expressly forbidden from writing code without first mapping the exact architectural flow and reading all relevant dependent files. NEVER assume a file's structure. Use file-reading tools extensively before modifying.
-2. **100% COVERAGE OR FAILURE:** A code change without exhaustive test coverage is considered a critical failure. You MUST write or update tests (`pytest`/`vitest`/Playwright) for EVERY line of code modified. Test error states (400, 500, timeouts) as rigorously as happy paths.
-3. **CI/CD SANCTITY:** CI/CD minutes are expensive. NEVER push code that fails local linting or formatting. You MUST execute `ruff check .` && `ruff format .` in the backend and verify frontend compilation locally before suggesting a push.
-4. **NO ROGUE DEPLOYMENTS:** You shall NEVER modify `package.json` versions manually, nor execute raw Docker build commands. The ONLY permitted deployment mechanism is `./release.sh` (e.g., `./release.sh --patch`), and ONLY when the local environment is 100% verified green.
+## What this project is
 
-## 🏗️ ARCHITECTURAL LAWS
-### Backend (Python 3.12 / FastAPI)
-- **Typing is Law:** `mypy` strict mode passes are mandatory. Use `Pydantic` models for ALL data schemas. No untyped dictionaries or `Any`.
-- **Async Supremacy:** All I/O, especially database calls (`asyncpg`, SQLAlchemy), MUST be asynchronous. Blocking the main thread is a terminable offense.
-- **Dependency Inversion:** Hardcoded dependencies are banned. Use FastAPI `Depends()` universally.
+Personal portfolio + blog with semantic search and local AI, plus a LinkedIn → mavrov.de content
+pipeline. **Public repo** (`github.com/mavrovde/mavrov.de`) — never commit or paste secrets.
 
-### Frontend (Angular 18 / SSR / Tailwind CSS)
-- **`any` is Banned:** The use of `any` in TypeScript is strictly prohibited. Define explicit interfaces that mirror backend Pydantic models.
-- **Signals Only:** RxJS `BehaviorSubject` is legacy. You MUST manage state exclusively via Angular Signals (`signal`, `computed`, `effect`).
-- **SSR Safety Vault:** Direct DOM access (`window`, `localStorage`, `document`) without `isPlatformBrowser()` gating will crash the SSR engine. This is a critical violation. Always guard DOM interactions.
-- **Dumb Components:** UI components MUST NOT contain business logic or raw `fetch`/`HttpClient` calls. Delegate ALL logic to injected Singleton Services.
+- `backend/` — FastAPI (Python 3.12 in prod/CI), SQLAlchemy 2 async, PostgreSQL 16 + pgvector, Ollama.
+- `frontend/` — Angular 22 workspace: `projects/public` (SSR), `projects/admin` (CSR), `projects/shared`
+  (`@mavrov/shared` lib). TailwindCSS 4, Vitest 4, Playwright E2E.
+- `scraper/`, `importer/` — LinkedIn scraping + import pipeline. `agents/` — A2A multi-agent team.
+- `proxy/` — reverse proxy config. Infra: Docker Compose; deploy via `.github/workflows/deploy.yml`.
 
-## 🧠 EXECUTION PROTOCOL (Step-by-Step)
-When given a task, you MUST silently execute this logical sequence before writing code:
-1. **Reconnaissance:** Identify the target file, its dependencies, and the test suite that covers it.
-2. **Blast Radius Analysis:** Determine what other components or APIs will break if this change is made.
-3. **Draft the Interface:** Define the TypeScript/Pydantic types first.
-4. **Implement with Defense:** Write code assuming malicious input and network failure.
-5. **Enforce Coverage:** Write the tests.
-6. **Local Verification:** Format, Lint, Test.
+## Build & test commands (run these; don't guess)
 
-## 🐞 BULLETPROOF DEBUGGING STRATEGY
-When encountering a bug or a failed test, you MUST adhere to the following strict methodology:
-1. **No Workarounds (Zero Tolerance):** You are forbidden from writing "band-aid" fixes or temporary workarounds (e.g., adding arbitrary `setTimeout`, ignoring exceptions silently, suppressing TypeScript/linter errors).
-2. **Identify the True Root Cause:** You MUST trace the error back to its absolute origin. If a component fails to render data, do not patch the component; check the service, then the API, then the SQL query until the source is definitively proven. 
-3. **Extensive Debug Logging:** Before attempting a solution, insert verbose, high-context debug statements to capture the precise system state at the point of failure. Remove them once the stable solution is confirmed.
-4. **Stable Solution Only:** The final code must be mathematically and logically sound, addressing the core architectural deficiency that allowed the bug to exist. 
-5. **Regression Prevention:** Once the stable solution is implemented, you MUST immediately write a test (or update an existing one) specifically designed to permanently prevent this exact bug from recurring.
+Backend (`cd backend`, venv at `backend/venv`):
+- `pytest` — needs Postgres on `127.0.0.1:5433` and `TEST_DATABASE_URL` pointing at a `test_*` DB
+  (e.g. `test_mavrov`) plus `GEMINI_API_KEY=""`. Without those it hangs on / would wipe the live dev DB.
+- `ruff check .` && `ruff format --check .` · `mypy app --ignore-missing-imports --no-error-summary`
+  · `bandit -r app -ll --skip B101`
 
-## 🧼 CLEAN CODE & AGGRESSIVE REFACTORING
-- **Meaningful Names:** Variables, functions, and classes MUST unequivocally describe their purpose. Banish ambiguous abbreviations (e.g., `x`, `data`, `res`).
-- **Small Functions:** A function should do exactly ONE thing and be no longer than 20-30 lines. If it grows, extract it.
-- **Guard Clauses:** Banish deep nesting. Return early. `if (!valid) return;` is infinitely superior to nesting the entire function logic inside `if (valid) { ... }`.
-- **Delete Dead Code Automatically:** If you identify code, imports, or files that are unused (or commented out code blocks), you MUST delete them immediately. Do not leave "just in case" code.
-- **Eradicate Legacy Patterns:** If you encounter deprecated functions or legacy patterns (e.g., old RxJS paradigms where Signals should be) while working in a file, proactively refactor them to the modern standard. Do not let technical debt survive your presence.
+Frontend (`cd frontend`):
+- `npm run test:coverage` (all projects, 100% coverage each) or `npm run test:{shared,public,admin}`
+- `npm run build` — build `shared` before `public`/`admin`.
 
-## 📝 CODE QUALITY & COMPLIANCE
-- **SOLID & Clean:** Functions must be focused on a single responsibility. Avoid creating monolithic files. 
-- **Graceful Degradation:** NEVER expose a raw stack trace to the frontend. Catch all exceptions, log them with deep technical context securely in the backend, and return standard REST error models to the client.
-- **Commit Standards:** Git commits MUST follow Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`). Commits must be atomic.
-- **Documentation:** Inline comments must explain *why*, not *what*. Always update `README.md` and related docs synchronously with code changes, ensuring architecture maps remain perfectly accurate.
-- **Changelog Maintenance:** You MUST document every significant development or change in `CHANGELOG.md` under the `[Unreleased]` section. Update the changelog as an integral part of your coding task before completing it.
+Full stack: `./manage.sh start|stop|logs` · `./verify_all.sh` (full suite incl. Docker E2E).
+
+## Non-negotiable rules (from CLAUDE.md — enforced)
+
+1. **Root cause, no band-aids.** No arbitrary `setTimeout`, swallowed exceptions, or suppressed
+   type/lint errors. Trace bugs to their origin.
+2. **Tests with every change.** Coverage stays at 100% (backend pytest and every frontend project).
+   Cover error paths (400/500/timeouts). Add a regression test for every bug fixed.
+3. **Deliver via PR; never push to `main` directly.** Branch → PR → merge; the merge to `main` IS
+   the prod deploy trigger. Run the full local suite before pushing.
+4. **Typing is law.** Pydantic models on the backend; explicit TypeScript interfaces (no `any`)
+   mirroring them. All backend I/O is async.
+5. **Frontend discipline.** State via RxJS Observables + the `async` pipe (primary); signals only
+   sparingly for local component state — do NOT refactor RxJS to signals. Guard DOM access with
+   `isPlatformBrowser()`. Components stay dumb; logic lives in injected services.
+6. **Dependencies.** Upgrade within current majors only; breaking majors are separate deliberate
+   efforts. `linkedin-api` stays `2.2.1`. Update `requirements.txt` and `requirements-dev.txt` together.
+7. **Docs + changelog with code.** Update `README.md` and `CHANGELOG.md` `[Unreleased]` as part of
+   every change. Conventional Commits (`feat:`/`fix:`/`chore:`/`docs:`), atomic.
+8. **No rogue prod actions.** Deploy only via merge to `main`. A release is confirmed only when
+   `deploy.yml` is green end-to-end — and even then, **green pipeline = images PUBLISHED, NOT live
+   on the prod host** (issues #112/#156): never claim the site is updated from a green run alone.
+9. **No irreversible local/infra destruction.** Never `docker volume rm`/`prune`,
+   `docker compose down -v`, `docker system prune`, `docker image prune -a`, DROP a non-`test_*`
+   database, or `rm -rf` a data/volume dir (`data`, `pgdata`, `ollama`, `open-webui`,
+   `.chrome-profile`, …) without explicit user authorization naming the resource. A backup is NOT
+   consent. Only `test_*` databases may be dropped autonomously.
+10. **NEVER use real API keys or paid-service credentials in tests or CI.** Mock paid calls at the
+    test boundary (`page.route`, monkeypatch) or supply an empty/dummy credential so the code takes
+    a free local fallback (Ollama). CI test jobs inject `GEMINI_API_KEY: ""` — never `secrets.*`.
+    Real credentials belong only to the production runtime environment.
+11. **Every PR needs an independent review verdict before merge — no exceptions.** Green CI and the
+    author's own validation are necessary but not sufficient. Hotfixes get an expedited review, not
+    a skipped one.
+
+## Operational lessons (hard-won — do not re-learn)
+
+- **Never run backend pytest while another suite runs.** `pgrep -f pytest` first and wait; two
+  suites on the shared `test_mavrov` DB clobber each other into spurious failures.
+- **Before blaming your diff for a local gate failure, reproduce it on an unmodified `main` build**
+  (git worktree of `main`, same gate). If `main` fails too, it's a latent gate bug.
+- **Local proxy HTTPS is on host port 10443** (`https://localhost:10443`); `https://localhost/`
+  returns nothing.
+- **The public app is zoneless** (no zone.js at runtime): async property mutations in
+  `subscribe`/`setInterval` don't repaint — use the `async` pipe, signals, or `markForCheck()`.
+  Unit tests hide this; only the Docker E2E catches it.
+- **SSR URL rewrite lives in `SsrHttpBackend` delegating to `HttpXhrBackend`** — never an
+  interceptor, never `FetchBackend`. Any SSR/HTTP/transfer-cache change must pass the full Docker
+  E2E before merge (PR CI runs CodeQL only).
+
+## Issue & PR flow
+
+- Every piece of work is a GitHub issue with a **milestone**, one **priority** label
+  (`P0-critical`…`P3-low`), and ≥1 **area** label (`backend`/`frontend`/`infra`/`ci-cd`/…).
+- Issues follow the template: Summary → Why it matters → Impact → Current state (cite `path:line`) →
+  Proposed action → Acceptance criteria → How to verify → Links.
+- PRs link issues (`Closes #NN` / `Refs #NN`) and state how each acceptance criterion is met.
+  Verify against acceptance criteria before closing an issue — never close on assumption.
+
+## Execution protocol
+
+Reconnaissance (read the target + its deps + its tests) → blast-radius analysis → define types
+first → implement defensively → write/update tests → verify locally (format, lint, type, test).

@@ -78,8 +78,30 @@ All notable changes to this project will be documented in this file.
   footguns; `verify_proxy_routes.py` dispatches any
   HTTP method (the old GET/PUT/POST chain left `response` unbound for other methods). Release
   runbook docs (`.claude/commands/release.md`, `.claude/agents/release-manager.md`) synced.
+### Changed
+- **AI-config hooks hardened** (Refs #115, #121, #122) — `pre-push-tests.sh` now fails fast when
+  another pytest suite is already running (`pgrep -f pytest`; two suites clobber the shared
+  `test_mavrov` DB), and `guard-destructive.sh` closes the `rm --recursive --force` /
+  separated-flag / `-Rf` bypass of the data-dir rule (pattern 5), with new deny/allow self-test
+  cases in `guard-destructive.test.sh`.
 
 ### Docs
+- **Operational lessons folded into agent charters** (Refs #115, #121, #122) —
+  `.claude/agents/{backend-dev,frontend-dev,devops-pipeline,release-manager,pr-reviewer}.md` and
+  `agents/common/roster.py` (`PROJECT_PLAYBOOK`) now carry: never run backend pytest concurrently
+  (`pgrep -f pytest` first), bisect local gate failures against an unmodified `main` build
+  (lessons-learned §13), local proxy HTTPS on host port 10443, and the "green `deploy.yml` =
+  images published, NOT live on the host" doctrine (#112/#156). `.claude/commands/release.md`
+  drops its stale verify_all.sh conda-path warning (fixed long ago) and both `release.md` and
+  `verify.md` encode the same lessons.
+- **GitHub Copilot parity** (Refs #115, #121, #122) — `.github/copilot-instructions.md` rewritten
+  in sync with the current `CLAUDE.md` (RxJS-primary — the old file wrongly mandated
+  "Signals only" on "Angular 18" — engineering rules 1–11, issue flow, published≠live,
+  no-real-credentials, destruction guardrail); new path-scoped
+  `.github/instructions/{backend,frontend,infra-ci}.instructions.md`, reusable
+  `.github/prompts/{verify,release-check}.prompt.md`, a root `AGENTS.md` for coding agents, and
+  `.github/workflows/copilot-setup-steps.yml` pre-installing deps for the Copilot coding agent.
+  `CLAUDE.md` remains the single source of truth; all Copilot files summarize and point back.
 - **lessons-learned §13–14** — two durable lessons from the #170 dependency sweep: bisect a
   failing local gate against an unmodified `main` build before blaming your diff (the stale
   pre-split admin-login proxy check failed on `main` too; prod "passing" was an artifact of the

@@ -151,8 +151,13 @@ inspect_segment() {
       return 0
     fi
   fi
-  # 5. `rm -rf` targeting a persistent data / volume / mount path.
-  if printf '%s' "$seg" | grep -Eq '^rm +(-[A-Za-z]*r[A-Za-z]*f|-[A-Za-z]*f[A-Za-z]*r|-r +-f|-f +-r)\b'; then
+  # 5. Recursive+force rm targeting a persistent data / volume / mount path.
+  #    Flag-order and spelling agnostic: matches short clusters (-rf, -fr, -Rf),
+  #    separated flags in any order (rm -r ... -f, rm -f ... -r), and the long
+  #    forms (--recursive / --force) — each of which is still `rm -rf` in effect.
+  if printf '%s' "$seg" | grep -Eq '^rm ' \
+     && printf '%s' "$seg" | grep -Eq '(^|[ ])(-[A-Za-z]*[rR][A-Za-z]*|--recursive)([ ]|$)' \
+     && printf '%s' "$seg" | grep -Eq '(^|[ ])(-[A-Za-z]*f[A-Za-z]*|--force)([ ]|$)'; then
     if printf '%s' "$seg" | grep -Eiq '(^|[ =/])(data|pgdata|postgres[-_]?data|db[-_]?data|volumes?|ollama|open-webui|\.chrome-profile|linkedin_cookies)([/ ]|$)'; then
       REASON="BLOCKED: 'rm -rf' targeting a persistent data/volume path (data/pgdata/volumes/ollama/open-webui/.chrome-profile/…). Irreversible and unauthorized. Prefix GUARD_DESTRUCTIVE=0 only for a path the user explicitly told you to delete."
       return 0

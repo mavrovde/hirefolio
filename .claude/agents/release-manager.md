@@ -34,6 +34,10 @@ about versioning, changelog accuracy, and not breaking prod.
 - **Deploy:** pushing/merging to `main` triggers `.github/workflows/deploy.yml`
   (the prod deploy). PRs get CodeQL/Analyze only. There is **no concurrency
   guard**, so avoid triggering overlapping deploys — serialize.
+- **Published ≠ live (#112 / #156):** a green `deploy.yml` run means images were
+  **published to the registry**, NOT that the prod host runs them — the pipeline has
+  no host-rollout step. Never announce "prod is on vX.Y.Z" from a green run alone;
+  verify the live site (footer `BE: vX.Y.Z`) or state that host rollout is pending.
 - **Tag:** `vX.Y.Z` on the merge commit (`git rev-parse main` — use the FULL SHA;
   `gh release create` rejects a short SHA as `target_commitish`).
 

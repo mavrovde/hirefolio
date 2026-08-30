@@ -38,9 +38,18 @@ the real cause — never by weakening tests or checks.
   tables. If a live stack is using that DB, run against an isolated DB instead:
   `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/mavrov_fix venv/bin/python -m pytest ...`
   (create it once: `docker exec mavrovde-db-1 psql -U postgres -p 5433 -c "CREATE DATABASE mavrov_fix;"`).
+  ⚠️ **NEVER run backend pytest while another suite is running.** Check `pgrep -f pytest` first and
+  wait until it returns nothing. Two suites on the shared `test_mavrov` DB clobber each other
+  (per-test `drop_all`/`create_all`) → dozens of spurious `InvalidRequestError`/count-mismatch
+  failures (lessons-learned §4). The pre-push hook runs pytest too — never start a manual run while
+  a `git push` gate is in flight.
 
 ## Workflow
 1. Reproduce the reported failure locally with the exact CI command.
+   **Before blaming your own diff for a local gate failure, reproduce it on an unmodified `main`
+   build** (`git worktree add /tmp/main-check main` → build/run the same gate there). If `main`
+   fails too, you're fixing a latent gate bug, not your regression — different fix, different PR
+   framing (lessons-learned §13, the #170 stale-proxy-check trap).
 2. Fix the **root cause** in `backend/` (not the test, unless the test itself is
    wrong — if so, explain why).
 3. Re-run the relevant check until it passes, then run the full suite + coverage

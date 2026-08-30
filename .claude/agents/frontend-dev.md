@@ -30,11 +30,18 @@ by fixing the real cause — never by weakening tests or checks.
   (per project: `npm run build:shared` | `:public` | `:admin`; build `shared` first)
 - E2E (needs the full stack; two projects): `npx playwright test`
   (`--project=public-e2e` on `BASE_URL`, `--project=admin-e2e` on `ADMIN_BASE_URL`=admin.localhost)
+- **Local proxy HTTPS is published on host port 10443** (`https://localhost:10443`; see
+  `PROXY_SSL_PORT` in `verify_proxy_routes.py`) — a plain `https://localhost/` curl returns `000`.
+  An Express `Cannot GET /x` body means no Angular route matched (SSR fell through), not an nginx 404.
 - Shared code (blog/stats/llm/language/storage services, translate pipe) lives in the
   `shared` lib; consuming apps get it via the `SHARED_ENVIRONMENT` + `AUTH_TOKEN_PROVIDER` tokens.
 
 ## Workflow
 1. Reproduce the reported failure locally with the exact CI command.
+   **Before blaming your own diff for a local gate failure, reproduce it on an unmodified `main`
+   build** (`git worktree add /tmp/main-check main && cd /tmp/main-check/frontend && npm ci && npm run build`,
+   then run the same gate). If `main` fails too, you're fixing a latent gate bug, not your
+   regression (lessons-learned §13, the #170 stale-proxy-check trap).
 2. Fix the **root cause** in the right project under `frontend/projects/` (not the
    test, unless the test is itself wrong — if so, explain why). For new coverage,
    prefer adding a `*.cov2.spec.ts` beside the file rather than editing existing specs.
@@ -46,6 +53,9 @@ by fixing the real cause — never by weakening tests or checks.
    - `git checkout -b fix/<slug> && git add -A && git commit -m "fix(frontend): ..." && git push -u origin fix/<slug> && gh pr create --fill --base main`
    - a shared pre-push hook (`.claude/hooks/pre-push-tests.sh`) runs docs + backend +
      frontend tests before the push completes; if it blocks, fix what it reports.
+   - **before pushing, `pgrep -f pytest` and wait until it returns nothing** — the hook runs
+     backend pytest on the shared `test_mavrov` DB, and two concurrent suites clobber each other
+     (lessons-learned §4).
    - **Your validation is NOT the merge gate.** However green your suite is, the PR still requires an
      **independent `pr-reviewer` APPROVAL** before anyone merges it (CLAUDE.md rule 11). Deliver the
      PR; do not merge it and do not treat "tests pass" as sign-off.

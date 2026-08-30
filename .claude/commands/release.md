@@ -39,8 +39,8 @@ Runs: backend `pytest` (Docker DB), frontend per-project `npm run test:coverage`
 `docker-compose.e2e.yml`, incl. the `admin-frontend` service, seed e2e user, `verify_proxy_routes.py`,
 Playwright `public-e2e` + `admin-e2e`). On failure: `git checkout VERSION backend/app/main.py
 frontend/package.json frontend/projects/public/src/app/version.ts` and stop.
-- ⚠️ `verify_all.sh` line ~26 hardcodes a conda python path (`/Users/sergii.mavrov/...`) — make it
-  portable (use `backend/venv` or `python3`) before running on any other machine.
+- `verify_all.sh` picks the pytest interpreter portably (`backend/venv/bin/python` if present, else
+  `python3`); override with `PYTEST_PYTHON=/path/to/python` if needed.
 
 ## 2b. Proxy smoke test — `./verify_proxy_startup.sh` (abort + revert on failure)
 
@@ -59,9 +59,11 @@ Backfill any tags that never got a Release. (`release.sh` tags but does not publ
 ## 5. Build & publish images — `./build_amd64_and_push.sh`
 Builds AMD64 backend/frontend/proxy and pushes them to the registry with the new tag.
 
-## 6. Prod server rollout
+## 6. Prod server rollout — REQUIRED; a green pipeline does NOT do this (#112 / #156)
 `docker compose -f docker-compose.prod.yml up -d` on the prod host pulls the new tagged images
-(that's why step 1b matters). Verify the deployed version (e.g. footer `BE: v<VERSION>`).
+(that's why step 1b matters). **A green `deploy.yml` only PUBLISHES images — it does not roll the
+host**, so never claim the site is updated from a green run alone. Verify the deployed version on
+the live site (e.g. footer `BE: v<VERSION>`).
 
 ## PR-based release (PREFERRED — used for v1.4.1/1.4.2/1.5.0/1.5.1)
 **Default to this over `release.sh`'s direct push to `main`.** Do steps 1–3 (bump + compose tags +
