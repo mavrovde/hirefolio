@@ -417,6 +417,11 @@ curl "http://localhost:8000/api/posts/search/semantic?q=ollama+embeddings&lang=e
 
 ## 🚢 Deployment
 
+> **Full runbook:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — clean-server first deploy, the
+> `DEPLOY_*` secrets that arm the automated rollout, and the required host `.env` values
+> (`ADMIN_PASSWORD`, `JWT_SECRET_KEY`).
+
+
 ### Production Build
 
 ```bash

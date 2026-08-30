@@ -22,6 +22,8 @@ Thumbs.db
 
 # Environment variables
 .env
+.env.*
+!.env.example
 .env.local
 
 # Project specific

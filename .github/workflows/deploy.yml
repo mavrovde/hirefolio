@@ -770,3 +770,185 @@ jobs:
           docker tag $SHA_TAG $REPO_BASE-proxy:$VERSION
           docker push $REPO_BASE-proxy:latest
           docker push $REPO_BASE-proxy:$VERSION
+
+
+  # ============================================
+  # ROLLOUT TO PROD HOST (opt-in via secrets)
+  # ============================================
+  # Closes the "published ≠ live" gap (#112/#156). Deploys the IMMUTABLE
+  # sha-<gitsha> tag (review #175: a mutable version tag made rollback a no-op),
+  # scopes pull/up to the four app services so the DB/ollama/open-webui images
+  # and volumes are never rolled by CI (#123-class drift; rule 9), verifies the
+  # running containers by image digest, health-gates, freshness-probes (#169),
+  # and rolls back to the previously recorded sha tag on failure. No-op until
+  # the owner adds DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY (docs/DEPLOYMENT.md).
+  deploy:
+    name: Roll Out To Prod Host
+    runs-on: ubuntu-latest
+    needs: [publish-backend, publish-frontend, publish-admin-frontend, publish-proxy]
+    env:
+      APP_SERVICES: backend frontend admin-frontend proxy
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check rollout secrets
+        id: gate
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ] && [ -n "$DEPLOY_SSH_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Rollout skipped::DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY not configured — images are published but NOT rolled onto a host (see docs/DEPLOYMENT.md)."
+          fi
+
+      - name: Set up SSH
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # TOFU on first contact; keyscan failure is loud, and once a key is
+          # recorded in this run, a mismatch aborts (StrictHostKeyChecking below).
+          ssh-keyscan -p "$DEPLOY_SSH_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          {
+            echo "Host prod"
+            echo "  HostName $DEPLOY_HOST"
+            echo "  Port $DEPLOY_SSH_PORT"
+            echo "  User ${{ secrets.DEPLOY_USER }}"
+            echo "  IdentityFile ~/.ssh/deploy_key"
+            echo "  IdentitiesOnly yes"
+            echo "  BatchMode yes"
+            echo "  StrictHostKeyChecking yes"
+          } >> ~/.ssh/config
+
+      - name: Roll out validated images
+        if: steps.gate.outputs.enabled == 'true'
+        id: rollout
+        env:
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+          SHA_TAG: sha-${{ github.sha }}
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        run: |
+          echo "mutated=true" >> "$GITHUB_OUTPUT"
+          ssh prod "DEPLOY_DIR='$DEPLOY_DIR' SHA_TAG='$SHA_TAG' IMAGE_REPO='$IMAGE_REPO' APP_SERVICES='$APP_SERVICES' bash -s" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          cd "$DEPLOY_DIR"
+          # A stale .env.rollback from an earlier run would make the rollback
+          # step roll a healthy prod one deploy backwards if this run aborts
+          # before mutating anything — start from a clean slate.
+          rm -f .env.rollback
+          # .env holds every prod secret. Refuse to touch it unless it is a
+          # readable file, and never install a rewrite that lost lines — a
+          # swallowed grep failure (unreadable/root-owned .env) would otherwise
+          # replace the whole file with just the two image lines and destroy
+          # POSTGRES_PASSWORD / JWT_SECRET_KEY / ADMIN_PASSWORD.
+          if [ ! -f .env ] || [ ! -r .env ]; then
+            echo "FATAL: $DEPLOY_DIR/.env is missing or unreadable by $(id -un) — refusing to roll out." >&2
+            exit 1
+          fi
+          before=$(grep -c '' .env || true)
+          if [ "${before:-0}" -lt 1 ]; then
+            echo "FATAL: $DEPLOY_DIR/.env is empty — refusing to roll out." >&2
+            exit 1
+          fi
+          # Record ONLY the previous image coordinates for rollback — never a
+          # full copy of .env.
+          { grep '^IMAGE_TAG=' .env || true; grep '^IMAGE_REPO=' .env || true; } > .env.rollback
+          grep -v -e '^IMAGE_TAG=' -e '^IMAGE_REPO=' .env > .env.new || true
+          kept=$(grep -c '' .env.new)
+          # Every non-coordinate line must survive (at most 2 lines dropped).
+          if [ "$((before - kept))" -gt 2 ]; then
+            echo "FATAL: .env rewrite would drop $((before - kept)) lines (before=$before kept=$kept) — aborting, .env untouched." >&2
+            rm -f .env.new
+            exit 1
+          fi
+          # Immutable coordinate: rollback to the previous sha tag is meaningful,
+          # unlike a mutable version tag that both runs would resolve identically.
+          printf 'IMAGE_REPO=%s\nIMAGE_TAG=%s\n' "$IMAGE_REPO" "$SHA_TAG" >> .env.new
+          cp -a .env .env.bak.$$ && mv .env.new .env && rm -f .env.bak.$$
+          chmod 600 .env
+          # Only the four app images: db/ollama/open-webui images + volumes are
+          # never rolled by CI (rule 9 / #123 schema-drift class).
+          docker compose -f docker-compose.prod.yml pull $APP_SERVICES
+          docker compose -f docker-compose.prod.yml up -d --no-deps $APP_SERVICES
+          # Digest verification: each app container must run the image the tag
+          # resolves to — this, not a version string, proves freshness.
+          for svc in $APP_SERVICES; do
+            want=$(docker image inspect --format '{{.Id}}' "$IMAGE_REPO-$svc:$SHA_TAG")
+            got=$(docker inspect --format '{{.Image}}' "$(docker compose -f docker-compose.prod.yml ps -q "$svc")")
+            if [ "$want" != "$got" ]; then
+              echo "Digest mismatch for $svc: running $got, expected $want" >&2
+              exit 1
+            fi
+          done
+          echo "All app services run the sha-tagged images."
+          REMOTE
+
+      - name: Health + freshness gate
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          PUBLIC_URL: ${{ secrets.DEPLOY_PUBLIC_URL || 'https://mavrov.de' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+        run: |
+          echo "Waiting for $PUBLIC_URL to become healthy..."
+          ok=false
+          for i in $(seq 1 30); do
+            if curl -s -m 10 "$PUBLIC_URL/api/app/health" | grep -q healthy; then ok=true; break; fi
+            echo "  health attempt $i/30"; sleep 10
+          done
+          $ok || { echo "Health gate FAILED"; exit 1; }
+          # Freshness probe (#169) with its own retries: the public host must NOT
+          # serve the admin SPA route — 404 proves a post-workspace-split build.
+          for i in $(seq 1 6); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -m 10 "$PUBLIC_URL/admin/login" || echo 000)
+            if [ "$code" = "404" ]; then
+              echo "Freshness probe OK."
+              # Deploy succeeded: drop the rollback marker so nothing later can
+              # roll this healthy release backwards.
+              ssh prod "rm -f '${DEPLOY_DIR:-/opt/mavrov.de}/.env.rollback'" || true
+              exit 0
+            fi
+            echo "  freshness attempt $i/6: /admin/login -> $code (want 404)"; sleep 10
+          done
+          echo "Freshness probe FAILED"; exit 1
+
+      - name: Roll back on failure
+        if: failure() && steps.rollout.outputs.mutated == 'true'
+        env:
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+        run: |
+          echo "Rolling back to previous image coordinates..."
+          ssh prod "DEPLOY_DIR='$DEPLOY_DIR' APP_SERVICES='$APP_SERVICES' bash -s" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          cd "$DEPLOY_DIR"
+          if [ -s .env.rollback ] && [ -f .env ] && [ -r .env ]; then
+            # .env.rollback holds only the previous IMAGE_REPO/IMAGE_TAG lines.
+            before=$(grep -c '' .env)
+            grep -v -e '^IMAGE_TAG=' -e '^IMAGE_REPO=' .env > .env.new || true
+            kept=$(grep -c '' .env.new)
+            if [ "$((before - kept))" -gt 2 ]; then
+              echo "FATAL: rollback rewrite would drop $((before - kept)) lines — aborting, .env untouched." >&2
+              rm -f .env.new
+              exit 1
+            fi
+            cat .env.rollback >> .env.new
+            cp -a .env .env.bak.$$ && mv .env.new .env && rm -f .env.bak.$$
+            chmod 600 .env
+            rm -f .env.rollback
+            docker compose -f docker-compose.prod.yml pull $APP_SERVICES
+            docker compose -f docker-compose.prod.yml up -d --no-deps $APP_SERVICES
+            echo "Rolled back."
+          else
+            echo "No usable .env.rollback, or .env is missing/unreadable — manual intervention required." >&2
+            exit 1
+          fi
+          REMOTE

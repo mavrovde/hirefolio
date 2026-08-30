@@ -33,6 +33,22 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Placeholder for next release.
+
+- **Automated prod rollout (`deploy` job in `deploy.yml`)** — closes the "published ≠ live" CD gap
+  (#112/#156): after all four images are promoted, the pipeline SSHes to the prod host and rewrites
+  only `IMAGE_REPO`/`IMAGE_TAG` in the host `.env` to the **immutable `sha-<gitsha>` tag** (guarded so
+  a missing/unreadable/short `.env` aborts untouched rather than losing secrets; only the previous
+  coordinate lines are kept for rollback), pulls and recreates just the four app services
+  (`--no-deps`, so third-party images and volumes are never rolled), verifies every app container by
+  **image digest**, waits on `/api/app/health`, runs the retried #169 freshness probe (public
+  `/admin/login` → 404), and rolls back to the previous sha tag on any failure. The job is a
+  guarded no-op until the owner adds `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` secrets, so forks
+  and secretless runs stay green; volumes are never touched (rule 9). New `docs/DEPLOYMENT.md` covers
+  the clean-server first deploy, the secrets to activate rollout, and the first LinkedIn content
+  import; `docker-compose.prod.yml` image defaults now point at the registry CI actually publishes to
+  (`ghcr.io/mavrovde/mavrov.de`, public/anonymous pulls) instead of the stale Docker Hub repo.
+
+### Fixed
 - **Root service-script overhaul (#172)** — `bump_version.sh` now updates EVERY version carrier,
   adding the previously missed `frontend/projects/shared/package.json` (caught up from the stale
   `1.7.0` to the current version) and the `docker-compose.prod.yml` `${IMAGE_TAG:-…}` defaults

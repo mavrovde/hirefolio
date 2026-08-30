@@ -10,6 +10,9 @@ __pycache__/
 .coverage
 htmlcov/
 .venv/
+# ...and a bare `venv` symlink (agents symlink the toolchain into worktrees);
+# the directory-only rule above does not match a symlink.
+venv
 env/
 venv/
 ENV/
