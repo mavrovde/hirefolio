@@ -238,6 +238,20 @@ check "heredoc: tee to a file"       "tee notes.md <<'EOF'
 $DV $V
 EOF"                                                                             allow
 
+# --- ESCAPED QUOTES (found by self-audit before round 3) --------------------
+# A backslash escapes the next character everywhere except inside single quotes.
+# Without that, `echo "a \" <<EOF"` looks like the quote closed early, the <<EOF
+# reads as a real redirect, and a line of pure TEXT opens a heredoc that swallows
+# the commands after it — a third instance of the same exemption-too-wide shape.
+check "escaped quote fakes heredoc"  "echo \"a \\\" <<EOF\"
+$DV $V
+EOF"                                                                             deny
+check "escaped quotes, no heredoc"   "echo \"say \\\"hi\\\" now\"
+$DV $V"                                                                          deny
+check "backslash inside single q"    "echo 'a \\ b'
+$DV $V"                                                                          deny
+check "prose with escaped quotes"    "gh pr comment 1 --body \"he said \\\"$D $T\\\" ok\"" allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

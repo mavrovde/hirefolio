@@ -293,6 +293,13 @@ mask_quotes() {
   local s="$1" out="" i c q="" n=${#1}
   for (( i=0; i<n; i++ )); do
     c="${s:i:1}"
+    # A backslash escapes the next character everywhere EXCEPT inside single
+    # quotes, where it is literal. Without this, `echo "a \" <<EOF"` looks like
+    # the quote closed early, the `<<EOF` reads as a real redirect, and a line of
+    # pure text can open a heredoc that swallows the commands after it.
+    if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
+      out+="  "; i=$((i + 1)); continue
+    fi
     if [ -n "$q" ]; then
       out+=" "
       [ "$c" = "$q" ] && q=""

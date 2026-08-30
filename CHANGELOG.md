@@ -28,13 +28,14 @@ All notable changes to this project will be documented in this file.
   Two rounds of independent review each found that an earlier version of this fix **weakened** the
   guard — first by flattening multi-line scripts so a benign leading `echo` hid what followed, then
   by letting the heredoc preprocessor recreate the same first-token hole. Both were caught before
-  merge and are pinned by tests. Self-test suite: **63 → 95 cases**, with the added cases asserting
-  both directions.
+  merge and are pinned by tests. A third instance — an escaped quote (`echo "a \" <<EOF"`) letting a
+  line of pure text open a heredoc — was found by self-audit and fixed before the final round.
+  Self-test suite: **63 → 99 cases**, with the added cases asserting both directions.
 
-  Measured rather than asserted — running the final 95-case suite against each earlier version:
+  Measured rather than asserted — running the final 99-case suite against each earlier version:
   against pre-`#204` `main`, **6** cases differ (4 false denials removed, 2 newly-caught
-  single-line `ssh -p/-o` destructions that `main` allowed); against the first attempt, **15**
-  fail; against the second, **12**. Note that nothing in CI runs this suite (see #208) — it runs via
+  single-line `ssh -p/-o` destructions that `main` allowed); against the first attempt, **16**
+  fail; against the second, **13**. Note that nothing in CI runs this suite (see #208) — it runs via
   `verify_all.sh` and the pre-push hook, so a regression here is invisible to the pipeline.
 - **The encryption-migration tests no longer collide under `pytest -n auto`** — they shared one
   scratch database, so concurrent xdist workers dropped a database another was mid-migration on
