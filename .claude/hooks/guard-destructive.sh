@@ -71,15 +71,25 @@ REASON=""
 # keeps it intact through the space-collapsing normaliser below.
 NL_SENTINEL=$'\x01'
 
+# Nesting depth of shell-wrapper unwrapping (see inspect_inner_script).
+INNER_DEPTH=0
+
 # A quoted argument that turns out to be shell code: put the newlines back, split
 # it like a real script, and inspect every command in it. Returns 0 (and leaves
 # REASON set) when something in there is blocked.
 inspect_inner_script() {
   local body="$1" line inner
-  case "$body" in
-    *"$NL_SENTINEL"*) ;;
-    *) return 1 ;;   # single-line: the caller's normal path already covers it
-  esac
+  # Recursion guard: wrappers can nest (`bash -c "bash -c '…'"`). The depth is
+  # bounded so a pathological input cannot spin here; hitting the bound is
+  # treated as "cannot analyse", and the caller's normal path still applies.
+  [ "$INNER_DEPTH" -ge 8 ] && return 1
+  INNER_DEPTH=$((INNER_DEPTH + 1))
+
+  # Restore any quoted newlines, then split on them. A body with NO newline is
+  # still processed: `bash -c "echo hi; <destroy>"` packs its commands with a
+  # semicolon, and because that separator sat inside the wrapper's quotes the
+  # outer quote_split protected it — leaving one segment whose benign first
+  # token hid the rest (#210).
   body="${body//$NL_SENTINEL/$'\n'}"
 
   # Split on the restored NEWLINES FIRST, then apply quote_split within each
@@ -99,6 +109,7 @@ inspect_inner_script() {
     IFS="$OLD"
   done <<< "$body"
   IFS="$OLD"
+  INNER_DEPTH=$((INNER_DEPTH - 1))
   [ -n "$REASON" ]
 }
 
@@ -140,11 +151,13 @@ inspect_segment() {
     # bash -c "…" / sh -c '…' / zsh -c … / eval … / ssh host "…" — the quoted
     # argument is a SCRIPT, so inspect the command(s) inside it.
     if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +-c '; then
-      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +-c +//; s/^[\"']//")"; changed=1
-      inspect_inner_script "$seg" && return 0
+      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +-c +//; s/^[\"']//")"
+      inspect_inner_script "$seg"
+      return 0
     elif printf '%s' "$seg" | grep -Eq '^eval '; then
-      seg="$(printf '%s' "$seg" | sed -E "s/^eval +//; s/^[\"']//")"; changed=1
-      inspect_inner_script "$seg" && return 0
+      seg="$(printf '%s' "$seg" | sed -E "s/^eval +//; s/^[\"']//")"
+      inspect_inner_script "$seg"
+      return 0
     elif printf '%s' "$seg" | grep -Eq '^ssh '; then
       # `ssh host "…"` runs its argument on the remote shell. Same reasoning, and
       # the blast radius there is someone else's machine.
@@ -414,7 +427,65 @@ strip_text_heredocs() {
   printf '%s' "$out"
 }
 
+# Is any segment a BARE shell — i.e. a shell reading its script from stdin?
+# `… | bash`, `… | sh -s`, `… | sudo bash`. That construct means "execute the
+# text that reaches me", so quoted text earlier in the pipeline is CODE, however
+# innocent its producing command looks (#210).
+pipes_into_shell() {
+  local seg first
+  local OLD="$IFS"; IFS=$'\n'
+  for seg in $1; do
+    seg="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g; s/^(sudo|env|command|exec) +//')"
+    first="${seg%% *}"
+    case "$first" in
+      bash|sh|zsh|dash)
+        # A bare shell, or one reading stdin (`-s`). `-c` is NOT this case: there
+        # the script is the argument and inspect_segment already unwraps it.
+        case "$seg" in
+          "$first"|"$first "-s*) IFS="$OLD"; return 0 ;;
+        esac
+        ;;
+    esac
+  done
+  IFS="$OLD"; return 1
+}
+
+# The contents of each quoted region in a segment, one per line.
+quoted_payloads() {
+  local s="$1" cur="" i c q="" n=${#1}
+  for (( i=0; i<n; i++ )); do
+    c="${s:i:1}"
+    if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
+      [ -n "$q" ] && cur+="${s:i+1:1}"
+      i=$((i + 1)); continue
+    fi
+    if [ -n "$q" ]; then
+      if [ "$c" = "$q" ]; then q=""; printf '%s\n' "$cur"; cur=""; else cur+="$c"; fi
+      continue
+    fi
+    case "$c" in \'|\") q="$c" ;; esac
+  done
+  [ -n "$q" ] && [ -n "$cur" ] && printf '%s\n' "$cur"
+}
+
 SEGMENTS="$(quote_split "$(strip_text_heredocs "$CMD")")"
+
+# When the command feeds a shell from stdin, re-read every quoted argument in it
+# as a script before the normal pass. Without this, `printf "%s" "<destroy>" |
+# bash` is two segments — one led by a text tool, one that is just `bash` — and
+# neither looks destructive on its own.
+if pipes_into_shell "$SEGMENTS"; then
+  OLDIFS="$IFS"; IFS=$'\n'
+  for seg in $SEGMENTS; do
+    [ -n "$REASON" ] && break
+    for payload in $(quoted_payloads "$seg"); do
+      [ -n "$REASON" ] && break
+      inspect_inner_script "$payload"
+    done
+  done
+  IFS="$OLDIFS"
+fi
+
 OLDIFS="$IFS"; IFS=$'\n'
 for seg in $SEGMENTS; do
   [ -n "$REASON" ] && break

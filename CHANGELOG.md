@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
+  guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
+
+  1. Separators packed inside a shell wrapper's quoted argument —
+     `bash -c "echo hi; <docker volume rm>"`. The outer quote-aware split correctly protects those
+     separators *because they are inside quotes*, so the whole script arrived as one `echo`-led
+     segment. A wrapper's argument is now re-split as the script it is, not read as one command.
+  2. A pipeline whose final stage is a shell reading stdin —
+     `printf "%s" "<destroy>" | bash`. Neither segment is dangerous alone: `printf` is a text tool
+     and `bash` by itself destroys nothing. But the construct means "execute this text", so quoted
+     payloads earlier in such a pipeline are now read as code.
+
+  Same root cause as the #204 rounds, and the same rule applies: what the guard inspects has to be
+  what the shell executes. Verified in both directions — against the pre-fix hook the suite's 8 new
+  deny-cases fail and **no** allow-case changes, so this closes bypasses without adding a single
+  false denial. Mutation-checked: disabling the wrapper re-split fails 12 cases, disabling the
+  pipeline detection fails 4. Suite **112 → 126 cases**; a 24-command benign corpus stays fully
+  allowed.
+
+  **Cost, measured rather than hand-waved:** inspecting a wrapper's inner commands is real work, so a
+  `bash -c` containing *n* commands now costs about 22 ms × *n* (1 command ≈ 0.07 s, 10 ≈ 0.26 s,
+  50 ≈ 1.1 s, 400 ≈ 9.4 s, versus a flat ~0.05 s before). Growth is linear, not quadratic, and
+  ordinary commands — anything without a shell wrapper — are unaffected. Realistic one-liners stay
+  well under a third of a second; a 400-command single invocation is slow, and that trade is
+  deliberate rather than unnoticed.
 - **`guard-destructive.sh` no longer treats prose as a command — without weakening the guard**
   (#204) — a quoted argument spanning newlines was split on the raw newline, so a line of *text* that
   merely began with a destructive verb was inspected as an invocation. Writing documentation about

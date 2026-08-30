@@ -318,6 +318,37 @@ EOF"                                                                            
 # ...and an escaped quote in an ordinary message stays allowed.
 check "escq: commit msg, no heredoc" "git commit -m \"the \\\" char and $D $T\"" allow
 
+# --- PACKED COMMANDS BEHIND A BENIGN TOKEN (#210) ---------------------------
+# Two shapes where a destructive command hides behind something harmless. Both
+# were allowed on `main` and are the same root cause as #204's rounds: the guard
+# inspects the FIRST token of a segment, so anything that keeps the destruction
+# out of first position slips past.
+
+# (a) Separators packed INSIDE a shell wrapper's quoted argument. The outer
+#     quote_split correctly protects them (they are inside quotes), so the whole
+#     script arrives as one `echo`-led segment. The wrapper's argument is now
+#     re-split as the script it is.
+check "packed: ; inside bash -c"     "bash -c \"echo hi; $DV $V\""                deny
+check "packed: && inside bash -c"    "bash -c \"echo hi && $D $T\""               deny
+check "packed: || inside sh -c"      "sh -c \"false || $DV $V\""                  deny
+check "packed: ; inside eval"        "eval \"echo hi; $DV $V\""                   deny
+check "packed: nested bash -c"       "bash -c \"bash -c '$DV $V'\""               deny
+
+# (b) A pipeline whose final stage is a shell reading stdin. `printf`/`echo` are
+#     text tools and `bash` alone is not destructive, so neither segment looks
+#     dangerous on its own — but the construct means "execute this text".
+check "pipe: printf into bash"       "printf \"%s\" \"$DV $V\" | bash"            deny
+check "pipe: echo into sh"           "echo \"$D $T\" | sh"                        deny
+check "pipe: echo into sudo bash"    "echo \"$DV $V\" | sudo bash"                deny
+check "pipe: echo into bash -s"      "echo \"$D $T\" | bash -s"                   deny
+
+# ...and none of that may cost a false denial.
+check "pipe: benign echo into bash"  "echo \"hello\" | bash"                      allow
+check "pipe: curl into bash"         "curl -s https://example.com/i.sh | bash"    allow
+check "packed: benign bash -c"       "bash -c \"echo hello world\""               allow
+check "packed: prose in bash -c"     "bash -c \"echo 'note: $D $T is bad'\""      allow
+check "pipe: grep into wc, no shell" "grep -r \"$D $T\" docs/ | wc -l"            allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0
