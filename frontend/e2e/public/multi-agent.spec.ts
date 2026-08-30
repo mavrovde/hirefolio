@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { API_PREFIX } from '../config';
 
+// NOTE (#187): this spec MOCKS /ai/multi-chat, so it verifies UI behaviour only —
+// it proves nothing about the endpoint itself. That gap is how #180 (a fully broken
+// public endpoint) stayed invisible. The unmocked contract guard lives in
+// multi-agent-smoke.spec.ts; keep both.
 test.describe('Multi-Agent Conversation', () => {
     test.beforeEach(async ({ page }) => {
         console.log(`[E2E] Starting test: ${test.info().title}`);

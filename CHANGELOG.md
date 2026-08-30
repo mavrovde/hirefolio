@@ -61,6 +61,19 @@ All notable changes to this project will be documented in this file.
   `[Unreleased]` and the real bullets bare under the version header.
 
 ### Added
+- **Unmocked E2E contract guard for `/ai/multi-chat`** (#187) —
+  `frontend/e2e/public/multi-agent-smoke.spec.ts` hits the real endpoint against the E2E stack and
+  asserts what a mocked spec structurally cannot: every chunk parses as NDJSON, the stream
+  **terminates with `{"done": true}`**, and the agent actually produced content. The spec named
+  after this endpoint (`multi-agent.spec.ts`) `page.route`-mocks it — which is precisely how #180
+  hid, since a pre-yield crash surfaces as HTTP 200 with a truncated body rather than a 500, so
+  `response.ok` stayed true while the public `/llm` page showed "Connection Error"; that spec now
+  carries a note pointing at its unmocked counterpart. Rule 10 safe: the stack runs with an empty
+  `GEMINI_API_KEY`, so generation falls back to the in-stack Ollama and no paid API is reached.
+  **Verified by reproduction:** reintroducing the #180 failure mode in the running stack makes the
+  new test fail; restoring the fix makes it pass (2 passed, ~1.7 min).
+
+### Added
 - Placeholder for next release.
 
 ## [1.9.0] - 2026-08-30
