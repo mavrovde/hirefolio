@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **The encryption-migration tests no longer collide under `pytest -n auto`** — they shared one
+  scratch database, so concurrent xdist workers dropped a database another was mid-migration on
+  (reproduced on unmodified `main`: 3 failed + 1 error). The name is now worker-scoped, keeping the
+  `test_` prefix so the rule-9 carve-out still applies. Pre-existing; surfaced because new tests
+  shifted the worker distribution.
+
 ### Changed
 - **The Gemini environment variables are project-scoped: `HIREFOLIO_GEMINI_API_KEY` and
   `HIREFOLIO_GEMINI_ENCRYPTION_KEY`** (#141) — the generic `GEMINI_API_KEY` is a name developers
@@ -16,7 +23,14 @@ All notable changes to this project will be documented in this file.
   ignored (AI falls back to Ollama) rather than failing loudly. `GEMINI_ENCRYPTION_KEY` is renamed
   for the same namespacing reason — it is a local Fernet key for encrypting the per-user Gemini key
   at rest (#143), not a Gemini credential; no data migration is needed because no encrypted values
-  exist in production yet (prod predates #143).
+  exist in production yet (prod predates #143). `GEMINI_MODEL`/`GEMINI_MODEL_FALLBACK` are namespaced
+  too — model choice is a **cost** control, and an ambient value pointing at a premium tier would
+  silently raise the price of every suggestion. A **startup warning** now names any legacy variable
+  that is still set but ignored, so a stale host `.env` degrades loudly instead of silently falling
+  back to Ollama. Covered by seven regression tests that **all fail against the pre-fix config** — the control was
+  previously invisible to the suite, which is how a suggested `populate_by_name=True` (to make
+  direct construction work) silently re-opened the hole by re-admitting the field name as an
+  environment source; the tests caught it immediately and it was reverted.
 
 ### Security
 - **The E2E stack can no longer inherit a real `GEMINI_API_KEY`** (#141) — CI injected `""` at the
@@ -24,12 +38,11 @@ All notable changes to this project will be documented in this file.
   the variable from the developer's environment (and `.env`). Process environment *overrides* `.env`,
   so a key exported from a shell profile reached the backend container silently. Verified on a real
   machine: with the previous overlay `docker compose config` resolved a live 53-character key into
-  the stack; with the fix it resolves `""`. `docker-compose.e2e.yml` now pins `GEMINI_API_KEY=` for
-  the backend, so **every** consumer of the E2E overlay is covered — not only the invocation that
+  the stack; with the fix it resolves `""`. `docker-compose.e2e.yml` now pins the (renamed) Gemini key empty for the backend, so **every** consumer of the E2E overlay is covered — not only the invocation that
   remembers to export it — and the backend falls back to the in-stack Ollama exactly as in CI
   (verified: container env empty, stack healthy, the five Gemini-touching admin specs pass in 12.5 s).
-  `deploy.yml`'s backend test job now also sets `GEMINI_API_KEY: ""` explicitly rather than relying on
-  the runner simply not having the variable.
+  `deploy.yml`'s backend test job also sets it explicitly rather than relying on the runner simply
+  not having the variable.
 
 ### Added
 - Placeholder for next release.

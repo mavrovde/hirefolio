@@ -48,6 +48,22 @@ async def lifespan(app: FastAPI):
     get_jwt_secret_key()
     print(f"[{datetime.now(UTC)}] SECURITY CHECK: JWT signing secret OK.")
 
+    # A host still carrying the pre-#141 variable names would silently lose its
+    # Gemini configuration (the app ignores the generic names by design), so say
+    # so loudly at startup rather than letting AI features quietly degrade to the
+    # Ollama fallback with no explanation.
+    for legacy, current in (
+        ("GEMINI_API_KEY", "HIREFOLIO_GEMINI_API_KEY"),
+        ("GEMINI_ENCRYPTION_KEY", "HIREFOLIO_GEMINI_ENCRYPTION_KEY"),
+        ("GEMINI_MODEL", "HIREFOLIO_GEMINI_MODEL"),
+    ):
+        if os.getenv(legacy) and not os.getenv(current):
+            print(
+                f"[{datetime.now(UTC)}] CONFIG WARNING: {legacy} is set but is "
+                f"IGNORED since #141 — rename it to {current} in the host .env, "
+                "or this setting has no effect."
+            )
+
     # Check Ollama connection
     import httpx
 

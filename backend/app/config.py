@@ -66,8 +66,16 @@ class Settings(BaseSettings):
     # primary model is reported *unavailable* (HTTP 404), never on generic
     # errors — those fall through to the free local Ollama models instead of
     # making a second billable Gemini call.
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_model_fallback: str = "gemini-2.0-flash"
+    # Namespaced for the same reason as the key (#141): model choice is a COST
+    # control, and an ambient GEMINI_MODEL pointing at a premium tier would
+    # silently raise the price of every suggestion.
+    gemini_model: str = Field(
+        default="gemini-2.5-flash", validation_alias="HIREFOLIO_GEMINI_MODEL"
+    )
+    gemini_model_fallback: str = Field(
+        default="gemini-2.0-flash",
+        validation_alias="HIREFOLIO_GEMINI_MODEL_FALLBACK",
+    )
     cv_version: str = "v1.0"
 
     # LinkedIn
@@ -106,6 +114,11 @@ class Settings(BaseSettings):
     profile_rate_limit_requests: int = 100
     profile_rate_limit_window_seconds: int = 60
 
+    # populate_by_name is deliberately NOT enabled: it also re-admits the FIELD
+    # NAME as an environment source, which would let the generic GEMINI_API_KEY
+    # bind again and silently undo #141 (caught by
+    # tests/test_config_gemini_env_isolation.py). Construct these fields by their
+    # alias — Settings(HIREFOLIO_GEMINI_API_KEY=...) — not by field name.
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

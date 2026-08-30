@@ -33,7 +33,7 @@ async def backfill() -> int:
     """Encrypt plaintext keys in place. Returns the number of rows updated."""
     if not settings.gemini_encryption_key:
         print(
-            "ERROR: GEMINI_ENCRYPTION_KEY is not set — refusing to run. Set it "
+            "ERROR: HIREFOLIO_GEMINI_ENCRYPTION_KEY is not set — refusing to run. Set it "
             "first, otherwise there is nothing to encrypt with."
         )
         return 0
