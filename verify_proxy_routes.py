@@ -191,14 +191,13 @@ async def verify_proxy_routes():
         
         for test in tests:
             try:
+                # Single dispatch for any method — the old GET/PUT/POST if/elif
+                # left `response` unbound (NameError) for an unlisted method.
                 method = test.get("method", "GET")
-                if method == "GET":
-                    response = await client.get(test["url"], headers=test["headers"], follow_redirects=False)
-                elif method == "PUT":
-                     response = await client.put(test["url"], headers=test["headers"], follow_redirects=False)
-                elif method == "POST":
-                     response = await client.post(test["url"], headers=test["headers"], follow_redirects=False)
-                
+                response = await client.request(
+                    method, test["url"], headers=test["headers"], follow_redirects=False
+                )
+
                 status = response.status_code
                 
                 expected = test["expected_status"]

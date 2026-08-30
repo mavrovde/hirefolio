@@ -1,12 +1,25 @@
 #!/bin/bash
-set -e
+set -eo pipefail
+
+# On ANY failure (backend, frontend, proxy verification, Playwright, ...) print
+# an unmistakable final FAILED banner instead of dying mid-log.
+on_exit() {
+    status=$?
+    if [ "$status" -ne 0 ]; then
+        echo ""
+        echo "========================================"
+        echo "❌ VERIFICATION FAILED (exit $status) ❌"
+        echo "========================================"
+    fi
+}
+trap on_exit EXIT
 
 echo "========================================"
 echo "🚀 STARTING FULL VERIFICATION SUITE 🚀"
 echo "========================================"
 
-# Ensure DOCKER_HOST is set for Podman
-if [ -z "$DOCKER_HOST" ]; then
+# Ensure DOCKER_HOST is set for Podman (no-op when podman is not installed)
+if [ -z "${DOCKER_HOST:-}" ] && command -v podman >/dev/null 2>&1; then
     PODMAN_SOCKET=$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' 2>/dev/null || true)
     if [ -n "$PODMAN_SOCKET" ]; then
         export DOCKER_HOST="unix://$PODMAN_SOCKET"
@@ -17,20 +30,25 @@ fi
 
 # 1. Backend Checks (via Docker to ensure consistent environment)
 echo ""
-echo "backend: 🐍 Running Static Analysis & Tests..."
+echo "========================================"
+echo "[1/3] backend: 🐍 Static Analysis & Tests"
+echo "========================================"
 # Start DB if not running
 # Start DB with DEV config to ensure ports are exposed
 docker-compose -f docker-compose.yml up -d --force-recreate db
 # Run checks
 cd backend
 # Portable interpreter: prefer the project venv, else python3. Override with PYTEST_PYTHON.
+# shellcheck disable=SC2015  # A && B || C is intentional here: B is a bare echo that cannot fail.
 PYTEST_PYTHON="${PYTEST_PYTHON:-$([ -x venv/bin/python ] && echo venv/bin/python || command -v python3)}"
 GEMINI_API_KEY="" "$PYTEST_PYTHON" -m pytest tests
 cd ..
 
 # 2. Frontend Checks
 echo ""
-echo "frontend: 🅰️  Running Lint, Tests & Build..."
+echo "========================================"
+echo "[2/3] frontend: 🅰️  Lint, Tests & Build"
+echo "========================================"
 cd frontend
 echo "Running Lint..."
 npm run lint --if-present
@@ -42,7 +60,9 @@ cd ..
 
 # 3. E2E Checks
 echo ""
-echo "e2e: 🎭 Running E2E Tests..."
+echo "========================================"
+echo "[3/3] e2e: 🎭 Docker Stack + E2E Tests"
+echo "========================================"
 # Ensure full stack is running
 echo "Starting full stack..."
 docker-compose -f docker-compose.prod.yml -f docker-compose.e2e.yml up -d --build backend frontend admin-frontend proxy open-webui
@@ -75,6 +95,15 @@ until curl -s -f http://localhost > /dev/null || [ $count -eq 60 ]; do
     fi
 done
 
+# NOTE: this check must run right after the frontend wait loop — it previously
+# sat below the Open WebUI loop and tested THAT loop's counter against 60.
+if [ $count -eq 60 ]; then
+    echo "❌ Frontend failed to start on http://localhost"
+    docker-compose ps
+    docker-compose logs proxy frontend
+    exit 1
+fi
+
 echo "Waiting for Open WebUI to be ready..."
 count=0
 # Wait longer for Open WebUI (can be slow)
@@ -92,13 +121,6 @@ if [ $count -eq 90 ]; then
     docker-compose logs --tail=20 open-webui
     # We don't exit here, we let the python script fail with more details if needed, or exit?
     # Better to exit to save time.
-    exit 1
-fi
-
-if [ $count -eq 60 ]; then
-    echo "❌ Frontend failed to start on http://localhost"
-    docker-compose ps
-    docker-compose logs proxy frontend
     exit 1
 fi
 

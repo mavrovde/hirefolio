@@ -1,87 +1,167 @@
 #!/bin/bash
+# bump_version.sh — bump the project version across EVERY version-carrying file,
+# or verify that they all already agree (--check). See issue #172.
+#
+# Usage:
+#   ./bump_version.sh [--patch|--minor|--major] [--dry-run]
+#   ./bump_version.sh --check
+#
+# Version carriers (keep this list in sync with the --check block below):
+#   VERSION                                          X.Y.Z + exactly one trailing newline
+#   backend/app/main.py                              version="X.Y.Z"
+#   frontend/package.json                            "version": "X.Y.Z"
+#   frontend/package-lock.json                       synced via `npm install --package-lock-only`
+#   frontend/projects/shared/package.json            "version": "X.Y.Z"
+#   frontend/projects/public/src/app/version.ts      VERSION = 'X.Y.Z'
+#   docker-compose.prod.yml                          ${IMAGE_TAG:-X.Y.Z} (4 services)
+#   .env                                             IMAGE_TAG=X.Y.Z (local, gitignored — not checked)
+set -euo pipefail
 
-# Read current version
-current_version=$(cat VERSION)
-IFS='.' read -r major minor patch <<< "$current_version"
+# Portable in-place sed (BSD/macOS vs GNU).
+sedi() {
+    if [[ "$OSTYPE" == darwin* ]]; then
+        sed -i '' "$@"
+    else
+        sed -i "$@"
+    fi
+}
 
-# Handle arguments
-BUMP_TYPE=$1
-if [ -z "$BUMP_TYPE" ]; then
-    BUMP_TYPE="--patch"
+# --- Argument parsing ---
+BUMP_TYPE="--patch"
+DRY_RUN=0
+CHECK=0
+for arg in "$@"; do
+    case "$arg" in
+        --major|--minor|--patch) BUMP_TYPE="$arg" ;;
+        --dry-run) DRY_RUN=1 ;;
+        --check) CHECK=1 ;;
+        *)
+            echo "Usage: ./bump_version.sh [--patch|--minor|--major] [--dry-run]"
+            echo "       ./bump_version.sh --check"
+            exit 1
+            ;;
+    esac
+done
+
+# Read current version, tolerating a present-or-missing trailing newline.
+current_version=$(tr -d '[:space:]' < VERSION)
+
+# --- --check mode: every carrier must agree with VERSION; fail loudly naming
+# --- the offending file and both values (#172). No files are modified.
+if [ "$CHECK" -eq 1 ]; then
+    failed=0
+
+    fail() { # $1 = file, $2 = found value(s)
+        echo "❌ VERSION MISMATCH: $1 carries '$2' but VERSION is '$current_version'"
+        failed=1
+    }
+
+    # VERSION itself: exactly the version plus ONE trailing newline (no churn).
+    if ! printf '%s\n' "$current_version" | cmp -s - VERSION; then
+        echo "❌ VERSION file is not exactly '$current_version' + one trailing newline (run ./bump_version.sh once to normalize, or fix by hand)"
+        failed=1
+    fi
+
+    v=$(sed -n 's/.*version="\([0-9.]*\)".*/\1/p' backend/app/main.py | head -1)
+    [ "$v" = "$current_version" ] || fail "backend/app/main.py" "$v"
+
+    v=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' frontend/package.json | head -1)
+    [ "$v" = "$current_version" ] || fail "frontend/package.json" "$v"
+
+    v=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' frontend/projects/shared/package.json | head -1)
+    [ "$v" = "$current_version" ] || fail "frontend/projects/shared/package.json" "$v"
+
+    v=$(sed -n "s/.*VERSION = '\([0-9.]*\)'.*/\1/p" frontend/projects/public/src/app/version.ts | head -1)
+    [ "$v" = "$current_version" ] || fail "frontend/projects/public/src/app/version.ts" "$v"
+
+    # package-lock.json: the two root "version" entries (top-level + packages[""]).
+    v=$(grep -m2 '"version":' frontend/package-lock.json | sed 's/.*"version": "\([0-9.]*\)".*/\1/' | sort -u | tr '\n' ' ' | sed 's/ $//')
+    [ "$v" = "$current_version" ] || fail "frontend/package-lock.json" "$v"
+
+    # docker-compose.prod.yml: every ${IMAGE_TAG:-X.Y.Z} default.
+    v=$(grep -o 'IMAGE_TAG:-[0-9.]*' docker-compose.prod.yml | cut -d- -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
+    [ "$v" = "$current_version" ] || fail "docker-compose.prod.yml" "$v"
+
+    if [ "$failed" -ne 0 ]; then
+        echo "❌ Version consistency check FAILED (expected all carriers = $current_version)"
+        exit 1
+    fi
+    echo "✅ Version consistency check PASSED: all carriers = $current_version"
+    exit 0
 fi
 
-# Increment based on type
+# --- Compute the new version ---
+IFS='.' read -r major minor patch <<< "$current_version"
+
 if [[ "$BUMP_TYPE" == "--major" ]]; then
-    new_major=$((major + 1))
-    new_version="$new_major.0.0"
+    new_version="$((major + 1)).0.0"
 elif [[ "$BUMP_TYPE" == "--minor" ]]; then
-    new_minor=$((minor + 1))
-    new_version="$major.$new_minor.0"
+    new_version="$major.$((minor + 1)).0"
 else
-    new_patch=$((patch + 1))
-    new_version="$major.$minor.$new_patch"
+    new_version="$major.$minor.$((patch + 1))"
 fi
 
 echo "Bumping version ($BUMP_TYPE): $current_version -> $new_version"
 
-# Update VERSION file
-echo "$new_version" > VERSION
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "Dry run — no files modified. Would update:"
+    echo "  VERSION"
+    echo "  backend/app/main.py"
+    echo "  frontend/package.json (+ package-lock.json sync)"
+    echo "  frontend/projects/shared/package.json"
+    echo "  frontend/projects/public/src/app/version.ts"
+    echo "  docker-compose.prod.yml"
+    echo "  .env (IMAGE_TAG)"
+    echo "  CHANGELOG.md (rotate [Unreleased])"
+    exit 0
+fi
+
+# Update VERSION file — always exactly one trailing newline (idempotent, #172).
+printf '%s\n' "$new_version" > VERSION
 
 # Update backend/app/main.py
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' "s/version=\"[0-9.]*\"/version=\"$new_version\"/" backend/app/main.py
-else
-  sed -i "s/version=\"[0-9.]*\"/version=\"$new_version\"/" backend/app/main.py
-fi
+sedi "s/version=\"[0-9.]*\"/version=\"$new_version\"/" backend/app/main.py
 
-# Update package.json
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' "s/\"version\": \"[0-9.]*\"/\"version\": \"$new_version\"/" frontend/package.json
-else
-  sed -i "s/\"version\": \"[0-9.]*\"/\"version\": \"$new_version\"/" frontend/package.json
-fi
+# Update frontend/package.json
+sedi "s/\"version\": \"[0-9.]*\"/\"version\": \"$new_version\"/" frontend/package.json
+
+# Update frontend/projects/shared/package.json (was missed for 4 releases, #172)
+sedi "s/\"version\": \"[0-9.]*\"/\"version\": \"$new_version\"/" frontend/projects/shared/package.json
 
 # Update frontend/projects/public/src/app/version.ts
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' "s/VERSION = '.*';/VERSION = '$new_version';/" frontend/projects/public/src/app/version.ts
-else
-  sed -i "s/VERSION = '.*';/VERSION = '$new_version';/" frontend/projects/public/src/app/version.ts
-fi
+sedi "s/VERSION = '.*';/VERSION = '$new_version';/" frontend/projects/public/src/app/version.ts
 
-# Update .env IMAGE_TAG
+# Update docker-compose.prod.yml image tag defaults (all 4 services).
+# Previously done only in release.sh (with macOS-only sed) — owned here now so a
+# standalone bump keeps every tracked carrier in sync.
+sedi "s|\${IMAGE_TAG:-[0-9.]*}|\${IMAGE_TAG:-$new_version}|g" docker-compose.prod.yml
+
+# Update .env IMAGE_TAG (local, gitignored)
 if [ -f .env ]; then
-  if grep -q "^IMAGE_TAG=" .env; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-      sed -i '' "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
+    if grep -q "^IMAGE_TAG=" .env; then
+        sedi "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
     else
-      sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$new_version/" .env
+        echo "IMAGE_TAG=$new_version" >> .env
     fi
-  else
-    echo "IMAGE_TAG=$new_version" >> .env
-  fi
 else
-  echo "IMAGE_TAG=$new_version" > .env
+    echo "IMAGE_TAG=$new_version" > .env
 fi
 
 # Sync package-lock.json with updated package.json
 echo "Syncing frontend/package-lock.json..."
-(cd frontend && npm install --package-lock-only --legacy-peer-deps > /dev/null 2>&1)
+(cd frontend && npm install --package-lock-only --legacy-peer-deps > /dev/null 2>&1) \
+    || { echo "❌ package-lock.json sync failed — run 'npm install --package-lock-only' in frontend/ to see why"; exit 1; }
 echo "package-lock.json synced."
 
-# Git operations
-if [ -d .git ]; then
-    echo "Creating git tag v$new_version..."
-    # We don't commit here as manage.sh or the user might want to include other changes
-    # But we can provide a reminder or optionally tag the current commit
-    # For now, let's just output the status. Tagging usually happens after the release commit.
+# Rotate CHANGELOG.md: insert the new release header under [Unreleased].
+echo "Rotating CHANGELOG.md headers..."
+today=$(date +%Y-%m-%d)
+perl -0777 -pi -e "s/## \[Unreleased\]\n\n### Added\n- Placeholder for next release\./## [Unreleased]\n\n### Added\n- Placeholder for next release.\n\n## [$new_version] - $today/s" CHANGELOG.md
+# Fallback if the placeholder-only pattern didn't match (i.e. [Unreleased] has
+# real content). Guarded so a successful first pass is never rotated twice.
+if ! grep -q "^## \[$new_version\]" CHANGELOG.md; then
+    perl -pi -e "s/^## \[Unreleased\]/## [Unreleased]\n\n### Added\n- Placeholder for next release.\n\n## [$new_version] - $today/" CHANGELOG.md
 fi
 
-# Update CHANGELOG.md automatically
-echo "Rotating CHANGELOG.md headers..."
-perl -0777 -pi -e "s/## \[Unreleased\]\n\n### Added\n- Placeholder for next release\./## [Unreleased]\n\n### Added\n- Placeholder for next release.\n\n## [$new_version] - $(date +%Y-%m-%d)/s" CHANGELOG.md || true
-# Fallback if specific placeholder is missing
-perl -pi -e "s/## \[Unreleased\]/## [Unreleased]\n\n### Added\n- Placeholder for next release.\n\n## [$new_version] - $(date +%Y-%m-%d)/" CHANGELOG.md
-
-echo "Version updated to $new_version"
 echo "Version updated to $new_version"
 echo "Ready for verification and tagging."
