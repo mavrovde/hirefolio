@@ -355,6 +355,18 @@ optimisation: `-n auto` changes fixture/DB topology, and anything that touches a
 state or the database can pass serially and fail in a worker. (Our own pre-push hook still runs the
 serial, unthresholded form — see §18: it is a smoke check, not the gate.)
 
+## 18. Verify that your gates actually gate
+
+`deploy.yml` ran `pytest --cov=app --cov-report=...` with **no `--cov-fail-under`** for the project's
+entire history, and `pyproject.toml`'s `addopts` set no threshold either — so the headline "100%
+coverage" standard printed a number and passed regardless. Separately, `bump_version.sh --check` ran
+only in a machine-local pre-push hook, so any hook-bypassing push could reintroduce the drift it was
+written to prevent. **A documented standard is not a gate until something fails when it is violated.** The pre-push hook
+is itself an example: it runs `./venv/bin/pytest -q` — serial and without the coverage threshold — so
+it is a smoke check that catches obvious breakage, *not* the gate that CI is.
+Periodically ask of each claimed gate: *what would break if I violated this right now?* — and if the
+answer is "nothing", it is documentation, not enforcement.
+
 ## 19. Fix the duplication, not the instance
 
 `release.sh` had the version-revert block copy-pasted into each abort branch. A fix (restoring the
