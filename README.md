@@ -459,10 +459,10 @@ Container Registry (anonymously pullable), then runs the full Docker E2E
 against exactly those images:
 
 ```text
-ghcr.io/mavrovde/mavrov.de-backend:sha-<gitsha>
-ghcr.io/mavrovde/mavrov.de-frontend:sha-<gitsha>
-ghcr.io/mavrovde/mavrov.de-admin-frontend:sha-<gitsha>
-ghcr.io/mavrovde/mavrov.de-proxy:sha-<gitsha>
+ghcr.io/mavrovde/hirefolio-backend:sha-<gitsha>
+ghcr.io/mavrovde/hirefolio-frontend:sha-<gitsha>
+ghcr.io/mavrovde/hirefolio-admin-frontend:sha-<gitsha>
+ghcr.io/mavrovde/hirefolio-proxy:sha-<gitsha>
 ```
 
 After a green E2E each `sha-<gitsha>` image is also promoted to the
@@ -482,7 +482,7 @@ is still green — nothing is rolled out** (the original #112 / #156 gap). See
 set in the root `.env`:
 
 ```bash
-IMAGE_REPO=ghcr.io/mavrovde/mavrov.de
+IMAGE_REPO=ghcr.io/mavrovde/hirefolio
 IMAGE_TAG=<version>          # e.g. the current VERSION, or sha-<gitsha>
 ```
 
