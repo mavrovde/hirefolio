@@ -20,7 +20,7 @@ the real cause — never by weakening tests or checks.
 - Virtualenv: `backend/venv` (Python 3.13). Run tools via `backend/venv/bin/...`.
 - Test DB: Postgres on `127.0.0.1:5433` (user/pass `postgres`/`postgres`, db `mavrov`).
   Ensure it's up: `docker-compose up -d db`.
-- `conftest.py` mocks heavy AI libs (crewai, tiktoken, langchain*, numpy,
+- `conftest.py` mocks heavy native libs (numpy,
   pgvector) — do NOT try to install them, and do not import them at module load
   in a way that bypasses the mocks.
 - **Coverage must stay at 100%** (`--cov-fail-under=100` in CI). New code needs

@@ -15,14 +15,14 @@ pipeline moves posts (and profile data) into the site.
 - **Frontend**: Angular 22 (standalone components, **RxJS Observables + `async` pipe** for state,
   native SSR via `server.ts`), TailwindCSS 4, Vitest 4 (unit), Playwright (E2E).
 - **Backend**: FastAPI (runs on **Python 3.12** in prod/CI; local dev venv may be 3.13),
-  SQLAlchemy 2 async, PostgreSQL 16 + `pgvector`, Ollama (local LLM/embeddings), crewai 1.x.
+  SQLAlchemy 2 async, PostgreSQL 16 + `pgvector`, Ollama (local LLM/embeddings).
 - **Infra**: Docker Compose (`db`, `ollama`, `backend`, `frontend`, `proxy`, `open-webui`),
   GitHub Actions (`.github/workflows/deploy.yml`) which is the **prod deploy** (push to `main`).
 
 ## Repository map
 
 ```
-backend/    FastAPI app (app/api, app/services, app/models); tests/; conftest.py mocks crewai/langchain
+backend/    FastAPI app (app/api, app/services, app/models); tests/; conftest.py mocks heavy native libs
 frontend/   Angular 22 workspace — projects/public (SSR visitor app), projects/admin (CSR admin SPA),
             projects/shared (@mavrov/shared lib); Vitest (per-project) + Playwright (public-e2e/admin-e2e)
 scraper/    LinkedIn scrapers — scrape-linkedin.js (profile) + scrape-posts.js (posts) → *_data.json

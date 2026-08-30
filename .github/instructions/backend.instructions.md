@@ -22,7 +22,7 @@ applyTo: "backend/**"
   `GEMINI_API_KEY=""`. Without `TEST_DATABASE_URL` the suite targets the live dev DB and hangs.
 - **Never run pytest while another suite is active** — `pgrep -f pytest` first and wait; two
   suites clobber the shared `test_mavrov` DB.
-- `conftest.py` mocks heavy AI libs (crewai, tiktoken, langchain*, numpy, pgvector) — do not
+- `conftest.py` mocks heavy native libs (numpy, pgvector) — do not
   install them or bypass the mocks with module-load imports.
 - Lint/format: `ruff check .` && `ruff format --check .` · Types: `mypy app
   --ignore-missing-imports --no-error-summary` · Security: `bandit -r app -ll --skip B101`
