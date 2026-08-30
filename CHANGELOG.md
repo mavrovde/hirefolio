@@ -18,11 +18,21 @@ All notable changes to this project will be documented in this file.
      payloads earlier in such a pipeline are now read as code.
 
   Same root cause as the #204 rounds, and the same rule applies: what the guard inspects has to be
-  what the shell executes. Verified in both directions — against the pre-fix hook the suite's 8 new
-  deny-cases fail and **no** allow-case changes, so this closes bypasses without adding a single
-  false denial. Mutation-checked: disabling the wrapper re-split fails 12 cases, disabling the
-  pipeline detection fails 4. Suite **112 → 126 cases**; a 24-command benign corpus stays fully
-  allowed.
+  what the shell executes. Verified in both directions — running the final suite against `main`'s
+  hook gives **15** differences, **every one `allow → deny`**, so bypasses close with no allow-case
+  moving. Suite **112 → 147 cases**; a 33-command benign corpus stays fully allowed.
+  Mutation-checked: disabling the pipeline detection fails **10** cases, removing the flattened-body
+  fall-through **8**, and removing the script-operand check **4**.
+
+  Two of those conditions exist because review caught this change making the guard *worse*, and both
+  are worth recording rather than smoothing over. Replacing the flattened-body pass with the new
+  inner-script pass looked like a strict improvement but was not — `quote_split` treats `(`, `)` and
+  backtick as separators, so a command substitution inside an invocation fragments it and the
+  multi-condition rules never see all their conditions at once; six protected paths went
+  `deny → allow`. And phrasing the shell test as "any shell that is not `-c`" made it a **negation**,
+  which denied `bash <script> && git commit -m "…"` — this repo's own pre-push-then-commit flow —
+  because a script-file operand reads a file, not the pipe. The forms that genuinely read the
+  pipeline are now matched explicitly.
 
   **Cost, measured rather than hand-waved:** inspecting a wrapper's inner commands is real work, so a
   `bash -c` containing *n* commands now costs about 22 ms × *n* (1 command ≈ 0.07 s, 10 ≈ 0.26 s,

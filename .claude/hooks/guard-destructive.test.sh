@@ -383,11 +383,28 @@ check "pipe: xargs rm of logs"       "find . -name '*.log' | xargs rm -f"       
 
 # The wrapper-depth bound must fail CLOSED: if it returned "nothing found", the
 # bypass would simply be "nest one level deeper".
+# A shell with a SCRIPT-FILE OPERAND reads that file, not the pipe. Phrasing the
+# test as "any shell that is not -c" made it a negation, and it denied this
+# repo's own pre-push-then-commit flow — §21.5 ("exempt via an allowlist, never a
+# negation") and §21.7 ("a guard that fires on documentation is a real bug"),
+# both of which I wrote before breaking them here.
+check "operand: test.sh && commit"   "bash .claude/hooks/guard-destructive.test.sh && git commit -m \"$DV stays blocked\"" allow
+check "operand: release && tag"      "bash release.sh --patch && git tag -a v1.11.0 -m \"$D $T guard\"" allow
+check "operand: verify; gh release"  "time bash ./verify_all.sh; gh release create v1.11.0 --notes \"$DCMP down -v blocked\"" allow
+check "operand: script + quoted arg" "bash ci.sh && echo \"$DV $V\""                allow
+# A deeply nested destructive command is still caught — by the flattened-body
+# pass, which is why denying AT the depth bound was unnecessary (and cost a false
+# denial on benign deep nesting).
 DEEP=""
 for _i in 1 2 3 4 5 6 7 8 9; do DEEP="${DEEP}eval \""; done
 DEEP="${DEEP}${DV} ${V}"
 for _i in 1 2 3 4 5 6 7 8 9; do DEEP="${DEEP}\""; done
 check "depth: 9 stacked evals"       "$DEEP"                                       deny
+BENIGNDEEP=""
+for _i in 1 2 3 4 5 6 7 8 9; do BENIGNDEEP="${BENIGNDEEP}eval \""; done
+BENIGNDEEP="${BENIGNDEEP}echo hello"
+for _i in 1 2 3 4 5 6 7 8 9; do BENIGNDEEP="${BENIGNDEEP}\""; done
+check "depth: 9 deep but benign"     "$BENIGNDEEP"                                 allow
 
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."

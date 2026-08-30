@@ -85,10 +85,12 @@ inspect_inner_script() {
   # Depth bound. It must fail CLOSED: returning "nothing found" at the bound
   # would mean 8 stacked wrappers deny and 9 allow, i.e. the bypass is simply
   # "nest one level deeper". At the bound we stop analysing and say so.
-  if [ "$INNER_DEPTH" -ge 8 ]; then
-    REASON="BLOCKED: command nests shell wrappers more than 8 deep, which this guard will not attempt to analyse. Simplify the command, or prefix it with GUARD_DESTRUCTIVE=0 if it is authorized."
-    return 0
-  fi
+  # Depth bound. Returning "nothing found" here is safe ONLY because the caller
+  # falls through and still inspects the flattened body — verified: a destructive
+  # command nested 9/12/16 wrappers deep is denied by that pass. Denying AT the
+  # bound instead was tried and reverted: it pinned nothing (mutation score 0)
+  # and it turned a benign deeply-nested command into a false denial.
+  [ "$INNER_DEPTH" -ge 8 ] && return 1
   INNER_DEPTH=$((INNER_DEPTH + 1))
 
   # Restore any quoted newlines, then split on them. A body with NO newline is
@@ -447,7 +449,7 @@ strip_text_heredocs() {
 # text that reaches me", so quoted text earlier in the pipeline is CODE, however
 # innocent its producing command looks (#210).
 pipes_into_shell() {
-  local seg first via_xargs
+  local seg first rest via_xargs
   local OLD="$IFS"; IFS=$'\n'
   for seg in $1; do
     # Peel wrappers, including ones that take their own options (`sudo -E`,
@@ -467,16 +469,29 @@ pipes_into_shell() {
     first="${seg%% *}"
     case "$first" in
       bash|sh|zsh|dash)
-        # Anything that is NOT `-c` reads its script from somewhere else — stdin
-        # (bare, or `-s`, or `-`), a here-string, a process substitution — and in
-        # every one of those the text arriving from the pipeline is code.
-        # `-c` normally means the script is the argument, which inspect_segment
-        # already unwraps — EXCEPT behind xargs, which appends the piped text as
-        # that very argument. There the payload is still code arriving by pipe.
+        # Behind xargs the piped text becomes the `-c` argument, so it is code
+        # arriving by pipe however the rest of the line reads.
         if [ "$via_xargs" = 1 ]; then IFS="$OLD"; return 0; fi
-        case "$seg" in
-          *" -c "*|*" -c") ;;                       # script is the argument; handled elsewhere
-          *) IFS="$OLD"; return 0 ;;
+
+        # Which forms actually read the PIPE? Match them EXPLICITLY. Phrasing this
+        # as "anything that is not -c" made it a negation, and negations here are
+        # how this guard grows false denials: `bash ci.sh` takes its script from a
+        # FILE operand, reads nothing from the pipe, and was being treated as a
+        # shell executing the pipeline — which reclassified every quoted string on
+        # the line as code and denied this repo's own
+        # `bash …test.sh && git commit -m "…"` flow.
+        rest="${seg#"$first"}"
+        rest="${rest# }"
+        case "$rest" in
+          "")            IFS="$OLD"; return 0 ;;   # bare `bash` — reads stdin
+          "-"|"-s"|"-s "*|"- "*)                    # explicit stdin forms
+                         IFS="$OLD"; return 0 ;;
+          -*)            # options only, no operand: still stdin (`bash -x`, `bash -e -x`)
+                         case "$rest" in
+                           *" "[!-]*) ;;            # ...unless an operand follows
+                           *) IFS="$OLD"; return 0 ;;
+                         esac
+                         ;;
         esac
         ;;
     esac
