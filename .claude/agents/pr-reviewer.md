@@ -52,7 +52,26 @@ Never accept "coverage is 100%" at face value — a line being executed is not t
    - Async/ordering: concurrent requests, double-submit, race between SSR and hydration, idempotency/retry.
    - Platform: SSR (server) vs browser (`isPlatformBrowser`) branches both tested; migration/entrypoint safe on fresh **and** pre-existing prod DB state.
    - Security-adjacent: authz boundaries (owner vs anonymous), injection payloads where relevant, oversized input.
-4. **Verdict on tests must be explicit:** in your review, list the edge/user cases you checked, which are covered, and which are **missing** (with the exact test you'd want added and its `file:line` anchor). Thin or happy-path-only test suites, or coverage inflated without assertions, are at least a **major** finding; a bug fix with no failing-first regression test is a **blocker**.
+4. **MUTATION-CHECK the tests that claim to pin a fix.** A test that passes against the *unfixed*
+   code proves nothing — this has been caught four separate times in this repo (a guard self-test, a
+   version-anchor case whose assertion was unreachable, a leak test whose substring the leaking
+   value also satisfied, a rotation test that missed the heading). Revert the fix in a scratch
+   worktree — create one so you never write into the checkout you are reviewing:
+   `git worktree add /tmp/mut <branch> && cd /tmp/mut && git checkout origin/main -- <file>`
+   (note `git stash -- <file>` is a **no-op** when the change is already committed) — then confirm
+   the test fails and report the number ("14 passed, 4 failed against the pre-fix script"). Remove
+   the worktree when done; never mutate the reviewed checkout. If every case still passes, the tests are decoration and
+   that is at least a **major** finding.
+5. **Ask whether the change's gate actually gates.** CI ran pytest with no `--cov-fail-under` for
+   this project's entire history, so "100% coverage" printed a number and passed regardless; a
+   version check lived only in a local hook that any push could bypass. When a PR adds or relies on
+   a gate, verify something actually **fails** when it is violated.
+6. **Signature/behaviour changes need a FULL-suite run *as CI runs it*, not `-k`.** Stale sibling
+   tests in other files (an old mock arity, a patch of a deleted symbol) are invisible to a targeted
+   run — twice caught in review, once only after it reddened `main`. That one passed every *serial*
+   local run and failed under `pytest -n auto`, so ask for the output of CI's exact invocation
+   (`pytest -n auto … --cov-fail-under=100`), not a serial `pytest -q`.
+7. **Verdict on tests must be explicit:** in your review, list the edge/user cases you checked, which are covered, and which are **missing** (with the exact test you'd want added and its `file:line` anchor). Thin or happy-path-only test suites, or coverage inflated without assertions, are at least a **major** finding; a bug fix with no failing-first regression test is a **blocker**.
 - **Typing & style.** Pydantic models / explicit TS interfaces, no stray `any`, matches surrounding idioms.
 - **Docs & changelog.** README/relevant docs + `CHANGELOG.md [Unreleased]` updated; Conventional Commit; PR maps to each acceptance criterion.
 - **Scope discipline.** No unrelated drive-by changes smuggled in; atomic and reviewable.

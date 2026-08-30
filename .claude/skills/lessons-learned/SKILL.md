@@ -10,7 +10,9 @@ description: >-
   SemVer-by-content, the green-pipeline release rule, the no-irreversible-local-destruction
   guardrail, the STRICT no-real-API-keys/paid-credentials-in-tests-or-CI rule, and the mandatory
   independent-review-gate-before-merge rule, the bisect-gate-failures-against-a-clean-main-build
-  triage method, and the @angular/* exact-peer single-pass-update/lockfile-regeneration rule.
+  triage method, the @angular/* exact-peer single-pass-update/lockfile-regeneration rule, the
+  mutation-check-your-tests discipline, the run-the-suite-as-CI-runs-it (`-n auto`) rule, the
+  verify-that-gates-actually-gate habit, and the repo-rename/GHCR-package-visibility trap.
   Grep it or load it when a task matches — it exists so
   fresh contexts and teammates don't re-research answers we already have.
 ---
@@ -306,6 +308,83 @@ while 778 backend tests stayed green. Two independent failures made that possibl
 Corollaries: an E2E that `page.route`-mocks the very endpoint it is named after proves nothing about
 that endpoint (`multi-agent.spec.ts` mocked it); and when a library bump is "validated" by a suite
 that mocks the library, the validation is vacuous — check what the tests actually exercise.
+
+---
+
+## 16. A test that passes before AND after the fix pins nothing — mutation-check it
+
+**The trap (2026-08-30, the milestone sweep):** four separate times a test looked like it guarded a
+fix and did not. A guard self-test passed against the *unfixed* guard. A "the fallback literal is not
+mistaken for the version" case passed against the *unanchored* script (the real literal
+`1.0.0-fallback` can never match `version="[0-9.]*"`, so the assertion was unreachable). A
+leak-prevention test asserted `"[Error:" in content`, which the leaking string satisfies just as well
+as the fixed one. A rotation test asserted the bullets moved but not that their heading came with
+them — the exact thing that broke.
+
+**The discipline:** after writing a test for a fix, *revert the fix and watch the test fail.* Report
+the number ("mutation: 7 of 19 cases fail against the pre-fix script"), because that number — not the
+green run — is the evidence the test is load-bearing. Two corollaries learned the hard way:
+`git stash -- file` is a **no-op when the change is already committed** (it silently "passes"); use
+`git checkout origin/main -- file` instead. And build the fixture to mirror reality — ours put a
+nested literal *after* the target line while the real file has it *before*, so the read-side anchor
+was never exercised until the ordering was fixed (4 mutation failures → 6).
+
+## 17. After a signature change, run the FULL suite — *as CI runs it*
+
+A targeted run (`-k`, or just the file you edited) cannot see **stale siblings**: tests in *other*
+modules that still patch a symbol you deleted, or still mock a function with its old arity. This
+happened three times in one day. Twice a reviewer caught it before merge (a spec still patching
+`multi_chat.ChatOpenAI`; a mock still declaring `mock_multi_stream(agents, topic)` against a new
+third argument). The third time it reached `main` and **reddened the deploy**.
+
+That third one carries the sharper half of the lesson: it was green in every *serial* local run and
+failed only under CI's `pytest -n auto`, because the test started the app **lifespan**, which seeds
+the admin user and therefore needs a schema the xdist worker's DB does not have. So:
+
+```bash
+# NOT sufficient before pushing a signature/behaviour change:
+pytest -q                      # serial; hides xdist-only failures
+pytest -k the_thing_i_edited   # hides stale siblings entirely
+
+# What CI actually runs — reproduce THIS:
+pytest -n auto --cov=app --cov-report=term-missing --cov-fail-under=100
+```
+
+**"Run the full suite" means the suite as CI runs it.** Parallelism is part of the contract, not an
+optimisation: `-n auto` changes fixture/DB topology, and anything that touches app startup, module
+state or the database can pass serially and fail in a worker. (Our own pre-push hook still runs the
+serial, unthresholded form — see §18: it is a smoke check, not the gate.)
+
+## 18. Verify that your gates actually gate
+
+`deploy.yml` ran `pytest --cov=app --cov-report=...` with **no `--cov-fail-under`** for the project's
+entire history, and `pyproject.toml`'s `addopts` set no threshold either — so the headline "100%
+coverage" standard printed a number and passed regardless. Separately, `bump_version.sh --check` ran
+only in a machine-local pre-push hook, so any hook-bypassing push could reintroduce the drift it was
+written to prevent. **A documented standard is not a gate until something fails when it is violated.** The pre-push hook
+is itself an example: it runs `./venv/bin/pytest -q` — serial and without the coverage threshold — so
+it is a smoke check that catches obvious breakage, *not* the gate that CI is.
+Periodically ask of each claimed gate: *what would break if I violated this right now?* — and if the
+answer is "nothing", it is documentation, not enforcement.
+
+## 19. Fix the duplication, not the instance
+
+`release.sh` had the version-revert block copy-pasted into each abort branch. A fix (restoring the
+gitignored `.env`) was applied to one copy and silently missed two others — one of which was reachable
+and left a bumped `.env` behind, i.e. *exactly the bug being fixed, still live*. The correct fix was
+one `revert_bump()` called from all three paths. **When a fix lands in a copy-pasted block, the copy
+is the bug**: extract it, or the next fix will miss a branch too (rule 1, applied to shell).
+
+## 20. Renaming a repo does not carry the container packages with it
+
+Renaming `mavrovde/mavrov.de` → `mavrovde/hirefolio` changed CI's publish target, because it derives
+from `${{ github.repository }}`. The consequences are not obvious: **new GHCR packages are created
+private, and package visibility does not follow a repository rename**, while the prod host pulls
+anonymously with no `docker login`. Previously published tags stay at the *old* path forever, so
+deploying a pre-rename version needs `IMAGE_REPO` pinned explicitly. Mitigation shipped: the rollout
+job preflights anonymous pullability of every image and fails naming the package. Beware also that an
+unauthenticated `curl` of a GHCR manifest returns 401 even for a *public* package — that is the token
+handshake, not a visibility signal, and it will produce a false alarm if used as the check.
 
 ---
 

@@ -190,7 +190,15 @@ for issue-driven work — humans and AI agents both follow it.
    the PR checklist current.
 7. **Close-the-loop (verify before closing).** When work lands, comment on the issue with what was
    done + links, **verify against its acceptance criteria / test steps**, then close it (or note the
-   remaining status if partial). Never close on assumption.
+   remaining status if partial). Never close on assumption. **A `Closes #NN` auto-close is NOT
+   close-the-loop** — it leaves no visible record, so the issue reads as "just closed" to anyone
+   later. Always post a comment naming **the PR, the merge SHA, the pipeline result, and each
+   acceptance criterion with how it was verified**; if a criterion is unmet, say so and keep the
+   issue open rather than closing optimistically.
+   **Report what you measured, not what you expect.** Several claims in this repo's history were
+   wrong until checked: "the release deploys correctly" (the images were private), "a regression
+   fails the suite" (it passed both ways), "15 cases" (there were 18), "dependency-free" (it needed
+   npm). If you assert a number or an outcome, run the thing that produces it first.
 8. **No secrets in public issues/PRs.** Never paste credentials, tokens, private keys, or
    step-by-step live-exploit instructions. Reference config locations (`path:line`) instead of the
    secret values.

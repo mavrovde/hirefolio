@@ -86,6 +86,11 @@ plugin supports triage of `security`-labelled issues.
 - State in the PR **how each acceptance criterion is met**; keep the PR checklist current.
 
 ## Close-the-loop (verify before closing)
+
+> A `Closes #NN` auto-close is **not** close-the-loop — it leaves no visible record. Always post a
+> comment naming the **PR, the merge SHA, the pipeline result**, and each acceptance criterion with
+> **who verified it and what they ran** (author vs the independent reviewer, and the actual command
+> and result). If a criterion is unmet, say so and keep the issue open.
 When work lands: comment on the issue with what was done + links (PR, green run URL, release tag),
 **verify against the issue's acceptance criteria / How-to-verify steps**, then close it (or note the
 remaining status if partial). **Never close on assumption** — confirm the real result first.
