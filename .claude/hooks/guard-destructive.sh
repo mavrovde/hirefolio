@@ -449,7 +449,7 @@ strip_text_heredocs() {
 # text that reaches me", so quoted text earlier in the pipeline is CODE, however
 # innocent its producing command looks (#210).
 pipes_into_shell() {
-  local seg first rest via_xargs
+  local seg first rest optless via_xargs
   local OLD="$IFS"; IFS=$'\n'
   for seg in $1; do
     # Peel wrappers, including ones that take their own options (`sudo -E`,
@@ -486,9 +486,13 @@ pipes_into_shell() {
           "")            IFS="$OLD"; return 0 ;;   # bare `bash` — reads stdin
           "-"|"-s"|"-s "*|"- "*)                    # explicit stdin forms
                          IFS="$OLD"; return 0 ;;
-          -*)            # options only, no operand: still stdin (`bash -x`, `bash -e -x`)
-                         case "$rest" in
-                           *" "[!-]*) ;;            # ...unless an operand follows
+          -*)            # Options only, no operand: still stdin (`bash -x`, `bash -e -x`).
+                         # `-o`/`--rcfile`/`--init-file` take a VALUE, which would
+                         # otherwise read as a script operand — `bash -o posix`
+                         # still reads stdin.
+                         optless="$(printf '%s' "$rest" | sed -E 's/(^| )(-o|--rcfile|--init-file) +[^ ]+//g')"
+                         case "$optless" in
+                           *" "[!-]*) ;;            # ...unless a real operand follows
                            *) IFS="$OLD"; return 0 ;;
                          esac
                          ;;

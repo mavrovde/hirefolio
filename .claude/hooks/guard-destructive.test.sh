@@ -406,6 +406,18 @@ BENIGNDEEP="${BENIGNDEEP}echo hello"
 for _i in 1 2 3 4 5 6 7 8 9; do BENIGNDEEP="${BENIGNDEEP}\""; done
 check "depth: 9 deep but benign"     "$BENIGNDEEP"                                 allow
 
+# --- OPTION VALUES ARE NOT SCRIPT OPERANDS (self-audit of the #214 allowlist) -
+# `-o`, `--rcfile` and `--init-file` take a VALUE. Without consuming it, `bash -o
+# posix` looked like it had a script operand, so the pipeline reading stdin was
+# missed. The pair of directions is the point: the value must not be mistaken for
+# a script, and a real script must still be recognised as one.
+check "opt-value: -o posix"          "echo \"$DV $V\" | bash -o posix"             deny
+check "opt-value: --rcfile"          "echo \"$DV $V\" | bash --rcfile /dev/null"   deny
+check "opt-value: -x -s"             "echo \"$DV $V\" | bash -x -s"                deny
+check "operand after -o value"       "bash -o posix deploy.sh"                     allow
+check "operand after --rcfile value" "bash --rcfile /dev/null setup.sh"            allow
+check "operand after -x"             "bash -x deploy.sh"                           allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

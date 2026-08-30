@@ -19,10 +19,11 @@ All notable changes to this project will be documented in this file.
 
   Same root cause as the #204 rounds, and the same rule applies: what the guard inspects has to be
   what the shell executes. Verified in both directions — running the final suite against `main`'s
-  hook gives **15** differences, **every one `allow → deny`**, so bypasses close with no allow-case
-  moving. Suite **112 → 147 cases**; a 33-command benign corpus stays fully allowed.
+  hook gives **18** differences, **every one `allow → deny`**, so bypasses close with no allow-case
+  moving. Suite **112 → 153 cases**; a 33-command benign corpus stays fully allowed.
   Mutation-checked: disabling the pipeline detection fails **10** cases, removing the flattened-body
-  fall-through **8**, and removing the script-operand check **4**.
+  fall-through **8**, removing the script-operand check **4**, and treating an option VALUE as a
+  script operand **2**.
 
   Two of those conditions exist because review caught this change making the guard *worse*, and both
   are worth recording rather than smoothing over. Replacing the flattened-body pass with the new
