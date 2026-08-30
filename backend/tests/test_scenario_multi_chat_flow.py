@@ -58,11 +58,7 @@ async def test_scenario_multi_chat_flow():
     mock_client.stream.return_value = mock_stream_ctx
 
     # Patch Deps
-    with (
-        patch("httpx.AsyncClient", return_value=mock_client),
-        patch("app.services.multi_chat.ChatOpenAI"),
-        patch("app.services.multi_chat.Agent"),
-    ):
+    with patch("httpx.AsyncClient", return_value=mock_client):
         # Execute generator
         gen = multi_agent_conversation(agents, "Topic", max_turns=2)
 

@@ -1,22 +1,14 @@
 import asyncio
 import json
 import re
-import warnings
 from collections.abc import AsyncGenerator
-from typing import Any
+from dataclasses import dataclass
 
 import httpx
-from crewai import Agent
-from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.tools import BaseTool
-from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel
 
 from app.config import settings
 from app.logger import get_logger
-
-# Suppress Pydantic V1/V2 mixing warnings from CrewAI internals
-warnings.filterwarnings("ignore", message="Mixing V1 models and V2 models")
 
 logger = get_logger(__name__)
 
@@ -29,21 +21,6 @@ class AgentConfig(BaseModel):
     goal: str | None = None
 
 
-class StreamingCallbackHandler(BaseCallbackHandler):
-    def __init__(self, queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
-        self.queue = queue
-        self.loop = loop
-        self.current_agent_name = "Unknown"
-
-    def on_llm_new_token(self, token: Any, **kwargs: Any) -> None:
-        if token:
-            # Safely put tokens from a background thread into the main loop's queue
-            self.loop.call_soon_threadsafe(
-                self.queue.put_nowait,
-                {"content": token, "agent_name": self.current_agent_name},
-            )
-
-
 class ChatMessage(BaseModel):
     agent_name: str
     content: str
@@ -52,15 +29,63 @@ class ChatMessage(BaseModel):
         return f"{self.agent_name}: {self.content}"
 
 
-class StopChatTool(BaseTool):
-    name: str = "Stop Chat"
-    description: str = (
-        "Stops the conversation immediately. Input should be the reason for stopping."
+@dataclass(frozen=True)
+class Participant:
+    """One debate participant.
+
+    Deliberately a plain data holder: generation happens through a direct HTTP
+    stream to Ollama's ``/api/chat`` below, so this path needs no agent
+    framework. It used to build a crewai ``Agent`` wrapping a LangChain
+    ``ChatOpenAI`` client, which crewai 1.x rejects (``Agent.llm`` accepts
+    ``str | BaseLLM | dict``) — raising a ValidationError before the streaming
+    generator's first yield and breaking the endpoint (issue #180).
+    """
+
+    role: str
+    goal: str
+    backstory: str
+
+
+def _build_participants(
+    agents_config: list[AgentConfig],
+) -> tuple[list[Participant], dict[str, int]]:
+    """Turn the request payload into participants + a role -> agent id map."""
+    participants: list[Participant] = []
+    agent_id_map: dict[str, int] = {}
+
+    for cfg in agents_config:
+        agent_role = cfg.role or "Participant"
+        agent_id_map[agent_role] = cfg.id
+        participants.append(
+            Participant(
+                role=agent_role,
+                goal=cfg.goal or "Participate deeply in the discussion.",
+                backstory=cfg.description,
+            )
+        )
+
+    return participants, agent_id_map
+
+
+def _stream_chunk(agent_id: int, content: str, turn_complete: bool = False) -> str:
+    return (
+        json.dumps(
+            {
+                "agent": agent_id,
+                "content": content,
+                "done": False,
+                "turn_complete": turn_complete,
+            }
+        )
+        + "\n"
     )
 
-    def _run(self, reason: str) -> str:
-        # We raise an exception to immediately halt execution
-        raise Exception(f"STOPPED_BY_MODERATOR: {reason}")
+
+def _final_chunk() -> str:
+    return (
+        json.dumps({"agent": 0, "content": "[Conversation Finished]", "done": True})
+        + "\n"
+    )
 
 
 async def multi_agent_conversation(
@@ -72,63 +97,18 @@ async def multi_agent_conversation(
         return
 
     queue: asyncio.Queue = asyncio.Queue()
-    agent_id_map = {}
-    participants = []
 
-    loop_main = asyncio.get_running_loop()
-
-    # 1. Create Participants (Stable Team)
-    for cfg in agents_config:
-        agent_role = cfg.role or "Participant"
-        agent_id_map[agent_role] = cfg.id
-
-        # Shared callback to stream tokens
-        callback = StreamingCallbackHandler(queue, loop_main)
-        callback.current_agent_name = agent_role
-
-        # We need to set the current agent name dynamically during execution
-        # But since we use one callback instance, we might have race conditions if parallel.
-        # Sequential execution is fine. We will update `callback.current_agent_name` inside the loop.
-
-        llm = ChatOpenAI(
-            model=settings.generation_model,
-            base_url=f"{settings.ollama_url}/v1",
-            api_key=SecretStr("NA"),
-            streaming=True,
-            callbacks=[callback],
-            temperature=0.7,
-        )
-
-        agent = Agent(
-            role=agent_role,
-            goal=cfg.goal or "Participate deeply in the discussion.",
-            backstory=cfg.description,
-            llm=llm,
-            verbose=False,
-            allow_delegation=False,
-        )
-        participants.append((agent, callback))
-
-    # 2. Create Moderator (Stable)
-    stop_tool = StopChatTool()
-    moderator_llm = ChatOpenAI(
-        model=settings.generation_model,
-        base_url=f"{settings.ollama_url}/v1",
-        api_key=SecretStr("NA"),
-        streaming=False,  # Moderator doesn't need to stream
-        temperature=0.1,
-    )
-
-    Agent(
-        role="Moderator",
-        name="Invisible Moderator",
-        goal="Ensure the conversation remains safe, on-topic, and appropriate.",
-        backstory="You are an invisible AI safety system. You monitor conversations for toxicity.",
-        llm=moderator_llm,
-        verbose=False,
-        allow_delegation=False,
-        tools=[stop_tool],
-    )
+    # 1. Create Participants (Stable Team). Any setup failure has to degrade into
+    # an error *on the stream*: the response headers are already sent by the time
+    # this generator runs, so raising here would close the body mid-chunk and the
+    # browser would only see a connection error (issue #180).
+    try:
+        participants, agent_id_map = _build_participants(agents_config)
+    except Exception as setup_err:
+        logger.exception("Failed to set up the multi-agent conversation")
+        yield _stream_chunk(0, f"\n[Error: {setup_err}]")
+        yield _final_chunk()
+        return
 
     async def run_dynamic_loop():
         try:
@@ -162,10 +142,7 @@ async def multi_agent_conversation(
             while turns < max_turns:
                 turns += 1
                 # 1. Participants Turn
-                for agent, callback in participants:
-                    # Use role since CrewAI Agent doesn't have a 'name' field in this version
-                    callback.current_agent_name = agent.role
-                    context_str = "\n".join(history[-3:])
+                for agent in participants:
                     # COMPLETION STYLE PROMPT: Act like we are already in the middle of a script
                     context_str = "\n".join(history[-3:])
 
@@ -180,7 +157,7 @@ async def multi_agent_conversation(
 
                     # Dynamically build stop sequences from participants
                     stop_sequences = ["\n", "Dialogue:", "System:", "Narrator:"]
-                    for p_agent, _ in participants:
+                    for p_agent in participants:
                         role_stop = f"{p_agent.role}:"
                         if role_stop not in stop_sequences:
                             stop_sequences.append(role_stop)
@@ -232,8 +209,6 @@ async def multi_agent_conversation(
                                             except json.JSONDecodeError:
                                                 continue
                     except Exception as e:
-                        if "STOPPED_BY_MODERATOR" in str(e):
-                            raise
                         full_text = f"[Error: {e}]"
 
                     # AGGRESSIVE POST-PROCESS: Regex to strip ANY leading labels
@@ -278,26 +253,14 @@ async def multi_agent_conversation(
                         {"content": "", "agent_name": agent.role, "turn_complete": True}
                     )
 
-                    # No moderator for this high-performance test run
-
-                # The debate continues until stopped by the user or the moderator tool.
-                # History is managed by keeping the last 8 messages for context.
+                # The debate continues until the client disconnects or the turn
+                # limit is reached. History is trimmed to keep the context small.
                 if len(history) > 20:
                     history = history[-10:]
 
         except Exception as e:
-            # Check for moderator stop
-            error_str = str(e)
-            if "STOPPED_BY_MODERATOR" in error_str:
-                # Extract reason
-                clean_reason = error_str.split("STOPPED_BY_MODERATOR:")[-1].strip()
-                # Remove quotes if present
-                clean_reason = clean_reason.strip("'").strip('"')
-                sys_msg = f"\n[System] Conversation Terminated: {clean_reason}"
-                queue.put_nowait({"content": sys_msg, "agent_name": "System"})
-            else:
-                logger.exception("Crew execution failed")
-                queue.put_nowait({"content": f"\n[Error: {e}]", "agent_name": "System"})
+            logger.exception("Multi-agent conversation failed")
+            queue.put_nowait({"content": f"\n[Error: {e}]", "agent_name": "System"})
         finally:
             log_msg = "Finishing dynamic loop."
             logger.info(log_msg)
@@ -317,25 +280,12 @@ async def multi_agent_conversation(
             agent_id = agent_id_map.get(name_label, 0)
             turn_complete = item.get("turn_complete", False)
 
-            yield (
-                json.dumps(
-                    {
-                        "agent": agent_id,
-                        "content": content,
-                        "done": False,
-                        "turn_complete": turn_complete,
-                    }
-                )
-                + "\n"
-            )
+            yield _stream_chunk(agent_id, content, turn_complete)
 
             queue.task_done()
 
     finally:
-        yield (
-            json.dumps({"agent": 0, "content": "[Conversation Finished]", "done": True})
-            + "\n"
-        )
+        yield _final_chunk()
 
         if worker_task and not worker_task.done():
             worker_task.cancel()
