@@ -54,7 +54,7 @@ All notable changes to this project will be documented in this file.
   forwarding incrementally (365 chunks, first at 1.6 s, spread over 99 s) *without* the directives.
   This ships as an explicit guarantee rather than a bug fix — today's behaviour is incidental on
   chunk sizes versus nginx's default buffers — and removes the public/admin asymmetry.
-  `proxy_buffering off`, `proxy_cache off`, `X-Accel-Buffering: no`. **Measured first, and the issue's
+  `proxy_buffering off`, `proxy_cache off`, and `proxy_read_timeout 300`. **Measured first, and the issue's
   premise did not reproduce:** per-chunk timings through the public proxy showed nginx already
   forwarding incrementally (365 chunks, first at 1.6 s, spread over 99 s) *without* the directives.
   This ships as an explicit guarantee rather than a bug fix — today's behaviour is incidental on
