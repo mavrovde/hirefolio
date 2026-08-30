@@ -22,7 +22,8 @@ cd /opt/mavrov.de
 
 # 2. Configure — copy the template and fill EVERY required value
 cp .env.example .env
-#    Required: ADMIN_PASSWORD (backend refuses to start without it),
+#    Required: ADMIN_PASSWORD and JWT_SECRET_KEY (the backend refuses to start
+#    without BOTH — generate the JWT secret with `openssl rand -hex 32`, #177),
 #    POSTGRES_PASSWORD, LINKEDIN_IMPORT_TOKEN (for the posts importer),
 #    PUBLIC_SERVER_NAME / ADMIN_SERVER_NAME, ADMIN_ALLOWED_CIDRS (keep empty =
 #    loopback-only admin until you add your operator IPs).
