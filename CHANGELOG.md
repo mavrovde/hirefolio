@@ -137,9 +137,6 @@ All notable changes to this project will be documented in this file.
   #112 rollout gap), and `@angular/*` exact-peer lockstep (single-pass group updates, lockfile
   regeneration escape hatch). Also renumbers the pre-existing duplicate §11 heading.
 
-## [1.8.4] - 2026-08-29
-
-### Changed
 - **Pre-release accuracy sweep** (Refs #61) — brings the user-facing docs back in line with the
   code: honest `SECURITY.md` (supported 1.8.x, GitHub Security Advisories reporting — replaces the
   unedited GitHub boilerplate with its fictional 5.1.x/4.0.x version table); `frontend/README.md`
@@ -155,6 +152,7 @@ All notable changes to this project will be documented in this file.
   Node 22, test-DB isolation via `TEST_DATABASE_URL` + `create_test_db.py`, per-project Vitest
   configs, dev vs prod+e2e compose stacks, no hardcoded test counts); `agents/README.md` roster
   regenerated from `common/roster.py` (16 agents, ports 8010–8025) with the real delivery flow.
+
 ## [1.8.4] - 2026-08-29
 
 ### Changed
