@@ -113,7 +113,10 @@ specs/      Feature specs (planned/done)
    of the change — not only in machine-local private memory, which fresh contexts and teammates can't
    see. Uncommitted knowledge doesn't compound.
 8. **No rogue prod actions.** Deploy only via the sanctioned path (merge to `main` / `release.sh`).
-   A release is **confirmed only when the `deploy.yml` pipeline is green end-to-end** — babysit the
+   A release is **confirmed only when the `deploy.yml` pipeline is green end-to-end** — and note
+   that green means *published AND (once the `deploy` rollout job is active via the `DEPLOY_*`
+   secrets) rolled out + health-gated on the live host*; while those secrets are absent, live
+   state must be verified manually (`docs/DEPLOYMENT.md`, issues #112/#156). Babysit the
    run and react to results (fix forward on red), then tag `vX.Y.Z`. **Check GitHub security reports
    (CodeQL + Dependabot) every release** and triage them. Confirm before anything irreversible or
    outward-facing (merging to `main` triggers a prod deploy).

@@ -770,3 +770,118 @@ jobs:
           docker tag $SHA_TAG $REPO_BASE-proxy:$VERSION
           docker push $REPO_BASE-proxy:latest
           docker push $REPO_BASE-proxy:$VERSION
+
+  # ============================================
+  # ROLLOUT TO PROD HOST (opt-in via secrets)
+  # ============================================
+  # Closes the "published ≠ live" gap (#112/#156): after all four images are
+  # promoted, roll them onto the prod host over SSH, health-gate the result,
+  # and roll back on failure. The job is a NO-OP until the repo owner adds the
+  # DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY secrets (see docs/DEPLOYMENT.md),
+  # so forks and secretless runs stay green. It never touches volumes (rule 9).
+  deploy:
+    name: Roll Out To Prod Host
+    runs-on: ubuntu-latest
+    needs: [publish-backend, publish-frontend, publish-admin-frontend, publish-proxy]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check rollout secrets
+        id: gate
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ] && [ -n "$DEPLOY_SSH_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Rollout secrets present — proceeding."
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Rollout skipped::DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY not configured — images are published but NOT rolled onto a host (see docs/DEPLOYMENT.md)."
+          fi
+
+      - name: Extract project version
+        id: get_version
+        run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_OUTPUT
+
+      - name: Set up SSH
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Roll out validated images
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+          VERSION: ${{ steps.get_version.outputs.version }}
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            DEPLOY_DIR="$DEPLOY_DIR" VERSION="$VERSION" IMAGE_REPO="$IMAGE_REPO" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd "$DEPLOY_DIR"
+          # Record the previous coordinates for rollback; update only these two keys.
+          cp .env .env.rollback
+          grep -v '^IMAGE_TAG=' .env | grep -v '^IMAGE_REPO=' > .env.new || true
+          printf 'IMAGE_REPO=%s\nIMAGE_TAG=%s\n' "$IMAGE_REPO" "$VERSION" >> .env.new
+          mv .env.new .env
+          docker compose -f docker-compose.prod.yml pull
+          # Recreates only changed services; volumes are NEVER touched (rule 9).
+          docker compose -f docker-compose.prod.yml up -d
+          REMOTE
+
+      - name: Health + freshness gate
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          PUBLIC_URL: ${{ secrets.DEPLOY_PUBLIC_URL || 'https://mavrov.de' }}
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          echo "Waiting for $PUBLIC_URL to report healthy at v$VERSION..."
+          for i in $(seq 1 30); do
+            body=$(curl -sk -m 10 "$PUBLIC_URL/api/app/stats/public" || true)
+            live=$(printf '%s' "$body" | python3 -c "import json,sys
+          try: print(json.load(sys.stdin).get('backend_version',''))
+          except Exception: print('')" 2>/dev/null || true)
+            if [ "$live" = "$VERSION" ]; then
+              echo "Live backend_version=$live matches."
+              # Freshness probe (#169): the public host must NOT serve the admin
+              # SPA route — a 404 here proves a post-workspace-split frontend.
+              code=$(curl -sk -o /dev/null -w '%{http_code}' -m 10 "$PUBLIC_URL/admin/login")
+              if [ "$code" = "404" ]; then echo "Freshness probe OK (/admin/login -> 404)."; exit 0; fi
+              echo "Freshness probe FAILED: /admin/login -> $code (expected 404)"; exit 1
+            fi
+            echo "  attempt $i/30: live='$live' (want '$VERSION')"; sleep 10
+          done
+          echo "Health gate FAILED: host never reported v$VERSION"; exit 1
+
+      - name: Roll back on failure
+        if: failure() && steps.gate.outputs.enabled == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+        run: |
+          echo "Rolling back to previous image coordinates..."
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            DEPLOY_DIR="$DEPLOY_DIR" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd "$DEPLOY_DIR"
+          if [ -f .env.rollback ]; then
+            mv .env.rollback .env
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            echo "Rolled back."
+          else
+            echo "No .env.rollback found — manual intervention required." >&2
+            exit 1
+          fi
+          REMOTE
