@@ -341,16 +341,20 @@ jobs:
           fail_ci_if_error: false
 
   # ============================================
-  # PROXY QA
+  # REPO QA
   # ============================================
   version-consistency:
     name: Version Consistency
     runs-on: ubuntu-latest
-    # Fast, dependency-free gate (#193): every version carrier must agree with
-    # VERSION before anything is built or published. Previously `--check` ran
-    # only in the machine-local pre-push hook, so a hook-bypassing push could
-    # reintroduce #172-class drift (e.g. a stale shared/package.json) and it
-    # would only surface at deploy time.
+    # Fast gate (#193): every version carrier must agree with VERSION before
+    # anything is built or published. Previously `--check` ran only in the
+    # machine-local pre-push hook, so a hook-bypassing push could reintroduce
+    # #172-class drift (e.g. a stale shared/package.json) and it would only
+    # surface at deploy time.
+    #
+    # No language setup step is needed — `--check` is pure shell, and the
+    # self-test's rotation cases need `npm`, which ubuntu-latest ships
+    # preinstalled (the self-test fails loudly if it is ever missing).
     steps:
       - uses: actions/checkout@v7
       - name: Check version carriers agree
@@ -358,6 +362,9 @@ jobs:
       - name: Self-test the checker itself
         run: bash test-bump-version.sh
 
+  # ============================================
+  # PROXY QA
+  # ============================================
   proxy-config-audit:
     name: Proxy Config Audit
     runs-on: ubuntu-latest

@@ -42,8 +42,9 @@ All notable changes to this project will be documented in this file.
   throwaway fixtures (it never touches the working tree): every carrier's drift is detected *and
   named*, the `version="1.0.0-fallback"` literal is not mistaken for the app version, `VERSION`
   newline hygiene is enforced both ways, `--dry-run` is proven inert, and CHANGELOG rotation is
-  verified end-to-end. Mutation-checked: reverting the rotation fix fails exactly the case that
-  pins it.
+  verified end-to-end, plus both "the pattern vanished" guards and the write-side anchor.
+  Mutation-checked against the pre-fix script: **4 cases fail**, one per defect. It also runs in
+  `verify_all.sh` and the pre-push hook, not only CI, so a tooling edit fails locally first.
 
 ### Fixed
 - **Version tooling follow-ups from the #178 review** (#186) — the backend version read *and* write
@@ -51,8 +52,10 @@ All notable changes to this project will be documented in this file.
   can never be matched instead of the FastAPI app version; the two `grep`-derived carriers
   (`package-lock.json`, compose `IMAGE_TAG` defaults) no longer die silently under
   `set -euo pipefail` when a pattern stops matching — they name the file and say the format changed;
-  `release.sh`'s abort path now also restores `IMAGE_TAG` in the gitignored `.env` (which
-  `git checkout` cannot revert), so an aborted release no longer leaves it bumped; and the CHANGELOG
+  `release.sh`'s three abort paths now share a single `revert_bump()` — the revert was duplicated
+  per branch, so the new `.env` `IMAGE_TAG` restore (which `git checkout` cannot do, the file being
+  gitignored) initially reached only one of them, and a `--check` failure under `set -e` left the
+  bump applied entirely; and the CHANGELOG
   rotation is rewritten in three explicit steps that cannot split a real `### Added` list — the old
   placeholder-anchored regex inserted the release header mid-list, leaving the heading behind in
   `[Unreleased]` and the real bullets bare under the version header.

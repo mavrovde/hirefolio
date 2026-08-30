@@ -134,6 +134,16 @@ docker-compose -f docker-compose.prod.yml -f docker-compose.e2e.yml exec -T back
 echo "🛡️  Verifying admin access-config generator..."
 sh proxy/test-generate-admin-config.sh
 
+# Version tooling self-test (#186): bump_version.sh --check gates every push and
+# the pipeline, and its rotation writes the release notes — so the checker itself
+# is tested here, not only in CI.
+echo "🛡️  Verifying version tooling (bump_version.sh)..."
+bash test-bump-version.sh
+
+# Destructive-command guard self-test (#116/#188).
+echo "🛡️  Verifying destructive-command guard..."
+bash .claude/hooks/guard-destructive.test.sh
+
 # Run Playwright
 echo "🛡️  Verifying Proxy Routes..."
 python3 -m pip install httpx --quiet --break-system-packages || true

@@ -10,6 +10,8 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 PASS=0
 FAIL=0
+FIXTURES=()
+trap 'for d in "${FIXTURES[@]:-}"; do [ -n "$d" ] && rm -rf "$d"; done' EXIT
 
 ok()   { printf 'PASS  %s\n' "$1"; PASS=$((PASS + 1)); }
 bad()  { printf 'FAIL  %s\n     %s\n' "$1" "${2:-}"; FAIL=$((FAIL + 1)); }
@@ -17,6 +19,7 @@ bad()  { printf 'FAIL  %s\n     %s\n' "$1" "${2:-}"; FAIL=$((FAIL + 1)); }
 # --- fixture: a minimal tree with every carrier bump_version.sh --check reads ----
 make_fixture() {
     local dir="$1" ver="$2"
+    FIXTURES+=("$dir")
     mkdir -p "$dir"/{backend/app,frontend/projects/shared,frontend/projects/public/src/app}
     printf '%s\n' "$ver" > "$dir/VERSION"
     cat > "$dir/backend/app/main.py" <<PY
@@ -25,7 +28,7 @@ app = FastAPI(
     version="$ver",
 )
 doc = CvDocument(
-                version="1.0.0-fallback",
+                version="0.0.9",
 )
 PY
     printf '{\n  "name": "frontend",\n  "version": "%s"\n}\n' "$ver" > "$dir/frontend/package.json"
@@ -46,6 +49,13 @@ YML
 }
 
 run_check() { (cd "$1" && ./bump_version.sh --check 2>&1); }
+
+# The rotation cases run a real bump, which syncs package-lock.json via npm.
+# Without npm those cases fail with empty diagnostics — say so instead (#186 review).
+command -v npm > /dev/null 2>&1 || {
+    echo "FAIL  npm is required for the rotation cases (bump_version.sh syncs package-lock.json)"
+    exit 1
+}
 
 # === 1. --check passes on a consistent tree ===================================
 D=$(mktemp -d); make_fixture "$D" 1.9.0
@@ -75,12 +85,47 @@ for spec in \
     fi
 done
 
-# === 3. the CvDocument fallback literal must NOT be mistaken for the app version
+# === 3. a nested version="X.Y.Z" literal must NOT be read as the app version ====
+# The fixture's CvDocument literal is NUMERIC on purpose: with the real
+# "1.0.0-fallback" string an unanchored `version="[0-9.]*"` could never match it,
+# so this case passed even against the unanchored script (#186 review).
 D=$(mktemp -d); make_fixture "$D" 1.9.0
 out=$(run_check "$D"); rc=$?
 [ $rc -eq 0 ] \
-    && ok "backend check ignores the version=\"1.0.0-fallback\" literal" \
-    || bad "backend check ignores the fallback literal" "rc=$rc out=$out"
+    && ok "backend check reads the app version, not a nested literal" \
+    || bad "backend check reads the app version, not a nested literal" "rc=$rc out=$out"
+
+# ...and the WRITE side must leave the nested literal alone.
+D=$(mktemp -d); make_fixture "$D" 1.9.0
+(cd "$D" && ./bump_version.sh --patch > /dev/null 2>&1)
+if grep -q 'version="0.0.9"' "$D/backend/app/main.py" \
+   && grep -q '^    version="1.9.1"' "$D/backend/app/main.py"; then
+    ok "bump rewrites the app version and leaves the nested literal intact"
+else
+    bad "bump rewrites the app version and leaves the nested literal intact" \
+        "$(grep -n 'version=' "$D/backend/app/main.py")"
+fi
+
+# === 3b. a carrier whose PATTERN vanishes must fail loudly, not silently ========
+# Guards the `[ -n "$v" ] ||` checks: under `set -euo pipefail` a non-matching
+# grep used to exit 1 with zero output, which is undebuggable from a hook (#186).
+D=$(mktemp -d); make_fixture "$D" 1.9.0
+printf '{\n  "name": "frontend"\n}\n' > "$D/frontend/package-lock.json"   # no "version" key
+out=$(run_check "$D"); rc=$?
+if [ $rc -ne 0 ] && printf '%s' "$out" | grep -q 'package-lock.json'; then
+    ok "--check reports a package-lock.json whose version key vanished"
+else
+    bad "--check reports a package-lock.json whose version key vanished" "rc=$rc out=$out"
+fi
+
+D=$(mktemp -d); make_fixture "$D" 1.9.0
+printf 'services:\n  backend:\n    image: x\n' > "$D/docker-compose.prod.yml"  # no IMAGE_TAG default
+out=$(run_check "$D"); rc=$?
+if [ $rc -ne 0 ] && printf '%s' "$out" | grep -q 'docker-compose.prod.yml'; then
+    ok "--check reports a compose file whose IMAGE_TAG default vanished"
+else
+    bad "--check reports a compose file whose IMAGE_TAG default vanished" "rc=$rc out=$out"
+fi
 
 # === 4. VERSION must carry exactly one trailing newline =======================
 D=$(mktemp -d); make_fixture "$D" 1.9.0
