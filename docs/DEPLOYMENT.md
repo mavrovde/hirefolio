@@ -4,8 +4,10 @@ Two paths: a **first deploy** onto a clean host (manual, one-time) and the
 **automated rollout** that keeps the host current on every green `main` pipeline
 once the owner adds three secrets. CI publishes multi-tagged amd64 images to
 `ghcr.io/mavrovde/hirefolio-{backend,frontend,admin-frontend,proxy}` —
-`sha-<gitsha>`, the release version (e.g. `1.8.4`), and `latest`. The packages
-are **public**: any host can `docker compose pull` them with no registry login.
+`sha-<gitsha>`, the release version (e.g. `1.9.0`), and `latest`. The host pulls
+with **no registry login**, so those four packages **must be public** — the four
+post-rename `hirefolio-*` packages were created *private* by GitHub and need a
+one-time visibility change (see "One-time action after the rename" below).
 
 ## First deploy (clean server)
 
@@ -30,7 +32,7 @@ cp .env.example .env
 #    Optional: GEMINI_API_KEY (+ GEMINI_ENCRYPTION_KEY) — without it the AI
 #    features fall back to the in-stack Ollama.
 #    Image coordinates: IMAGE_REPO defaults to ghcr.io/mavrovde/hirefolio;
-#    set IMAGE_TAG to the release you are deploying (e.g. 1.8.4).
+#    set IMAGE_TAG to the release you are deploying (e.g. 1.9.0).
 
 # 3. Pull the validated images and start (never use `down -v` — volumes hold
 #    the database and models)
@@ -106,7 +108,7 @@ an IP allowlist on sshd. The key in GitHub should exist nowhere else.
 - Images published **before** the rename remain at `ghcr.io/mavrovde/mavrov.de-*`
   (still public). To deploy a pre-rename tag such as `1.8.4`, pin
   `IMAGE_REPO=ghcr.io/mavrovde/mavrov.de` explicitly.
-- Otherwise the GHCR packages are public — keep them that way or the host needs a
-  read-only PAT `docker login`.
+- Once made public, keep them public — otherwise every host needs a read-only
+  PAT `docker login` and the rollout job's anonymous-pull preflight fails.
 - `build_amd64_and_push.sh` remains as a manual fallback for pushing images
   from a workstation.
