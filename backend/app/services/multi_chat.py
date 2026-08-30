@@ -121,7 +121,8 @@ async def multi_agent_conversation(
             try:
                 async with httpx.AsyncClient() as client:
                     resp = await client.get(
-                        f"{settings.ollama_url}/api/tags", timeout=5
+                        f"{settings.ollama_url}/api/tags",
+                        timeout=settings.ollama_healthcheck_timeout_seconds,
                     )
                     if resp.status_code == 200:
                         logger.info("Successfully connected to Ollama.")
@@ -188,7 +189,10 @@ async def multi_agent_conversation(
                     try:
                         async with httpx.AsyncClient() as client:
                             async with client.stream(
-                                "POST", url, json=payload, timeout=30
+                                "POST",
+                                url,
+                                json=payload,
+                                timeout=settings.llm_stream_timeout_seconds,
                             ) as response:
                                 if response.status_code != 200:
                                     # A missing model answers 404. Ignoring it let

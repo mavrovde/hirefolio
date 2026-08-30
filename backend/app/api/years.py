@@ -54,7 +54,7 @@ def _fetch_years_via_http() -> set[int]:
     for lang in ("en", "de"):
         url = f"{PROFILE_DATA_HTTP_BASE}/profile_data_{lang}.json"
         try:
-            response = httpx.get(url, timeout=5)
+            response = httpx.get(url, timeout=settings.profile_data_timeout_seconds)
             response.raise_for_status()
             data = response.json()
             all_years |= _extract_years_from_data(data)

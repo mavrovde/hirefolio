@@ -114,6 +114,44 @@ class Settings(BaseSettings):
     profile_rate_limit_requests: int = 100
     profile_rate_limit_window_seconds: int = 60
 
+    # Operational timeouts (issue #207).
+    #
+    # These are host-dependent by nature, which is why they are settings rather
+    # than literals: a cold model on a small VPS legitimately needs a long
+    # ceiling, while a fast host would rather fail fast than hold a worker.
+    # Every default below equals the literal it replaced, so an unchanged .env
+    # keeps the previous behaviour exactly.
+    #
+    # Unlike the Gemini variables (#141) these are NOT credentials and their
+    # names collide with nothing generic, so they are deliberately left
+    # un-namespaced.
+    #
+    # Generation calls: a full LLM completion, the slowest thing the backend
+    # waits on.
+    llm_request_timeout_seconds: float = 300.0
+    # Streaming generation: time budget for the streamed POST, where the first
+    # chunk (not the whole answer) is what has to arrive in time.
+    llm_stream_timeout_seconds: float = 30.0
+    # Embedding calls, which are far cheaper than generation.
+    embedding_request_timeout_seconds: float = 30.0
+    # Liveness probes against Ollama. Kept short on purpose: this decides the
+    # public "AI online" badge, so it must not hold a request open.
+    ollama_healthcheck_timeout_seconds: float = 2.0
+    # The one-shot startup infra check, which may race a still-booting Ollama
+    # and so tolerates more than a per-request probe.
+    ollama_startup_check_timeout_seconds: float = 10.0
+    # Fetching profile JSON from the frontend container.
+    profile_data_timeout_seconds: float = 5.0
+    # Ceiling for the pg_restore/psql subprocess behind the admin SQL restore.
+    db_restore_timeout_seconds: int = 300
+
+    # Bulk-import resource-exhaustion guards (issue #207).
+    #
+    # Siblings of ``import_max_image_mb`` above; they guard the same endpoint
+    # family and are configurable for the same reason.
+    import_max_posts_json_mb: int = 10
+    import_max_posts_per_request: int = 500
+
     # populate_by_name is deliberately NOT enabled: it also re-admits the FIELD
     # NAME as an environment source, which would let the generic GEMINI_API_KEY
     # bind again and silently undo #141 (caught by

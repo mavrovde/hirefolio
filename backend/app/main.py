@@ -85,7 +85,10 @@ async def lifespan(app: FastAPI):
     )
     try:
         async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{settings.ollama_url}/api/tags", timeout=10)
+            resp = await client.get(
+                f"{settings.ollama_url}/api/tags",
+                timeout=settings.ollama_startup_check_timeout_seconds,
+            )
             print(
                 f"[{datetime.now(UTC)}] INFRA CHECK: Ollama status: {resp.status_code}"
             )

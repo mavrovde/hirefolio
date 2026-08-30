@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.logger import get_logger
 from app.models.user import User
@@ -58,8 +59,6 @@ async def execute_sql(
 
 def _get_db_url():
     """Get the database URL with +asyncpg stripped for CLI tools."""
-    from app.config import settings
-
     db_url = str(settings.database_url)
     if "+asyncpg" in db_url:
         db_url = db_url.replace("+asyncpg", "")
@@ -145,16 +144,23 @@ async def restore_database(
         content = await file.read()
         file_size = len(content)
 
-        # Communicate with timeout (5 minutes max for large dumps)
+        # Communicate with a bounded timeout so a hung psql cannot pin the
+        # worker forever; a large dump legitimately needs a bigger ceiling, so
+        # the bound is configurable (#207).
         try:
             stdout, stderr = await asyncio.wait_for(
-                proc.communicate(input=content), timeout=300
+                proc.communicate(input=content),
+                timeout=settings.db_restore_timeout_seconds,
             )
         except TimeoutError:
             proc.kill()
             raise HTTPException(
                 status_code=500,
-                detail=f"Restore timed out after 300s. File size: {file_size} bytes",
+                detail=(
+                    f"Restore timed out after "
+                    f"{settings.db_restore_timeout_seconds}s. "
+                    f"File size: {file_size} bytes"
+                ),
             )
 
         stdout_text = stdout.decode() if stdout else ""

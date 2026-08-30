@@ -355,14 +355,15 @@ async def test_download_network_error_returns_none(monkeypatch):
 
 
 async def test_oversized_upload_is_413(clean_client: AsyncClient, monkeypatch):
-    monkeypatch.setattr("app.api.linkedin.MAX_POSTS_JSON_BYTES", 10)
-    r = await clean_client.post(URL, files=_file(b"x" * 50), headers=_hdr())
+    monkeypatch.setattr(settings, "import_max_posts_json_mb", 1)
+    oversized = b"x" * (2 * 1024 * 1024)
+    r = await clean_client.post(URL, files=_file(oversized), headers=_hdr())
     assert r.status_code == 413
     assert "exceeds" in r.json()["detail"]
 
 
 async def test_post_count_is_capped(clean_client: AsyncClient, monkeypatch):
-    monkeypatch.setattr("app.api.linkedin.MAX_POSTS_PER_IMPORT", 1)
+    monkeypatch.setattr(settings, "import_max_posts_per_request", 1)
     entries = [
         {"urn": f"urn:cap:{i}", "content": f"post number {i} body"} for i in range(3)
     ]

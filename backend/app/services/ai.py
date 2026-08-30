@@ -127,7 +127,9 @@ async def suggest_tags(
     else:
         logger.info("Using Ollama for suggest_tags (fallback)")
         try:
-            async with httpx.AsyncClient(timeout=300.0) as client:
+            async with httpx.AsyncClient(
+                timeout=settings.llm_request_timeout_seconds
+            ) as client:
                 response = await client.post(
                     f"{settings.ollama_url}/api/generate",
                     json={
@@ -230,7 +232,9 @@ async def suggest_post_details(
     else:
         logger.info("Using Ollama for suggest_post_details (fallback)")
         try:
-            async with httpx.AsyncClient(timeout=300.0) as client:
+            async with httpx.AsyncClient(
+                timeout=settings.llm_request_timeout_seconds
+            ) as client:
                 response = await client.post(
                     f"{settings.ollama_url}/api/generate",
                     json={
@@ -331,7 +335,9 @@ async def suggest_field(
     else:
         logger.info(f"Using Ollama for suggest_field({field}) (fallback)")
         try:
-            async with httpx.AsyncClient(timeout=300.0) as client:
+            async with httpx.AsyncClient(
+                timeout=settings.llm_request_timeout_seconds
+            ) as client:
                 response = await client.post(
                     f"{settings.ollama_url}/api/generate",
                     json={
@@ -456,7 +462,9 @@ async def generate_full_post(
         logger.info("Using Ollama for generate_full_post (fallback)")
         # Note: Local LLMs might struggle with large outputs or JSON strictness for full posts
         try:
-            async with httpx.AsyncClient(timeout=300.0) as client:
+            async with httpx.AsyncClient(
+                timeout=settings.llm_request_timeout_seconds
+            ) as client:
                 response = await client.post(
                     f"{settings.ollama_url}/api/generate",
                     json={
