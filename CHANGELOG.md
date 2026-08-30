@@ -116,6 +116,20 @@ All notable changes to this project will be documented in this file.
   rather than assumed.
 
 ### Docs
+- **The release checklist no longer mis-reads the rollout job's signal** (release review of this
+  version) — `lessons-learned` §7 said that with `DEPLOY_*` unset the rollout job "skips", and told
+  the reader to "check the job's status". Both are wrong in the way that matters: the job runs
+  unconditionally and reports **`success`** as a guarded no-op, so its *status* is a false positive
+  and a release manager following the old wording would announce a host rollout that never happened.
+  It now says to read the job's **log** (or probe the live footer) and records the concrete evidence:
+  run 33326238612 was 21/21 green with `Roll Out To Prod Host` = `success`, while live prod still
+  served **v1.2.27**.
+- **`.env.example` stops carrying a version that silently rots** — the commented
+  `# IMAGE_TAG=1.9.0` example sat one release behind and was invisible to both
+  `bump_version.sh --check` and the new CI version-consistency gate, which is precisely the
+  uncovered-carrier shape #172/#193 set out to eliminate. Since the surrounding comment already
+  names `VERSION` as the source of truth, the example is now the placeholder `X.Y.Z`: it cannot
+  drift, rather than being hand-bumped every release forever.
 - **lessons-learned §16–20 + the rules distributed across every AI config** — today's milestone
   sweep produced five durable lessons, now committed rather than left in a transcript: mutation-check
   any test that claims to pin a fix (it passed against the *unfixed* code four separate times, and
