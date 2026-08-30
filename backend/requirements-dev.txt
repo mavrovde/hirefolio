@@ -18,4 +18,4 @@ types-passlib==1.7.7.20260211
 
 # Security
 bandit==1.9.4
-rich>=13.0.0,<15.0.0
+rich>=15.0.0

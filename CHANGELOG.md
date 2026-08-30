@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Dropped the unused `crewai` + `langchain-openai` pins, unblocking the caps they forced** (#185,
+  closes #53's dependency half). After #184 removed the vestigial agent-framework plumbing, nothing
+  in `backend/app/` imported either package — they were dead weight that nonetheless dictated the
+  whole backend's resolution. With them gone: **`pydantic` >=2.12.5 → >=2.13.0** (resolves 2.13.5)
+  and **`rich` <15.0.0 → >=15.0.0** (resolves 15.0.0), the two caps tracked by the now-closed #52
+  (crewai pinned `pydantic<2.13`; its `instructor` dependency pinned `rich<15`). Verified on a clean
+  Python 3.13 environment: `pip check` clean, **787 passed, 7 skipped, 100% coverage**.
+
 ### Added
 - Placeholder for next release.
 
