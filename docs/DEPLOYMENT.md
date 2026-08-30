@@ -72,14 +72,19 @@ add these in Settings → Secrets and variables → Actions:
 | `DEPLOY_USER` | yes | Dedicated non-root deploy user |
 | `DEPLOY_SSH_KEY` | yes | Private key for that user (generate a dedicated pair; never reuse a personal key) |
 | `DEPLOY_DIR` | no | Compose project dir (default `/opt/mavrov.de`) |
+| `DEPLOY_SSH_PORT` | no | SSH port (default 22) |
 | `DEPLOY_PUBLIC_URL` | no | Public URL for the health gate (default `https://mavrov.de`) |
 
-On every green pipeline the job then: rewrites only `IMAGE_REPO`/`IMAGE_TAG` in
-the host `.env` (previous values saved to `.env.rollback`), `docker compose
-pull && up -d`, polls `/api/app/stats/public` until `backend_version` matches
-the repo `VERSION`, runs the freshness probe (`/admin/login` → 404, issue
-#169), and **rolls back** to `.env.rollback` if any of that fails. Volumes are
-never touched (CLAUDE.md rule 9).
+On every green pipeline the job then: rewrites only `IMAGE_REPO`/`IMAGE_TAG`
+in the host `.env`, deploying the **immutable `sha-<gitsha>` tag** (never the
+mutable version tag — that would make rollback a no-op); `.env.rollback`
+records only the previous coordinate lines, never secrets. It pulls and
+recreates **only the four app services** (`backend frontend admin-frontend
+proxy`, `--no-deps`) so the DB/Ollama/Open-WebUI images and volumes are never
+rolled by CI, verifies each running container **by image digest**, waits on
+`/api/app/health`, runs the retried freshness probe (`/admin/login` → 404,
+issue #169), and **rolls back to the previous sha tag** on failure. Volumes
+are never touched (CLAUDE.md rule 9).
 
 Host-side hardening checklist: dedicated `deploy` user in the `docker` group
 only, `authorized_keys` restricted to that key, password auth off, fail2ban or

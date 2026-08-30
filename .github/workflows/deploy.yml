@@ -771,18 +771,23 @@ jobs:
           docker push $REPO_BASE-proxy:latest
           docker push $REPO_BASE-proxy:$VERSION
 
+
   # ============================================
   # ROLLOUT TO PROD HOST (opt-in via secrets)
   # ============================================
-  # Closes the "published ≠ live" gap (#112/#156): after all four images are
-  # promoted, roll them onto the prod host over SSH, health-gate the result,
-  # and roll back on failure. The job is a NO-OP until the repo owner adds the
-  # DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY secrets (see docs/DEPLOYMENT.md),
-  # so forks and secretless runs stay green. It never touches volumes (rule 9).
+  # Closes the "published ≠ live" gap (#112/#156). Deploys the IMMUTABLE
+  # sha-<gitsha> tag (review #175: a mutable version tag made rollback a no-op),
+  # scopes pull/up to the four app services so the DB/ollama/open-webui images
+  # and volumes are never rolled by CI (#123-class drift; rule 9), verifies the
+  # running containers by image digest, health-gates, freshness-probes (#169),
+  # and rolls back to the previously recorded sha tag on failure. No-op until
+  # the owner adds DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY (docs/DEPLOYMENT.md).
   deploy:
     name: Roll Out To Prod Host
     runs-on: ubuntu-latest
     needs: [publish-backend, publish-frontend, publish-admin-frontend, publish-proxy]
+    env:
+      APP_SERVICES: backend frontend admin-frontend proxy
     steps:
       - uses: actions/checkout@v7
 
@@ -795,101 +800,116 @@ jobs:
         run: |
           if [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ] && [ -n "$DEPLOY_SSH_KEY" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
-            echo "Rollout secrets present — proceeding."
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "::notice title=Rollout skipped::DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY not configured — images are published but NOT rolled onto a host (see docs/DEPLOYMENT.md)."
           fi
 
-      - name: Extract project version
-        id: get_version
-        run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_OUTPUT
-
       - name: Set up SSH
         if: steps.gate.outputs.enabled == 'true'
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # TOFU on first contact; keyscan failure is loud, and once a key is
+          # recorded in this run, a mismatch aborts (StrictHostKeyChecking below).
+          ssh-keyscan -p "$DEPLOY_SSH_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          {
+            echo "Host prod"
+            echo "  HostName $DEPLOY_HOST"
+            echo "  Port $DEPLOY_SSH_PORT"
+            echo "  User ${{ secrets.DEPLOY_USER }}"
+            echo "  IdentityFile ~/.ssh/deploy_key"
+            echo "  IdentitiesOnly yes"
+            echo "  BatchMode yes"
+            echo "  StrictHostKeyChecking yes"
+          } >> ~/.ssh/config
 
       - name: Roll out validated images
         if: steps.gate.outputs.enabled == 'true'
+        id: rollout
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
-          VERSION: ${{ steps.get_version.outputs.version }}
+          SHA_TAG: sha-${{ github.sha }}
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            "DEPLOY_DIR='$DEPLOY_DIR' VERSION='$VERSION' IMAGE_REPO='$IMAGE_REPO' bash -s" <<'REMOTE'
+          echo "mutated=true" >> "$GITHUB_OUTPUT"
+          ssh prod "DEPLOY_DIR='$DEPLOY_DIR' SHA_TAG='$SHA_TAG' IMAGE_REPO='$IMAGE_REPO' APP_SERVICES='$APP_SERVICES' bash -s" <<'REMOTE'
           set -euo pipefail
           umask 077
           cd "$DEPLOY_DIR"
-          # Record ONLY the previous image coordinates for rollback — never a full
-          # copy of .env (it holds every prod secret; security finding on #175).
+          # Record ONLY the previous image coordinates for rollback — never a
+          # full copy of .env (it holds every prod secret).
           { grep '^IMAGE_TAG=' .env || true; grep '^IMAGE_REPO=' .env || true; } > .env.rollback
           grep -v '^IMAGE_TAG=' .env | grep -v '^IMAGE_REPO=' > .env.new || true
-          printf 'IMAGE_REPO=%s\nIMAGE_TAG=%s\n' "$IMAGE_REPO" "$VERSION" >> .env.new
+          # Immutable coordinate: rollback to the previous sha tag is meaningful,
+          # unlike a mutable version tag that both runs would resolve identically.
+          printf 'IMAGE_REPO=%s\nIMAGE_TAG=%s\n' "$IMAGE_REPO" "$SHA_TAG" >> .env.new
           mv .env.new .env
           chmod 600 .env
-          docker compose -f docker-compose.prod.yml pull
-          # Recreates only changed services; volumes are NEVER touched (rule 9).
-          docker compose -f docker-compose.prod.yml up -d
+          # Only the four app images: db/ollama/open-webui images + volumes are
+          # never rolled by CI (rule 9 / #123 schema-drift class).
+          docker compose -f docker-compose.prod.yml pull $APP_SERVICES
+          docker compose -f docker-compose.prod.yml up -d --no-deps $APP_SERVICES
+          # Digest verification: each app container must run the image the tag
+          # resolves to — this, not a version string, proves freshness.
+          for svc in $APP_SERVICES; do
+            want=$(docker image inspect --format '{{.Id}}' "$IMAGE_REPO-$svc:$SHA_TAG")
+            got=$(docker inspect --format '{{.Image}}' "$(docker compose -f docker-compose.prod.yml ps -q "$svc")")
+            if [ "$want" != "$got" ]; then
+              echo "Digest mismatch for $svc: running $got, expected $want" >&2
+              exit 1
+            fi
+          done
+          echo "All app services run the sha-tagged images."
           REMOTE
 
       - name: Health + freshness gate
         if: steps.gate.outputs.enabled == 'true'
         env:
           PUBLIC_URL: ${{ secrets.DEPLOY_PUBLIC_URL || 'https://mavrov.de' }}
-          VERSION: ${{ steps.get_version.outputs.version }}
         run: |
-          echo "Waiting for $PUBLIC_URL to report healthy at v$VERSION..."
+          echo "Waiting for $PUBLIC_URL to become healthy..."
+          ok=false
           for i in $(seq 1 30); do
-            body=$(curl -sk -m 10 "$PUBLIC_URL/api/app/stats/public" || true)
-            live=$(printf '%s' "$body" | python3 -c "import json,sys
-          try: print(json.load(sys.stdin).get('backend_version',''))
-          except Exception: print('')" 2>/dev/null || true)
-            if [ "$live" = "$VERSION" ]; then
-              echo "Live backend_version=$live matches."
-              # Freshness probe (#169): the public host must NOT serve the admin
-              # SPA route — a 404 here proves a post-workspace-split frontend.
-              code=$(curl -sk -o /dev/null -w '%{http_code}' -m 10 "$PUBLIC_URL/admin/login")
-              if [ "$code" = "404" ]; then echo "Freshness probe OK (/admin/login -> 404)."; exit 0; fi
-              echo "Freshness probe FAILED: /admin/login -> $code (expected 404)"; exit 1
-            fi
-            echo "  attempt $i/30: live='$live' (want '$VERSION')"; sleep 10
+            if curl -s -m 10 "$PUBLIC_URL/api/app/health" | grep -q healthy; then ok=true; break; fi
+            echo "  health attempt $i/30"; sleep 10
           done
-          echo "Health gate FAILED: host never reported v$VERSION"; exit 1
+          $ok || { echo "Health gate FAILED"; exit 1; }
+          # Freshness probe (#169) with its own retries: the public host must NOT
+          # serve the admin SPA route — 404 proves a post-workspace-split build.
+          for i in $(seq 1 6); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -m 10 "$PUBLIC_URL/admin/login" || echo 000)
+            if [ "$code" = "404" ]; then echo "Freshness probe OK."; exit 0; fi
+            echo "  freshness attempt $i/6: /admin/login -> $code (want 404)"; sleep 10
+          done
+          echo "Freshness probe FAILED"; exit 1
 
       - name: Roll back on failure
-        if: failure() && steps.gate.outputs.enabled == 'true'
+        if: failure() && steps.rollout.outputs.mutated == 'true'
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
         run: |
           echo "Rolling back to previous image coordinates..."
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            "DEPLOY_DIR='$DEPLOY_DIR' bash -s" <<'REMOTE'
+          ssh prod "DEPLOY_DIR='$DEPLOY_DIR' APP_SERVICES='$APP_SERVICES' bash -s" <<'REMOTE'
           set -euo pipefail
+          umask 077
           cd "$DEPLOY_DIR"
-          if [ -f .env.rollback ]; then
+          if [ -s .env.rollback ]; then
             # .env.rollback holds only the previous IMAGE_REPO/IMAGE_TAG lines.
             grep -v '^IMAGE_TAG=' .env | grep -v '^IMAGE_REPO=' > .env.new || true
             cat .env.rollback >> .env.new
             mv .env.new .env
             chmod 600 .env
             rm -f .env.rollback
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml pull $APP_SERVICES
+            docker compose -f docker-compose.prod.yml up -d --no-deps $APP_SERVICES
             echo "Rolled back."
           else
-            echo "No .env.rollback found — manual intervention required." >&2
+            echo "No usable .env.rollback (first deploy?) — manual intervention required." >&2
             exit 1
           fi
           REMOTE
