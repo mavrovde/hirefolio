@@ -52,7 +52,7 @@ services:
       - app-network
 
   backend:
-    image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-backend:${IMAGE_TAG:-1.9.0}
+    image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-backend:${IMAGE_TAG:-1.10.0}
     restart: always
     volumes:
       # Persist the saved LinkedIn login session across deploys/restarts
@@ -100,7 +100,7 @@ services:
       - app-network
 
   frontend:
-    image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-frontend:${IMAGE_TAG:-1.9.0}
+    image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-frontend:${IMAGE_TAG:-1.10.0}
     restart: always
     expose:
       - "80"
@@ -118,7 +118,7 @@ services:
       - app-network
 
   admin-frontend:
-    image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-admin-frontend:${IMAGE_TAG:-1.9.0}
+    image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-admin-frontend:${IMAGE_TAG:-1.10.0}
     restart: always
     expose:
       - "80"
@@ -144,7 +144,7 @@ services:
       - app-network
 
   proxy:
-    image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-proxy:${IMAGE_TAG:-1.9.0}
+    image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-proxy:${IMAGE_TAG:-1.10.0}
     container_name: global_proxy
     restart: always
     environment:

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Placeholder for next release.
+
+## [1.10.0] - 2026-08-30
+
+### Added
 - **CI now enforces the 100% coverage standard** — the backend test job ran
   `pytest --cov=app --cov-report=...` with **no `--cov-fail-under`**, and `pyproject.toml`'s
   `addopts` sets no threshold either, so CI printed the coverage percentage and passed regardless.
@@ -45,7 +50,6 @@ All notable changes to this project will be documented in this file.
   fails and a bare "some content" check would pass with no model at all.
   **Verified by reproduction:** reintroducing the #180 failure mode makes it fail in ~1 s; restoring
   the fix makes it pass in ~5 s.
-- Placeholder for next release.
 
 ### Changed
 - **Public `/api/app/` gets the same streaming guarantees as the admin block** (#198) —
