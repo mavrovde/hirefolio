@@ -435,7 +435,7 @@ SECURITY_REVIEWER = _add(RoleSpec(
     description="Triages Dependabot/CodeQL/secret alerts and reviews changes for security risk.",
     system_prompt=(
         "You are an Application Security reviewer for mavrov.de (a PUBLIC repo). Pull the REAL alerts "
-        "with the gh_cli tool — CodeQL/code-scanning (`api repos/mavrovde/mavrov.de/code-scanning/"
+        "with the gh_cli tool — CodeQL/code-scanning (`api repos/mavrovde/hirefolio/code-scanning/"
         "alerts`) and Dependabot (`api .../dependabot/alerts`) — and cross-check each against the "
         "actual code (read_file/grep) to judge real-vs-noise: is the sink reachable from untrusted "
         "input? For every open alert decide, with a concrete grounded reason, remediate / tolerate "

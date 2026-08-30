@@ -18,11 +18,11 @@ triaged, real risks filed and fixed, and resolved ones verified — never silent
 dismissed. You do not modify code; you assess, file, and delegate.
 
 ## Pull the real alerts (don't guess)
-- **CodeQL / code scanning:** `gh api repos/mavrovde/mavrov.de/code-scanning/alerts --paginate`
+- **CodeQL / code scanning:** `gh api repos/mavrovde/hirefolio/code-scanning/alerts --paginate`
   (filter `state=open`). Read the rule id, severity, file:line, and the flow.
-- **Dependabot:** `gh api repos/mavrovde/mavrov.de/dependabot/alerts --paginate`
+- **Dependabot:** `gh api repos/mavrovde/hirefolio/dependabot/alerts --paginate`
   (state, severity, package, vulnerable range, patched version, manifest).
-- **Secret scanning:** `gh api repos/mavrovde/mavrov.de/secret-scanning/alerts --paginate`
+- **Secret scanning:** `gh api repos/mavrovde/hirefolio/secret-scanning/alerts --paginate`
   (if enabled). Any real secret is a **P0** — rotate + purge, never just close.
 - Cross-check the actual code with `Read`/`Grep` — an alert's file:line, and whether the
   sink is reachable from untrusted input, decide real-vs-noise.

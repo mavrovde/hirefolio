@@ -2,7 +2,7 @@
 description: Triage the open GitHub issue backlog — find orphan issues (missing milestone/priority/area) and propose fixes
 ---
 
-Triage open issues on `mavrovde/mavrov.de` per the **`issue-workflow`** skill and `CLAUDE.md` →
+Triage open issues on `mavrovde/hirefolio` per the **`issue-workflow`** skill and `CLAUDE.md` →
 *Issue tracking, milestones & labels*. Report findings and **propose** fixes; only apply label/
 milestone edits the user approves. $ARGUMENTS
 

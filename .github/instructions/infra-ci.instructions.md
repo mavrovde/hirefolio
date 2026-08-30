@@ -6,7 +6,7 @@ applyTo: ".github/workflows/**,proxy/**,docker-compose*.yml,backend/Dockerfile*,
 
 - `.github/workflows/deploy.yml` is the **prod deploy**: it runs on push to `main` (gates →
   image build/publish → Docker E2E). PRs get CodeQL only. Merging to `main` IS deploying.
-- Images are published to **GitHub Container Registry** (`ghcr.io/mavrovde/mavrov.de-*` — see
+- Images are published to **GitHub Container Registry** (`ghcr.io/mavrovde/hirefolio-*` — see
   `REGISTRY`/`IMAGE_NAME` in `deploy.yml`), NOT Docker Hub; do not treat `maverickde/*` Hub
   images as current.
 - **Green `deploy.yml` always = images PUBLISHED; live-on-host only if the `deploy` job ran.**

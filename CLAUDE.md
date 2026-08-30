@@ -160,11 +160,11 @@ specs/      Feature specs (planned/done)
 
 ## Issue tracking, milestones & labels (development flow)
 
-The repo is **PUBLIC** (`github.com/mavrovde/mavrov.de`). This flow is the shared source of truth
+The repo is **PUBLIC** (`github.com/mavrovde/hirefolio`). This flow is the shared source of truth
 for issue-driven work — humans and AI agents both follow it.
 
 1. **Issues are the project notebook.** Every idea, plan, bug, deferred fix, shipped milestone, and
-   research decision lives as a GitHub issue on `mavrovde/mavrov.de` — never only in chat or personal
+   research decision lives as a GitHub issue on `mavrovde/hirefolio` — never only in chat or personal
    memory. Register work as an issue up front; **close-the-loop** when it lands (see rule 7).
 2. **Full issue template (every issue):** Summary → Why it matters → Impact (project / developers /
    visitors) → Current state (grounded, cite `path:line`) → Proposed action → **Acceptance criteria**

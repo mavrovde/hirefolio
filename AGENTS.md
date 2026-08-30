@@ -7,7 +7,7 @@ Copilot-specific guidance: `.github/copilot-instructions.md` + `.github/instruct
 
 ## Project
 
-Personal portfolio + blog (public repo `github.com/mavrovde/mavrov.de`). Angular 22 workspace
+Personal portfolio + blog (public repo `github.com/mavrovde/hirefolio`). Angular 22 workspace
 frontend (`frontend/projects/{public,admin,shared}` — public is SSR), FastAPI backend (`backend/`,
 Python 3.12, SQLAlchemy 2 async, PostgreSQL 16 + pgvector, Ollama), Docker Compose infra,
 LinkedIn → site content pipeline (`scraper/`, `importer/`).
