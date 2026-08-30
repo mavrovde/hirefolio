@@ -33,8 +33,6 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Placeholder for next release.
-
-### Fixed
 - **Root service-script overhaul (#172)** — `bump_version.sh` now updates EVERY version carrier,
   adding the previously missed `frontend/projects/shared/package.json` (caught up from the stale
   `1.7.0` to the current version) and the `docker-compose.prod.yml` `${IMAGE_TAG:-…}` defaults

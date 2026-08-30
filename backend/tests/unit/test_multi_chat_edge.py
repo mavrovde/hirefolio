@@ -161,8 +161,10 @@ async def test_multi_chat_turn_stream_failure_degrades_to_error_text():
 
         # The failure is absorbed: the body is NOT aborted mid-chunk. Every
         # chunk stays well-formed JSON and the stream ends with done=true.
-        # (The error text itself is swallowed by the label-stripping
-        # post-process, which is why the resilience property is what we pin.)
+        # The post-process strips the "[Error: " label but keeps the reason,
+        # so pin that too — otherwise this passes even if the reason is
+        # replaced by the generic goal-fallback.
+        assert any("upstream exploded" in c for c in chunks)
         assert chunks, "the generator must still emit chunks"
         for c in chunks:
             json.loads(c)
