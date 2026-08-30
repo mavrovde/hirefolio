@@ -129,6 +129,10 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
           SECRET_KEY: test-secret-key-for-ci
           OLLAMA_BASE_URL: http://localhost:11434
+          # Rule 10 (#141): explicit, not safe-by-absence. The job was relying on
+          # the runner simply not having this variable; state it so the guarantee
+          # survives someone adding a repo-level env or variable later.
+          GEMINI_API_KEY: ""
         run: |
           # --cov-fail-under=100 makes the project's stated coverage standard an
           # actual gate: without it CI printed the percentage and passed regardless,

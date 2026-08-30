@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+- **The E2E stack can no longer inherit a real `GEMINI_API_KEY`** (#141) — CI injected `""` at the
+  job level, but a **local** `verify_all.sh` run brings the stack up through compose, which resolves
+  the variable from the developer's environment (and `.env`). Process environment *overrides* `.env`,
+  so a key exported from a shell profile reached the backend container silently. Verified on a real
+  machine: with the previous overlay `docker compose config` resolved a live 53-character key into
+  the stack; with the fix it resolves `""`. `docker-compose.e2e.yml` now pins `GEMINI_API_KEY=` for
+  the backend, so **every** consumer of the E2E overlay is covered — not only the invocation that
+  remembers to export it — and the backend falls back to the in-stack Ollama exactly as in CI
+  (verified: container env empty, stack healthy, the five Gemini-touching admin specs pass in 12.5 s).
+  `deploy.yml`'s backend test job now also sets `GEMINI_API_KEY: ""` explicitly rather than relying on
+  the runner simply not having the variable.
+
 ### Added
 - Placeholder for next release.
 

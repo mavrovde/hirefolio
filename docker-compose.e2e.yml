@@ -7,6 +7,14 @@ services:
       # per-process signing secret instead of refusing to start (issue #177).
       # Production ships with this OFF and REQUIRES an explicit JWT_SECRET_KEY.
       - JWT_ALLOW_EPHEMERAL_SECRET=true
+      # E2E ONLY, rule 10 (#141): force the Gemini key EMPTY so the stack falls
+      # back to the in-stack Ollama and no billable request can be made. CI
+      # already injects "" at the job level, but a LOCAL `verify_all.sh` run
+      # inherits the root .env through compose — so a developer holding a real
+      # key was running the E2E stack with a live paid credential. Setting it
+      # here protects every path that uses this overlay, not just the one that
+      # remembers to export it.
+      - GEMINI_API_KEY=
 
   frontend:
     build:
