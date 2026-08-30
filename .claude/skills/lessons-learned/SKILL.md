@@ -396,7 +396,7 @@ handshake, not a visibility signal, and it will produce a false alarm if used as
 
 `guard-destructive.sh` (the rule-9 hook, born of the #91 volume-destruction incident) was firing on
 *prose*: a quoted argument spanning newlines got split on the raw newline, so a line of text that
-merely started with a destructive verb was inspected as an invocation. Fixing that took **three**
+merely started with a destructive verb was inspected as an invocation. Fixing that took **four**
 review rounds, and **every** round shipped a version that turned real denials into allows. The same
 shape each time: **an exemption whose condition was checked too narrowly, so a benign leading token
 hid what followed.**
@@ -409,6 +409,7 @@ hid what followed.**
 | 2 | `ssh` option *value* eaten as the host, so the body was never inspected | `ssh -p 2222 host "cd /srv ↵ <volume rm>"` |
 | 3 | **unquoted** heredoc delimiter — the shell *expands* that body, so `$(…)` executes | `cat > n.md <<EOF ↵ x=$(<destroy>) ↵ EOF` |
 | 3 | `<<` inside a `#` comment, or after an escaped quote, read as a real redirect | `echo ok # <<'EOF' ↵ <volume rm> ↵ EOF` |
+| 4 | the two functions granting the exemption disagreed about the line — one knew backslash escapes, the other did not | `git commit -m "the \" char" ; bash <<'EOF' ↵ <volume rm> ↵ EOF` |
 
 Rows 1 and 2 are the **#91 command with an `echo` in front of it**. Each round the author (me)
 believed the general case had been found and had only found an instance.
@@ -438,6 +439,13 @@ believed the general case had been found and had only found an instance.
    keeps the deny.
 8. **Build test strings from concatenated parts** (`D="rm -""rf"`) or the guard blocks the file that
    tests it. This happened to a probe script, to a reviewer writing up findings, and to this file.
+9. **If two functions jointly enforce an invariant, they must share one model of the input.** Round 4
+   was *introduced by the round-3 fix*: `mask_quotes` was taught about backslash escapes and its
+   partner `quote_split` was not, so they disagreed about where a quoted region ended — and an
+   everyday `git commit -m "… \" …"` made one see a real redirect while the other saw an unclosed
+   quote. Measured directly: the six escaped-quote cases **pass** at the commit before that fix and
+   **fail** at the fix itself. Two halves that are consistently wrong are safer than one half made
+   right; when you correct a parsing rule, correct every function that parses.
 
 This is the clearest evidence yet for CLAUDE.md rule 11: an independent reviewer caught a security
 regression three times running that the author, the author's own new tests, and green CI all missed —

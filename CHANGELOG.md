@@ -25,27 +25,39 @@ All notable changes to this project will be documented in this file.
   the terminator must actually appear (an unterminated heredoc strips nothing rather than swallowing
   the rest of the command).
 
-  Three rounds of independent review each found that an earlier version of this fix **weakened** the
-  guard, every time in the same shape — an exemption whose condition was checked too narrowly, so a
+  Four rounds of independent review each found that an earlier version of this fix **weakened** the
+  guard, every time in the same shape: an exemption whose condition was checked too narrowly, so a
   benign leading token hid what followed. First by flattening multi-line scripts; then by attributing
   a heredoc to the *first* command on the line rather than the one that consumes it; then by treating
-  a `<<` inside a comment, inside quotes, or after an escaped quote as a real redirect, and by
-  exempting **unquoted** heredoc delimiters whose bodies the shell actually expands (so `$(…)` in one
-  would execute). All were caught before merge and are now pinned by tests.
+  a `<<` inside a comment or after an escaped quote as a real redirect, and by exempting **unquoted**
+  delimiters whose bodies the shell actually expands (so `$(…)` in one would execute); finally
+  because the two functions that jointly grant the exemption disagreed about what a line even was —
+  one had been taught about backslash escapes and the other had not, so `git commit -m "the \" char"
+  ; bash <<'EOF'` read as "every command here is a text tool" and exempted the shell heredoc behind
+  it. That last one was **introduced by the round-3 fix itself**: teaching one half of a two-function
+  invariant about escapes opened a hole that had not existed while both halves were consistently
+  wrong. All were caught before merge and are pinned by tests.
 
-  The exemption is therefore deliberately narrow: a heredoc body is skipped only when the delimiter is
-  quoted or backslash-escaped (an unexpanded body), the `<<` is a real redirect outside quotes and
-  comments and is not a here-string, **every** command on the opening line is a text tool, and the
-  terminator actually appears. Any doubt on any condition and the body stays inspected.
+  The exemption is therefore deliberately narrow. A heredoc body is skipped only when **all four**
+  hold: the delimiter is quoted or backslash-escaped (an unexpanded body); the `<<` is a real
+  redirect — outside quotes, outside comments, not a here-string; **every** command on the opening
+  line is a text tool; and the terminator actually appears. Any doubt on any condition and the body
+  stays inspected.
 
-  Self-test suite: **63 → 105 cases**. Measured rather than asserted — running the final suite
-  against each earlier version: pre-`#204` `main` **8** failures (4 false denials removed, 4 newly
-  caught destructions `main` allowed), first attempt **19**, second **18**, third **3**. Each
-  condition is mutation-checked individually: dropping the sentinel fails 12 cases, the heredoc
-  exemption 4, the all-commands-are-text-tools check 7, the quoted-delimiter requirement 2, the
-  quote/comment masking 3, the terminator lookahead 1. Note that nothing in CI runs this suite (see
-  #208) — it runs via `verify_all.sh` and the pre-push hook, so a regression here is invisible to the
-  pipeline.
+  Self-test suite: **63 → 112 cases**. Measured rather than asserted — running the final suite
+  against each earlier version: pre-`#204` `main` **8** differences (**6** false denials removed,
+  **2** destructions newly caught that `main` allowed), first attempt **25**, second **24**, third
+  **5**, fourth **9**. Each condition is mutation-checked individually: flattening the newline
+  sentinel to a space fails 12 cases, removing the heredoc exemption 4, making the
+  all-commands-are-text-tools check always true 7, dropping the quoted-delimiter requirement 2,
+  disabling the quote/comment masking 3, removing the terminator lookahead 1, and removing
+  `quote_split`'s escape handling 6. Note that nothing in CI runs this suite (see #208) — it runs via
+  `verify_all.sh` and the pre-push hook, so a regression here is invisible to the pipeline.
+
+  **Known gap:** writing a script with a text-tool heredoc and executing it in the same command
+  (`cat > s.sh <<'EOF' … EOF` then `bash s.sh`) satisfies all four conditions and is allowed, where
+  pre-`#204` `main` denied it. That is inherent to exempting document-writing at all; tracked in
+  #212 rather than left implicit.
 - **The encryption-migration tests no longer collide under `pytest -n auto`** — they shared one
   scratch database, so concurrent xdist workers dropped a database another was mid-migration on
   (reproduced on unmodified `main`: 3 failed + 1 error). The name is now worker-scoped, keeping the

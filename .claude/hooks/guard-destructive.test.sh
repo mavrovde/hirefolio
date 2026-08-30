@@ -286,6 +286,38 @@ check "heredoc: escaped quote + <<"  "printf \"a \\\" b <<'EOF'\"
 $DV $V
 EOF"                                                                             deny
 
+# --- ONE QUOTING MODEL (#206 review round 4) --------------------------------
+# mask_quotes and quote_split JOINTLY grant the heredoc exemption: the first
+# decides whether a `<<` is a real redirect, the second decides whether every
+# command on the line is a text tool. When only one of them understood backslash
+# escapes they disagreed about what the line even was — `\"` looked like an
+# unclosed quote to quote_split (so the line collapsed to one `echo`-led segment
+# and read as "all text tools") while mask_quotes correctly saw a real redirect.
+# An everyday commit message then hid a shell heredoc behind it.
+#
+# The existing "escaped quote + <<" case only covered an escaped quote FAKING an
+# opener; these cover it HIDING the consuming shell, which 105/105 green missed.
+check "escq: commit then shell hd"   "git commit -m \"escape the \\\" char\" ; bash <<'EOF'
+$DV $V
+EOF"                                                                             deny
+check "escq: echo dq then shell hd"  "echo \\\" ; bash <<'EOF'
+$DV $V
+EOF"                                                                             deny
+check "escq: echo sq then shell hd"  "echo \\' ; bash <<'EOF'
+$DV $V
+EOF"                                                                             deny
+check "escq: printf then pipe sh"    "printf \\\" | sh <<'EOF'
+$D $T
+EOF"                                                                             deny
+check "escq: inside a quoted arg"    "echo \"a \\\" b\" ; bash <<'EOF'
+$DV $V
+EOF"                                                                             deny
+check "escq: then ssh bash -s"       "echo \"x \\\" y\" ; ssh host bash -s <<'EOF'
+$DV $V
+EOF"                                                                             deny
+# ...and an escaped quote in an ordinary message stays allowed.
+check "escq: commit msg, no heredoc" "git commit -m \"the \\\" char and $D $T\"" allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

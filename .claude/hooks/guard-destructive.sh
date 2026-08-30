@@ -255,9 +255,20 @@ inspect_segment() {
 # (a `git commit -m "...| xargs docker volume rm..."` message) stays part of that
 # one git-led segment and is correctly treated as text, not an invocation.
 quote_split() {
-  local s="$1" out="" i c q="" n=${#1}
+  local s="$1" out="" i c nx q="" n=${#1}
   for (( i=0; i<n; i++ )); do
     c="${s:i:1}"
+    # A backslash escapes the next character everywhere except inside single
+    # quotes. This MUST match mask_quotes exactly: those two functions jointly
+    # grant the heredoc exemption, and when they disagreed about what a line was,
+    # an ordinary `git commit -m "the \" char" ; bash <<'EOF'` looked like an
+    # unclosed quote to one and a real redirect to the other — so the line read as
+    # "all text tools" and the shell heredoc behind it was exempted.
+    if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
+      nx="${s:i+1:1}"
+      if [ -n "$q" ] && [ "$nx" = $'\n' ]; then out+="$NL_SENTINEL"; else out+="$c$nx"; fi
+      i=$((i + 1)); continue
+    fi
     if [ -n "$q" ]; then
       # INSIDE quotes a newline is DATA, not a separator, so it must not end the
       # segment — otherwise a line of prose that merely *starts* with a
