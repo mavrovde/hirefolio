@@ -579,7 +579,11 @@ jobs:
       - name: Wait for Stack Ready
         run: |
           echo "Waiting for proxy to respond on port 80..."
-          timeout 60s bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:80 | grep "200\|302"; do sleep 2; done'
+          # 180s (was 60s): removing the dead base-image cache steps also removed
+          # ~2 min of incidental slack between `compose up -d` and this check.
+          # Compose only gates on service_healthy for db/ollama — the app services
+          # are bare depends_on, so this loop is now the real readiness buffer.
+          timeout 180s bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:80 | grep "200\|302"; do sleep 2; done'
           echo "Stack is up!"
 
       # Proxy smoke check — folded in from the former standalone "Proxy
