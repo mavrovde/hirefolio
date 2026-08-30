@@ -75,6 +75,32 @@ check "echo the pattern"          'echo "do not run docker system prune"'       
 check "grep DROP DATABASE"        "grep -rn 'DROP DATABASE mavrov' backend"          allow
 check "commit mentions rm -rf"    'git commit -m "note: never rm -rf ./data"'        allow
 
+# --- #204: PROSE is not a command -------------------------------------------
+# A quoted argument that spans newlines is data. Before the fix, the raw newline
+# inside the quotes split the argument into segments, so a line of prose that
+# merely STARTED with a destructive verb was inspected as an invocation — which
+# blocked writing docs and PR comments about the very commands this guard exists
+# for, training reflexive GUARD_DESTRUCTIVE=0 use. Strings are assembled from
+# ${D}/${T} so this test file cannot block its own execution.
+D="rm -rf"; DR="rm -R"; T="./data"
+check "multiline quoted prose"    "gh pr comment 1 --body \"line one
+$D $T was blocked
+done\""                                                                             allow
+check "multiline quoted -R prose" "gh issue comment 1 --body \"why
+$DR \\\"$T\\\" slipped through
+end\""                                                                              allow
+check "heredoc writing prose"     "cat > notes.md <<'EOF'
+Never run $D $T on prod.
+EOF"                                                                                 allow
+check "echo prose to a file"      "echo \"$D $T\" > notes.md"                       allow
+# ...and the same shapes must STILL deny when they are genuinely executable:
+check "heredoc fed to bash"       "bash <<'EOF'
+$D $T
+EOF"                                                                                 deny
+check "heredoc fed to ssh"        "ssh host bash -s <<'EOF'
+$D $T
+EOF"                                                                                 deny
+
 # --- must ALLOW: explicit inline authorization bypass ---
 check "inline bypass volume rm"   'GUARD_DESTRUCTIVE=0 docker volume rm mavrovde_db' allow
 

@@ -182,7 +182,14 @@ quote_split() {
   for (( i=0; i<n; i++ )); do
     c="${s:i:1}"
     if [ -n "$q" ]; then
-      out+="$c"
+      # INSIDE quotes everything is data — including newlines. Emit a space for a
+      # quoted newline so a multi-line quoted argument stays ONE segment (#204).
+      # Keeping the raw newline made the later split on $'\n' cut the argument
+      # into pieces, so a line of prose that merely *starts* with a destructive
+      # verb was inspected as if it were a command — which blocked writing
+      # documentation about the very commands this guard exists for, and trained
+      # reflexive GUARD_DESTRUCTIVE=0 use.
+      if [ "$c" = $'\n' ]; then out+=" "; else out+="$c"; fi
       [ "$c" = "$q" ] && q=""
       continue
     fi
