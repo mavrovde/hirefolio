@@ -127,6 +127,7 @@ All notable changes to this project will be documented in this file.
   what you measured), plus `AGENTS.md`, `.github/copilot-instructions.md`, the path-scoped backend
   instructions, the `issue-workflow` skill (close-the-loop must name **who** verified and **what**
   they ran) and the A2A `PROJECT_PLAYBOOK` injected into every agent's prompt.
+
 ## [1.9.0] - 2026-08-30
 
 ### Added
