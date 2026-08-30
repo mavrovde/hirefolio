@@ -470,11 +470,16 @@ After a green E2E each `sha-<gitsha>` image is also promoted to the
 files' `IMAGE_REPO` default still names a legacy Docker Hub location, so set
 `IMAGE_REPO` explicitly (below).
 
-### Rolling out to the host (manual — no automated rollout yet)
+### Rolling out to the host
 
-There is **no automated host rollout**: the pipeline publishes images but does
-not deploy them onto the production host (tracked in #112 / #156). To roll out
-manually, on the host set in the root `.env`:
+Since #175 the pipeline ends with a **secrets-gated `Roll Out To Prod Host` job**:
+when `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_SSH_KEY` are configured it SSHes to
+the host, deploys the immutable `sha-<gitsha>` tag, verifies the containers by
+image digest, health-gates `/api/app/health`, freshness-probes `/admin/login`
+(→ 404) and rolls back on failure. **Without those secrets it skips and the run
+is still green — nothing is rolled out** (the original #112 / #156 gap). See
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). To roll out manually, on the host
+set in the root `.env`:
 
 ```bash
 IMAGE_REPO=ghcr.io/mavrovde/mavrov.de
@@ -576,7 +581,7 @@ This project is private and proprietary.
 - [x] RSS feed generation
 - [x] Newsletter integration
 - [x] Native Angular fragment Anchor Scrolling for SEO Title Tracking
-- [ ] Automated CD rollout of published images onto the prod host (#112 / #156)
+- [x] Automated CD rollout of published images onto the prod host (#175 — activate by adding the `DEPLOY_*` secrets; #112 / #156 close once a real rollout runs)
 
 ---
 
