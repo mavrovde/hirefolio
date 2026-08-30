@@ -24,11 +24,13 @@ about versioning, changelog accuracy, and not breaking prod.
 - **Changelog:** `CHANGELOG.md`, keep-a-changelog format. Work accrues under
   `## [Unreleased]` with `### Added/Changed/Fixed/Security/Docs` subsections.
 - **Scripts:** `release.sh [--patch|--minor|--major] "msg"` calls
-  `bump_version.sh`. ⚠️ Known trap: `bump_version.sh` has double-rotated the
-  CHANGELOG before (two version headers / stray placeholder) and `release.sh`
-  builds images locally via podman/docker. Prefer a **manual, controlled**
-  release (edit `VERSION`, rotate CHANGELOG by hand, update compose tags, commit)
-  and let CI build/deploy — only use the scripts if you verify their output.
+  `bump_version.sh`, which since #172 updates EVERY version carrier (incl.
+  `frontend/projects/shared/package.json` and the `docker-compose.prod.yml`
+  image-tag defaults), guards against the old CHANGELOG double-rotation, and
+  offers `--check` (verify all carriers agree — also run by the pre-push hook)
+  and `--dry-run`. `release.sh` still builds/pushes images locally (docker) —
+  prefer letting CI build/deploy; if releasing manually, run
+  `./bump_version.sh <bump>` + `--check` and verify the rotated CHANGELOG.
 - **Deploy:** pushing/merging to `main` triggers `.github/workflows/deploy.yml`
   (the prod deploy). PRs get CodeQL/Analyze only. There is **no concurrency
   guard**, so avoid triggering overlapping deploys — serialize.

@@ -7,11 +7,36 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Fixed
+- **Root service-script overhaul (#172)** — `bump_version.sh` now updates EVERY version carrier,
+  adding the previously missed `frontend/projects/shared/package.json` (caught up from the stale
+  `1.7.0` to the current version) and the `docker-compose.prod.yml` `${IMAGE_TAG:-…}` defaults
+  (previously a macOS-only `sed` in `release.sh`); it writes `VERSION` with exactly one trailing
+  newline (idempotent — ends the newline diff churn) and gains `--check` (verify all carriers
+  agree, naming the offending file + both values on mismatch; wired into the pre-push hook's docs
+  check) and `--dry-run`. Its CHANGELOG rotation is guarded against the historical double-rotation
+  (two inserted version headers). `build_amd64_and_push.sh` no longer calls the uninstalled
+  `podman push` (broken; now `docker push` throughout) and documents that CI's ghcr publish is the
+  primary path. `verify_all.sh`'s frontend-startup timeout check was testing the Open WebUI wait
+  loop's counter — moved to its own loop.
+
 ### Changed
 - **`crewai` 1.15.6 → 1.15.18** (within-minor bump, refs #52) — picks up 12 upstream patch
   releases. This does **not** unblock #52: crewai 1.15.18 still declares `pydantic<2.13,>=2.11.9`
   (and its `instructor` dependency still declares `rich<15.0.0,>=13.7.0`), so `pydantic` stays
   `>=2.12.5` and `rich` stays `<15.0.0`. #52 remains upstream-blocked and open.
+- **Root service-script robustness** — all root `*.sh` scripts are shellcheck-clean with
+  consistent `set -e`(`uo pipefail` where safe): `verify_all.sh` prints numbered per-phase banners
+  and an unmistakable final `VERIFICATION FAILED` banner on any failure (proxy verification and
+  Playwright included) via an EXIT trap; `release.sh` sources `.env` instead of `export $(cat …
+  | xargs)`, runs `bump_version.sh --check` before verifying, and its abort path reverts the full
+  carrier set (previously left `package-lock.json`, shared `package.json`, compose tags and the
+  rotated CHANGELOG dirty); `build_amd64_and_push.sh` now defaults to
+  `ghcr.io/mavrovde/mavrov.de-*` (Docker Hub default dropped by user directive; forks can
+  retarget via `REGISTRY`/`IMAGE_REPO`) and drops the commented-out `docker system prune`
+  footguns; `verify_proxy_routes.py` dispatches any
+  HTTP method (the old GET/PUT/POST chain left `response` unbound for other methods). Release
+  runbook docs (`.claude/commands/release.md`, `.claude/agents/release-manager.md`) synced.
 
 ### Docs
 - **lessons-learned §13–14** — two durable lessons from the #170 dependency sweep: bisect a

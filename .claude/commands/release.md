@@ -16,15 +16,19 @@ explicit green verification and explicit user go-ahead.
 - Require a bump type (`--patch|--minor|--major`) and a **non-empty** release message (fail otherwise).
 
 ## 1. Bump version — `./bump_version.sh <bump>`
-Updates: `VERSION`, `backend/app/main.py` (`version="…"`), `frontend/package.json`,
-`frontend/projects/public/src/app/version.ts`, `.env` (`IMAGE_TAG`), re-syncs
-`frontend/package-lock.json`, and rotates `CHANGELOG.md`. Then `export IMAGE_TAG=$(cat VERSION)`.
-Also bump `frontend/projects/shared/package.json` to match.
+Updates ALL version carriers (#172): `VERSION` (always newline-terminated),
+`backend/app/main.py` (`version="…"`), `frontend/package.json`,
+`frontend/projects/shared/package.json`, `frontend/projects/public/src/app/version.ts`,
+`docker-compose.prod.yml` (`${IMAGE_TAG:-<VERSION>}` defaults for `-backend`, `-frontend`,
+`-admin-frontend`, `-proxy`), `.env` (`IMAGE_TAG`), re-syncs `frontend/package-lock.json`,
+and rotates `CHANGELOG.md`. Then `export IMAGE_TAG=$(cat VERSION)`.
+Supports `--dry-run` (print the plan, touch nothing).
 
-## 1b. Update prod compose image tags  ⚠️ (bump_version.sh does NOT do this)
-`sed` `docker-compose.prod.yml` so `-backend`, `-frontend`, `-admin-frontend`, `-proxy` all use the
-new `${IMAGE_TAG:-<VERSION>}` default. **Skipping this leaves prod pulling the previous version's
-images** even after a green pipeline — this is a required step.
+## 1b. Verify the carriers agree — `./bump_version.sh --check`
+Fails loudly, naming the offending file + both values, if any version carrier disagrees with
+`VERSION` (also enforced by the pre-push hook's docs check). **A stale
+`docker-compose.prod.yml` tag leaves prod pulling the previous version's images** even after a
+green pipeline — the check makes that impossible to miss.
 
 ## 1c. Fill the changelog
 Replace the rotated `[<VERSION>]` placeholder with real Added/Changed/Fixed notes.

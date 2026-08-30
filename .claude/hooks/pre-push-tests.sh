@@ -61,6 +61,8 @@ run_checks() {
     echo "== docs check =="
     grep -q "Unreleased" "$ROOT/CHANGELOG.md" || { echo "CHANGELOG.md is missing an [Unreleased] section"; return 1; }
     test -s "$ROOT/README.md" || { echo "README.md is missing or empty"; return 1; }
+    echo "== version-consistency check (#172) =="
+    ( cd "$ROOT" && ./bump_version.sh --check ) || return 1
   fi
 
   if [ "$PREPUSH_RUN_GUARDTEST" = "1" ] && [ -f "$ROOT/.claude/hooks/guard-destructive.test.sh" ]; then

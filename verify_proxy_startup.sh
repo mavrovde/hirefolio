@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
 echo "========================================"
 echo "🛡️  STARTING PROXY SMOKE TEST (PROD ENV) 🛡️"
@@ -70,8 +70,9 @@ check_status() {
     local url=$1
     local method=$2
     local expected=$3
-    local response=$(curl -s -k -o /dev/null -w "%{http_code}" -X "$method" "$url")
-    
+    local response
+    response=$(curl -s -k -o /dev/null -w "%{http_code}" -X "$method" "$url")
+
     if [ "$response" -eq "$expected" ]; then
         echo "✅ Endpoint Check: $method $url returned $response (Expected $expected)"
     else

@@ -1,25 +1,29 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+
+# release.sh - Orchestrate a verified release process
 
 # Ensure docker is in PATH
-export PATH=/usr/local/bin:/opt/homebrew/bin:/opt/podman/bin:$PATH
+export PATH=/usr/local/bin:/opt/homebrew/bin:$PATH
 
 # Ensure npm is in PATH via NVM
 export NVM_DIR="$HOME/.nvm"
+# shellcheck disable=SC1091
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-# release.sh - Orchestrate a verified release process
 
 echo "========================================"
 echo "🚀 STARTING AUTOMATED RELEASE PROCESS 🚀"
 echo "========================================"
-# Load environment variables from .env
+# Load environment variables from .env (sourced, so quoted values survive)
 if [ -f .env ]; then
-    export $(cat .env | xargs)
+    set -a
+    # shellcheck disable=SC1091
+    . ./.env
+    set +a
     echo "✅ Loaded environment variables from .env"
 fi
-# Ensure DOCKER_HOST is set for Podman
-if [ -z "$DOCKER_HOST" ]; then
+# Ensure DOCKER_HOST is set for Podman (no-op when podman is not installed)
+if [ -z "${DOCKER_HOST:-}" ] && command -v podman >/dev/null 2>&1; then
     PODMAN_SOCKET=$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' 2>/dev/null || true)
     if [ -n "$PODMAN_SOCKET" ]; then
         export DOCKER_HOST="unix://$PODMAN_SOCKET"
@@ -29,14 +33,14 @@ fi
 
 
 # 1. Version Bump Type
-BUMP_TYPE=$1
+BUMP_TYPE=${1:-}
 if [[ "$BUMP_TYPE" != "--patch" && "$BUMP_TYPE" != "--minor" && "$BUMP_TYPE" != "--major" ]]; then
     echo "Usage: ./release.sh [--patch|--minor|--major] [message]"
     exit 1
 fi
 
 # 2. Informative Message
-DESC=$2
+DESC=${2:-}
 if [ -z "$DESC" ]; then
     echo "Please enter an informative commit message for this release:"
     read -r DESC
@@ -47,19 +51,17 @@ if [ -z "$DESC" ]; then
     exit 1
 fi
 
-# 3. Bump Version
+# 3. Bump Version — updates ALL version carriers, including
+# docker-compose.prod.yml image-tag defaults and
+# frontend/projects/shared/package.json (#172).
 echo "Step 1: Bumping version ($BUMP_TYPE)..."
 ./bump_version.sh "$BUMP_TYPE"
-VERSION=$(cat VERSION)
+VERSION=$(tr -d '[:space:]' < VERSION)
 export IMAGE_TAG="$VERSION"
 echo "Target Version: v$VERSION"
 
-# 3b. Update production docker-compose with new version
-echo "Step 1b: Updating docker-compose.prod.yml with $VERSION..."
-sed -i '' "s|}-backend:\${IMAGE_TAG:-[0-9.]*}|}-backend:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
-sed -i '' "s|}-frontend:\${IMAGE_TAG:-[0-9.]*}|}-frontend:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
-sed -i '' "s|}-admin-frontend:\${IMAGE_TAG:-[0-9.]*}|}-admin-frontend:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
-sed -i '' "s|}-proxy:\${IMAGE_TAG:-[0-9.]*}|}-proxy:\${IMAGE_TAG:-$VERSION}|g" docker-compose.prod.yml
+# 3b. Sanity check: every version carrier must agree before we verify/tag.
+./bump_version.sh --check
 
 
 
@@ -71,7 +73,9 @@ if ./verify_all.sh; then
 else
     echo "❌ Verification FAILED. Release aborted."
     echo "Reverting version bump..."
-    git checkout VERSION backend/app/main.py frontend/package.json frontend/projects/public/src/app/version.ts
+    git checkout -- VERSION backend/app/main.py frontend/package.json frontend/package-lock.json \
+        frontend/projects/shared/package.json frontend/projects/public/src/app/version.ts \
+        docker-compose.prod.yml CHANGELOG.md
     echo "Fix the issues and try again."
     exit 1
 fi
@@ -83,7 +87,9 @@ if ./verify_proxy_startup.sh; then
 else
     echo "❌ Proxy Smoke Test FAILED. Release aborted."
     echo "Reverting version bump..."
-    git checkout VERSION backend/app/main.py frontend/package.json frontend/projects/public/src/app/version.ts
+    git checkout -- VERSION backend/app/main.py frontend/package.json frontend/package-lock.json \
+        frontend/projects/shared/package.json frontend/projects/public/src/app/version.ts \
+        docker-compose.prod.yml CHANGELOG.md
     exit 1
 fi
 
