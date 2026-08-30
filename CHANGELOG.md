@@ -27,6 +27,12 @@ All notable changes to this project will be documented in this file.
   rather than assumed.
 
 ### Added
+- **CI now enforces the 100% coverage standard** — the backend test job ran
+  `pytest --cov=app --cov-report=...` with **no `--cov-fail-under`**, and `pyproject.toml`'s
+  `addopts` sets no threshold either, so CI printed the coverage percentage and passed regardless.
+  The project's headline standard was therefore never actually gated; a drop below 100% only
+  surfaced in a local run. `--cov-fail-under=100` added to the CI invocation (found in the #194
+  review).
 - **CI now gates version-carrier consistency** (#193, closes #186's last item) — a fast,
   dependency-free `version-consistency` job runs `./bump_version.sh --check` plus the new
   `test-bump-version.sh` self-test, and all four image-build jobs `needs:` it, so drift fails the
