@@ -300,17 +300,20 @@ async def test_multi_agent_worker_cancel():
 
 
 @pytest.mark.asyncio
-async def test_multi_chat_max_turns_is_bounded_and_forwarded(monkeypatch):
+async def test_multi_chat_max_turns_is_bounded_and_forwarded(client, monkeypatch):
     """#187: max_turns is caller-settable but bounded, and reaches the service.
 
     An unmocked contract test needs one turn, not twenty sequential local-LLM
     generations — but an unbounded value would let a single request pin the
     model indefinitely, so the schema clamps it to the previous failsafe.
-    """
-    from fastapi.testclient import TestClient
 
+    Uses the shared async `client` fixture rather than TestClient(app): the
+    latter runs the app LIFESPAN, which seeds the admin user and therefore needs
+    a schema the xdist worker DB does not have — green locally, red under CI's
+    `pytest -n auto` (see lessons-learned §17 on full-suite verification).
+    """
     from app.api import ai as ai_api
-    from app.main import app
+    from app.config import settings
 
     seen: dict = {}
 
@@ -323,21 +326,18 @@ async def test_multi_chat_max_turns_is_bounded_and_forwarded(monkeypatch):
         return gen()
 
     monkeypatch.setattr(ai_api, "multi_agent_conversation", fake_conversation)
+    url = f"{settings.api_prefix}/ai/multi-chat"
+    body = {"topic": "t", "agents": [{"id": 1, "description": "d", "role": "r"}]}
 
-    with TestClient(app) as client:
-        body = {"topic": "t", "agents": [{"id": 1, "description": "d", "role": "r"}]}
+    ok = await client.post(url, json={**body, "max_turns": 1})
+    assert ok.status_code == 200
+    assert seen["max_turns"] == 1, "max_turns must reach the service"
 
-        ok = client.post("/api/app/ai/multi-chat", json={**body, "max_turns": 1})
-        assert ok.status_code == 200
-        assert seen["max_turns"] == 1, "max_turns must reach the service"
+    # Default is preserved when the caller omits it.
+    await client.post(url, json=body)
+    assert seen["max_turns"] == 20
 
-        # Default is preserved when the caller omits it.
-        client.post("/api/app/ai/multi-chat", json=body)
-        assert seen["max_turns"] == 20
-
-        # Out-of-range values are rejected by the schema, not silently clamped.
-        for bad in (0, -1, 21, 100):
-            rejected = client.post(
-                "/api/app/ai/multi-chat", json={**body, "max_turns": bad}
-            )
-            assert rejected.status_code == 422, f"max_turns={bad} must be rejected"
+    # Out-of-range values are rejected by the schema, not silently clamped.
+    for bad in (0, -1, 21, 100):
+        rejected = await client.post(url, json={**body, "max_turns": bad})
+        assert rejected.status_code == 422, f"max_turns={bad} must be rejected"
