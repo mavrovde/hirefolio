@@ -82,7 +82,13 @@ inspect_inner_script() {
   # Recursion guard: wrappers can nest (`bash -c "bash -c '…'"`). The depth is
   # bounded so a pathological input cannot spin here; hitting the bound is
   # treated as "cannot analyse", and the caller's normal path still applies.
-  [ "$INNER_DEPTH" -ge 8 ] && return 1
+  # Depth bound. It must fail CLOSED: returning "nothing found" at the bound
+  # would mean 8 stacked wrappers deny and 9 allow, i.e. the bypass is simply
+  # "nest one level deeper". At the bound we stop analysing and say so.
+  if [ "$INNER_DEPTH" -ge 8 ]; then
+    REASON="BLOCKED: command nests shell wrappers more than 8 deep, which this guard will not attempt to analyse. Simplify the command, or prefix it with GUARD_DESTRUCTIVE=0 if it is authorized."
+    return 0
+  fi
   INNER_DEPTH=$((INNER_DEPTH + 1))
 
   # Restore any quoted newlines, then split on them. A body with NO newline is
@@ -150,14 +156,23 @@ inspect_segment() {
     fi
     # bash -c "…" / sh -c '…' / zsh -c … / eval … / ssh host "…" — the quoted
     # argument is a SCRIPT, so inspect the command(s) inside it.
+    #
+    # Two passes are needed, and BOTH matter. `inspect_inner_script` re-splits the
+    # body so packed separators are seen (#210) — but `quote_split` also treats
+    # `(`, `)` and backtick as separators, so a command substitution in the middle
+    # of an invocation FRAGMENTS it, and the multi-condition rules (compose +
+    # `down` + `-v`; `rm` + recursive + data path) never see all their conditions
+    # in one piece. Falling through afterwards re-inspects the FLATTENED body as a
+    # single segment, which is what catches those. Returning early here made the
+    # guard strictly weaker than before on six protected paths.
     if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +-c '; then
       seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +-c +//; s/^[\"']//")"
-      inspect_inner_script "$seg"
-      return 0
+      inspect_inner_script "$seg" && return 0
+      changed=1
     elif printf '%s' "$seg" | grep -Eq '^eval '; then
       seg="$(printf '%s' "$seg" | sed -E "s/^eval +//; s/^[\"']//")"
-      inspect_inner_script "$seg"
-      return 0
+      inspect_inner_script "$seg" && return 0
+      changed=1
     elif printf '%s' "$seg" | grep -Eq '^ssh '; then
       # `ssh host "…"` runs its argument on the remote shell. Same reasoning, and
       # the blast radius there is someone else's machine.
@@ -432,17 +447,36 @@ strip_text_heredocs() {
 # text that reaches me", so quoted text earlier in the pipeline is CODE, however
 # innocent its producing command looks (#210).
 pipes_into_shell() {
-  local seg first
+  local seg first via_xargs
   local OLD="$IFS"; IFS=$'\n'
   for seg in $1; do
-    seg="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g; s/^(sudo|env|command|exec) +//')"
+    # Peel wrappers, including ones that take their own options (`sudo -E`,
+    # `xargs -0`), then an absolute path — `/bin/bash` is as much a shell as
+    # `bash`. Matching two exact spellings made this an allowlist of the first
+    # two forms that came to mind; every other spelling executed unguarded.
+    seg="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
+    via_xargs=0
+    while printf '%s' "$seg" | grep -Eq '^(sudo|env|command|exec|nohup|time|xargs)( |$)'; do
+      printf '%s' "$seg" | grep -Eq '^xargs( |$)' && via_xargs=1
+      seg="$(printf '%s' "$seg" | sed -E 's/^(sudo|env|command|exec|nohup|time|xargs) *//')"
+      while printf '%s' "$seg" | grep -Eq '^-'; do
+        seg="$(printf '%s' "$seg" | sed -E 's/^-[^ ]* *//')"
+      done
+    done
+    seg="$(printf '%s' "$seg" | sed -E 's#^/[^ ]*/##')"
     first="${seg%% *}"
     case "$first" in
       bash|sh|zsh|dash)
-        # A bare shell, or one reading stdin (`-s`). `-c` is NOT this case: there
-        # the script is the argument and inspect_segment already unwraps it.
+        # Anything that is NOT `-c` reads its script from somewhere else — stdin
+        # (bare, or `-s`, or `-`), a here-string, a process substitution — and in
+        # every one of those the text arriving from the pipeline is code.
+        # `-c` normally means the script is the argument, which inspect_segment
+        # already unwraps — EXCEPT behind xargs, which appends the piped text as
+        # that very argument. There the payload is still code arriving by pipe.
+        if [ "$via_xargs" = 1 ]; then IFS="$OLD"; return 0; fi
         case "$seg" in
-          "$first"|"$first "-s*) IFS="$OLD"; return 0 ;;
+          *" -c "*|*" -c") ;;                       # script is the argument; handled elsewhere
+          *) IFS="$OLD"; return 0 ;;
         esac
         ;;
     esac

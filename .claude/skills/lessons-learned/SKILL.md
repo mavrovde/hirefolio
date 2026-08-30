@@ -410,6 +410,7 @@ hid what followed.**
 | 3 | **unquoted** heredoc delimiter — the shell *expands* that body, so `$(…)` executes | `cat > n.md <<EOF ↵ x=$(<destroy>) ↵ EOF` |
 | 3 | `<<` inside a `#` comment, or after an escaped quote, read as a real redirect | `echo ok # <<'EOF' ↵ <volume rm> ↵ EOF` |
 | 4 | the two functions granting the exemption disagreed about the line — one knew backslash escapes, the other did not | `git commit -m "the \" char" ; bash <<'EOF' ↵ <volume rm> ↵ EOF` |
+| 5 (#210) | *replacing* a check with a better one instead of *adding* it — an early `return` deleted the fall-through that inspected the flattened body | `bash -c "docker compose -f $(echo f.yml) down -v"` |
 
 Rows 1 and 2 are the **#91 command with an `echo` in front of it**. Each round the author (me)
 believed the general case had been found and had only found an instance.
@@ -439,7 +440,14 @@ believed the general case had been found and had only found an instance.
    keeps the deny.
 8. **Build test strings from concatenated parts** (`D="rm -""rf"`) or the guard blocks the file that
    tests it. This happened to a probe script, to a reviewer writing up findings, and to this file.
-9. **If two functions jointly enforce an invariant, they must share one model of the input.** Round 4
+9. **Adding a better check must not remove the old one.** #210 replaced a fall-through with an early
+   `return` because the new inner-script pass was strictly smarter. It wasn't *strictly* — the new
+   pass re-splits on `(`/`)`/backtick, so a command substitution in the middle of an invocation
+   fragments it and the multi-condition rules (compose + `down` + `-v`) never see all their
+   conditions at once. The old flattened pass caught exactly those. Six protected paths went
+   deny → allow. **Two overlapping imperfect checks beat one clever check**: keep both and let the
+   first hit win.
+10. **If two functions jointly enforce an invariant, they must share one model of the input.** Round 4
    was *introduced by the round-3 fix*: `mask_quotes` was taught about backslash escapes and its
    partner `quote_split` was not, so they disagreed about where a quoted region ended — and an
    everyday `git commit -m "… \" …"` made one see a real redirect while the other saw an unclosed

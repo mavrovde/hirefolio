@@ -349,6 +349,46 @@ check "packed: benign bash -c"       "bash -c \"echo hello world\""             
 check "packed: prose in bash -c"     "bash -c \"echo 'note: $D $T is bad'\""      allow
 check "pipe: grep into wc, no shell" "grep -r \"$D $T\" docs/ | wc -l"            allow
 
+# --- BOTH PASSES OVER A WRAPPER BODY ARE LOAD-BEARING (#210 review) ---------
+# Re-splitting a wrapper's argument catches packed separators — but `quote_split`
+# also treats `(`, `)` and backtick as separators, so a COMMAND SUBSTITUTION in
+# the middle of an invocation fragments it, and the multi-condition rules
+# (compose + `down` + `-v`; `rm` + recursive + data path) never see all their
+# conditions in one piece. The fall-through that re-inspects the FLATTENED body
+# as one segment is what catches those. Dropping it made the guard strictly
+# weaker than before on these six paths.
+DCMP="docker com""pose"
+check "subst: compose down -v, \$()"  "bash -c \"$DCMP -f \$(echo docker-compose.yml) down -v\"" deny
+check "subst: compose down -v, btick" "bash -c \"$DCMP -f \`echo docker-compose.yml\` down -v\"" deny
+check "subst: eval compose down -v"   "eval \"$DCMP -f \$(echo docker-compose.yml) down -v\""    deny
+check "subst: rm data, \$()"          "bash -c \"$D \$(pwd)/data\""                              deny
+check "subst: rm data, backtick"      "bash -c \"$D \`pwd\`/data\""                              deny
+check "subst: sh -c rm data"          "sh -c \"$D \$(pwd)/data\""                                deny
+check "subst: eval rm data"           "eval \"$D \$(pwd)/data\""                                 deny
+
+# --- A SHELL BY ANY OTHER SPELLING (#210 review, finding 3) -----------------
+# The first version matched two exact spellings, which made it an allowlist of
+# the forms that came to mind rather than a test for "is this a shell". Anything
+# that is not `-c` reads its script from elsewhere — stdin, `-s`, `-`, a
+# here-string — and text arriving by pipe is then code.
+check "pipe: bash -x"                "echo \"$DV $V\" | bash -x"                   deny
+check "pipe: bash -"                 "echo \"$DV $V\" | bash -"                    deny
+check "pipe: absolute /bin/bash"     "echo \"$DV $V\" | /bin/bash"                 deny
+check "pipe: sudo -E bash"           "echo \"$D $T\" | sudo -E bash"               deny
+check "pipe: xargs -0 bash -c"       "echo \"$DV $V\" | xargs -0 bash -c"          deny
+check "pipe: zsh"                    "echo \"$D $T\" | zsh"                        deny
+# ...and ordinary xargs pipelines stay allowed.
+check "pipe: benign xargs echo"      "ls | xargs -n1 echo"                         allow
+check "pipe: xargs rm of logs"       "find . -name '*.log' | xargs rm -f"          allow
+
+# The wrapper-depth bound must fail CLOSED: if it returned "nothing found", the
+# bypass would simply be "nest one level deeper".
+DEEP=""
+for _i in 1 2 3 4 5 6 7 8 9; do DEEP="${DEEP}eval \""; done
+DEEP="${DEEP}${DV} ${V}"
+for _i in 1 2 3 4 5 6 7 8 9; do DEEP="${DEEP}\""; done
+check "depth: 9 stacked evals"       "$DEEP"                                       deny
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0
