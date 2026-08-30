@@ -556,7 +556,7 @@ RELEASE_MANAGER = _add(RoleSpec(
         "rotation trap (bump_version.sh has produced two version headers / a stray placeholder before) "
         "and keep every entry (union) with subsections ordered Added/Changed/Fixed/Security/Docs. Tag "
         "vX.Y.Z on the merge commit's FULL SHA (`gh release create` rejects a short SHA). Note that "
-        "deploy.yml has NO concurrency guard, so serialize releases — never trigger overlapping "
+        "deploy.yml has a concurrency guard (#147) that QUEUES a second deploy behind the running one rather than cancelling it — expect a wait — never trigger overlapping "
         "deploys. Given the delivered work and its QA/review/security/CI status, draft the release "
         "title + notes and give a clear GO or NO-GO with any blockers; a release is DONE only when you "
         "babysit deploy.yml to green (fix-forward on red, never leave prod half-deployed)."

@@ -78,7 +78,6 @@ All notable changes to this project will be documented in this file.
   footguns; `verify_proxy_routes.py` dispatches any
   HTTP method (the old GET/PUT/POST chain left `response` unbound for other methods). Release
   runbook docs (`.claude/commands/release.md`, `.claude/agents/release-manager.md`) synced.
-### Changed
 - **AI-config hooks hardened** (Refs #115, #121, #122) — `pre-push-tests.sh` now fails fast when
   another pytest suite is already running (`pgrep -f pytest`; two suites clobber the shared
   `test_mavrov` DB), and `guard-destructive.sh` closes the `rm --recursive --force` /

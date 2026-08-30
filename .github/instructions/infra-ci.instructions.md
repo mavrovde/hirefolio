@@ -1,5 +1,5 @@
 ---
-applyTo: ".github/workflows/**,proxy/**,docker-compose*.yml,Dockerfile*,manage.sh,verify_all.sh,release.sh,bump_version.sh"
+applyTo: ".github/workflows/**,proxy/**,docker-compose*.yml,backend/Dockerfile*,frontend/Dockerfile*,manage.sh,verify_all.sh,release.sh,bump_version.sh"
 ---
 
 # Infra / CI / deploy
