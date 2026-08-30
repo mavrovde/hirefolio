@@ -4,14 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Security
-- **`/ai/multi-chat` no longer streams exception text to clients** (CodeQL alert #31,
-  `py/stack-trace-exposure`, medium) — introduced by the #180/#184 repair, which surfaced setup and
-  per-turn failures as `[Error: {e}]` on the public stream. Because the response body has already
-  started when these fire, they cannot become a 500; the reason is now **logged server-side** and
-  the client receives a fixed, non-revealing message instead. The infrastructure-error chunk also
-  stops echoing the configured Ollama URL. Tests assert the *absence* of the exception reason, so a
-  future regression that leaks internals fails the suite.
+### Added
+- Placeholder for next release.
+
+## [1.9.0] - 2026-08-30
+
+### Added
+- **Automated prod rollout (`deploy` job in `deploy.yml`)** — closes the "published ≠ live" CD gap
+  (#112/#156): after all four images are promoted, the pipeline SSHes to the prod host and rewrites
+  only `IMAGE_REPO`/`IMAGE_TAG` in the host `.env` to the **immutable `sha-<gitsha>` tag** (guarded so
+  a missing/unreadable/short `.env` aborts untouched rather than losing secrets; only the previous
+  coordinate lines are kept for rollback), pulls and recreates just the four app services
+  (`--no-deps`, so third-party images and volumes are never rolled), verifies every app container by
+  **image digest**, waits on `/api/app/health`, runs the retried #169 freshness probe (public
+  `/admin/login` → 404), and rolls back to the previous sha tag on any failure. The job is a
+  guarded no-op until the owner adds `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` secrets, so forks
+  and secretless runs stay green; volumes are never touched (rule 9). New `docs/DEPLOYMENT.md` covers
+  the clean-server first deploy, the secrets to activate rollout, and the first LinkedIn content
+  import; `docker-compose.prod.yml` image defaults now point at the registry CI actually publishes to
+  (`ghcr.io/mavrovde/mavrov.de`, public/anonymous pulls) instead of the stale Docker Hub repo.
+- **GitHub Copilot parity** (Refs #115, #121, #122) — `.github/copilot-instructions.md` rewritten
+  in sync with the current `CLAUDE.md` (RxJS-primary — the old file wrongly mandated
+  "Signals only" on "Angular 18" — engineering rules 1–11, issue flow, published≠live,
+  no-real-credentials, destruction guardrail); new path-scoped
+  `.github/instructions/{backend,frontend,infra-ci}.instructions.md`, reusable
+  `.github/prompts/{verify,release-check}.prompt.md`, a root `AGENTS.md` for coding agents, and
+  `.github/workflows/copilot-setup-steps.yml` pre-installing deps for the Copilot coding agent.
+  `CLAUDE.md` remains the single source of truth; all Copilot files summarize and point back.
 
 ### Changed
 - **The project is now `Hirefolio`; the repository is `mavrovde/hirefolio`** (#88). The old identity
@@ -29,65 +48,6 @@ All notable changes to this project will be documented in this file.
   so they must be made public once. The rollout job now preflights anonymous pullability and fails
   with the package name before touching the host. `.env.example` and `verify_proxy_startup.sh`
   (which gates `release.sh`) also stop naming the retired Docker Hub org.
-
-### Security
-- **Admin JWTs can no longer be signed with a publicly-known secret** (#177). `jwt_secret_key`
-  defaulted to the committed placeholder `your-secret-key-change-in-production`
-  (`backend/app/config.py`) and **no compose file passed `JWT_SECRET_KEY`**, so a production
-  deployment signed/verified admin bearer tokens with a secret published in this public repo —
-  admin API access without any credential, bypassing the #142 password hardening entirely.
-  Mirroring #142, the insecure state is now impossible rather than merely documented: the
-  config default is gone, the historical placeholder is an explicitly **rejected** value, and the
-  `app.main` lifespan **refuses to start** (`InsecureJwtSecretError`, actionable message) when no
-  explicit secret is configured. `docker-compose.prod.yml` now passes
-  `JWT_SECRET_KEY=${JWT_SECRET_KEY:-}`, and `.env.example` documents it as REQUIRED with an
-  `openssl rand -hex 32` hint. Local dev / E2E opt into `JWT_ALLOW_EPHEMERAL_SECRET=true` and get a
-  **random per-process** secret, so no key is committed and CI needs no real credential (rule 10).
-  **Operator action required before the next prod rollout: set `JWT_SECRET_KEY` in the host `.env`**
-  — the backend will otherwise refuse to start (fail-closed by design). Rotating the secret
-  invalidates existing admin sessions (one re-login), which is the point: tokens minted under the
-  old known key stop being accepted.
-### Fixed
-- **`POST /api/app/ai/multi-chat` repaired** (#180) — broken since the crewai 0.11 → 1.x bump
-  (v1.4.1): the service passed a LangChain `ChatOpenAI` client as `Agent(llm=...)`, which crewai 1.x
-  rejects with a `ValidationError` *before the streaming generator's first yield*, so clients saw
-  HTTP 200 + a mid-body connection close and the public `/llm` page showed "Connection Error". The
-  vestigial crewai/LangChain plumbing is removed outright — participants are plain dataclasses and
-  generation streams directly to Ollama as it already did — and `conftest.py` no longer mocks the
-  crewai/langchain module tree wholesale (those vacuous mocks are exactly how the breakage hid from
-  778 green tests). The service's tests now exercise the real construction path.
-
-### Added
-- Placeholder for next release.
-
-- **Automated prod rollout (`deploy` job in `deploy.yml`)** — closes the "published ≠ live" CD gap
-  (#112/#156): after all four images are promoted, the pipeline SSHes to the prod host and rewrites
-  only `IMAGE_REPO`/`IMAGE_TAG` in the host `.env` to the **immutable `sha-<gitsha>` tag** (guarded so
-  a missing/unreadable/short `.env` aborts untouched rather than losing secrets; only the previous
-  coordinate lines are kept for rollback), pulls and recreates just the four app services
-  (`--no-deps`, so third-party images and volumes are never rolled), verifies every app container by
-  **image digest**, waits on `/api/app/health`, runs the retried #169 freshness probe (public
-  `/admin/login` → 404), and rolls back to the previous sha tag on any failure. The job is a
-  guarded no-op until the owner adds `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` secrets, so forks
-  and secretless runs stay green; volumes are never touched (rule 9). New `docs/DEPLOYMENT.md` covers
-  the clean-server first deploy, the secrets to activate rollout, and the first LinkedIn content
-  import; `docker-compose.prod.yml` image defaults now point at the registry CI actually publishes to
-  (`ghcr.io/mavrovde/mavrov.de`, public/anonymous pulls) instead of the stale Docker Hub repo.
-
-### Fixed
-- **Root service-script overhaul (#172)** — `bump_version.sh` now updates EVERY version carrier,
-  adding the previously missed `frontend/projects/shared/package.json` (caught up from the stale
-  `1.7.0` to the current version) and the `docker-compose.prod.yml` `${IMAGE_TAG:-…}` defaults
-  (previously a macOS-only `sed` in `release.sh`); it writes `VERSION` with exactly one trailing
-  newline (idempotent — ends the newline diff churn) and gains `--check` (verify all carriers
-  agree, naming the offending file + both values on mismatch; wired into the pre-push hook's docs
-  check) and `--dry-run`. Its CHANGELOG rotation is guarded against the historical double-rotation
-  (two inserted version headers). `build_amd64_and_push.sh` no longer calls the uninstalled
-  `podman push` (broken; now `docker push` throughout) and documents that CI's ghcr publish is the
-  primary path. `verify_all.sh`'s frontend-startup timeout check was testing the Open WebUI wait
-  loop's counter — moved to its own loop.
-
-### Changed
 - **CI: removed the dead E2E base-image cache** (#134) — the e2e-tests job's "Restore cached
   base images" + "Load or pull base images" steps ran *after* `docker compose up -d` had
   already pulled every image the stack needs, so the ~5 GB tarball restore + `docker load`
@@ -121,6 +81,52 @@ All notable changes to this project will be documented in this file.
   separated-flag / `-Rf` bypass of the data-dir rule (pattern 5), with new deny/allow self-test
   cases in `guard-destructive.test.sh`.
 
+### Fixed
+- **`POST /api/app/ai/multi-chat` repaired** (#180) — broken since the crewai 0.11 → 1.x bump
+  (v1.4.1): the service passed a LangChain `ChatOpenAI` client as `Agent(llm=...)`, which crewai 1.x
+  rejects with a `ValidationError` *before the streaming generator's first yield*, so clients saw
+  HTTP 200 + a mid-body connection close and the public `/llm` page showed "Connection Error". The
+  vestigial crewai/LangChain plumbing is removed outright — participants are plain dataclasses and
+  generation streams directly to Ollama as it already did — and `conftest.py` no longer mocks the
+  crewai/langchain module tree wholesale (those vacuous mocks are exactly how the breakage hid from
+  778 green tests). The service's tests now exercise the real construction path.
+- **Root service-script overhaul (#172)** — `bump_version.sh` now updates EVERY version carrier,
+  adding the previously missed `frontend/projects/shared/package.json` (caught up from the stale
+  `1.7.0` to the current version) and the `docker-compose.prod.yml` `${IMAGE_TAG:-…}` defaults
+  (previously a macOS-only `sed` in `release.sh`); it writes `VERSION` with exactly one trailing
+  newline (idempotent — ends the newline diff churn) and gains `--check` (verify all carriers
+  agree, naming the offending file + both values on mismatch; wired into the pre-push hook's docs
+  check) and `--dry-run`. Its CHANGELOG rotation is guarded against the historical double-rotation
+  (two inserted version headers). `build_amd64_and_push.sh` no longer calls the uninstalled
+  `podman push` (broken; now `docker push` throughout) and documents that CI's ghcr publish is the
+  primary path. `verify_all.sh`'s frontend-startup timeout check was testing the Open WebUI wait
+  loop's counter — moved to its own loop.
+
+### Security
+- **Admin JWTs can no longer be signed with a publicly-known secret** (#177). `jwt_secret_key`
+  defaulted to the committed placeholder `your-secret-key-change-in-production`
+  (`backend/app/config.py`) and **no compose file passed `JWT_SECRET_KEY`**, so a production
+  deployment signed/verified admin bearer tokens with a secret published in this public repo —
+  admin API access without any credential, bypassing the #142 password hardening entirely.
+  Mirroring #142, the insecure state is now impossible rather than merely documented: the
+  config default is gone, the historical placeholder is an explicitly **rejected** value, and the
+  `app.main` lifespan **refuses to start** (`InsecureJwtSecretError`, actionable message) when no
+  explicit secret is configured. `docker-compose.prod.yml` now passes
+  `JWT_SECRET_KEY=${JWT_SECRET_KEY:-}`, and `.env.example` documents it as REQUIRED with an
+  `openssl rand -hex 32` hint. Local dev / E2E opt into `JWT_ALLOW_EPHEMERAL_SECRET=true` and get a
+  **random per-process** secret, so no key is committed and CI needs no real credential (rule 10).
+  **Operator action required before the next prod rollout: set `JWT_SECRET_KEY` in the host `.env`**
+  — the backend will otherwise refuse to start (fail-closed by design). Rotating the secret
+  invalidates existing admin sessions (one re-login), which is the point: tokens minted under the
+  old known key stop being accepted.
+- **`/ai/multi-chat` no longer streams exception text to clients** (CodeQL alert #31,
+  `py/stack-trace-exposure`, medium) — introduced by the #180/#184 repair, which surfaced setup and
+  per-turn failures as `[Error: {e}]` on the public stream. Because the response body has already
+  started when these fire, they cannot become a 500; the reason is now **logged server-side** and
+  the client receives a fixed, non-revealing message instead. The infrastructure-error chunk also
+  stops echoing the configured Ollama URL. Tests assert the *absence* of the exception reason, so a
+  future regression that leaks internals fails the suite.
+
 ### Docs
 - **Operational lessons folded into agent charters** (Refs #115, #121, #122) —
   `.claude/agents/{backend-dev,frontend-dev,devops-pipeline,release-manager,pr-reviewer}.md` and
@@ -132,20 +138,11 @@ All notable changes to this project will be documented in this file.
   `verify.md` encode the same lessons. Dev/release charters (and the Copilot files) now also
   require every PR to carry ≥1 type + ≥1 area label, same scheme as issues (agent PRs had been
   going out unlabeled, e.g. #171/#174).
-- **GitHub Copilot parity** (Refs #115, #121, #122) — `.github/copilot-instructions.md` rewritten
-  in sync with the current `CLAUDE.md` (RxJS-primary — the old file wrongly mandated
-  "Signals only" on "Angular 18" — engineering rules 1–11, issue flow, published≠live,
-  no-real-credentials, destruction guardrail); new path-scoped
-  `.github/instructions/{backend,frontend,infra-ci}.instructions.md`, reusable
-  `.github/prompts/{verify,release-check}.prompt.md`, a root `AGENTS.md` for coding agents, and
-  `.github/workflows/copilot-setup-steps.yml` pre-installing deps for the Copilot coding agent.
-  `CLAUDE.md` remains the single source of truth; all Copilot files summarize and point back.
 - **lessons-learned §13–14** — two durable lessons from the #170 dependency sweep: bisect a
   failing local gate against an unmodified `main` build before blaming your diff (the stale
   pre-split admin-login proxy check failed on `main` too; prod "passing" was an artifact of the
   #112 rollout gap), and `@angular/*` exact-peer lockstep (single-pass group updates, lockfile
   regeneration escape hatch). Also renumbers the pre-existing duplicate §11 heading.
-
 - **Pre-release accuracy sweep** (Refs #61) — brings the user-facing docs back in line with the
   code: honest `SECURITY.md` (supported 1.8.x, GitHub Security Advisories reporting — replaces the
   unedited GitHub boilerplate with its fictional 5.1.x/4.0.x version table); `frontend/README.md`
@@ -161,6 +158,11 @@ All notable changes to this project will be documented in this file.
   Node 22, test-DB isolation via `TEST_DATABASE_URL` + `create_test_db.py`, per-project Vitest
   configs, dev vs prod+e2e compose stacks, no hardcoded test counts); `agents/README.md` roster
   regenerated from `common/roster.py` (16 agents, ports 8010–8025) with the real delivery flow.
+- **Release-time doc truthing** — `SECURITY.md`'s supported-versions table moves to `1.9.x`;
+  `docs/DEPLOYMENT.md`'s intro no longer asserts the GHCR packages *are* public (post-rename the
+  four `hirefolio-*` packages are created **private** and need the one-time visibility change the
+  same document's "Registry notes" already describe), and the example `IMAGE_TAG` in
+  `docs/DEPLOYMENT.md` / `.env.example` tracks the current release.
 
 ## [1.8.4] - 2026-08-29
 
