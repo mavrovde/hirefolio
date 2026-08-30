@@ -134,8 +134,9 @@ actively babysit the run (`gh run view <id> --json ... jobs`), surface each job 
 causes on red (fix-forward, never silent rollback). Only then tag `vX.Y.Z` (a tag push does not
 re-trigger the branch pipeline). **Check GitHub security reports every release** — CodeQL
 (`gh api .../code-scanning/alerts`) + Dependabot (`.../dependabot/alerts`) — triage each and note
-pre-existing vs introduced. Caveat: `deploy.yml` currently publishes images but has no host-rollout
-step ("published ≠ live", #112) — don't assume a green publish means the site is updated.
+pre-existing vs introduced. Caveat: a green publish updates the host only when the secrets-gated
+`deploy` rollout job ran (#175); with `DEPLOY_*` unset it skips and the run is still green
+("published ≠ live", #112) — check the job's status rather than assuming.
 
 ## 8. No irreversible LOCAL/infra destruction without explicit authorization
 
@@ -305,7 +306,7 @@ that mocks the library, the validation is vacuous — check what the tests actua
 
 ## Where the rules live (AI-config map)
 
-- **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–9, issue-tracking flow,
+- **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–11, issue-tracking flow,
   execution protocol). This skill is the *why + reproduction* companion.
 - **`.claude/agents/*.md`** + **`agents/common/roster.py`** (`PROJECT_PLAYBOOK`) — the agent charters;
   keep the two in sync (they restate overlapping lessons).

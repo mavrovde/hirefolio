@@ -31,6 +31,10 @@ check "DROP DATABASE non-test"    'psql -c "DROP DATABASE mavrov"'              
 check "rm -rf data dir"           'rm -rf ./data/pgdata'                             deny
 check "rm -rf volumes path"       'sudo rm -rf /var/lib/volumes/ollama'             deny
 check "rm -fr open-webui"         'rm -fr ./open-webui'                              deny
+check "rm long-opts data dir"     'rm --recursive --force ./data/pgdata'             deny
+check "rm -r --force volumes"     'rm -r --force /var/lib/volumes/ollama'            deny
+check "rm -f ... -r data"         'rm -f -r ./data'                                  deny
+check "rm -Rf data dir"           'rm -Rf ./data/pgdata'                             deny
 
 # --- must ALLOW (ordinary dev / test — never impede) ---
 check "compose down (no -v)"      'docker compose down'                              allow
@@ -39,6 +43,8 @@ check "dropdb test_*"             'dropdb test_mavrov'                          
 check "DROP DATABASE test_*"      'psql -c "DROP DATABASE IF EXISTS test_mavrov"'    allow
 check "rm -rf dist"               'rm -rf frontend/dist'                             allow
 check "rm -rf node_modules"       'rm -rf node_modules'                              allow
+check "rm long-opts node_modules" 'rm --recursive --force node_modules'              allow
+check "rm -f only (no -r)"        'rm -f ./data/tmp.lock'                            allow
 check "rm -rf .angular cache"     'rm -rf .angular/cache'                            allow
 check "rm -rf scratchpad"         'rm -rf /private/tmp/claude-501/scratchpad/x'      allow
 check "pytest"                    'cd backend && ./venv/bin/pytest -q'               allow

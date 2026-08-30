@@ -32,8 +32,17 @@ about versioning, changelog accuracy, and not breaking prod.
   prefer letting CI build/deploy; if releasing manually, run
   `./bump_version.sh <bump>` + `--check` and verify the rotated CHANGELOG.
 - **Deploy:** pushing/merging to `main` triggers `.github/workflows/deploy.yml`
-  (the prod deploy). PRs get CodeQL/Analyze only. There is **no concurrency
-  guard**, so avoid triggering overlapping deploys — serialize.
+  (the prod deploy). PRs get CodeQL/Analyze only. A `concurrency` guard (#147)
+  serializes deploys — a second push queues behind the running one rather than
+  cancelling it, so expect a wait rather than an overlap.
+- **Published ≠ live (#112 / #156):** a green `deploy.yml` run means images were
+  **published to the registry**; whether the prod host runs them depends on the
+  secrets-gated `deploy` rollout job (#175): it rolls the host, health-gates and
+  freshness-probes it only when `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` are
+  configured, and otherwise logs a skip notice while the run stays green. Check
+  whether the `Roll Out To Prod Host` job actually ran; if it was skipped, never
+  announce "prod is on vX.Y.Z" — verify the live site (footer `BE: vX.Y.Z`) or
+  state that host rollout is pending.
 - **Tag:** `vX.Y.Z` on the merge commit (`git rev-parse main` — use the FULL SHA;
   `gh release create` rejects a short SHA as `target_commitish`).
 
@@ -65,6 +74,8 @@ suffix (`-rc.1`) is allowed when explicitly requested.
 6. **Release PR → main.** Open/curate it: title `Release vX.Y.Z`, body lists every
    `Closes #NN` in the batch and how each is satisfied. Ensure PR CI (CodeQL/Analyze)
    is green. Request the `pr-reviewer` gate if not already approved.
+   Label the PR: ≥1 type label (`bug`/`enhancement`/`documentation`/`dependencies`/`security`)
+   + ≥1 area label — same scheme as issues (`gh pr create --label` / `gh pr edit --add-label`).
 7. **Merge** (squash or merge per repo norm) — this is the sanctioned prod trigger.
    Merging to `main` is irreversible/outward-facing: proceed when the batch is
    authorized and green; otherwise surface the blocker.

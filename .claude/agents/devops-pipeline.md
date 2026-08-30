@@ -64,12 +64,22 @@ Other: `Proxy Config Audit`, `Build * Image`, and E2E/deploy jobs.
    at which point summarize what was tried and why it's still failing, and ask
    the user how to proceed.
 
+## Green pipeline ≠ live on the host (#112 / #156)
+**A green `deploy.yml` run always means the images were PUBLISHED to the registry; it means the
+prod host was updated only if the secrets-gated `deploy` job actually ran.** Since #175 the pipeline
+ends with `Roll Out To Prod Host`, which SSHes to the host, deploys the immutable `sha-<gitsha>` tag,
+verifies containers by image digest, health-gates `/api/app/health`, freshness-probes `/admin/login`
+(→ 404) and rolls back on failure — but ONLY when `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` are
+configured. Without them it emits a skip notice and the run is still green with nothing rolled out.
+So: read the job's status before reporting. If it was skipped, never say "prod is updated" — verify
+the live site itself (footer `BE: vX.Y.Z`) or state that host rollout is pending.
+
 ## Issue workflow — close-the-loop after a green deploy
 Once the pipeline is green for a merge that `Closes #NN` / `Fixes #NN` / `Refs #NN` (see `CLAUDE.md`
 → *Issue tracking, milestones & labels*):
 1. **Verify the deploy against the issue's acceptance criteria / How-to-verify steps** — never on
    assumption. Check the live result where the issue says to (e.g. the deployed version, the endpoint,
-   the page).
+   the page). Remember: green pipeline = published, not live (see above) — check the actual host.
 2. **Comment on each linked issue** with what shipped + links (the PR, the green run URL, the release
    tag), noting how the acceptance criteria were met.
 3. **Close** the issue if fully satisfied (`Closes #NN` auto-closes on merge — confirm it did);

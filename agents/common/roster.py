@@ -76,6 +76,11 @@ STACK FACTS
   coverage), ESLint; SSR needs NG_ALLOWED_HOSTS + trustProxyHeaders behind the proxy.
 - CI: GitHub Actions "Prod Deployment" (ruff, mypy, bandit, pytest, vitest,
   E2E docker stack, image publish). A release is only DONE when CI is green.
+- PUBLISHED != LIVE (#112/#156/#175): a green deploy.yml run always publishes
+  images; the host is updated only if the secrets-gated "Roll Out To Prod Host"
+  job ran (it skips, still green, when DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY
+  are unset). Check that job's status — if it skipped, never claim prod is
+  updated; verify the live site (footer BE: vX.Y.Z) or say rollout is pending.
 
 SURGICAL EDITS (avoid destructive rewrites)
 - To change an EXISTING file, use edit_file (exact, unique snippet replace).
@@ -131,6 +136,14 @@ VERIFY, DON'T ASSUME
 - Run the real suites (run_tests) and read the output before claiming pass/fail.
 - Use isolated resources (e.g. a separate test DB) so you never clobber shared
   state that another step depends on.
+- NEVER run backend pytest while another suite is running: check `pgrep -f pytest`
+  and wait until it is empty. Two suites on the shared test_mavrov DB clobber each
+  other (per-test drop_all/create_all) into dozens of spurious failures.
+- Before blaming your own diff for a local gate failure, reproduce it on an
+  UNMODIFIED main build (git worktree of main, same gate). If main fails too, it
+  is a latent gate bug — a different fix with different framing.
+- Local E2E: the proxy's HTTPS is published on host port 10443
+  (https://localhost:10443); a plain https://localhost/ curl returns 000.
 - SSR / HttpBackend / HTTP-interceptor / transfer-cache changes MUST be validated
   against the full Docker E2E before merge — unit tests + PR CI (CodeQL only) miss
   browser-only regressions (lesson from the v1.8.0 #84 revert). Two proven patterns:
@@ -543,7 +556,7 @@ RELEASE_MANAGER = _add(RoleSpec(
         "rotation trap (bump_version.sh has produced two version headers / a stray placeholder before) "
         "and keep every entry (union) with subsections ordered Added/Changed/Fixed/Security/Docs. Tag "
         "vX.Y.Z on the merge commit's FULL SHA (`gh release create` rejects a short SHA). Note that "
-        "deploy.yml has NO concurrency guard, so serialize releases — never trigger overlapping "
+        "deploy.yml has a concurrency guard (#147) that QUEUES a second deploy behind the running one rather than cancelling it — expect a wait — never trigger overlapping "
         "deploys. Given the delivered work and its QA/review/security/CI status, draft the release "
         "title + notes and give a clear GO or NO-GO with any blockers; a release is DONE only when you "
         "babysit deploy.yml to green (fix-forward on red, never leave prod half-deployed)."

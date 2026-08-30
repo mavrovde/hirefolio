@@ -34,6 +34,12 @@ Against Postgres on `127.0.0.1:5433` (a `test_*` DB via `TEST_DATABASE_URL`/`DAT
 14. Tear down when done: `docker compose -f docker-compose.prod.yml -f docker-compose.e2e.yml down`
 
 Notes / caveats:
+- The proxy's HTTPS is published on host port **10443** (`https://localhost:10443`; `PROXY_SSL_PORT`
+  in `verify_proxy_routes.py`) — a plain `https://localhost/` curl returns `000`.
+- Never start this while another pytest suite is running — `pgrep -f pytest` first; two suites on
+  the shared `test_mavrov` DB clobber each other (lessons-learned §4).
+- A failing gate is not proof the current diff broke it — reproduce on an unmodified `main` build
+  before root-causing inside the diff (lessons-learned §13).
 - `verify_all.sh` orchestrates all of the above. It runs backend pytest with a portable interpreter
   (`backend/venv/bin/python` if present, else `python3`); override with `PYTEST_PYTHON=/path/to/python`.
 - On a slow link the in-container Ollama model pulls dominate E2E wall-clock; models persist in the

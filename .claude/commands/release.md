@@ -39,8 +39,8 @@ Runs: backend `pytest` (Docker DB), frontend per-project `npm run test:coverage`
 `docker-compose.e2e.yml`, incl. the `admin-frontend` service, seed e2e user, `verify_proxy_routes.py`,
 Playwright `public-e2e` + `admin-e2e`). On failure: `git checkout VERSION backend/app/main.py
 frontend/package.json frontend/projects/public/src/app/version.ts` and stop.
-- ⚠️ `verify_all.sh` line ~26 hardcodes a conda python path (`/Users/sergii.mavrov/...`) — make it
-  portable (use `backend/venv` or `python3`) before running on any other machine.
+- `verify_all.sh` picks the pytest interpreter portably (`backend/venv/bin/python` if present, else
+  `python3`); override with `PYTEST_PYTHON=/path/to/python` if needed.
 
 ## 2b. Proxy smoke test — `./verify_proxy_startup.sh` (abort + revert on failure)
 
@@ -59,17 +59,21 @@ Backfill any tags that never got a Release. (`release.sh` tags but does not publ
 ## 5. Build & publish images — `./build_amd64_and_push.sh`
 Builds AMD64 backend/frontend/proxy and pushes them to the registry with the new tag.
 
-## 6. Prod server rollout
+## 6. Prod server rollout — automatic ONLY when the `DEPLOY_*` secrets exist (#175); otherwise manual (#112 / #156)
 `docker compose -f docker-compose.prod.yml up -d` on the prod host pulls the new tagged images
-(that's why step 1b matters). Verify the deployed version (e.g. footer `BE: v<VERSION>`).
+(that's why step 1b matters). Since #175 the pipeline's `Roll Out To Prod Host` job does this automatically when
+`DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` are configured; **with those secrets unset the run is
+still green and nothing is rolled**, so check the job status and never claim the site is updated
+from a green run alone. Verify the deployed version on
+the live site (e.g. footer `BE: v<VERSION>`).
 
 ## PR-based release (PREFERRED — used for v1.4.1/1.4.2/1.5.0/1.5.1)
 **Default to this over `release.sh`'s direct push to `main`.** Do steps 1–3 (bump + compose tags +
 changelog) on a **feature branch**, open a PR, get checks green, and **merge to `main`** — the merge
 triggers `deploy.yml`, which runs the same gates + Docker E2E + publishes `<VERSION>`/`latest`. Then
 tag `v<VERSION>` on the merge commit (a tag push does not re-trigger the branch pipeline). Still do
-**step 1b** (compose tags) and the prod rollout (step 6) — CI publishes images but does not roll the
-prod server.
+**step 1b** (compose tags) and, if the `DEPLOY_*` secrets are not configured, the manual prod
+rollout (step 6).
 
 ## Security reports (every release)
 Before tagging, check GitHub security scanning and triage: `gh api repos/<owner>/<repo>/code-scanning/alerts?state=open`
