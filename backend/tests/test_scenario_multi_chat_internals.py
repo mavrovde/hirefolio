@@ -1,4 +1,3 @@
-import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -7,7 +6,10 @@ import pytest
 from app.services.multi_chat import (
     AgentConfig,
     ChatMessage,
-    StopChatTool,
+    Participant,
+    _build_participants,
+    _final_chunk,
+    _stream_chunk,
     multi_agent_conversation,
 )
 
@@ -51,10 +53,7 @@ async def test_multi_agent_conversation_success():
         async def __aexit__(self, exc_type, exc, tb):
             pass
 
-    with (
-        patch("app.services.multi_chat.Agent"),
-        patch("httpx.AsyncClient") as MockClient,
-    ):
+    with patch("httpx.AsyncClient") as MockClient:
         mock_client_instance = MockClient.return_value
         mock_client_instance.get = AsyncMock(return_value=mock_tags_resp)
         mock_client_instance.stream.return_value = MockAsyncContextManager()
@@ -77,29 +76,26 @@ async def test_multi_agent_conversation_success():
         assert len(done_chunks) > 0
 
 
-@pytest.mark.asyncio
-async def test_streaming_callback_handler():
-    """Test the callback handler directly for coverage."""
-    from app.services.multi_chat import StreamingCallbackHandler
+def test_build_participants_maps_roles_and_defaults():
+    """Issue #180: participants are plain data — no agent framework objects."""
+    cfgs = [
+        AgentConfig(id=1, name="Sci", role="Scientist", goal="G1", description="D1"),
+        AgentConfig(id=2, description="D2"),  # role/goal fall back to defaults
+    ]
+    participants, id_map = _build_participants(cfgs)
+    assert [p.role for p in participants] == ["Scientist", "Participant"]
+    assert participants[1].goal == "Participate deeply in the discussion."
+    assert participants[1].backstory == "D2"
+    assert id_map == {"Scientist": 1, "Participant": 2}
+    assert isinstance(participants[0], Participant)
 
-    queue = asyncio.Queue()
-    loop = asyncio.get_running_loop()
-    handler = StreamingCallbackHandler(queue, loop)
-    handler.current_agent_name = "TestAgent"
 
-    # Test new token
-    handler.on_llm_new_token("token")
-
-    # Give the loop a chance to process the callback
-    await asyncio.sleep(0.01)
-
-    item = await queue.get()
-    assert item["content"] == "token"
-    assert item["agent_name"] == "TestAgent"
-
-    # Test empty token (should not push)
-    handler.on_llm_new_token("")
-    assert queue.empty()
+def test_stream_and_final_chunk_shapes():
+    chunk = json.loads(_stream_chunk(3, "hi", turn_complete=True))
+    assert chunk == {"agent": 3, "content": "hi", "done": False, "turn_complete": True}
+    assert _stream_chunk(3, "hi").endswith("\n")
+    final = json.loads(_final_chunk())
+    assert final["done"] is True and final["agent"] == 0
 
 
 @pytest.mark.asyncio
@@ -111,13 +107,7 @@ async def test_multi_chat_internals():
     msg = ChatMessage(agent_name="TestAgent", content="Hello")
     assert msg.to_string() == "TestAgent: Hello"
 
-    # 2. StopChatTool
-    tool = StopChatTool()
-    with pytest.raises(Exception) as exc:
-        tool._run("Violation")
-    assert "STOPPED_BY_MODERATOR: Violation" in str(exc.value)
-
-    # 3. Empty config
+    # 2. Empty config
     gen = multi_agent_conversation([], "Topic")
     # Async generator returning immediately raises StopAsyncIteration on first next()
     with pytest.raises(StopAsyncIteration):

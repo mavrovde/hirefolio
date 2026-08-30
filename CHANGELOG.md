@@ -21,6 +21,15 @@ All notable changes to this project will be documented in this file.
   — the backend will otherwise refuse to start (fail-closed by design). Rotating the secret
   invalidates existing admin sessions (one re-login), which is the point: tokens minted under the
   old known key stop being accepted.
+### Fixed
+- **`POST /api/app/ai/multi-chat` repaired** (#180) — broken since the crewai 0.11 → 1.x bump
+  (v1.4.1): the service passed a LangChain `ChatOpenAI` client as `Agent(llm=...)`, which crewai 1.x
+  rejects with a `ValidationError` *before the streaming generator's first yield*, so clients saw
+  HTTP 200 + a mid-body connection close and the public `/llm` page showed "Connection Error". The
+  vestigial crewai/LangChain plumbing is removed outright — participants are plain dataclasses and
+  generation streams directly to Ollama as it already did — and `conftest.py` no longer mocks the
+  crewai/langchain module tree wholesale (those vacuous mocks are exactly how the breakage hid from
+  778 green tests). The service's tests now exercise the real construction path.
 
 ### Added
 - Placeholder for next release.

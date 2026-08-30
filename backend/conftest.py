@@ -21,9 +21,15 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-only-jwt-signing-secret")
 
 # Global mocks for dependencies that require Rust/tiktoken or other system deps
 # Must be before any 'app' imports which might trigger nested imports of these
+#
+# NOTE (issue #180): the crewai / langchain_* module mocks that used to live here
+# were removed together with the vestigial agent-framework plumbing in
+# app/services/multi_chat.py. Mocking a whole module makes every assertion about
+# that library vacuous — that is exactly how `Agent(llm=<ChatOpenAI>)` kept
+# "passing" in pytest while it raised a ValidationError in production. Only mock
+# a module here when the real one genuinely cannot be imported in tests.
 
 
-# Langchain and other external mocks
 def mock_module(name):
     # Use a fresh MagicMock for each module to avoid shared side_effect exhaustion
     m = MagicMock()
@@ -31,18 +37,6 @@ def mock_module(name):
     sys.modules[name] = m
     return m
 
-
-mock_module("tiktoken")
-mock_module("langchain")
-mock_module("langchain_core")
-mock_module("langchain_core.messages")
-mock_module("langchain_core.prompts")
-mock_module("langchain_core.output_parsers")
-mock_module("langchain_core.runnables")
-mock_module("langchain_google_genai")
-mock_module("langchain_openai")
-mock_module("langchain_anthropic")
-mock_module("langchain_community")
 
 # Mock heavy/problematic libs
 mock_numpy = mock_module("numpy")
@@ -97,46 +91,6 @@ class MockVector(UserDefinedType):
 mock_pgvector = mock_module("pgvector")
 mock_pgvector_sqla = mock_module("pgvector.sqlalchemy")
 mock_pgvector_sqla.Vector = MockVector
-
-# Special handling for classes that are inherited from
-mock_lc_callbacks = mock_module("langchain_core.callbacks")
-
-
-class BaseCallbackHandler:
-    pass
-
-
-mock_lc_callbacks.BaseCallbackHandler = BaseCallbackHandler
-
-mock_lc_comm_chat = mock_module("langchain_community.chat_models")
-mock_lc_comm_chat.ChatOllama = MagicMock
-
-mock_lc_tools = mock_module("langchain_core.tools")
-
-
-class BaseToolMock:
-    name: str = ""
-    description: str = ""
-
-    def __init__(self, *args, **kwargs):
-        pass
-
-
-mock_lc_tools.BaseTool = BaseToolMock
-
-# CrewAI mocks
-mock_crewai = mock_module("crewai")
-
-
-class MockProcess:
-    sequential = "sequential"
-    hierarchical = "hierarchical"
-
-
-mock_crewai.Process = MockProcess
-mock_crewai.Agent = MagicMock
-mock_crewai.Task = MagicMock
-mock_crewai.Crew = MagicMock
 
 import asyncio
 from collections.abc import AsyncGenerator
