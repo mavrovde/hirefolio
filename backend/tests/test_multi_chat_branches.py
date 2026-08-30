@@ -168,7 +168,10 @@ async def test_multi_agent_generic_error():
         chunks = [json.loads(c) async for c in gen]
 
     all_content = "".join(c.get("content", "") for c in chunks)
-    assert "[Error:" in all_content
+    # The exception reason is logged, never streamed (py/stack-trace-exposure):
+    # pin its ABSENCE, or a leaking "[Error: boom generic]" would satisfy this too.
+    assert "boom generic" not in all_content
+    assert "the conversation ended unexpectedly" in all_content
 
 
 @pytest.mark.asyncio
@@ -242,10 +245,12 @@ async def test_multi_agent_stream_body_exception():
         gen = multi_agent_conversation(agents, "Topic", max_turns=1)
         chunks = [json.loads(c) async for c in gen]
 
-    # full_text became "[Error: stream broke]"; label-stripping cleaning leaves the reason
+    # CodeQL py/stack-trace-exposure: the exception reason is logged, NOT streamed —
+    # the client only sees a generic message, and the stream still terminates.
     all_content = "".join(c.get("content", "") for c in chunks)
     assert any(c.get("done") for c in chunks)
-    assert "stream broke" in all_content
+    assert "stream broke" not in all_content
+    assert "this turn could not be generated" in all_content
 
 
 @pytest.mark.asyncio

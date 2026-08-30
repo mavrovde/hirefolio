@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+- **`/ai/multi-chat` no longer streams exception text to clients** (CodeQL alert #31,
+  `py/stack-trace-exposure`, medium) — introduced by the #180/#184 repair, which surfaced setup and
+  per-turn failures as `[Error: {e}]` on the public stream. Because the response body has already
+  started when these fire, they cannot become a 500; the reason is now **logged server-side** and
+  the client receives a fixed, non-revealing message instead. The infrastructure-error chunk also
+  stops echoing the configured Ollama URL. Tests assert the *absence* of the exception reason, so a
+  future regression that leaks internals fails the suite.
+
 ### Changed
 - **The project is now `Hirefolio`; the repository is `mavrovde/hirefolio`** (#88). The old identity
   (`mavrov.de` as a *product* name) described one person's site and could not name a reusable,
