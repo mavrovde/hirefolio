@@ -190,6 +190,19 @@ async def multi_agent_conversation(
                             async with client.stream(
                                 "POST", url, json=payload, timeout=30
                             ) as response:
+                                if response.status_code != 200:
+                                    # A missing model answers 404. Ignoring it let
+                                    # the canned goal-fallback read as generated
+                                    # content, so a model-less deployment looked
+                                    # healthy to every gate (#199).
+                                    logger.error(
+                                        "Ollama returned %s for model %s — turn degraded",
+                                        response.status_code,
+                                        settings.generation_model,
+                                    )
+                                    full_text = (
+                                        "[Error: the language model is unavailable.]"
+                                    )
                                 if response.status_code == 200:
                                     async for line in response.aiter_lines():
                                         if line:
