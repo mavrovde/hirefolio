@@ -13,6 +13,12 @@ os.environ.setdefault(
     os.path.join(tempfile.gettempdir(), "linkedin_cookies_test"),
 )
 
+# SECURITY (issue #177): there is no usable default JWT signing secret any more
+# — the app refuses to start without an explicit one. Give the test run its own
+# throwaway value (set before any 'app' import instantiates the settings). This
+# is a local signing secret for fake tokens, NOT a credential to any service.
+os.environ.setdefault("JWT_SECRET_KEY", "test-only-jwt-signing-secret")
+
 # Global mocks for dependencies that require Rust/tiktoken or other system deps
 # Must be before any 'app' imports which might trigger nested imports of these
 

@@ -37,6 +37,17 @@ async def lifespan(app: FastAPI):
     print(f"[{datetime.now(UTC)}] LIFESPAN START: Mavrov.de API")
     app.state.start_time = datetime.now(UTC)
 
+    # SECURITY (issue #177): fail fast when the JWT signing secret is unset or
+    # still the publicly-known placeholder — a deployment that signs admin
+    # tokens with a guessable secret lets anyone mint an admin token. Resolving
+    # it here (instead of on the first login) turns a silent prod-wide auth
+    # bypass into a loud, unmissable startup failure. Local dev / E2E opt into a
+    # random per-process secret via JWT_ALLOW_EPHEMERAL_SECRET.
+    from app.services.auth import get_jwt_secret_key
+
+    get_jwt_secret_key()
+    print(f"[{datetime.now(UTC)}] SECURITY CHECK: JWT signing secret OK.")
+
     # Check Ollama connection
     import httpx
 

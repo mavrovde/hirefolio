@@ -1,5 +1,17 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# SECURITY (issue #177): signing-secret values that must never be honoured. The
+# first entry is the historical placeholder that used to be the *default* of
+# ``jwt_secret_key`` — it is committed in a public repository, so any deployment
+# still signing admin JWTs with it can have tokens forged without a credential.
+# ``app.services.auth.get_jwt_secret_key`` rejects every value in this set.
+INSECURE_JWT_SECRET_KEYS = frozenset(
+    {
+        "your-secret-key-change-in-production",
+        "",
+    }
+)
+
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/mavrov"
@@ -10,7 +22,18 @@ class Settings(BaseSettings):
     fast_generation_model: str = "llama3.2:1b"
 
     # Authentication
-    jwt_secret_key: str = "your-secret-key-change-in-production"
+    #
+    # SECURITY (issue #177): there is intentionally NO usable default signing
+    # secret. ``JWT_SECRET_KEY`` MUST be supplied in any real deployment —
+    # startup (see app.main lifespan) refuses to boot when it is empty or still
+    # the historical placeholder (see INSECURE_JWT_SECRET_KEYS), so prod can
+    # never sign admin JWTs with a publicly-known key. Generate one with:
+    #   openssl rand -hex 32
+    # Local dev / E2E set ``JWT_ALLOW_EPHEMERAL_SECRET=true`` instead and get a
+    # random per-process secret, so no key has to be committed or injected into
+    # CI (tokens simply do not survive a backend restart there).
+    jwt_secret_key: str = ""
+    jwt_allow_ephemeral_secret: bool = False
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 1440  # 24 hours
 

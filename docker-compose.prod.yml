@@ -76,6 +76,16 @@ services:
       # can never ship the historical admin/admin login. Set a strong value in
       # the root .env before deploying.
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      # SECURITY (issue #177): secret that signs/verifies admin JWTs. REQUIRED —
+      # the backend refuses to start when this is empty (or still the historical
+      # placeholder), so prod can never sign admin tokens with a publicly-known
+      # key. Set a strong value in the root .env; generate with:
+      #   openssl rand -hex 32
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
+      # Local/E2E escape hatch ONLY: with no JWT_SECRET_KEY, generate a random
+      # per-process secret instead of failing (sessions do not survive a
+      # restart). Off by default — never enable it on the prod host.
+      - JWT_ALLOW_EPHEMERAL_SECRET=${JWT_ALLOW_EPHEMERAL_SECRET:-false}
       - LINKEDIN_EMAIL=${LINKEDIN_EMAIL:-}
       - LINKEDIN_PASSWORD=${LINKEDIN_PASSWORD:-}
       - LINKEDIN_PUBLIC_ID=${LINKEDIN_PUBLIC_ID:-}
