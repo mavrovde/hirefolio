@@ -1,59 +1,84 @@
-# Frontend
+# Frontend — Angular workspace
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.1.
+Angular 22 workspace (Angular CLI `^22.1.4`) with **three projects**:
 
-## Development server
+| Project | Path | What it is |
+| --- | --- | --- |
+| `public` | `projects/public` | Visitor-facing app with **native SSR** (`server.ts` → `dist/public/server/server.mjs`), zoneless change detection |
+| `admin` | `projects/admin` | Admin console — client-side-rendered SPA |
+| `shared` | `projects/shared` | `@mavrov/shared` library consumed by both apps (build it **first**) |
 
-To start a local development server, run:
+The apps consume `@mavrov/shared` via the `SHARED_ENVIRONMENT` and
+`AUTH_TOKEN_PROVIDER` injection tokens (public passes a null token provider;
+admin wires it to its `AuthService`).
 
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Development servers
 
 ```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
+npm start            # public app  -> http://localhost:4200
+npm run start:admin  # admin app   -> http://localhost:4300
 ```
 
 ## Building
 
-To build the project run:
+`shared` must be built before either app; the aggregate script handles the order:
 
 ```bash
-ng build
+npm run build          # shared -> public -> admin
+npm run build:shared   # or build one project
+npm run build:public
+npm run build:admin
+
+npm run serve:ssr:public   # run the built SSR server (dist/public/server/server.mjs)
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Unit tests (Vitest)
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Unit tests run with [Vitest](https://vitest.dev/) (not Karma/Jasmine), one
+config per project. Coverage is **enforced at 100%** (statements, branches,
+functions, lines) for each project.
 
 ```bash
-ng test
+npm test                   # all three projects (shared, public, admin)
+npm run test:shared        # one project
+npm run test:public
+npm run test:admin
+
+npm run test:coverage      # all three, with coverage (the CI gate)
+npm run test:coverage:public   # per-project coverage
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+To run a single spec file, pass the project's config explicitly:
 
 ```bash
-ng e2e
+npx vitest run --config projects/public/vitest.config.ts src/app/services/cv.service.spec.ts
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## End-to-end tests (Playwright)
 
-## Additional Resources
+Playwright **is** configured (`playwright.config.ts`) with two projects:
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- `public-e2e` — tests in `e2e/public` against the public app
+- `admin-e2e` — tests in `e2e/admin` against the admin app
+
+```bash
+npm run e2e                                # everything
+npx playwright test --project=public-e2e   # one suite
+npx playwright test --project=admin-e2e
+```
+
+The full-stack E2E run (real backend + DB + Ollama) is driven by the repo-root
+`./verify_all.sh` / the Docker compose E2E stack — see the root `README.md`
+and `README_TESTING.md`.
+
+## Environments
+
+Per-app environment files live at `projects/public/src/environments/` and
+`projects/admin/src/environments/`.
+
+## Additional resources
+
+Project conventions (RxJS-first state, SSR safety, zoneless change-detection
+gotchas) are documented in the repo-root `CLAUDE.md` and
+`.claude/skills/lessons-learned/`. For Angular CLI reference, see the
+[Angular CLI Overview](https://angular.dev/tools/cli).

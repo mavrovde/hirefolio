@@ -6,9 +6,26 @@ This document explains how to run tests and view coverage reports for the mavrov
 
 ### Prerequisites
 
-- PostgreSQL running (for integration tests)
-- Python 3.13+
-- Dependencies installed: `pip install -r requirements.txt`
+- PostgreSQL with `pgvector` running on `127.0.0.1:5433` (`docker compose up -d db`)
+- Python 3.12 (the version prod/CI runs; the repo venv lives at `backend/venv`)
+- Dependencies installed: `pip install -r requirements.txt -r requirements-dev.txt`
+
+### Test database — isolation warning
+
+**Never run bare `pytest` against the live database.** Point the suite at a
+dedicated `test_*` database first — otherwise it can hang on (or write into)
+the live dev DB:
+
+```bash
+export TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov
+```
+
+`conftest.py` resolves `TEST_DATABASE_URL` → `DATABASE_URL` → the app config,
+and auto-creates the database if it is missing (per-worker `<db>_gwN` copies
+under `pytest -n`). `backend/scripts/create_test_db.py` can also create a test
+DB (with the `vector` extension) up front. Only `test_*` databases are ever
+dropped by the suite. Do not run two pytest suites at the same time — they
+share the test database.
 
 ### Running Tests
 
@@ -46,62 +63,71 @@ open htmlcov/index.html  # macOS
 xdg-open htmlcov/index.html  # Linux
 ```
 
-### Test Database
-
-Integration tests use a separate test database (`mavrov_test`). Create it:
-
-```bash
-createdb mavrov_test
-```
-
 ## Frontend Tests (Angular/Vitest v4+)
+
+The frontend is a 3-project workspace (`shared`, `public`, `admin`), each with
+its own Vitest config under `projects/<name>/vitest.config.ts`.
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22 (what CI uses)
 - Dependencies installed: `npm install`
 
 ```bash
 cd frontend
 
-# Run all tests
+# Run all tests (shared -> public -> admin)
 npm run test
+npm run test:public          # one project
 
 # Run with coverage (Vitest V8)
 npm run test:coverage
+npm run test:coverage:admin  # one project
 
-# Run specific test file
-npx vitest header.component.spec.ts
+# Run a specific test file (must name the project's config)
+npx vitest run --config projects/public/vitest.config.ts src/app/components/header/header.component.spec.ts
 
 # Run with UI (Requires @vitest/ui)
-npx vitest --ui
+npx vitest --ui --config projects/public/vitest.config.ts
 ```
 
 ### Coverage Reports
 
-Coverage reports are generated in `coverage/` directory:
+Coverage reports are generated per project under `coverage/{shared,public,admin}/`:
 
 ```bash
-open coverage/index.html  # macOS
-xdg-open coverage/index.html  # Linux
+open coverage/public/index.html  # macOS
+xdg-open coverage/public/index.html  # Linux
 ```
 
 ## Integration Testing with Docker/Podman
 
-### Start Services
+### The two compose stacks
 
 > **Note**: These commands work with both Docker and Podman. If using Podman, it has docker-compose compatibility built-in.
 
-```bash
-# Start all services (works with both docker-compose and podman-compose)
-docker-compose up -d
+- **Dev stack** — `docker-compose.yml` (built locally): day-to-day development.
 
-# Wait for services to be healthy
-docker-compose ps
+  ```bash
+  docker compose up -d          # or ./manage.sh start
+  docker compose ps             # wait for services to be healthy
+  curl http://localhost:11434/api/tags   # check Ollama is ready
+  ```
 
-# Check Ollama is ready
-curl http://localhost:11434/api/tags
-```
+- **Prod + E2E stack** — `docker-compose.prod.yml` overlaid with
+  `docker-compose.e2e.yml`: what `./verify_all.sh` (and CI) run the Playwright
+  suite against. The E2E overlay switches the prod images to local builds and
+  opens the admin allowlist for the test run only; CI additionally injects an
+  **empty** `GEMINI_API_KEY` so the E2E falls back to local Ollama and no paid
+  API is ever hit (CLAUDE.md rule 10).
+
+  ```bash
+  docker compose -f docker-compose.prod.yml -f docker-compose.e2e.yml up -d --build \
+    backend frontend admin-frontend proxy open-webui
+  ```
+
+  Prefer running `./verify_all.sh` — it orchestrates the stack, the readiness
+  gate, seeding, and both Playwright projects for you.
 
 ### Create Sample Data
 
@@ -148,22 +174,27 @@ curl http://localhost:8000/api/posts/getting-started-ollama/similar
 
 ## Coverage Targets
 
-- **Backend**: 100% line & branch coverage across all services, API endpoints and models (605 tests)
-- **Frontend**: 100% coverage (statements, branches, functions, lines) across all components, services & pipes (687 tests)
-- **E2E**: all critical flows validated — 81 Playwright tests (auth, admin, AI suggestions, blog, CV, LLM, SSR)
+- **Backend**: 100% line & branch coverage — the maintained project standard
+  (engineering rule: never below 95%)
+- **Frontend**: 100% coverage (statements, branches, functions, lines),
+  maintained per workspace project (`shared`, `public`, `admin`)
+- **E2E**: all critical flows validated by the Playwright `public-e2e` +
+  `admin-e2e` suites (auth, admin, AI suggestions, blog, CV, LLM, SSR)
+
+(Exact test counts change with every PR — trust the suite output, not this file.)
 
 ## Continuous Integration
 
-For CI/CD pipelines, use:
+What CI (`.github/workflows/deploy.yml`) runs:
 
 ```bash
 # Backend CI
 cd backend
-pytest --cov=app --cov-report=xml --cov-fail-under=100
+pytest -n auto -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
 
-# Frontend CI
+# Frontend CI (per-project coverage)
 cd frontend
-npm test -- --coverage --run
+npm run test:coverage
 ```
 
 ## Troubleshooting

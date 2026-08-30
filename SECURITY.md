@@ -2,20 +2,30 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Only the latest release line receives security updates. The current version is
+tracked in [`VERSION`](./VERSION).
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| 1.8.x   | :white_check_mark: |
+| < 1.8   | :x:                |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Please report vulnerabilities **privately** via GitHub Security Advisories:
+open the repository's **Security** tab → **Report a vulnerability**
+(<https://github.com/mavrovde/mavrov.de/security/advisories/new>).
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Do **not** open a public issue for a security problem, and never include
+credentials, tokens, or step-by-step live-exploit instructions in public
+issues or pull requests.
+
+What to expect:
+
+- An acknowledgement within a few days (this is a single-maintainer project).
+- Triage against the current release; confirmed issues are fixed forward on
+  `main` and shipped in the next release.
+- Credit in the release notes if you would like it.
+
+Dependency and code-scanning findings (Dependabot, CodeQL) are triaged as part
+of every release (see `CLAUDE.md`, engineering rule 8).

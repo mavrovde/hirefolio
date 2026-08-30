@@ -30,38 +30,39 @@ own name and domain.
 
 ### Frontend
 
-- **Framework**: Angular 22 (Standalone Components, Signals, Native SSR `server.mjs`)
+- **Framework**: Angular 22 (Standalone Components, RxJS + `async` pipe for state — Signals only for local component state, Native SSR `server.mjs`)
 - **Styling**: TailwindCSS 4.x, Dark/Light mode
 - **State Management**: RxJS 7.8 Observables
-- **Testing**: Vitest 4.0 (Unit, replaced Jasmine/Karma), Playwright 1.58 (E2E)
+- **Testing**: Vitest 4.1 (Unit, replaced Jasmine/Karma), Playwright 1.62 (E2E)
 - **i18n**: Custom translation service
 
 ### Backend
 
-- **Framework**: FastAPI 0.129 (Python 3.13+)
+- **Framework**: FastAPI 0.141 (Python 3.12 — the version the Docker images and CI run)
 - **Database**: PostgreSQL 16 with `pgvector` extension
 - **AI**: Ollama (Local LLM & Embeddings)
   - Embeddings: `nomic-embed-text`
   - Chat/generation: `llama3.2`
   - Fast metadata/tags: `llama3.2:1b`
-- **ORM**: SQLAlchemy 2.0.46 (async)
+- **ORM**: SQLAlchemy 2.0.52 (async)
 - **Testing**: pytest + Vitest (100% line & branch coverage)
 
 ### CI/CD Pipeline
 
 - **Platform**: GitHub Actions
 - **Quality Gates**:
-  - Linting (Ruff 0.15, ESLint)
+  - Linting (Ruff 0.16 for the backend; no frontend linter is configured — the CI
+    frontend-lint job runs `npm run lint --if-present`, which is currently a no-op)
   - Type Checking (MyPy)
   - Security Scanning (Bandit)
   - Unit Tests (Frontend & Backend)
   - E2E Tests (Playwright with real Ollama integration)
-- **Optimization**: Aggressive caching for Docker images, AI models, and browsers
+- **Optimization**: Playwright-browser caching in CI — deliberately **no** multi-GB caches for Docker base images or AI model weights (measured net-negative; see `.claude/skills/lessons-learned/SKILL.md` §5)
 
 ## 📋 Prerequisites
 
-- **Node.js** 20+ (npm 11+)
-- **Python** 3.13+
+- **Node.js** 22 (what CI uses; npm 10+)
+- **Python** 3.12 (what the Docker images and CI use; a newer local venv may work but is not the reference)
 - **PostgreSQL** 16+
 - **Docker/Podman** (Recommended for local dev)
 - **Ollama** (If running locally without Docker)
@@ -187,20 +188,24 @@ We verify the application at multiple levels:
 ### 1. Unit & Integration
 
 ```bash
-# Backend
+# Backend (needs Postgres on 127.0.0.1:5433; point TEST_DATABASE_URL at a test_* DB —
+# see README_TESTING.md for the isolation rules)
 cd backend && pytest
 
-# Frontend
+# Frontend (all three workspace projects: shared, public, admin)
 cd frontend && npm test
 ```
 
 ### 2. End-to-End (E2E)
 
-Our E2E suite runs in a fully isolated testing environment (with dedicated DB and AI models).
+**Prerequisite:** the E2E suite runs against a live stack — start it first
+(`./manage.sh start`, or the dedicated compose E2E stack that `./verify_all.sh` uses).
 
 ```bash
 cd frontend
-npx playwright test
+npx playwright test                        # both suites
+npx playwright test --project=public-e2e   # public app only
+npx playwright test --project=admin-e2e    # admin app only
 ```
 
 ### 3. Verification Script
@@ -217,27 +222,33 @@ Run the entire test suite (Lint, Type Check, Unit, E2E) in one go:
 hirefolio/
 ├── backend/                 # FastAPI backend
 │   ├── app/
-│   │   ├── api/            # API endpoints
-│   │   ├── models/         # Database models
-│   │   ├── services/       # Business logic
-│   │   ├── config.py       # Configuration
-│   │   ├── database.py     # Database setup
-│   │   └── main.py         # FastAPI app
-│   ├── tests/              # Backend tests
-│   ├── scripts/            # Utility scripts
-│   └── requirements.txt    # Python dependencies
-├── frontend/               # Angular frontend
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── components/ # UI components (e.g., Header, HomeComponent, CV)
-│   │   │   ├── services/   # Angular services (SEO, API, State)
-│   │   │   ├── pipes/      # Custom pipes
-│   │   │   └── testing/    # Test utilities
-│   │   ├── environments/   # Configuration for Dev/Prod APIs
-│   │   └── server.ts       # Angular Universal SSR server handler
-├── scraper/                # LinkedIn profile scraper
-├── docker-compose.yml      # Service orchestration
-└── README.md              # This file
+│   │   ├── api/                 # API endpoints
+│   │   ├── models/              # Database models
+│   │   ├── services/            # Business logic
+│   │   ├── config.py            # Configuration
+│   │   ├── database.py          # Database setup
+│   │   └── main.py              # FastAPI app
+│   ├── migrations/              # Alembic migrations (the schema authority)
+│   ├── tests/                   # Backend tests
+│   ├── scripts/                 # Utility scripts (incl. create_test_db.py)
+│   └── requirements.txt         # Python dependencies
+├── frontend/                    # Angular 22 workspace (3 projects)
+│   ├── projects/
+│   │   ├── public/              # Visitor app — native SSR (src/server.ts), zoneless
+│   │   ├── admin/               # Admin console — CSR SPA
+│   │   └── shared/              # @mavrov/shared library used by both apps
+│   ├── e2e/                     # Playwright suites (public-e2e / admin-e2e)
+│   ├── Dockerfile               # public (SSR) image
+│   ├── Dockerfile.admin         # admin-frontend image
+│   └── playwright.config.ts
+├── proxy/                       # Reverse proxy (nginx) config + entrypoint
+├── scraper/                     # LinkedIn scrapers (profile + posts → *_data.json)
+├── importer/                    # LinkedIn → backend post importer
+├── agents/                      # A2A multi-agent delivery team
+├── specs/                       # Feature specs (inbox/planned/done)
+├── docker-compose.yml           # Dev stack
+├── docker-compose.prod.yml      # Prod stack (pulls published images)
+└── README.md                    # This file
 ```
 
 ## 🔧 Configuration
@@ -276,13 +287,12 @@ IMPORT_MAX_IMAGE_MB=10                          # default: 10 MB
 LINKEDIN_COOKIES_DIR=/data/linkedin_cookies    # default: /data/linkedin_cookies
 ```
 
-### Root Environment (Release Script)
+### Root Environment (Docker Compose)
 
-Create `.env` in the project root to configure the release script:
-
-```bash
-GEMINI_API_KEY=your_api_key_here
-```
+Docker Compose auto-loads `.env` from the project root — it configures the
+compose stacks (image registry/tag, hostnames, admin allowlist, ports, …).
+Copy [`.env.example`](.env.example) to `.env` and adjust; every knob is
+documented there and has a safe default.
 
 ### Deploying as a new owner (fork & go)
 
@@ -325,17 +335,23 @@ proxy container. Pinned third-party base images (`pgvector/pgvector:pg16`,
 `ollama/ollama:0.5.7`, `ghcr.io/open-webui/open-webui:v0.11.0`) are pinned in one place:
 `docker-compose.prod.yml`. CI does **not** cache these multi-GB images — measured net-negative
 (see `.claude/skills/lessons-learned/SKILL.md` §5); the E2E job pulls them registry-direct
-during `docker compose up`.
+during `docker compose up`. The **Ollama model weights** (`nomic-embed-text`,
+`llama3.2`, `llama3.2:1b`) are pulled by the stack at startup and are deliberately **not** cached
+in CI either — multi-GB actions caches restore as slowly as a fresh pull.
 
 ### Frontend Environment
 
-Edit `frontend/src/environments/environment.ts`:
+Each app has its own environment files:
+`frontend/projects/public/src/environments/environment.ts` (+ `.prod.ts`) and
+`frontend/projects/admin/src/environments/environment.ts` (+ `.prod.ts`).
+For example (public):
 
 ```typescript
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8000',
-  googleAnalyticsId: 'G-XXXXXXXXXX'
+  apiUrl: '',
+  apiPrefix: '/api/app',
+  googleAnalyticsId: 'G-XXXXXXXXXX',
 };
 ```
 
@@ -368,6 +384,7 @@ All three columns are `NULL` for posts not imported from LinkedIn. Two posts may
 | Revision | Description |
 |---|---|
 | `baseline0001` | Baseline schema — all current tables (`users`, `cv_documents`, `cv_requests`, `posts` incl. `image_url`/`image_blob`/`image_type` and LinkedIn provenance columns, `profile_snapshots`). Consolidates what used to be several disjoint/incomplete revisions (see #46). |
+| `encrypt0002` | Encrypts stored per-user Gemini API keys at rest (Fernet via `GEMINI_ENCRYPTION_KEY`); one-time backfill of existing plaintext keys — a no-op if the key env var is empty when it runs (see #143 and the note in the backend env section above). |
 
 New changes get their own revision on top of this baseline — see
 [How to write a migration](#how-to-write-a-migration) above.
@@ -434,28 +451,46 @@ curl "http://localhost:8000/api/posts/search/semantic?q=ollama+embeddings&lang=e
 > `DEPLOY_*` secrets that arm the automated rollout, and the required host `.env` values
 > (`ADMIN_PASSWORD`, `JWT_SECRET_KEY`).
 
+### What CI publishes
 
-### Production Build
+Every merge to `main` runs `.github/workflows/deploy.yml`: after the lint /
+type / unit-test / security gates it builds and pushes four images to GitHub
+Container Registry (anonymously pullable), then runs the full Docker E2E
+against exactly those images:
 
-```bash
-# Frontend
-cd frontend
-npm run build
-# Output: dist/
-
-# Backend
-cd backend
-# Already production-ready with FastAPI
+```text
+ghcr.io/mavrovde/hirefolio-backend:sha-<gitsha>
+ghcr.io/mavrovde/hirefolio-frontend:sha-<gitsha>
+ghcr.io/mavrovde/hirefolio-admin-frontend:sha-<gitsha>
+ghcr.io/mavrovde/hirefolio-proxy:sha-<gitsha>
 ```
 
-### Docker Production
+After a green E2E each `sha-<gitsha>` image is also promoted to the
+`<VERSION>` and `latest` tags. GHCR is the project's registry, and the prod compose
+files already default `IMAGE_REPO` to it — override it only when deploying from
+a different registry/org (below).
+
+### Rolling out to the host
+
+Since #175 the pipeline ends with a **secrets-gated `Roll Out To Prod Host` job**:
+when `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_SSH_KEY` are configured it SSHes to
+the host, deploys the immutable `sha-<gitsha>` tag, verifies the containers by
+image digest, health-gates `/api/app/health`, freshness-probes `/admin/login`
+(→ 404) and rolls back on failure. **Without those secrets it skips and the run
+is still green — nothing is rolled out** (the original #112 / #156 gap). See
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). To roll out manually, on the host
+set in the root `.env`:
 
 ```bash
-# Build and start all services
-docker-compose up -d --build
+IMAGE_REPO=ghcr.io/mavrovde/hirefolio
+IMAGE_TAG=<version>          # e.g. the current VERSION, or sha-<gitsha>
+```
 
-# Scale backend (if needed)
-docker-compose up -d --scale backend=3
+then:
+
+```bash
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 ## 🛠️ Development
@@ -468,32 +503,40 @@ docker-compose up -d --scale backend=3
 ### Code Quality
 
 ```bash
-# Frontend linting
-cd frontend
-npm run lint
-
-# Backend formatting
+# Backend lint + format + types + security (what CI runs)
 cd backend
-black app/
-isort app/
+ruff check .
+ruff format --check .        # or `ruff format .` to apply formatting
+mypy app --ignore-missing-imports --no-error-summary
+bandit -r app -ll --skip B101
+
+# Frontend: no linter is configured (CI's `npm run lint --if-present` is a no-op);
+# the type gate is the build itself:
+cd frontend
+npm run build
 ```
 
 ## 📊 Test Coverage
 
-- **Backend**: ~99% line & branch coverage (652 tests)
-- **Frontend**: 100% coverage across statements, branches, functions & lines (687 tests)
-- **E2E**: 81 Playwright tests passing against the full stack (real Ollama integration)
+- **Backend**: 100% line & branch coverage — the maintained project standard
+  (engineering rule: never below 95%); `pytest` reports it on every run
+- **Frontend**: 100% coverage (statements, branches, functions, lines), maintained
+  per workspace project (`shared`, `public`, `admin`)
+- **E2E**: Playwright suites (`public-e2e`, `admin-e2e`) against the full Docker stack
+  (real Ollama integration)
 
 Run coverage reports:
 
 ```bash
 # Backend
+cd backend
 pytest --cov=app --cov-report=html
 open htmlcov/index.html
 
-# Frontend
-npm test -- --coverage
-open coverage/index.html
+# Frontend (per-project reports under coverage/{shared,public,admin}/)
+cd frontend
+npm run test:coverage
+open coverage/public/index.html
 ```
 
 ## 🤝 Contributing
@@ -538,6 +581,7 @@ This project is private and proprietary.
 - [x] RSS feed generation
 - [x] Newsletter integration
 - [x] Native Angular fragment Anchor Scrolling for SEO Title Tracking
+- [x] Automated CD rollout of published images onto the prod host (#175 — activate by adding the `DEPLOY_*` secrets; #112 / #156 close once a real rollout runs)
 
 ---
 

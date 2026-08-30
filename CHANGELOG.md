@@ -137,6 +137,22 @@ All notable changes to this project will be documented in this file.
   #112 rollout gap), and `@angular/*` exact-peer lockstep (single-pass group updates, lockfile
   regeneration escape hatch). Also renumbers the pre-existing duplicate §11 heading.
 
+- **Pre-release accuracy sweep** (Refs #61) — brings the user-facing docs back in line with the
+  code: honest `SECURITY.md` (supported 1.8.x, GitHub Security Advisories reporting — replaces the
+  unedited GitHub boilerplate with its fictional 5.1.x/4.0.x version table); `frontend/README.md`
+  rewritten for the real 3-project workspace (was stock `ng new` boilerplate claiming CLI 21.1.1
+  and "no e2e framework"); `README.md` version/tooling corrections (FastAPI 0.141, Python 3.12,
+  SQLAlchemy 2.0.52, Vitest 4.1, Playwright 1.62, Ruff 0.16, Node 22; drops the false ESLint claim),
+  redrawn project tree, real ruff/coverage/E2E commands, correct frontend env paths, `encrypt0002`
+  migration row, and a truthful deployment section (GHCR `sha-<gitsha>`/version/latest publishing,
+  and the secrets-gated `Roll Out To Prod Host` job — a green run rolls the host only when the
+  `DEPLOY_*` secrets are configured, #175/#112/#156); `.env.example` image
+  registry/tag comments refreshed (GHCR, 1.8.4); dead importer spec link fixed; scraper
+  `WORKFLOW.md` gains posts/env-vars/tests sections; `README_TESTING.md` updated (Python 3.12,
+  Node 22, test-DB isolation via `TEST_DATABASE_URL` + `create_test_db.py`, per-project Vitest
+  configs, dev vs prod+e2e compose stacks, no hardcoded test counts); `agents/README.md` roster
+  regenerated from `common/roster.py` (16 agents, ports 8010–8025) with the real delivery flow.
+
 ## [1.8.4] - 2026-08-29
 
 ### Changed

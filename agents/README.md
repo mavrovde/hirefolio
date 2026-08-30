@@ -8,7 +8,9 @@ the specialists via their Agent Cards and delegates work over the wire.
 
 Built on the canonical [`a2a-sdk`](https://pypi.org/project/a2a-sdk/) (0.2.x).
 
-## Roster (12 agents)
+## Roster (16 agents, ports 8010–8025)
+
+The roster below is generated from `common/roster.py` (the single source of truth).
 
 | Role | Key | Port | Purpose |
 |------|-----|------|---------|
@@ -20,10 +22,14 @@ Built on the canonical [`a2a-sdk`](https://pypi.org/project/a2a-sdk/) (0.2.x).
 | QA Engineer | `qa-engineer` | 8015 | Test plans, verification, coverage |
 | Code Reviewer | `code-reviewer` | 8016 | Correctness / security / quality review |
 | LinkedIn Checker | `linkedin-checker` | 8017 | Validates the LinkedIn integration |
-| DevOps | `devops` | 8018 | CI/CD pipeline diagnosis & fixes |
+| DevOps Engineer | `devops` | 8018 | CI/CD pipeline diagnosis & fixes |
 | Security Reviewer | `security-reviewer` | 8019 | Dependabot / CodeQL triage, AppSec |
 | Documentation Writer | `documentation-writer` | 8020 | Docs, READMEs, CHANGELOG |
 | Release Manager | `release-manager` | 8021 | SemVer bump, release notes, Go/No-Go |
+| Spec Analyst | `spec-analyst` | 8022 | Requirements analysis of feature specs |
+| Planner / Tech Lead | `planner` | 8023 | Task planning & sequencing |
+| Integration Engineer | `integration-engineer` | 8024 | Integrates & verifies backend + frontend work |
+| Researcher | `researcher` | 8025 | Flexible up-front research |
 
 ## Delivery flow
 
@@ -31,9 +37,10 @@ The PM runs specialists in SDLC order, and each agent receives **focused context
 from the roles it depends on** (not just the previous message):
 
 ```
-architect → story-writer → backend-dev → frontend-dev → qa-engineer
-          → code-reviewer → security-reviewer → documentation-writer
-          → devops → release-manager
+researcher → spec-analyst → planner → architect → story-writer
+           → backend-dev + frontend-dev → integration-engineer
+           → qa-engineer / code-reviewer → security-reviewer
+           → documentation-writer → devops → release-manager
 ```
 
 Dependency (communication) graph — who feeds whom — lives in
@@ -101,7 +108,7 @@ python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 
 # Option A — all agents locally (one process each)
-python -m agents.run_all            # from repo root: serves ports 8010-8021
+python -m agents.run_all            # from repo root: serves ports 8010-8025
 
 # Option B — Docker (agents discover each other by service name)
 docker compose -f agents/docker-compose.agents.yml up --build
@@ -166,9 +173,12 @@ agents/
     brain.py      # Claude-or-stub reasoning
     executor.py   # generic A2A AgentExecutor (one class powers every role)
     server.py     # builds the Agent Card + A2A app for a role
+    tools.py      # repo tools (read-only + write sets) for the tool-loop
   serve.py        # run one agent
   run_all.py      # run the whole team locally
   orchestrator.py # PM: A2A client that discovers cards and delegates
+  intake.py       # specs/inbox watcher: runs the autonomous pipeline per spec
+  autonomous.py   # full logged feature cycle (worktree, test gate, PR)
   tests/          # A2A protocol + roster tests
   Dockerfile
   docker-compose.agents.yml
