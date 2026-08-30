@@ -305,6 +305,13 @@ mask_quotes() {
       [ "$c" = "$q" ] && q=""
       continue
     fi
+    # An unquoted `#` at the start of a word begins a comment: the rest of the
+    # line is not code, so a `<<EOF` in it never opens a heredoc. Treating it as
+    # one would let `echo ok # <<EOF` swallow the real command on the next line.
+    if [ "$c" = "#" ] && { [ "$i" -eq 0 ] || [[ "${s:i-1:1}" =~ [[:space:]] ]]; }; then
+      while [ "$i" -lt "$n" ]; do out+=" "; i=$((i + 1)); done
+      break
+    fi
     case "$c" in
       \'|\") q="$c"; out+=" " ;;
       *) out+="$c" ;;
@@ -313,8 +320,15 @@ mask_quotes() {
   printf '%s' "$out"
 }
 
-# Heredoc delimiter opened by this line, or empty. Only a `<<` that is OUTSIDE
-# quotes and is not a here-string (`<<<`) counts.
+# Heredoc delimiter opened by this line, or empty. Reported ONLY for a heredoc
+# whose body the shell will NOT expand — i.e. a QUOTED (or backslash-escaped)
+# delimiter, `<<'EOF'` / `<<"EOF"` / `<<\EOF`, and outside quotes, and not a
+# here-string (`<<<`).
+#
+# The quoting matters and is not a formality: with an UNQUOTED delimiter the
+# shell expands the body, so `$(…)` and backticks in it EXECUTE. Such a body is
+# code wearing a document's clothes and must stay inspected — reporting a
+# delimiter here would exempt it.
 heredoc_delim() {
   local line="$1" masked head rest
   masked="$(mask_quotes "$line")"
@@ -322,7 +336,8 @@ heredoc_delim() {
   head="${masked%%<<*}"
   rest="${line:${#head}}"                 # original text from the `<<` onwards
   [ "${rest:2:1}" = "<" ] && return 0     # here-string, not a heredoc
-  printf '%s' "$rest" | sed -nE "s/^<<-?[[:space:]]*[\"']?([A-Za-z_][A-Za-z0-9_]*).*/\1/p"
+  printf '%s' "$rest" |
+    sed -nE "s/^<<-?[[:space:]]*(\"([A-Za-z_][A-Za-z0-9_]*)\"|'([A-Za-z_][A-Za-z0-9_]*)'|\\\\([A-Za-z_][A-Za-z0-9_]*)).*/\2\3\4/p"
 }
 
 # True only when EVERY command on the line is a text tool. The heredoc is

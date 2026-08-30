@@ -252,6 +252,40 @@ check "backslash inside single q"    "echo 'a \\ b'
 $DV $V"                                                                          deny
 check "prose with escaped quotes"    "gh pr comment 1 --body \"he said \\\"$D $T\\\" ok\"" allow
 
+# --- THE HEREDOC EXEMPTION'S THREE CONDITIONS, PINNED (#206 review round 3) --
+# Skipping a heredoc body is an exemption from a security control, so every
+# condition that authorises it needs a test that fails without it. Round 3 showed
+# `mask_quotes` was doing real work that NO case pinned — the terminator lookahead
+# happened to cover the same inputs, so disabling the mask killed zero tests.
+
+# The delimiter must be QUOTED. With an unquoted delimiter the shell EXPANDS the
+# body, so `$(…)` and backticks in it execute — that body is code, not a
+# document, and must stay inspected.
+check "heredoc: unquoted delimiter"  "cat > n.md <<EOF
+x=\$($D $T)
+EOF"                                                                             deny
+check "heredoc: dq delimiter ok"     "cat > notes.md <<\"EOF\"
+$D $T here
+EOF"                                                                             allow
+check "heredoc: backslash delim ok"  "cat > notes.md <<\\EOF
+$D $T here
+EOF"                                                                             allow
+
+# A `<<` inside a COMMENT is not a redirect.
+check "heredoc: << in a comment"     "echo ok # <<'EOF'
+$DV $V
+EOF"                                                                             deny
+
+# ...and a `<<` inside quotes is not either. This case exists specifically to
+# pin mask_quotes: with the terminator present, the lookahead alone would let the
+# body be stripped, so disabling the mask makes this case fail.
+check "heredoc: << quoted, terminated" "grep \"<<'EOF'\" notes.md
+$DV $V
+EOF"                                                                             deny
+check "heredoc: escaped quote + <<"  "printf \"a \\\" b <<'EOF'\"
+$DV $V
+EOF"                                                                             deny
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0
