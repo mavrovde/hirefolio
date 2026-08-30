@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **The destruction guard's last two command-position evasions are closed** (#213) — both pre-existed
+  on `main` and survived #204, #210 and #212, and both are the same root cause once more: the guard
+  inspects a textual *framing* while the shell executes an *effect*.
+
+  1. **A leading backslash on the command word.** `\docker volume rm <name>` runs exactly the same
+     command — the backslash only suppresses alias expansion — but every destructive rule is anchored
+     (`^docker`, `^rm`, …), so it matched none of them. The backslash is now stripped in the same
+     normalisation that peels `sudo`/`env`/`xargs`.
+  2. **ANSI-C quoting (`$'…'`) is a third quoting model.** Inside it a backslash *escapes*, so `\'`
+     does not terminate the string — bash reads `$'a\'b'` as the single word `a'b`. The guard thought
+     the quote closed early, so it believed a following `;` was still inside quotes and let everything
+     after it hide in one benign-led segment. Confirmed against real bash that the hidden command
+     executes. All three parsers over this input — `quote_split`, `mask_quotes` and `quoted_payloads`
+     — now share the same model, which is `lessons-learned` §21 item 9 applied rather than relearned.
+
+  Verified in both directions: **6** new deny-cases fail against the pre-fix hook and **no**
+  allow-case changes. Suite **136 → 144 cases**; mutation-checked (removing the backslash strip fails
+  4 cases, removing ANSI-C recognition fails 2); a 24-command benign corpus — including ordinary
+  `echo $'a\nb'` and `printf $'%s\t%s\n'` usage — stays fully allowed.
 - **A heredoc that writes a script the same command then executes is no longer exempt** (#212) — the
   heredoc exemption added in #204 exists so that writing *notes* about destructive commands stops
   being blocked. But `cat > s.sh <<'EOF' … EOF` followed by `bash s.sh` satisfied every condition of

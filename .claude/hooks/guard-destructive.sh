@@ -130,6 +130,12 @@ inspect_segment() {
   local changed=1 guard=0
   while [ "$changed" = "1" ] && [ "$guard" -lt 8 ]; do
     changed=0; guard=$((guard + 1))
+    # A leading backslash on the COMMAND WORD only suppresses alias expansion —
+    # `\docker volume rm x` runs exactly the same command — but it defeats every
+    # anchored rule below, which all start `^docker`, `^rm`, and so on (#213).
+    if [ "${seg:0:1}" = '\' ]; then
+      seg="${seg:1}"; changed=1
+    fi
     # sudo / command / nohup / time / exec / env (simple prefixes)
     if printf '%s' "$seg" | grep -Eq '^(sudo|command|nohup|time|exec|env) '; then
       seg="$(printf '%s' "$seg" | sed -E 's/^(sudo|command|nohup|time|exec|env) +//')"; changed=1
@@ -268,7 +274,7 @@ inspect_segment() {
 # (a `git commit -m "...| xargs docker volume rm..."` message) stays part of that
 # one git-led segment and is correctly treated as text, not an invocation.
 quote_split() {
-  local s="$1" out="" i c nx q="" n=${#1}
+  local s="$1" out="" i c nx q="" ansi=0 n=${#1}
   for (( i=0; i<n; i++ )); do
     c="${s:i:1}"
     # A backslash escapes the next character everywhere except inside single
@@ -277,7 +283,7 @@ quote_split() {
     # an ordinary `git commit -m "the \" char" ; bash <<'EOF'` looked like an
     # unclosed quote to one and a real redirect to the other — so the line read as
     # "all text tools" and the shell heredoc behind it was exempted.
-    if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
+    if [ "$c" = '\' ] && { [ "$q" != "'" ] || [ "$ansi" = 1 ]; } && [ $((i + 1)) -lt "$n" ]; then
       nx="${s:i+1:1}"
       if [ -n "$q" ] && [ "$nx" = $'\n' ]; then out+="$NL_SENTINEL"; else out+="$c$nx"; fi
       i=$((i + 1)); continue
@@ -294,8 +300,16 @@ quote_split() {
       # turn out to be executed as shell code restore it (see restore_newlines);
       # everything else flattens it to a space and treats it as prose.
       if [ "$c" = $'\n' ]; then out+="$NL_SENTINEL"; else out+="$c"; fi
-      [ "$c" = "$q" ] && q=""
+      [ "$c" = "$q" ] && { q=""; ansi=0; }
       continue
+    fi
+    # ANSI-C quoting: `$'…'` is a third quoting model. Inside it a backslash
+    # ESCAPES, so `\'` does not terminate the string — bash reads `$'a\'b'` as the
+    # single word `a'b`. Without this the guard thought the quote closed early,
+    # believed a later separator was still inside quotes, and let everything after
+    # it hide in one benign-led segment (#213).
+    if [ "$c" = '$' ] && [ "${s:i+1:1}" = "'" ]; then
+      q="'"; ansi=1; out+="$c'"; i=$((i + 1)); continue
     fi
     case "$c" in
       \'|\") q="$c"; out+="$c" ;;
@@ -314,19 +328,19 @@ quote_split() {
 # quoted STRING is not mistaken for a redirect. Offsets in the masked line map
 # 1:1 onto the original, which is how the delimiter is recovered below.
 mask_quotes() {
-  local s="$1" out="" i c q="" n=${#1}
+  local s="$1" out="" i c q="" ansi=0 n=${#1}
   for (( i=0; i<n; i++ )); do
     c="${s:i:1}"
     # A backslash escapes the next character everywhere EXCEPT inside single
     # quotes, where it is literal. Without this, `echo "a \" <<EOF"` looks like
     # the quote closed early, the `<<EOF` reads as a real redirect, and a line of
     # pure text can open a heredoc that swallows the commands after it.
-    if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
+    if [ "$c" = '\' ] && { [ "$q" != "'" ] || [ "$ansi" = 1 ]; } && [ $((i + 1)) -lt "$n" ]; then
       out+="  "; i=$((i + 1)); continue
     fi
     if [ -n "$q" ]; then
       out+=" "
-      [ "$c" = "$q" ] && q=""
+      [ "$c" = "$q" ] && { q=""; ansi=0; }
       continue
     fi
     # An unquoted `#` at the start of a word begins a comment: the rest of the
@@ -335,6 +349,11 @@ mask_quotes() {
     if [ "$c" = "#" ] && { [ "$i" -eq 0 ] || [[ "${s:i-1:1}" =~ [[:space:]] ]]; }; then
       while [ "$i" -lt "$n" ]; do out+=" "; i=$((i + 1)); done
       break
+    fi
+    # ANSI-C quoting — same third model as in quote_split; both functions must
+    # share one view of the input (lessons-learned §21).
+    if [ "$c" = '$' ] && [ "${s:i+1:1}" = "'" ]; then
+      q="'"; ansi=1; out+="  "; i=$((i + 1)); continue
     fi
     case "$c" in
       \'|\") q="$c"; out+=" " ;;
@@ -494,6 +513,9 @@ quoted_payloads() {
     if [ -n "$q" ]; then
       if [ "$c" = "$q" ]; then q=""; printf '%s\n' "$cur"; cur=""; else cur+="$c"; fi
       continue
+    fi
+    if [ "$c" = '$' ] && [ "${s:i+1:1}" = "'" ]; then
+      q="'"; i=$((i + 1)); continue
     fi
     case "$c" in \'|\") q="$c" ;; esac
   done

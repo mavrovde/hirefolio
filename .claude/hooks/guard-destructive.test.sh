@@ -397,6 +397,30 @@ $D $T
 EOF
 bash other.sh"                                                                   allow
 
+# --- THE LAST TWO COMMAND-POSITION EVASIONS (#213) --------------------------
+# Both pre-existed on `main` and survived #204/#210/#212 — the same root cause
+# once more: the guard inspects a textual framing, the shell executes an effect.
+
+# A leading backslash on the COMMAND WORD only suppresses alias expansion, so the
+# command runs identically — but every rule below is anchored (`^docker`, `^rm`),
+# so the backslash slipped past all of them.
+check "bslash: command word"         "\\$DV $V"                                   deny
+check "bslash: rm -rf data"          "\\$D $T"                                    deny
+check "bslash: system prune"         "\\$DP"                                      deny
+check "bslash: after sudo"           "sudo \\$DV $V"                              deny
+
+# ANSI-C quoting `$'…'` is a THIRD quoting model: inside it a backslash escapes,
+# so `\'` does not terminate the string (bash reads `$'a\'b'` as `a'b`). The
+# guard thought the quote closed early, believed the following separator was
+# still inside quotes, and let everything after it hide in one benign-led
+# segment. Verified against real bash: the second command DOES execute.
+check "ansi-c: then ;"               "echo \$'a\\'b' ; $DV $V"                     deny
+check "ansi-c: then &&"              "echo \$'x\\'y' && $D $T"                     deny
+
+# ...and ordinary ANSI-C usage is still allowed.
+check "ansi-c: benign newline"       "echo \$'hello\\nworld'"                      allow
+check "ansi-c: benign tab"           "printf \$'a\\tb\\n'"                         allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0
