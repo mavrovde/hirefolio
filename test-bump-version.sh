@@ -23,12 +23,12 @@ make_fixture() {
     mkdir -p "$dir"/{backend/app,frontend/projects/shared,frontend/projects/public/src/app}
     printf '%s\n' "$ver" > "$dir/VERSION"
     cat > "$dir/backend/app/main.py" <<PY
+doc = CvDocument(
+                version="0.0.9",
+)
 app = FastAPI(
     title="Hirefolio API",
     version="$ver",
-)
-doc = CvDocument(
-                version="0.0.9",
 )
 PY
     printf '{\n  "name": "frontend",\n  "version": "%s"\n}\n' "$ver" > "$dir/frontend/package.json"
@@ -180,6 +180,34 @@ printf '%s' "$unrel" | grep -q 'Placeholder for next release' \
 [ "$(cd "$D" && grep -c '^## \[1.10.0\]' CHANGELOG.md)" = "1" ] \
     && ok "rotation inserts exactly one release header (no double rotation)" \
     || bad "rotation inserts exactly one release header"
+
+# === 5b. rotating an already-rotated version is a no-op (#196 review) =========
+D=$(mktemp -d); make_fixture "$D" 1.9.0
+cat > "$D/CHANGELOG.md" <<'MD'
+# Changelog
+
+## [Unreleased]
+
+### Added
+- Placeholder for next release.
+- A real unreleased feature.
+
+## [1.9.1] - 2026-01-01
+
+### Fixed
+- Already released.
+
+## [0.0.1] - 2020-01-01
+MD
+printf '1.9.0\n' > "$D/VERSION"
+(cd "$D" && ./bump_version.sh --patch > /dev/null 2>&1)   # target 1.9.1 — already present
+unrel=$(cd "$D" && sed -n '/^## \[Unreleased\]/,/^## \[1.9.1\]/p' CHANGELOG.md)
+if printf '%s' "$unrel" | grep -q 'A real unreleased feature' \
+   && [ "$(cd "$D" && grep -c '^## \[1.9.1\]' CHANGELOG.md)" = "1" ]; then
+    ok "re-bumping an already-rotated version leaves [Unreleased] intact"
+else
+    bad "re-bumping an already-rotated version leaves [Unreleased] intact" "$unrel"
+fi
 
 # === 6. --dry-run must not modify anything ====================================
 D=$(mktemp -d); make_fixture "$D" 1.9.0

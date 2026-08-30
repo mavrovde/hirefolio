@@ -33,17 +33,17 @@ All notable changes to this project will be documented in this file.
   The project's headline standard was therefore never actually gated; a drop below 100% only
   surfaced in a local run. `--cov-fail-under=100` added to the CI invocation (found in the #194
   review).
-- **CI now gates version-carrier consistency** (#193, closes #186's last item) — a fast,
-  dependency-free `version-consistency` job runs `./bump_version.sh --check` plus the new
+- **CI now gates version-carrier consistency** (#193, closes #186's last item) — a fast
+  `version-consistency` job runs `./bump_version.sh --check` plus the new
   `test-bump-version.sh` self-test, and all four image-build jobs `needs:` it, so drift fails the
   pipeline before anything is published. Previously `--check` ran only in the machine-local
   pre-push hook, so a hook-bypassing push could reintroduce #172-class drift unnoticed.
-- **`test-bump-version.sh`** — a 15-case self-test for the load-bearing version tooling, built on
+- **`test-bump-version.sh`** — a 19-case self-test for the load-bearing version tooling, built on
   throwaway fixtures (it never touches the working tree): every carrier's drift is detected *and
   named*, the `version="1.0.0-fallback"` literal is not mistaken for the app version, `VERSION`
   newline hygiene is enforced both ways, `--dry-run` is proven inert, and CHANGELOG rotation is
   verified end-to-end, plus both "the pattern vanished" guards and the write-side anchor.
-  Mutation-checked against the pre-fix script: **4 cases fail**, one per defect. It also runs in
+  Mutation-checked against the pre-fix script: **7 cases fail**, one per defect. It also runs in
   `verify_all.sh` and the pre-push hook, not only CI, so a tooling edit fails locally first.
 
 ### Fixed
