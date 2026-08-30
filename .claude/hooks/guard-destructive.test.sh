@@ -184,6 +184,60 @@ check "heredoc fed to ssh"                "ssh host bash -s <<'EOF'
 $DV $V
 EOF"                                                                             deny
 
+# --- HEREDOC OWNERSHIP AND FRAMING (#206 review round 2) --------------------
+# Skipping a heredoc body is an EXEMPTION from a security control, so each of
+# the three conditions that authorise it gets pinned here. Every case below was
+# ALLOWED by the previous attempt at this fix.
+#
+# (a) The heredoc is consumed by the LAST command on the line, not the first.
+#     Checking only the first token let a benign `echo` launder a shell heredoc —
+#     the same first-token hole that broke the first version of this fix.
+check "heredoc: echo && shell"       "echo 'cleaning up' && bash <<'EOF'
+$DV $V
+EOF"                                                                             deny
+check "heredoc: pipe into shell"     "cat f | bash <<'EOF'
+$DV $V
+EOF"                                                                             deny
+check "heredoc: echo ; sh"           "echo hi; sh <<'EOF'
+$D $T
+EOF"                                                                             deny
+
+# (b) No terminator means we cannot know where the body ends, so nothing is
+#     stripped. Skipping to EOF would have swallowed the destructive line.
+check "heredoc: no terminator"       "cat > notes.md <<'EOF'
+some docs
+$DV $V"                                                                        deny
+
+# (c) `<<` only counts as a redirect OUTSIDE quotes, and `<<<` is a here-string.
+#     Otherwise merely WRITING ABOUT heredocs disarms the guard for every later
+#     line — which is the #204 symptom turned into a bypass.
+check "heredoc: << inside quotes"    "echo \"the <<HEREDOC form\"
+cd /srv
+$DV $V
+$D $T
+echo done"                                                                       deny
+check "heredoc: grep for <<EOF"      "grep '<<EOF' notes.md
+$DV $V"                                                                        deny
+check "heredoc: commit msg <<EOF"    "git commit -m \"uses <<EOF here\"
+$DV $V"                                                                        deny
+check "heredoc: here-string <<<"     "cat <<<\"hello\"
+$DV $V"                                                                        deny
+
+# ssh option grammar must not decide whether the body is inspected. `-p 2222`
+# etc. previously made the value look like the host and the host like the
+# command, so the body was never reached.
+check "ssh -p, multi-line body"      "ssh -p 2222 deploy@host \"cd /srv
+$DV $V\""                                                                      deny
+check "ssh -i, multi-line body"      "ssh -i ~/.ssh/k host \"echo hi
+$D $T\""                                                                         deny
+check "ssh -p, single-line body"     "ssh -p 2222 host \"$DV $V\""              deny
+check "ssh -o, single-line body"     "ssh -o Port=22 host \"$DV $V\""           deny
+
+# ...and the documents this exemption exists for are still allowed.
+check "heredoc: tee to a file"       "tee notes.md <<'EOF'
+$DV $V
+EOF"                                                                             allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

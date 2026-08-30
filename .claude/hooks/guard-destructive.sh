@@ -26,6 +26,12 @@
 # (the bypass is honored only as a LEADING env-assignment of the segment being
 # guarded — a stray `GUARD_DESTRUCTIVE=0` elsewhere in the line does not disarm it).
 set -uo pipefail
+# Segments are iterated via unquoted command substitution (word-splitting on
+# newlines is exactly what we want there). Without `-f`, a segment containing a
+# glob character would additionally be rewritten by whatever files happen to sit
+# in the working directory — so what the guard inspects could differ from what
+# was typed. Disable pathname expansion for the whole script.
+set -f
 
 # Session master switch (inherited from the hook's environment / settings env).
 : "${GUARD_DESTRUCTIVE:=1}"
@@ -69,17 +75,29 @@ NL_SENTINEL=$'\x01'
 # it like a real script, and inspect every command in it. Returns 0 (and leaves
 # REASON set) when something in there is blocked.
 inspect_inner_script() {
-  local body="$1" inner
+  local body="$1" line inner
   case "$body" in
     *"$NL_SENTINEL"*) ;;
     *) return 1 ;;   # single-line: the caller's normal path already covers it
   esac
   body="${body//$NL_SENTINEL/$'\n'}"
-  local OLD="$IFS"; IFS=$'\n'
-  for inner in $(quote_split "$body"); do
+
+  # Split on the restored NEWLINES FIRST, then apply quote_split within each
+  # line. Order matters: re-running quote_split over the whole body would see
+  # those newlines still sitting inside the wrapper's quotes and protect them all
+  # over again, collapsing the script back into one segment — which is how
+  # `ssh -p 2222 host "echo hi ↵ <destroy>"` slipped through. Splitting per line
+  # also means an unbalanced quote on one line cannot shield the next.
+  local OLD="$IFS"
+  while IFS= read -r line; do
     [ -n "$REASON" ] && break
-    inspect_segment "$inner"
-  done
+    IFS=$'\n'
+    for inner in $(quote_split "$line"); do
+      [ -n "$REASON" ] && break
+      inspect_segment "$inner"
+    done
+    IFS="$OLD"
+  done <<< "$body"
   IFS="$OLD"
   [ -n "$REASON" ]
 }
@@ -130,9 +148,29 @@ inspect_segment() {
     elif printf '%s' "$seg" | grep -Eq '^ssh '; then
       # `ssh host "…"` runs its argument on the remote shell. Same reasoning, and
       # the blast radius there is someone else's machine.
-      seg="$(printf '%s' "$seg" | sed -E "s/^ssh +//; s/^(-[^ ]+ +)*//; s/^[^ ]+ +//; s/^[\"']//")"
+      #
+      # Inspect the WHOLE remainder first, before any attempt to parse options
+      # and host. ssh's option grammar is a swamp (`-p 2222`, `-p2222`,
+      # `-o Port=22`, `-i key`, `user@host`), and a parser that guesses wrong
+      # eats the flag's value as the host and the real host as the command —
+      # which silently skips inspection. Inspecting first makes the body's
+      # protection independent of getting that grammar right.
+      local rest="${seg#ssh }"
+      inspect_inner_script "$rest" && return 0
+
+      # Then best-effort strip options (consuming the values of value-taking
+      # flags) and the host, so a SINGLE-LINE `ssh host <destroy>` is inspected
+      # as a command rather than as an argument.
+      while [ "${rest:0:1}" = "-" ]; do
+        local flag="${rest%% *}"
+        [ "$flag" = "$rest" ] && break
+        rest="${rest#* }"
+        case "$flag" in
+          -[bcDEeFIiJLlmOopQRSWw]) rest="${rest#* }" ;;  # flag took a separate value
+        esac
+      done
+      seg="$(printf '%s' "$rest" | sed -E "s/^[^ ]+ +//; s/^[\"']//")"
       changed=1
-      inspect_inner_script "$seg" && return 0
     fi
   done
 
@@ -248,29 +286,91 @@ quote_split() {
   printf '%s' "$out"
 }
 
+# Blank out quoted regions, preserving length, so a `<<` that is merely part of a
+# quoted STRING is not mistaken for a redirect. Offsets in the masked line map
+# 1:1 onto the original, which is how the delimiter is recovered below.
+mask_quotes() {
+  local s="$1" out="" i c q="" n=${#1}
+  for (( i=0; i<n; i++ )); do
+    c="${s:i:1}"
+    if [ -n "$q" ]; then
+      out+=" "
+      [ "$c" = "$q" ] && q=""
+      continue
+    fi
+    case "$c" in
+      \'|\") q="$c"; out+=" " ;;
+      *) out+="$c" ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
+# Heredoc delimiter opened by this line, or empty. Only a `<<` that is OUTSIDE
+# quotes and is not a here-string (`<<<`) counts.
+heredoc_delim() {
+  local line="$1" masked head rest
+  masked="$(mask_quotes "$line")"
+  case "$masked" in *"<<"*) ;; *) return 0 ;; esac
+  head="${masked%%<<*}"
+  rest="${line:${#head}}"                 # original text from the `<<` onwards
+  [ "${rest:2:1}" = "<" ] && return 0     # here-string, not a heredoc
+  printf '%s' "$rest" | sed -nE "s/^<<-?[[:space:]]*[\"']?([A-Za-z_][A-Za-z0-9_]*).*/\1/p"
+}
+
+# True only when EVERY command on the line is a text tool. The heredoc is
+# consumed by the LAST command in the line, so checking the first token alone
+# lets `echo hi && bash <<'EOF'` masquerade as a document — the same
+# benign-first-token hole this guard keeps growing back.
+line_is_all_text_tools() {
+  local line="$1" part first found=0 OLD="$IFS"
+  IFS=$'\n'
+  for part in $(quote_split "$line"); do
+    part="$(printf '%s' "$part" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
+    [ -z "$part" ] && continue
+    found=1
+    first="${part%% *}"
+    if ! is_text_tool "$first"; then IFS="$OLD"; return 1; fi
+  done
+  IFS="$OLD"
+  [ "$found" = "1" ]
+}
+
 # A heredoc fed to a TEXT tool is a document being written, not a script being
 # run: `cat > notes.md <<'EOF' … EOF`. Its body must not be inspected, or writing
 # documentation about a destructive command is blocked — the #204 symptom, and
 # the reason this guard kept firing on notes about itself.
 #
-# The body is dropped ONLY when the opening line's command is a known text tool.
-# A heredoc fed to anything else — `bash <<'EOF'`, `ssh host bash -s <<'EOF'`,
-# `python3 - <<'EOF'` — keeps its body and stays fully inspected, because there
-# the body really is executable.
+# Everything here fails CLOSED. The body is dropped only when all three hold:
+#   1. the `<<` is a real redirect — outside quotes, and not `<<<`;
+#   2. EVERY command on the opening line is a text tool (so `… && bash <<'EOF'`
+#      and `cat f | bash <<'EOF'` keep their bodies);
+#   3. the terminator actually appears later — otherwise "skip to the end" would
+#      swallow the rest of the command, including anything destructive in it.
+# Any doubt on any of the three and the body stays fully inspected.
 strip_text_heredocs() {
-  local input="$1" out="" line delim="" skipping=0 first
-  while IFS= read -r line; do
-    if [ "$skipping" = "1" ]; then
-      [ "$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//')" = "$delim" ] && skipping=0
-      continue
-    fi
+  local input="$1" out="" line delim i j n end
+  local -a lines=()
+  while IFS= read -r line; do lines+=("$line"); done <<< "$input"
+  n=${#lines[@]}
+  for (( i=0; i<n; i++ )); do
+    line="${lines[i]}"
     out+="$line"$'\n'
-    if printf '%s' "$line" | grep -Eq '<<-?[[:space:]]*["'\'']?[A-Za-z_][A-Za-z0-9_]*'; then
-      delim="$(printf '%s' "$line" | sed -E 's/.*<<-?[[:space:]]*["'\'']?([A-Za-z_][A-Za-z0-9_]*).*/\1/')"
-      first="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//' | cut -d' ' -f1)"
-      is_text_tool "$first" && skipping=1
-    fi
-  done <<< "$input"
+
+    delim="$(heredoc_delim "$line")"
+    [ -z "$delim" ] && continue
+    line_is_all_text_tools "$line" || continue
+
+    end=-1
+    for (( j=i+1; j<n; j++ )); do
+      if [ "$(printf '%s' "${lines[j]}" | sed -E 's/^[[:space:]]+//')" = "$delim" ]; then
+        end=$j; break
+      fi
+    done
+    [ "$end" -lt 0 ] && continue   # no terminator: strip nothing
+
+    i=$end                          # skip the body AND the terminator line
+  done
   printf '%s' "$out"
 }
 

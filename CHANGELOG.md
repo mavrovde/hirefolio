@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **`guard-destructive.sh` no longer treats prose as a command — without weakening the guard**
+  (#204) — a quoted argument spanning newlines was split on the raw newline, so a line of *text* that
+  merely began with a destructive verb was inspected as an invocation. Writing documentation about
+  the very commands this guard exists for was blocked, which trains reflexive `GUARD_DESTRUCTIVE=0`
+  use, and a bypass reached for by habit protects nothing.
+
+  The root cause is that a newline inside quotes is **data** when the quoted text is an argument and
+  a **separator** when it is code. A quoted newline now becomes a sentinel that is neither a
+  separator nor whitespace; the shell-code paths (`bash|sh|zsh|dash -c`, `eval`, `ssh`) restore the
+  newlines, split line-first, and inspect every inner command, while everything else flattens the
+  sentinel to a space and reads as prose. An unterminated quote falls back to treating newlines as
+  separators, because the data boundary was never actually known.
+
+  Additionally, a heredoc fed to a **text tool** (`cat > notes.md <<'EOF'`) is a document, so its
+  body is no longer inspected — the issue's first acceptance criterion. That exemption fails closed
+  on three independent conditions: the `<<` must be outside quotes and not a here-string, **every**
+  command on the opening line must be a text tool (so `echo hi && bash <<'EOF'` keeps its body), and
+  the terminator must actually appear (an unterminated heredoc strips nothing rather than swallowing
+  the rest of the command).
+
+  Two rounds of independent review each found that an earlier version of this fix **weakened** the
+  guard — first by flattening multi-line scripts so a benign leading `echo` hid what followed, then
+  by letting the heredoc preprocessor recreate the same first-token hole. Both were caught before
+  merge and are pinned by tests. Self-test suite: **63 → 95 cases**, with the added cases asserting
+  both directions.
+
+  Measured rather than asserted — running the final 95-case suite against each earlier version:
+  against pre-`#204` `main`, **6** cases differ (4 false denials removed, 2 newly-caught
+  single-line `ssh -p/-o` destructions that `main` allowed); against the first attempt, **15**
+  fail; against the second, **12**. Note that nothing in CI runs this suite (see #208) — it runs via
+  `verify_all.sh` and the pre-push hook, so a regression here is invisible to the pipeline.
 - **The encryption-migration tests no longer collide under `pytest -n auto`** — they shared one
   scratch database, so concurrent xdist workers dropped a database another was mid-migration on
   (reproduced on unmodified `main`: 3 failed + 1 error). The name is now worker-scoped, keeping the
