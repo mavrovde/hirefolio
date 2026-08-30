@@ -527,6 +527,12 @@ jobs:
           # ships CLOSED (empty ADMIN_ALLOWED_CIDRS -> loopback only) — see #86 /
           # proxy/admin_allowlist.conf. This value is test-scoped, never a real secret.
           ADMIN_ALLOWED_CIDRS: 0.0.0.0/0
+          # SECURITY (issue #177): prod REQUIRES an explicit JWT_SECRET_KEY (the
+          # backend refuses to start otherwise, so a known default can never sign
+          # admin tokens). The ephemeral E2E stack must not be handed a real
+          # secret, so it opts into a random per-process signing key instead —
+          # test-scoped, nothing committed, nothing injected from secrets.
+          JWT_ALLOW_EPHEMERAL_SECRET: "true"
         run: |
           # Start stack
           docker compose -f docker-compose.prod.yml up -d

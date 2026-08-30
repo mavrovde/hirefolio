@@ -1,6 +1,12 @@
 services:
   backend:
     build: ./backend
+    environment:
+      # E2E ONLY: the ephemeral test stack has no JWT_SECRET_KEY (and must never
+      # be given a real one — see rule 10), so let the backend generate a random
+      # per-process signing secret instead of refusing to start (issue #177).
+      # Production ships with this OFF and REQUIRES an explicit JWT_SECRET_KEY.
+      - JWT_ALLOW_EPHEMERAL_SECRET=true
 
   frontend:
     build:

@@ -76,6 +76,13 @@ services:
       # SECURITY (issue #143): Fernet key that encrypts the per-user Gemini API
       # key at rest. Optional locally (empty = plaintext passthrough).
       - GEMINI_ENCRYPTION_KEY=${GEMINI_ENCRYPTION_KEY:-}
+      # SECURITY (issue #177): admin JWTs are signed with JWT_SECRET_KEY, which
+      # has no default any more (prod refuses to start without it). The local
+      # dev stack opts into a random per-process secret instead of committing a
+      # shared key — set JWT_SECRET_KEY in the root .env if you want logins to
+      # survive a backend restart.
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
+      - JWT_ALLOW_EPHEMERAL_SECRET=${JWT_ALLOW_EPHEMERAL_SECRET:-true}
     depends_on:
       db:
         condition: service_healthy

@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+- **Admin JWTs can no longer be signed with a publicly-known secret** (#177). `jwt_secret_key`
+  defaulted to the committed placeholder `your-secret-key-change-in-production`
+  (`backend/app/config.py`) and **no compose file passed `JWT_SECRET_KEY`**, so a production
+  deployment signed/verified admin bearer tokens with a secret published in this public repo —
+  admin API access without any credential, bypassing the #142 password hardening entirely.
+  Mirroring #142, the insecure state is now impossible rather than merely documented: the
+  config default is gone, the historical placeholder is an explicitly **rejected** value, and the
+  `app.main` lifespan **refuses to start** (`InsecureJwtSecretError`, actionable message) when no
+  explicit secret is configured. `docker-compose.prod.yml` now passes
+  `JWT_SECRET_KEY=${JWT_SECRET_KEY:-}`, and `.env.example` documents it as REQUIRED with an
+  `openssl rand -hex 32` hint. Local dev / E2E opt into `JWT_ALLOW_EPHEMERAL_SECRET=true` and get a
+  **random per-process** secret, so no key is committed and CI needs no real credential (rule 10).
+  **Operator action required before the next prod rollout: set `JWT_SECRET_KEY` in the host `.env`**
+  — the backend will otherwise refuse to start (fail-closed by design). Rotating the secret
+  invalidates existing admin sessions (one re-login), which is the point: tokens minted under the
+  old known key stop being accepted.
+
 ### Added
 - Placeholder for next release.
 
