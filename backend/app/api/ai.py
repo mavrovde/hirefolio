@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.logger import get_logger
 from app.models.user import User
@@ -24,6 +24,11 @@ class NameRequest(BaseModel):
 class MultiChatRequest(BaseModel):
     agents: list[AgentConfig]
     topic: str
+    # Bounded so a caller can ask for a short conversation (an unmocked contract
+    # test wants one turn, not twenty sequential local-LLM generations — #187),
+    # while the upper bound keeps the existing failsafe: an unbounded value would
+    # let a single request pin the model for an arbitrarily long time.
+    max_turns: int = Field(default=20, ge=1, le=20)
 
 
 @router.post("/chat")
@@ -103,6 +108,6 @@ async def multi_chat_endpoint(request: MultiChatRequest):
     N AI agents with distinct personas discuss a topic.
     """
     return StreamingResponse(
-        multi_agent_conversation(request.agents, request.topic),
+        multi_agent_conversation(request.agents, request.topic, request.max_turns),
         media_type="text/event-stream",
     )
