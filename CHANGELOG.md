@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Changed
+- **`crewai` 1.15.6 → 1.15.18** (within-minor bump, refs #52) — picks up 12 upstream patch
+  releases. This does **not** unblock #52: crewai 1.15.18 still declares `pydantic<2.13,>=2.11.9`
+  (and its `instructor` dependency still declares `rich<15.0.0,>=13.7.0`), so `pydantic` stays
+  `>=2.12.5` and `rich` stays `<15.0.0`. #52 remains upstream-blocked and open.
+
 ### Docs
 - **lessons-learned §13–14** — two durable lessons from the #170 dependency sweep: bisect a
   failing local gate against an unmodified `main` build before blaming your diff (the stale
