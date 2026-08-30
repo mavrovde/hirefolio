@@ -391,6 +391,58 @@ job preflights anonymous pullability of every image and fails naming the package
 unauthenticated `curl` of a GHCR manifest returns 401 even for a *public* package — that is the token
 handshake, not a visibility signal, and it will produce a false alarm if used as the check.
 
+
+## 21. Loosening a guard? The bug is an EXEMPTION checked too narrowly — and it will come back
+
+`guard-destructive.sh` (the rule-9 hook, born of the #91 volume-destruction incident) was firing on
+*prose*: a quoted argument spanning newlines got split on the raw newline, so a line of text that
+merely started with a destructive verb was inspected as an invocation. Fixing that took **three**
+review rounds, and **every** round shipped a version that turned real denials into allows. The same
+shape each time: **an exemption whose condition was checked too narrowly, so a benign leading token
+hid what followed.**
+
+| round | the hole | went deny → allow |
+|---|---|---|
+| 1 | quoted newlines flattened, fusing a multi-line *script* into one segment | `bash -c "echo start ↵ <volume rm>"` |
+| 2 | heredoc attributed to the *first* command on the line, not the one consuming it | `echo hi && bash <<'EOF' ↵ <volume rm> ↵ EOF` |
+| 2 | unterminated heredoc skipped to EOF, swallowing real commands | `cat > n.md <<'EOF' ↵ docs ↵ <volume rm>` |
+| 2 | `ssh` option *value* eaten as the host, so the body was never inspected | `ssh -p 2222 host "cd /srv ↵ <volume rm>"` |
+| 3 | **unquoted** heredoc delimiter — the shell *expands* that body, so `$(…)` executes | `cat > n.md <<EOF ↵ x=$(<destroy>) ↵ EOF` |
+| 3 | `<<` inside a `#` comment, or after an escaped quote, read as a real redirect | `echo ok # <<'EOF' ↵ <volume rm> ↵ EOF` |
+
+Rows 1 and 2 are the **#91 command with an `echo` in front of it**. Each round the author (me)
+believed the general case had been found and had only found an instance.
+
+### What to actually do
+
+1. **Write the adversarial cases first and run them against the PRE-fix version.** "Before: deny /
+   after: allow" on any protected path is a blocker. Every one of these was found in seconds *once
+   someone ran the comparison* — and missed entirely by reasoning about the diff.
+2. **Never claim a check you did not run.** The round-1 PR body said *"No weakening — verified, not
+   asserted"* over a table covering heredocs — an input class the changed function never touches.
+   Asserting an unrun check is worse than admitting you didn't check.
+3. **Enumerate an exemption's conditions and mutation-test each one alone** (§16). Round 3 found
+   `mask_quotes` was doing real work that **zero** tests pinned: a sibling condition happened to
+   cover the same inputs. A mutation score of 0 on a security check means the check is undefended,
+   even with a green suite and correct behaviour today.
+4. **Know what the shell actually does before exempting it.** `<<EOF` and `<<'EOF'` are different
+   objects: the unquoted body is **expanded**, so a "document" can execute `$(…)`. Only exempt the
+   forms you can prove are inert — and prove it by running them, not by reading the manual.
+5. **Exempt via an allowlist, never a negation.** "Not a shell" would silently exempt every
+   unrecognised command; "is a known text tool" fails closed on the unknown.
+6. **Prefer a design that is robust to your own parser being wrong.** The `ssh` fix stopped trying to
+   parse ssh's option grammar and inspects the body *before* any parsing — protection no longer
+   depends on getting the grammar right.
+7. **When a guard fires on documentation, that is a real bug** — it trains reflexive
+   `GUARD_DESTRUCTIVE=0`, and a bypass used by habit protects nothing. Fix it in the direction that
+   keeps the deny.
+8. **Build test strings from concatenated parts** (`D="rm -""rf"`) or the guard blocks the file that
+   tests it. This happened to a probe script, to a reviewer writing up findings, and to this file.
+
+This is the clearest evidence yet for CLAUDE.md rule 11: an independent reviewer caught a security
+regression three times running that the author, the author's own new tests, and green CI all missed —
+and CI *could not* have caught it, because nothing in the pipeline runs that suite (#208, #210).
+
 ---
 
 ## Where the rules live (AI-config map)
