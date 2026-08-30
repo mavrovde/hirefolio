@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **A heredoc that writes a script the same command then executes is no longer exempt** (#212) — the
+  heredoc exemption added in #204 exists so that writing *notes* about destructive commands stops
+  being blocked. But `cat > s.sh <<'EOF' … EOF` followed by `bash s.sh` satisfied every condition of
+  that exemption, so the body was skipped — a script written in two steps, never inspected, where
+  pre-`#204` `main` denied it. A document is only a document until something runs it: when a
+  heredoc is redirected into a file and any later part of the same command executes that file
+  (`bash`/`sh`/`zsh`/`dash`, `source`, `.`, or `./path`), the body is kept and fully inspected.
+  Both the redirect target and the execution are matched **outside quotes**, so a `>` inside a
+  message is not a target.
+
+  Verified in both directions: 7 new deny-cases fail against the pre-fix hook and **no** allow-case
+  changes. A document that is never executed — including one written and then read back with `cat`,
+  and one written alongside an *unrelated* script being run — stays allowed, and a 22-command benign
+  corpus is untouched. Suite **126 → 136 cases**.
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 
