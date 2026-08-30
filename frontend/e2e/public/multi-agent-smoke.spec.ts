@@ -66,6 +66,13 @@ test.describe('Multi-Agent Conversation — unmocked contract', () => {
       .join('');
     expect(produced).not.toContain('could not be generated');
     expect(produced).not.toContain('Infrastructure Error');
+    // A pulled-but-missing model answers 404; the degraded text survives the
+    // label-stripping post-process as this bare sentence, so a model-less stack
+    // would otherwise pass this gate — the exact blindness #199 was filed about.
+    expect(produced).not.toContain('language model is unavailable');
+    // ...and the canned goal-fallback, which the service substitutes when a turn
+    // produces nothing, must not be mistaken for generated content either.
+    expect(produced).not.toContain('we must focus on my goal');
     expect(produced.trim().length, 'agent 1 must produce content').toBeGreaterThan(0);
   });
 

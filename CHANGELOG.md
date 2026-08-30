@@ -54,6 +54,13 @@ All notable changes to this project will be documented in this file.
   forwarding incrementally (365 chunks, first at 1.6 s, spread over 99 s) *without* the directives.
   This ships as an explicit guarantee rather than a bug fix — today's behaviour is incidental on
   chunk sizes versus nginx's default buffers — and removes the public/admin asymmetry.
+  `proxy_buffering off`, `proxy_cache off`, `X-Accel-Buffering: no`. **Measured first, and the issue's
+  premise did not reproduce:** per-chunk timings through the public proxy showed nginx already
+  forwarding incrementally (365 chunks, first at 1.6 s, spread over 99 s) *without* the directives.
+  This ships as an explicit guarantee rather than a bug fix — today's behaviour is incidental on
+  chunk sizes versus nginx's default buffers — and removes the public/admin asymmetry. The change
+  also raises `proxy_read_timeout` to 300 s, which is the part with real teeth: a cold model took
+  **26 s** to its first chunk against nginx's 60 s default.
 - **Dropped the unused `crewai` + `langchain-openai` pins, unblocking the caps they forced** (#185,
   closes #53's dependency half). After #184 removed the vestigial agent-framework plumbing, nothing
   in `backend/app/` imported either package — they were dead weight that nonetheless dictated the
@@ -69,6 +76,19 @@ All notable changes to this project will be documented in this file.
   under CI's `pytest -n auto` (`relation "users" does not exist`), which reddened the deploy. It now
   uses the shared async `client` fixture like every other API test. Verified with CI's exact
   invocation this time — `pytest -n auto --cov-fail-under=100` → 788 passed, 100%.
+- **A missing Ollama model no longer reads as generated content** (#199) — `/api/chat` answers **404**
+  when the configured model is not pulled, and the streaming loop ignored the status, so the canned
+  goal-fallback text (`"I believe we must focus on my goal: …"`) reached the client as if it were a
+  real turn. A half-provisioned stack therefore looked *healthy* to every gate: well-formed stream,
+  `done:true`, plausible prose. Non-200 responses now log the status **and the model name** for the
+  operator and emit the degraded chunk instead. Regression test asserts the fallback text is absent
+  and the log names the model; it fails against the unfixed service. The **unmocked E2E guard now
+  fails against a genuinely model-less stack too** — verified by pointing the backend at a model that
+  is not pulled, which previously sailed through every gate.
+- **`_generate_agent_name` no longer swallows failures silently** (#191) — every exception became
+  `"Agent"` with nothing logged, so a real failure (model down, timeout, malformed reply) was
+  indistinguishable from a legitimate default and left the operator no signal (rule 1). The fallback
+  is unchanged; the failure is now logged with its traceback, and a test asserts that.
 - **Version tooling follow-ups from the #178 review** (#186) — the backend version read *and* write
   are now anchored to `^    version="`, so the seeded `CvDocument(version="1.0.0-fallback")` literal
   can never be matched instead of the FastAPI app version; the two `grep`-derived carriers
@@ -119,10 +139,6 @@ All notable changes to this project will be documented in this file.
   `done:true`, plausible prose. Non-200 responses now log the status **and the model name** for the
   operator and emit the degraded chunk instead. Regression test asserts the fallback text is absent
   and the log names the model; it fails against the unfixed service.
-- **`_generate_agent_name` no longer swallows failures silently** (#191) — every exception became
-  `"Agent"` with nothing logged, so a real failure (model down, timeout, malformed reply) was
-  indistinguishable from a legitimate default and left the operator no signal (rule 1). The fallback
-  is unchanged; the failure is now logged with its traceback, and a test asserts that.
 
 
 ## [1.9.0] - 2026-08-30

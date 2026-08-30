@@ -56,13 +56,18 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         # The AI endpoints stream NDJSON incrementally and the UI renders tokens
-        # as they arrive; buffering holds chunks until the buffer fills or the
-        # upstream closes, so the page appears frozen and then dumps everything
-        # at once. The admin block already did this — the public one did not
-        # (#198). `X-Accel-Buffering: no` covers any front proxy too.
+        # as they arrive. MEASURED (#198): nginx already forwarded incrementally
+        # here without these directives — 365 chunks, first at 1.6s, spread over
+        # 99s — so this is NOT a fix for observed buffering. It makes the
+        # behaviour an explicit guarantee instead of an artefact of chunk sizes
+        # versus nginx's default buffers, and removes the asymmetry with the
+        # admin block, which has always set it.
         proxy_buffering off;
         proxy_cache off;
-        proxy_set_header X-Accel-Buffering no;
+        # Generation can idle longer than nginx's 60s default between chunks on a
+        # cold model (26s to first chunk was measured), so raise the read timeout
+        # — this is the part with actual teeth for a slow local LLM.
+        proxy_read_timeout 300;
     }
 
     # Frontend

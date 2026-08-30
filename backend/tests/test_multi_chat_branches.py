@@ -343,8 +343,6 @@ async def test_multi_chat_max_turns_is_bounded_and_forwarded(client, monkeypatch
         assert rejected.status_code == 422, f"max_turns={bad} must be rejected"
 
 
-
-
 @pytest.mark.asyncio
 async def test_multi_chat_non_200_from_ollama_is_not_silent(caplog):
     """#199: a missing model answers 404 — that must NOT read as generated text.
