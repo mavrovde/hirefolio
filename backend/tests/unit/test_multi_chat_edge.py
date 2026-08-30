@@ -161,10 +161,9 @@ async def test_multi_chat_turn_stream_failure_degrades_to_error_text():
 
         # The failure is absorbed: the body is NOT aborted mid-chunk. Every
         # chunk stays well-formed JSON and the stream ends with done=true.
-        # The post-process strips the "[Error: " label but keeps the reason,
-        # so pin that too — otherwise this passes even if the reason is
-        # replaced by the generic goal-fallback.
-        assert any("upstream exploded" in c for c in chunks)
+        # The client must never see the exception reason (py/stack-trace-exposure);
+        # pin the generic text so a regression that leaks internals fails here.
+        assert any("this turn could not be generated" in c for c in chunks)
         assert chunks, "the generator must still emit chunks"
         for c in chunks:
             json.loads(c)
@@ -223,7 +222,9 @@ async def test_multi_chat_setup_failure_degrades_on_stream():
     ):
         chunks = [c async for c in multi_chat.multi_agent_conversation(agents, "topic")]
 
-    assert any("[Error: boom]" in c for c in chunks)
+    # The exception reason ("boom") is logged, never streamed (py/stack-trace-exposure).
+    assert not any("boom" in c for c in chunks)
+    assert any("could not be started" in c for c in chunks)
     assert json.loads(chunks[-1])["done"] is True
 
 

@@ -104,9 +104,12 @@ async def multi_agent_conversation(
     # browser would only see a connection error (issue #180).
     try:
         participants, agent_id_map = _build_participants(agents_config)
-    except Exception as setup_err:
+    except Exception:
         logger.exception("Failed to set up the multi-agent conversation")
-        yield _stream_chunk(0, f"\n[Error: {setup_err}]")
+        # CodeQL py/stack-trace-exposure: the reason is logged above, never
+        # streamed — exception text can carry internals (paths, config, driver
+        # detail) and this stream is public.
+        yield _stream_chunk(0, "\n[Error: the conversation could not be started.]")
         yield _final_chunk()
         return
 
@@ -128,7 +131,7 @@ async def multi_agent_conversation(
                 logger.error(f"Ollama connection check failed: {conn_err}")
                 await queue.put(
                     {
-                        "content": f"\n[Infrastructure Error: Cannot connect to Ollama at {settings.ollama_url}]",
+                        "content": "\n[Infrastructure Error: the AI backend is unavailable.]",
                         "agent_name": "System",
                     }
                 )
@@ -208,8 +211,9 @@ async def multi_agent_conversation(
                                                     break
                                             except json.JSONDecodeError:
                                                 continue
-                    except Exception as e:
-                        full_text = f"[Error: {e}]"
+                    except Exception:
+                        logger.exception("Multi-agent turn failed for %s", agent.role)
+                        full_text = "[Error: this turn could not be generated.]"
 
                     # AGGRESSIVE POST-PROCESS: Regex to strip ANY leading labels
                     clean_text = full_text.strip()
@@ -258,9 +262,14 @@ async def multi_agent_conversation(
                 if len(history) > 20:
                     history = history[-10:]
 
-        except Exception as e:
+        except Exception:
             logger.exception("Multi-agent conversation failed")
-            queue.put_nowait({"content": f"\n[Error: {e}]", "agent_name": "System"})
+            queue.put_nowait(
+                {
+                    "content": "\n[Error: the conversation ended unexpectedly.]",
+                    "agent_name": "System",
+                }
+            )
         finally:
             log_msg = "Finishing dynamic loop."
             logger.info(log_msg)
