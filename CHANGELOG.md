@@ -4,28 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Changed
-- **Dropped the unused `crewai` + `langchain-openai` pins, unblocking the caps they forced** (#185,
-  closes #53's dependency half). After #184 removed the vestigial agent-framework plumbing, nothing
-  in `backend/app/` imported either package — they were dead weight that nonetheless dictated the
-  whole backend's resolution. With them gone: **`pydantic` >=2.12.5 → >=2.13.0** (resolves 2.13.5)
-  and **`rich` <15.0.0 → >=15.0.0** (resolves 15.0.0), the two caps tracked by the now-closed #52
-  (crewai pinned `pydantic<2.13`; its `instructor` dependency pinned `rich<15`). Verified on a clean
-  Python 3.13 environment: `pip check` clean, **787 passed, 7 skipped, 100% coverage**.
-### Security
-- **`guard-destructive.sh` now blocks *any* recursive `rm` at a protected data path** (#188) — it
-  previously required `-r` **and** `-f` together, so `rm -R ./data` walked straight through. The
-  force flag only suppresses prompts for write-protected files; it is not what makes the delete
-  irreversible, so it is no longer part of the condition. The path regex is unchanged, so deletes
-  outside the protected set (`frontend/dist`, `node_modules`, scratchpads) are still allowed.
-  A **quoted** path (`rm -R "./data"`) also no longer slips through: a trailing quote defeated the
-  path regex's boundary, so the guard's own documented `bash -c` coverage was incomplete — the
-  boundaries now accept a surrounding quote. Twelve self-test cases added — five deny (`-R`, `-r`, `--recursive` against data/pgdata/volumes/
-  ollama/open-webui) and two allow — bringing the suite to 63 — including near-miss allow-cases
-  (`./src/app/data-table`, `build/metadata`, `rm -f ./data/file.txt`) that pin the *absence* of
-  false positives. Reverting the guard fails exactly the new deny cases, so the coverage is proven
-  rather than assumed.
-
 ### Added
 - **CI now enforces the 100% coverage standard** — the backend test job ran
   `pytest --cov=app --cov-report=...` with **no `--cov-fail-under`**, and `pyproject.toml`'s
@@ -46,6 +24,40 @@ All notable changes to this project will be documented in this file.
   Mutation-checked against the pre-fix script: **7 cases fail**, one per defect. It also runs in
   `verify_all.sh` and the pre-push hook, not only CI, so a tooling edit fails locally first.
 
+- **`POST /ai/multi-chat` accepts a bounded `max_turns`** (#187) — previously the twenty-turn
+  failsafe was fixed, so any caller (including a contract test) had to wait for twenty sequential
+  local-LLM generations. The request schema now takes `max_turns` with `ge=1, le=20`: callers can
+  ask for a short conversation, while the upper bound keeps the original failsafe so one request
+  cannot pin the model indefinitely. Out-of-range values are rejected with 422 rather than silently
+  clamped.
+- **Unmocked E2E contract guard for `/ai/multi-chat`** (#187) —
+  `frontend/e2e/public/multi-agent-smoke.spec.ts` hits the real endpoint against the E2E stack and
+  asserts what a mocked spec structurally cannot: every chunk parses as NDJSON, the stream
+  **terminates with `{"done": true}`**, and the agent actually produced content. The spec named
+  after this endpoint (`multi-agent.spec.ts`) `page.route`-mocks it — which is precisely how #180
+  hid, since a pre-yield crash surfaces as HTTP 200 with a truncated body rather than a 500, so
+  `response.ok` stayed true while the public `/llm` page showed "Connection Error"; that spec now
+  carries a note pointing at its unmocked counterpart. Rule 10 safe: the stack runs with an empty
+  `GEMINI_API_KEY`, so generation falls back to the in-stack Ollama and no paid API is reached.
+  It sends the new bounded `max_turns: 1`, so it costs **~5 s** rather than the ~85 s a default
+  twenty-turn conversation takes locally (and multiples of that on a CPU-only runner) — the failure
+  mode is structural, so one turn proves it exactly as well as twenty. It also asserts the response
+  is *not* the service's degraded path, since the backend substitutes canned text when generation
+  fails and a bare "some content" check would pass with no model at all.
+  **Verified by reproduction:** reintroducing the #180 failure mode makes it fail in ~1 s; restoring
+  the fix makes it pass in ~5 s.
+
+- Placeholder for next release.
+
+### Changed
+- **Dropped the unused `crewai` + `langchain-openai` pins, unblocking the caps they forced** (#185,
+  closes #53's dependency half). After #184 removed the vestigial agent-framework plumbing, nothing
+  in `backend/app/` imported either package — they were dead weight that nonetheless dictated the
+  whole backend's resolution. With them gone: **`pydantic` >=2.12.5 → >=2.13.0** (resolves 2.13.5)
+  and **`rich` <15.0.0 → >=15.0.0** (resolves 15.0.0), the two caps tracked by the now-closed #52
+  (crewai pinned `pydantic<2.13`; its `instructor` dependency pinned `rich<15`). Verified on a clean
+  Python 3.13 environment: `pip check` clean, **787 passed, 7 skipped, 100% coverage**.
+
 ### Fixed
 - **Version tooling follow-ups from the #178 review** (#186) — the backend version read *and* write
   are now anchored to `^    version="`, so the seeded `CvDocument(version="1.0.0-fallback")` literal
@@ -60,8 +72,19 @@ All notable changes to this project will be documented in this file.
   placeholder-anchored regex inserted the release header mid-list, leaving the heading behind in
   `[Unreleased]` and the real bullets bare under the version header.
 
-### Added
-- Placeholder for next release.
+### Security
+- **`guard-destructive.sh` now blocks *any* recursive `rm` at a protected data path** (#188) — it
+  previously required `-r` **and** `-f` together, so `rm -R ./data` walked straight through. The
+  force flag only suppresses prompts for write-protected files; it is not what makes the delete
+  irreversible, so it is no longer part of the condition. The path regex is unchanged, so deletes
+  outside the protected set (`frontend/dist`, `node_modules`, scratchpads) are still allowed.
+  A **quoted** path (`rm -R "./data"`) also no longer slips through: a trailing quote defeated the
+  path regex's boundary, so the guard's own documented `bash -c` coverage was incomplete — the
+  boundaries now accept a surrounding quote. Twelve self-test cases added — five deny (`-R`, `-r`, `--recursive` against data/pgdata/volumes/
+  ollama/open-webui) and two allow — bringing the suite to 63 — including near-miss allow-cases
+  (`./src/app/data-table`, `build/metadata`, `rm -f ./data/file.txt`) that pin the *absence* of
+  false positives. Reverting the guard fails exactly the new deny cases, so the coverage is proven
+  rather than assumed.
 
 ## [1.9.0] - 2026-08-30
 

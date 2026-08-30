@@ -297,3 +297,47 @@ async def test_multi_agent_worker_cancel():
             pass
 
     assert collected  # at least the first streamed chunk was received
+
+
+@pytest.mark.asyncio
+async def test_multi_chat_max_turns_is_bounded_and_forwarded(monkeypatch):
+    """#187: max_turns is caller-settable but bounded, and reaches the service.
+
+    An unmocked contract test needs one turn, not twenty sequential local-LLM
+    generations — but an unbounded value would let a single request pin the
+    model indefinitely, so the schema clamps it to the previous failsafe.
+    """
+    from fastapi.testclient import TestClient
+
+    from app.api import ai as ai_api
+    from app.main import app
+
+    seen: dict = {}
+
+    def fake_conversation(agents, topic, max_turns=20):
+        seen["max_turns"] = max_turns
+
+        async def gen():
+            yield '{"agent": 0, "content": "", "done": true}\n'
+
+        return gen()
+
+    monkeypatch.setattr(ai_api, "multi_agent_conversation", fake_conversation)
+
+    with TestClient(app) as client:
+        body = {"topic": "t", "agents": [{"id": 1, "description": "d", "role": "r"}]}
+
+        ok = client.post("/api/app/ai/multi-chat", json={**body, "max_turns": 1})
+        assert ok.status_code == 200
+        assert seen["max_turns"] == 1, "max_turns must reach the service"
+
+        # Default is preserved when the caller omits it.
+        client.post("/api/app/ai/multi-chat", json=body)
+        assert seen["max_turns"] == 20
+
+        # Out-of-range values are rejected by the schema, not silently clamped.
+        for bad in (0, -1, 21, 100):
+            rejected = client.post(
+                "/api/app/ai/multi-chat", json={**body, "max_turns": bad}
+            )
+            assert rejected.status_code == 422, f"max_turns={bad} must be rejected"

@@ -56,7 +56,10 @@ async def test_generate_name_endpoint(client: AsyncClient, mock_chat_stream):
 
 @pytest.mark.asyncio
 async def test_multi_chat_endpoint(client: AsyncClient):
-    async def mock_multi_stream(agents, topic):
+    async def mock_multi_stream(agents, topic, max_turns=20):
+        # The endpoint forwards the bounded max_turns (#187); assert the default
+        # so this mock cannot drift out of sync with the call signature again.
+        assert max_turns == 20
         yield "Agent1: Hi"
 
     with patch("app.api.ai.multi_agent_conversation", side_effect=mock_multi_stream):
