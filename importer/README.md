@@ -30,7 +30,7 @@ python -m importer --watch 3600  # re-run hourly
 ```
 
 Imported posts are **drafts** by default (review, then publish); pass `--publish` to import
-as published. See `specs/planned/_full-reference.md` §Component 3 / §1d for the full design
+as published. See `specs/done/linkedin-import-FULL-reference.md` §Component 3 / §1d for the full design
 and the prod-connection modes.
 
 ## Config (env)

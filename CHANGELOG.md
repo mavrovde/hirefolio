@@ -132,6 +132,22 @@ All notable changes to this project will be documented in this file.
   `.github/workflows/copilot-setup-steps.yml` pre-installing deps for the Copilot coding agent.
   `CLAUDE.md` remains the single source of truth; all Copilot files summarize and point back.
 - **lessons-learned §13–14** — two durable lessons from the #170 dependency sweep: bisect a
+- **Pre-release accuracy sweep** (Refs #61) — brings the user-facing docs back in line with the
+  code: honest `SECURITY.md` (supported 1.8.x, GitHub Security Advisories reporting — replaces the
+  unedited GitHub boilerplate with its fictional 5.1.x/4.0.x version table); `frontend/README.md`
+  rewritten for the real 3-project workspace (was stock `ng new` boilerplate claiming CLI 21.1.1
+  and "no e2e framework"); `README.md` version/tooling corrections (FastAPI 0.141, Python 3.12,
+  SQLAlchemy 2.0.52, Vitest 4.1, Playwright 1.62, Ruff 0.16, Node 22; drops the false ESLint claim),
+  redrawn project tree, real ruff/coverage/E2E commands, correct frontend env paths, `encrypt0002`
+  migration row, and a truthful deployment section (GHCR `sha-<gitsha>`/version/latest publishing,
+  no automated host rollout yet — manual `IMAGE_REPO`/`IMAGE_TAG` + compose pull/up, Refs #112
+  #156); `.github/base-images.txt` open-webui pin fixed to v0.11.0 to match
+  `docker-compose.prod.yml` (invalidates the CI base-image cache once); `.env.example` image
+  registry/tag comments refreshed (GHCR, 1.8.4); dead importer spec link fixed; scraper
+  `WORKFLOW.md` gains posts/env-vars/tests sections; `README_TESTING.md` updated (Python 3.12,
+  Node 22, test-DB isolation via `TEST_DATABASE_URL` + `create_test_db.py`, per-project Vitest
+  configs, dev vs prod+e2e compose stacks, no hardcoded test counts); `agents/README.md` roster
+  regenerated from `common/roster.py` (16 agents, ports 8010–8025) with the real delivery flow. — two durable lessons from the #170 dependency sweep: bisect a
   failing local gate against an unmodified `main` build before blaming your diff (the stale
   pre-split admin-login proxy check failed on `main` too; prod "passing" was an artifact of the
   #112 rollout gap), and `@angular/*` exact-peer lockstep (single-pass group updates, lockfile

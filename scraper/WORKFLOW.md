@@ -36,6 +36,42 @@ scraping unreliable. The API approach returns complete, un-capped lists.
 
 Results are written to `profile_data.json`.
 
+## 📝 Posts (`posts_data.json`)
+
+A second scraper extracts your recent LinkedIn **posts** (same saved session):
+
+```bash
+npm run scrape:posts          # headless -> posts_data.json
+npm run scrape:posts:debug    # visible browser (HEADLESS=false)
+```
+
+`posts_data.json` is the input the **importer** consumes
+(`python -m importer` — see `importer/README.md`): it upserts posts into the
+backend by LinkedIn URN, as drafts by default.
+
+## ⚙️ Environment variables
+
+| Var | Default | Meaning |
+| --- | --- | --- |
+| `HEADLESS` | `true` | Set `false` to watch the browser (both scrapers; the `:debug` scripts set it for you) |
+| `PLAYWRIGHT_CHANNEL` | *(bundled Chromium)* | Set `chrome` to use your **system Chrome**. Recommended: after a Playwright package update the bundled-Chromium path fails until you run `npx playwright install`; the system-Chrome channel keeps working. |
+| `SCRAPE_MAX_POSTS` | `50` | Max number of posts `scrape-posts.js` extracts |
+
+Example (profile scrape with system Chrome, visible):
+
+```bash
+PLAYWRIGHT_CHANNEL=chrome HEADLESS=false node scrape-linkedin.js
+```
+
+## 🧪 Tests
+
+The post-parsing logic (`parse-post.js`) has unit tests using the built-in
+Node test runner (no extra framework):
+
+```bash
+npm test        # runs `node --test` (parse-post.test.js)
+```
+
 ## 🔐 Authentication
 
 - Login state lives in `.chrome-profile/` (a persistent Chromium profile) and is
