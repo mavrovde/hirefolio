@@ -122,7 +122,7 @@ specs/      Feature specs (planned/done)
    outward-facing (merging to `main` triggers a prod deploy).
 9. **No irreversible local/infra destruction.** Never `docker volume rm`, `docker volume prune`,
    `docker compose down -v/--volumes`, `docker system prune`, `docker image prune -a`, `DROP`/recreate
-   a **non-`test_*`** database, or `rm -rf` a data dir / volume mount (`data`, `pgdata`, `volumes`,
+   a **non-`test_*`** database, or a recursive `rm` of a data dir / volume mount (`data`, `pgdata`, `volumes`,
    `ollama`, `open-webui`, `.chrome-profile`, `linkedin_cookies`, …) **without explicit user
    authorization that names the resource**. A backup is **not** a substitute for authorization. Prefer
    non-destructive paths (bump the image to match the volume schema, migrate, or leave it). Only

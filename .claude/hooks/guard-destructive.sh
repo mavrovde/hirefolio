@@ -159,7 +159,10 @@ inspect_segment() {
   #    separated flags in any order, and the long form --recursive.
   if printf '%s' "$seg" | grep -Eq '^rm ' \
      && printf '%s' "$seg" | grep -Eq '(^|[ ])(-[A-Za-z]*[rR][A-Za-z]*|--recursive)([ ]|$)'; then
-    if printf '%s' "$seg" | grep -Eiq '(^|[ =/])(data|pgdata|postgres[-_]?data|db[-_]?data|volumes?|ollama|open-webui|\.chrome-profile|linkedin_cookies)([/ ]|$)'; then
+    # Boundaries accept a surrounding quote too: `rm -R "./data"` is the same
+    # delete as `rm -R ./data`, but a trailing `"` used to defeat the `([/ ]|$)`
+    # terminator and slip through (found reviewing #188).
+    if printf '%s' "$seg" | grep -Eiq '(^|[ =/"'"'"'])(data|pgdata|postgres[-_]?data|db[-_]?data|volumes?|ollama|open-webui|\.chrome-profile|linkedin_cookies)([/ "'"'"']|$)'; then
       REASON="BLOCKED: recursive 'rm' targeting a persistent data/volume path (data/pgdata/volumes/ollama/open-webui/.chrome-profile/…). Irreversible and unauthorized. Prefix GUARD_DESTRUCTIVE=0 only for a path the user explicitly told you to delete."
       return 0
     fi
