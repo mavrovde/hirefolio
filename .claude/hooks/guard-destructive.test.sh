@@ -35,6 +35,15 @@ check "rm long-opts data dir"     'rm --recursive --force ./data/pgdata'        
 check "rm -r --force volumes"     'rm -r --force /var/lib/volumes/ollama'            deny
 check "rm -f ... -r data"         'rm -f -r ./data'                                  deny
 check "rm -Rf data dir"           'rm -Rf ./data/pgdata'                             deny
+# #188: the force flag is NOT what makes it dangerous — recursive alone destroys.
+check "rm -R data (no -f)"        'rm -R ./data'                                     deny
+check "rm -r pgdata (no -f)"      'rm -r ./data/pgdata'                              deny
+check "rm --recursive volumes"    'rm --recursive /var/lib/volumes'                  deny
+check "rm -R ollama dir"          'rm -R ~/ollama'                                   deny
+check "rm -R open-webui"          'rm -R ./open-webui'                               deny
+# ...but a recursive rm outside the protected paths must still be allowed.
+check "rm -R dist (no -f)"        'rm -R frontend/dist'                              allow
+check "rm -r node_modules"        'rm -r node_modules'                               allow
 
 # --- must ALLOW (ordinary dev / test — never impede) ---
 check "compose down (no -v)"      'docker compose down'                              allow

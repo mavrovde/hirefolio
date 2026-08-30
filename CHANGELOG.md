@@ -12,6 +12,15 @@ All notable changes to this project will be documented in this file.
   and **`rich` <15.0.0 → >=15.0.0** (resolves 15.0.0), the two caps tracked by the now-closed #52
   (crewai pinned `pydantic<2.13`; its `instructor` dependency pinned `rich<15`). Verified on a clean
   Python 3.13 environment: `pip check` clean, **787 passed, 7 skipped, 100% coverage**.
+### Security
+- **`guard-destructive.sh` now blocks *any* recursive `rm` at a protected data path** (#188) — it
+  previously required `-r` **and** `-f` together, so `rm -R ./data` walked straight through. The
+  force flag only suppresses prompts for write-protected files; it is not what makes the delete
+  irreversible, so it is no longer part of the condition. The path regex is unchanged, so deletes
+  outside the protected set (`frontend/dist`, `node_modules`, scratchpads) are still allowed.
+  Seven self-test cases added — five deny (`-R`, `-r`, `--recursive` against data/pgdata/volumes/
+  ollama/open-webui) and two allow — bringing the suite to 58; reverting the guard fails exactly
+  those five, so the coverage is proven rather than assumed.
 
 ### Added
 - Placeholder for next release.
