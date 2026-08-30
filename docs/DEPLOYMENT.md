@@ -108,7 +108,7 @@ an IP allowlist on sshd. The key in GitHub should exist nowhere else.
 - Images published **before** the rename remain at `ghcr.io/mavrovde/mavrov.de-*`
   (still public). To deploy a pre-rename tag such as `1.8.4`, pin
   `IMAGE_REPO=ghcr.io/mavrovde/mavrov.de` explicitly.
-- Otherwise the GHCR packages are public — keep them that way or the host needs a
-  read-only PAT `docker login`.
+- Once made public, keep them public — otherwise every host needs a read-only
+  PAT `docker login` and the rollout job's anonymous-pull preflight fails.
 - `build_amd64_and_push.sh` remains as a manual fallback for pushing images
   from a workstation.

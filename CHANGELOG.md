@@ -22,7 +22,8 @@ All notable changes to this project will be documented in this file.
   and secretless runs stay green; volumes are never touched (rule 9). New `docs/DEPLOYMENT.md` covers
   the clean-server first deploy, the secrets to activate rollout, and the first LinkedIn content
   import; `docker-compose.prod.yml` image defaults now point at the registry CI actually publishes to
-  (`ghcr.io/mavrovde/mavrov.de`, public/anonymous pulls) instead of the stale Docker Hub repo.
+  (GHCR, anonymous pulls) instead of the stale Docker Hub repo — landed as `ghcr.io/mavrovde/mavrov.de`
+  and superseded later in this same release by the rename to `ghcr.io/mavrovde/hirefolio` (see below).
 - **GitHub Copilot parity** (Refs #115, #121, #122) — `.github/copilot-instructions.md` rewritten
   in sync with the current `CLAUDE.md` (RxJS-primary — the old file wrongly mandated
   "Signals only" on "Angular 18" — engineering rules 1–11, issue flow, published≠live,
@@ -69,8 +70,9 @@ All notable changes to this project will be documented in this file.
   Playwright included) via an EXIT trap; `release.sh` sources `.env` instead of `export $(cat …
   | xargs)`, runs `bump_version.sh --check` before verifying, and its abort path reverts the full
   carrier set (previously left `package-lock.json`, shared `package.json`, compose tags and the
-  rotated CHANGELOG dirty); `build_amd64_and_push.sh` now defaults to
-  `ghcr.io/mavrovde/mavrov.de-*` (Docker Hub default dropped by user directive; forks can
+  rotated CHANGELOG dirty); `build_amd64_and_push.sh` now defaults to GHCR (Docker Hub default
+  dropped by user directive; landed as `ghcr.io/mavrovde/mavrov.de-*`, retargeted to
+  `ghcr.io/mavrovde/hirefolio-*` by the rename later in this release; forks can
   retarget via `REGISTRY`/`IMAGE_REPO`) and drops the commented-out `docker system prune`
   footguns; `verify_proxy_routes.py` dispatches any
   HTTP method (the old GET/PUT/POST chain left `response` unbound for other methods). Release
