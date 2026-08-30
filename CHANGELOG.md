@@ -27,6 +27,40 @@ All notable changes to this project will be documented in this file.
   rather than assumed.
 
 ### Added
+- **CI now enforces the 100% coverage standard** — the backend test job ran
+  `pytest --cov=app --cov-report=...` with **no `--cov-fail-under`**, and `pyproject.toml`'s
+  `addopts` sets no threshold either, so CI printed the coverage percentage and passed regardless.
+  The project's headline standard was therefore never actually gated; a drop below 100% only
+  surfaced in a local run. `--cov-fail-under=100` added to the CI invocation (found in the #194
+  review).
+- **CI now gates version-carrier consistency** (#193, closes #186's last item) — a fast
+  `version-consistency` job runs `./bump_version.sh --check` plus the new
+  `test-bump-version.sh` self-test, and all four image-build jobs `needs:` it, so drift fails the
+  pipeline before anything is published. Previously `--check` ran only in the machine-local
+  pre-push hook, so a hook-bypassing push could reintroduce #172-class drift unnoticed.
+- **`test-bump-version.sh`** — a 19-case self-test for the load-bearing version tooling, built on
+  throwaway fixtures (it never touches the working tree): every carrier's drift is detected *and
+  named*, the `version="1.0.0-fallback"` literal is not mistaken for the app version, `VERSION`
+  newline hygiene is enforced both ways, `--dry-run` is proven inert, and CHANGELOG rotation is
+  verified end-to-end, plus both "the pattern vanished" guards and the write-side anchor.
+  Mutation-checked against the pre-fix script: **7 cases fail**, one per defect. It also runs in
+  `verify_all.sh` and the pre-push hook, not only CI, so a tooling edit fails locally first.
+
+### Fixed
+- **Version tooling follow-ups from the #178 review** (#186) — the backend version read *and* write
+  are now anchored to `^    version="`, so the seeded `CvDocument(version="1.0.0-fallback")` literal
+  can never be matched instead of the FastAPI app version; the two `grep`-derived carriers
+  (`package-lock.json`, compose `IMAGE_TAG` defaults) no longer die silently under
+  `set -euo pipefail` when a pattern stops matching — they name the file and say the format changed;
+  `release.sh`'s three abort paths now share a single `revert_bump()` — the revert was duplicated
+  per branch, so the new `.env` `IMAGE_TAG` restore (which `git checkout` cannot do, the file being
+  gitignored) initially reached only one of them, and a `--check` failure under `set -e` left the
+  bump applied entirely; and the CHANGELOG
+  rotation is rewritten in three explicit steps that cannot split a real `### Added` list — the old
+  placeholder-anchored regex inserted the release header mid-list, leaving the heading behind in
+  `[Unreleased]` and the real bullets bare under the version header.
+
+### Added
 - Placeholder for next release.
 
 ## [1.9.0] - 2026-08-30

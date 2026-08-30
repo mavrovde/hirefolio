@@ -54,14 +54,41 @@ fi
 # 3. Bump Version — updates ALL version carriers, including
 # docker-compose.prod.yml image-tag defaults and
 # frontend/projects/shared/package.json (#172).
+# Undo a version bump on ANY abort path. Defined once: the revert was previously
+# duplicated per abort branch, so a fix applied to one (the .env restore, #186)
+# silently missed the others.
+revert_bump() {
+    echo "Reverting version bump..."
+    git checkout -- VERSION backend/app/main.py frontend/package.json frontend/package-lock.json \
+        frontend/projects/shared/package.json frontend/projects/public/src/app/version.ts \
+        docker-compose.prod.yml CHANGELOG.md
+    # .env is gitignored, so `git checkout` cannot restore it — put IMAGE_TAG back
+    # to the pre-bump version explicitly (#186).
+    if [ -f .env ] && grep -q '^IMAGE_TAG=' .env; then
+        if [ "$(uname)" = "Darwin" ]; then
+            sed -i '' "s/^IMAGE_TAG=.*/IMAGE_TAG=$CURRENT_VERSION/" .env
+        else
+            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$CURRENT_VERSION/" .env
+        fi
+        echo "  reverted .env IMAGE_TAG -> $CURRENT_VERSION"
+    fi
+}
+
 echo "Step 1: Bumping version ($BUMP_TYPE)..."
+# Remember the pre-bump version so an abort can restore the gitignored .env too (#186).
+CURRENT_VERSION=$(tr -d '[:space:]' < VERSION)
 ./bump_version.sh "$BUMP_TYPE"
 VERSION=$(tr -d '[:space:]' < VERSION)
 export IMAGE_TAG="$VERSION"
 echo "Target Version: v$VERSION"
 
 # 3b. Sanity check: every version carrier must agree before we verify/tag.
-./bump_version.sh --check
+# Under `set -e` a failure here used to abort with the bump still applied.
+if ! ./bump_version.sh --check; then
+    echo "❌ Version carriers disagree after the bump. Release aborted."
+    revert_bump
+    exit 1
+fi
 
 
 
@@ -72,10 +99,7 @@ if ./verify_all.sh; then
     echo "✅ Verification PASSED."
 else
     echo "❌ Verification FAILED. Release aborted."
-    echo "Reverting version bump..."
-    git checkout -- VERSION backend/app/main.py frontend/package.json frontend/package-lock.json \
-        frontend/projects/shared/package.json frontend/projects/public/src/app/version.ts \
-        docker-compose.prod.yml CHANGELOG.md
+    revert_bump
     echo "Fix the issues and try again."
     exit 1
 fi
@@ -86,10 +110,7 @@ if ./verify_proxy_startup.sh; then
     echo "✅ Proxy Smoke Test PASSED."
 else
     echo "❌ Proxy Smoke Test FAILED. Release aborted."
-    echo "Reverting version bump..."
-    git checkout -- VERSION backend/app/main.py frontend/package.json frontend/package-lock.json \
-        frontend/projects/shared/package.json frontend/projects/public/src/app/version.ts \
-        docker-compose.prod.yml CHANGELOG.md
+    revert_bump
     exit 1
 fi
 

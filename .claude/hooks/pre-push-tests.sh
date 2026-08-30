@@ -63,6 +63,12 @@ run_checks() {
     test -s "$ROOT/README.md" || { echo "README.md is missing or empty"; return 1; }
     echo "== version-consistency check (#172) =="
     ( cd "$ROOT" && ./bump_version.sh --check ) || return 1
+    # ...and the checker's own self-test, so an edit to the version tooling fails
+    # here rather than first at deploy time (#186).
+    ( cd "$ROOT" && bash test-bump-version.sh >/dev/null ) || {
+      echo "  ✗ test-bump-version.sh failed — run 'bash test-bump-version.sh' to see which case"
+      return 1
+    }
   fi
 
   if [ "$PREPUSH_RUN_GUARDTEST" = "1" ] && [ -f "$ROOT/.claude/hooks/guard-destructive.test.sh" ]; then

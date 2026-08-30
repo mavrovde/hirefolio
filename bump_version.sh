@@ -62,7 +62,10 @@ if [ "$CHECK" -eq 1 ]; then
         failed=1
     fi
 
-    v=$(sed -n 's/.*version="\([0-9.]*\)".*/\1/p' backend/app/main.py | head -1)
+    # Anchored to the FastAPI app's `    version="X.Y.Z",` line: an unanchored
+    # match also hits the seeded CvDocument literal `version="1.0.0-fallback"`
+    # a few lines above (#186).
+    v=$(sed -n 's/^    version="\([0-9.]*\)".*/\1/p' backend/app/main.py | head -1)
     [ "$v" = "$current_version" ] || fail "backend/app/main.py" "$v"
 
     v=$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' frontend/package.json | head -1)
@@ -75,11 +78,13 @@ if [ "$CHECK" -eq 1 ]; then
     [ "$v" = "$current_version" ] || fail "frontend/projects/public/src/app/version.ts" "$v"
 
     # package-lock.json: the two root "version" entries (top-level + packages[""]).
-    v=$(grep -m2 '"version":' frontend/package-lock.json | sed 's/.*"version": "\([0-9.]*\)".*/\1/' | sort -u | tr '\n' ' ' | sed 's/ $//')
+    v=$(grep -m2 '"version":' frontend/package-lock.json 2>/dev/null | sed 's/.*"version": "\([0-9.]*\)".*/\1/' | sort -u | tr '\n' ' ' | sed 's/ $//' || true)
+    [ -n "$v" ] || { echo "❌ frontend/package-lock.json: no root \"version\" entry found (file moved or format changed?)"; failed=1; }
     [ "$v" = "$current_version" ] || fail "frontend/package-lock.json" "$v"
 
     # docker-compose.prod.yml: every ${IMAGE_TAG:-X.Y.Z} default.
-    v=$(grep -o 'IMAGE_TAG:-[0-9.]*' docker-compose.prod.yml | cut -d- -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
+    v=$(grep -o 'IMAGE_TAG:-[0-9.]*' docker-compose.prod.yml 2>/dev/null | cut -d- -f2 | sort -u | tr '\n' ' ' | sed 's/ $//' || true)
+    [ -n "$v" ] || { echo "❌ docker-compose.prod.yml: no \${IMAGE_TAG:-X.Y.Z} default found (file moved or format changed?)"; failed=1; }
     [ "$v" = "$current_version" ] || fail "docker-compose.prod.yml" "$v"
 
     if [ "$failed" -ne 0 ]; then
@@ -120,7 +125,7 @@ fi
 printf '%s\n' "$new_version" > VERSION
 
 # Update backend/app/main.py
-sedi "s/version=\"[0-9.]*\"/version=\"$new_version\"/" backend/app/main.py
+sedi "s/^    version=\"[0-9.]*\"/    version=\"$new_version\"/" backend/app/main.py
 
 # Update frontend/package.json
 sedi "s/\"version\": \"[0-9.]*\"/\"version\": \"$new_version\"/" frontend/package.json
@@ -156,9 +161,18 @@ echo "package-lock.json synced."
 # Rotate CHANGELOG.md: insert the new release header under [Unreleased].
 echo "Rotating CHANGELOG.md headers..."
 today=$(date +%Y-%m-%d)
-perl -0777 -pi -e "s/## \[Unreleased\]\n\n### Added\n- Placeholder for next release\./## [Unreleased]\n\n### Added\n- Placeholder for next release.\n\n## [$new_version] - $today/s" CHANGELOG.md
-# Fallback if the placeholder-only pattern didn't match (i.e. [Unreleased] has
-# real content). Guarded so a successful first pass is never rotated twice.
+# Rotation is done in three explicit steps so it can never split a real list.
+# The old placeholder-anchored regex inserted the new header immediately after
+# "- Placeholder for next release.", which lands MID-LIST whenever [Unreleased]
+# has real "### Added" bullets after the stub (#186).
+#
+# 1. Drop the placeholder bullet from inside the [Unreleased] block (if present).
+perl -0777 -pi -e "s/(## \[Unreleased\]\n(?:(?!\n## \[).)*?)- Placeholder for next release\.\n/\$1/s" CHANGELOG.md
+# 2. Drop an "### Added" heading left empty by step 1 (heading followed only by
+#    blank lines and then another heading), again only inside [Unreleased].
+perl -0777 -pi -e "s/(## \[Unreleased\]\n(?:(?!\n## \[).)*?)### Added\n+(?=###|## \[)/\$1/s" CHANGELOG.md
+# 3. Insert the dated release header directly under [Unreleased] with a fresh
+#    stub, so everything that was unreleased moves wholesale into the release.
 if ! grep -q "^## \[$new_version\]" CHANGELOG.md; then
     perl -pi -e "s/^## \[Unreleased\]/## [Unreleased]\n\n### Added\n- Placeholder for next release.\n\n## [$new_version] - $today/" CHANGELOG.md
 fi
