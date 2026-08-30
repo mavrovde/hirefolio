@@ -1,5 +1,5 @@
 ---
-applyTo: "{.github/workflows/**,proxy/**,docker-compose*.yml,Dockerfile*,manage.sh,verify_all.sh,release.sh,bump_version.sh}"
+applyTo: ".github/workflows/**,proxy/**,docker-compose*.yml,Dockerfile*,manage.sh,verify_all.sh,release.sh,bump_version.sh"
 ---
 
 # Infra / CI / deploy
@@ -9,9 +9,11 @@ applyTo: "{.github/workflows/**,proxy/**,docker-compose*.yml,Dockerfile*,manage.
 - Images are published to **GitHub Container Registry** (`ghcr.io/mavrovde/mavrov.de-*` — see
   `REGISTRY`/`IMAGE_NAME` in `deploy.yml`), NOT Docker Hub; do not treat `maverickde/*` Hub
   images as current.
-- **Green `deploy.yml` = images PUBLISHED to the registry, NOT live on the prod host**
-  (issues #112/#156 — there is no host-rollout step). Never claim the site is updated from a
-  green run alone; verify the live site (footer `BE: vX.Y.Z`) or say rollout is pending.
+- **Green `deploy.yml` always = images PUBLISHED; live-on-host only if the `deploy` job ran.**
+  Since #175 the pipeline ends with a secrets-gated `Roll Out To Prod Host` job (SSH, immutable
+  `sha-<gitsha>` tag, digest + health + freshness gates, auto-rollback); with `DEPLOY_HOST`/
+  `DEPLOY_USER`/`DEPLOY_SSH_KEY` unset it skips and the run is still green (#112/#156). Check the
+  job status; if skipped, verify the live site (footer `BE: vX.Y.Z`) or say rollout is pending.
 - CI test stacks must inject **empty/placeholder credentials** (e.g. `GEMINI_API_KEY: ""`) so
   paid APIs fall back to local Ollama. Never wire `${{ secrets.* }}` into a test job — real
   credentials belong only to the production runtime environment.

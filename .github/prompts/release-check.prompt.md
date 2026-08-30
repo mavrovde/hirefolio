@@ -20,8 +20,10 @@ explicit user go-ahead.
    `main` (the sanctioned prod trigger). Never push the release directly to `main`.
 5. **Babysit `deploy.yml`** to green end-to-end; fix forward on red. Only then tag `vX.Y.Z` on the
    merge commit (full SHA) and publish the GitHub Release.
-6. **Published ≠ live (#112/#156)**: a green pipeline publishes images but does NOT roll the prod
-   host. The rollout (`docker compose -f docker-compose.prod.yml up -d` on the host) is a separate
-   required step — verify the live site shows the new version before claiming the release is live.
+6. **Published ≠ live (#112/#156/#175)**: a green pipeline always publishes images; it rolls the
+   prod host only when the secrets-gated `Roll Out To Prod Host` job ran (`DEPLOY_HOST`/
+   `DEPLOY_USER`/`DEPLOY_SSH_KEY`). If that job skipped, rollout
+   (`docker compose -f docker-compose.prod.yml up -d` on the host) is still a manual step —
+   verify the live site shows the new version before claiming the release is live.
 7. **Security check every release**: review open CodeQL + Dependabot alerts, triage each, and
    confirm alerts the release fixed now show `fixed`.

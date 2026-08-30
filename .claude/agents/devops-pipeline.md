@@ -65,11 +65,14 @@ Other: `Proxy Config Audit`, `Build * Image`, and E2E/deploy jobs.
    the user how to proceed.
 
 ## Green pipeline ≠ live on the host (#112 / #156)
-**A green `deploy.yml` run means the images were PUBLISHED to the registry — it does NOT mean the
-prod host is running them.** The pipeline currently has no host-rollout step, so never report
-"prod is updated" / "the site now runs vX.Y.Z" from a green run alone. To claim prod is live on a
-version, verify the live site itself (e.g. the footer `BE: vX.Y.Z`, or the deployed endpoint) —
-otherwise state explicitly that images are published and the host rollout is still pending.
+**A green `deploy.yml` run always means the images were PUBLISHED to the registry; it means the
+prod host was updated only if the secrets-gated `deploy` job actually ran.** Since #175 the pipeline
+ends with `Roll Out To Prod Host`, which SSHes to the host, deploys the immutable `sha-<gitsha>` tag,
+verifies containers by image digest, health-gates `/api/app/health`, freshness-probes `/admin/login`
+(→ 404) and rolls back on failure — but ONLY when `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` are
+configured. Without them it emits a skip notice and the run is still green with nothing rolled out.
+So: read the job's status before reporting. If it was skipped, never say "prod is updated" — verify
+the live site itself (footer `BE: vX.Y.Z`) or state that host rollout is pending.
 
 ## Issue workflow — close-the-loop after a green deploy
 Once the pipeline is green for a merge that `Closes #NN` / `Fixes #NN` / `Refs #NN` (see `CLAUDE.md`

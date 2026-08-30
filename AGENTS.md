@@ -41,17 +41,27 @@ Full stack: `./manage.sh start|stop|logs` · full verification incl. Docker E2E:
 5. Frontend state = RxJS Observables + `async` pipe (signals only for local state). The public app
    is zoneless: async property mutations don't repaint — use `async` pipe/signals/`markForCheck()`.
    Guard DOM access with `isPlatformBrowser()`.
-6. Update `CHANGELOG.md` `[Unreleased]` and relevant docs with every change; Conventional Commits.
-7. **Never run backend pytest while another suite is running** (`pgrep -f pytest` first — the
-   shared `test_mavrov` DB clobbers concurrent suites).
-8. **No real API keys / paid-service credentials in any test or CI job** — mock the call or use an
-   empty/dummy credential (free local fallback). CI passes `GEMINI_API_KEY: ""`.
+6. Dependency policy: upgrade within current majors by default; breaking majors are separate,
+   deliberate efforts. Update `requirements.txt` and `requirements-dev.txt` together.
+7. Update `CHANGELOG.md` `[Unreleased]` and relevant docs with every change; Conventional Commits.
+   Commit durable lessons to `.claude/skills/lessons-learned/`, not only to private memory.
+8. No rogue prod actions. A green `deploy.yml` always means images are **published**; the prod host
+   is updated only when the secrets-gated `Roll Out To Prod Host` job ran (#175 — it skips, still
+   green, when `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` are unset; #112/#156). Check that job
+   before claiming prod is updated. Check CodeQL + Dependabot every release.
 9. **No irreversible local/infra destruction** (`docker volume rm/prune`, `compose down -v`,
    `system prune`, dropping non-`test_*` DBs, `rm -rf` of data dirs) without explicit user
    authorization naming the resource.
-10. A green `deploy.yml` run means images are **published, not live on the prod host**
-    (issues #112/#156) — never claim prod is updated from a green pipeline alone.
-11. Every PR needs an independent review verdict before merge — no exceptions.
+10. **No real API keys / paid-service credentials in any test or CI job** — mock the call or use an
+    empty/dummy credential (free local fallback). CI passes `GEMINI_API_KEY: ""`.
+11. Every PR needs an independent `pr-reviewer` verdict before merge — no exceptions.
+
+Operational rule (not a numbered CLAUDE.md rule, but non-negotiable in practice): **never run
+backend pytest while another suite is running** (`pgrep -f pytest` first — the shared `test_mavrov`
+DB clobbers concurrent suites).
+
+> Numbering above mirrors `CLAUDE.md` exactly — the repo cites rules by number, so never renumber
+> them here independently.
 
 ## Issues & PRs
 

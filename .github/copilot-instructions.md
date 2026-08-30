@@ -49,8 +49,9 @@ Full stack: `./manage.sh start|stop|logs` · `./verify_all.sh` (full suite incl.
 7. **Docs + changelog with code.** Update `README.md` and `CHANGELOG.md` `[Unreleased]` as part of
    every change. Conventional Commits (`feat:`/`fix:`/`chore:`/`docs:`), atomic.
 8. **No rogue prod actions.** Deploy only via merge to `main`. A release is confirmed only when
-   `deploy.yml` is green end-to-end — and even then, **green pipeline = images PUBLISHED, NOT live
-   on the prod host** (issues #112/#156): never claim the site is updated from a green run alone.
+   `deploy.yml` is green end-to-end — and note **green always = images PUBLISHED, but live-on-host
+   only if the secrets-gated `deploy` job ran** (#175; it skips, still green, when `DEPLOY_*`
+   secrets are unset — #112/#156). Check that job before claiming the site is updated.
 9. **No irreversible local/infra destruction.** Never `docker volume rm`/`prune`,
    `docker compose down -v`, `docker system prune`, `docker image prune -a`, DROP a non-`test_*`
    database, or `rm -rf` a data/volume dir (`data`, `pgdata`, `ollama`, `open-webui`,

@@ -91,7 +91,7 @@ All notable changes to this project will be documented in this file.
   `agents/common/roster.py` (`PROJECT_PLAYBOOK`) now carry: never run backend pytest concurrently
   (`pgrep -f pytest` first), bisect local gate failures against an unmodified `main` build
   (lessons-learned §13), local proxy HTTPS on host port 10443, and the "green `deploy.yml` =
-  images published, NOT live on the host" doctrine (#112/#156). `.claude/commands/release.md`
+  green pipeline = images published; live-on-host only if the secrets-gated rollout job ran" doctrine (#112/#156/#175). `.claude/commands/release.md`
   drops its stale verify_all.sh conda-path warning (fixed long ago) and both `release.md` and
   `verify.md` encode the same lessons. Dev/release charters (and the Copilot files) now also
   require every PR to carry ≥1 type + ≥1 area label, same scheme as issues (agent PRs had been

@@ -76,10 +76,11 @@ STACK FACTS
   coverage), ESLint; SSR needs NG_ALLOWED_HOSTS + trustProxyHeaders behind the proxy.
 - CI: GitHub Actions "Prod Deployment" (ruff, mypy, bandit, pytest, vitest,
   E2E docker stack, image publish). A release is only DONE when CI is green.
-- PUBLISHED != LIVE (#112/#156): a green deploy.yml run means images were
-  published to the registry, NOT that the prod host runs them (no host-rollout
-  step). Never claim prod is updated from a green pipeline alone — verify the
-  live site (footer BE: vX.Y.Z) or state that host rollout is still pending.
+- PUBLISHED != LIVE (#112/#156/#175): a green deploy.yml run always publishes
+  images; the host is updated only if the secrets-gated "Roll Out To Prod Host"
+  job ran (it skips, still green, when DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY
+  are unset). Check that job's status — if it skipped, never claim prod is
+  updated; verify the live site (footer BE: vX.Y.Z) or say rollout is pending.
 
 SURGICAL EDITS (avoid destructive rewrites)
 - To change an EXISTING file, use edit_file (exact, unique snippet replace).

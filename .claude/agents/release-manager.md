@@ -32,12 +32,17 @@ about versioning, changelog accuracy, and not breaking prod.
   prefer letting CI build/deploy; if releasing manually, run
   `./bump_version.sh <bump>` + `--check` and verify the rotated CHANGELOG.
 - **Deploy:** pushing/merging to `main` triggers `.github/workflows/deploy.yml`
-  (the prod deploy). PRs get CodeQL/Analyze only. There is **no concurrency
-  guard**, so avoid triggering overlapping deploys — serialize.
+  (the prod deploy). PRs get CodeQL/Analyze only. A `concurrency` guard (#147)
+  serializes deploys — a second push queues behind the running one rather than
+  cancelling it, so expect a wait rather than an overlap.
 - **Published ≠ live (#112 / #156):** a green `deploy.yml` run means images were
-  **published to the registry**, NOT that the prod host runs them — the pipeline has
-  no host-rollout step. Never announce "prod is on vX.Y.Z" from a green run alone;
-  verify the live site (footer `BE: vX.Y.Z`) or state that host rollout is pending.
+  **published to the registry**; whether the prod host runs them depends on the
+  secrets-gated `deploy` rollout job (#175): it rolls the host, health-gates and
+  freshness-probes it only when `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` are
+  configured, and otherwise logs a skip notice while the run stays green. Check
+  whether the `Roll Out To Prod Host` job actually ran; if it was skipped, never
+  announce "prod is on vX.Y.Z" — verify the live site (footer `BE: vX.Y.Z`) or
+  state that host rollout is pending.
 - **Tag:** `vX.Y.Z` on the merge commit (`git rev-parse main` — use the FULL SHA;
   `gh release create` rejects a short SHA as `target_commitish`).
 
