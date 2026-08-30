@@ -81,7 +81,7 @@ change to ship the rest, then redo it properly (never leave `main` red).
 ## 4. Backend pytest local DB — isolation rules (or it hangs / wipes the dev DB)
 
 - **Always** export `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov`
-  and `GEMINI_API_KEY=""` before `./venv/bin/pytest`. This is exactly what
+  and `HIREFOLIO_GEMINI_API_KEY=""` before `./venv/bin/pytest`. This is exactly what
   `.claude/hooks/pre-push-tests.sh` sets. Without it, `conftest.get_test_engine()` falls back to the
   **live `mavrov` dev DB**, and the per-test `Base.metadata.drop_all` **hangs** on the running backend
   container's table locks (and would wipe the dev DB if it didn't block).
@@ -186,7 +186,7 @@ test job's env "so the feature works", turns green CI into a money leak.
    `${{ secrets.* }}`. Real credentials belong **only** to the production runtime environment.
 Before writing or running any test/CI path, verify it cannot reach a paid service with a live
 credential. In review, treat a real paid-service secret in a test stack — or an unmocked paid-API
-test — as a **blocker**. In this repo: `deploy.yml` passes `GEMINI_API_KEY: ""` to the E2E stack (→
+test — as a **blocker**. In this repo: `deploy.yml` passes `HIREFOLIO_GEMINI_API_KEY: ""` to the E2E stack (→
 Ollama fallback) and the admin AI-suggestion specs mock `/posts/suggest-*`. This is **CLAUDE.md
 rule 10**.
 

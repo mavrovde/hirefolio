@@ -72,10 +72,10 @@ services:
       - FAST_GENERATION_MODEL=llama3.2:1b
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY}
       # SECURITY (issue #143): Fernet key that encrypts the per-user Gemini API
       # key at rest. Optional locally (empty = plaintext passthrough).
-      - GEMINI_ENCRYPTION_KEY=${GEMINI_ENCRYPTION_KEY:-}
+      - HIREFOLIO_GEMINI_ENCRYPTION_KEY=${HIREFOLIO_GEMINI_ENCRYPTION_KEY:-}
       # SECURITY (issue #177): admin JWTs are signed with JWT_SECRET_KEY, which
       # has no default any more (prod refuses to start without it). The local
       # dev stack opts into a random per-process secret instead of committing a

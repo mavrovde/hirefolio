@@ -86,10 +86,10 @@ async def lifespan(app: FastAPI):
         from dotenv import load_dotenv
 
         load_dotenv(local_env_path)
-        gemini_key_seed = os.getenv("GEMINI_API_KEY")
+        gemini_key_seed = os.getenv("HIREFOLIO_GEMINI_API_KEY")
         if gemini_key_seed:
             print(
-                f"[{datetime.now(UTC)}] DB SEED: Loaded GEMINI_API_KEY from local env for seeding."
+                f"[{datetime.now(UTC)}] DB SEED: Loaded HIREFOLIO_GEMINI_API_KEY from local env for seeding."
             )
 
     async with async_session() as session:

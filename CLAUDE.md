@@ -142,7 +142,7 @@ specs/      Feature specs (planned/done)
     paid service with a live credential. **Rationale:** a real key wired into an automated test fires
     on *every* pipeline run — causing silent, unbounded, recurring cost and quota exhaustion — and
     needlessly exposes the credential to CI logs. Treat any such wiring as a critical bug to fix, not
-    to run. (In this repo: CI passes `GEMINI_API_KEY: ""` so the E2E falls back to the local Ollama;
+    to run. (In this repo: CI passes `HIREFOLIO_GEMINI_API_KEY: ""` so the E2E falls back to the local Ollama;
     paid-API specs are also mocked.)
 11. **Independent review gate — EVERY PR requires a `pr-reviewer` verdict before merge. NO
     EXCEPTIONS.** No pull request is merged until an **independent** `pr-reviewer` review (an APPROVE

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **The Gemini environment variables are project-scoped: `HIREFOLIO_GEMINI_API_KEY` and
+  `HIREFOLIO_GEMINI_ENCRYPTION_KEY`** (#141) — the generic `GEMINI_API_KEY` is a name developers
+  commonly export globally from a shell profile, and a process environment variable **overrides
+  `.env`** in docker compose, so the generic name silently bound a personal live key into the local
+  E2E stack. The settings fields now use an explicit `validation_alias`, so the generic name
+  **cannot** bind at all — verified directly: with `GEMINI_API_KEY` set in the environment and the
+  project variable unset, `settings.gemini_api_key` resolves to `''`. **Operator action:** rename
+  these two keys in the host `.env` before the next rollout; a stale `GEMINI_API_KEY` will simply be
+  ignored (AI falls back to Ollama) rather than failing loudly. `GEMINI_ENCRYPTION_KEY` is renamed
+  for the same namespacing reason — it is a local Fernet key for encrypting the per-user Gemini key
+  at rest (#143), not a Gemini credential; no data migration is needed because no encrypted values
+  exist in production yet (prod predates #143).
+
 ### Security
 - **The E2E stack can no longer inherit a real `GEMINI_API_KEY`** (#141) — CI injected `""` at the
   job level, but a **local** `verify_all.sh` run brings the stack up through compose, which resolves

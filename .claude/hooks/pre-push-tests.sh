@@ -85,7 +85,7 @@ run_checks() {
       echo "Another pytest run is already active (pgrep -f pytest). The shared test_mavrov DB cannot host two suites at once — wait for it to finish, then push again."
       return 1
     fi
-    ( cd "$ROOT/backend" && GEMINI_API_KEY="" ./venv/bin/pytest -q ) || return 1
+    ( cd "$ROOT/backend" && HIREFOLIO_GEMINI_API_KEY="" ./venv/bin/pytest -q ) || return 1
   fi
 
   if [ "$PREPUSH_RUN_LINT" = "1" ]; then

@@ -14,7 +14,7 @@ applyTo: ".github/workflows/**,proxy/**,docker-compose*.yml,backend/Dockerfile*,
   `sha-<gitsha>` tag, digest + health + freshness gates, auto-rollback); with `DEPLOY_HOST`/
   `DEPLOY_USER`/`DEPLOY_SSH_KEY` unset it skips and the run is still green (#112/#156). Check the
   job status; if skipped, verify the live site (footer `BE: vX.Y.Z`) or say rollout is pending.
-- CI test stacks must inject **empty/placeholder credentials** (e.g. `GEMINI_API_KEY: ""`) so
+- CI test stacks must inject **empty/placeholder credentials** (e.g. `HIREFOLIO_GEMINI_API_KEY: ""`) so
   paid APIs fall back to local Ollama. Never wire `${{ secrets.* }}` into a test job — real
   credentials belong only to the production runtime environment.
 - Do not add `actions/cache` for multi-GB Docker artifacts (base images, model weights): the

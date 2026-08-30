@@ -246,7 +246,7 @@ def test_backfill_encrypts_plaintext_and_is_idempotent(monkeypatch, scratch_db):
 
 
 def test_backfill_refuses_without_key(monkeypatch):
-    """The backfill refuses (returns 0) when GEMINI_ENCRYPTION_KEY is unset."""
+    """The backfill refuses (returns 0) when HIREFOLIO_GEMINI_ENCRYPTION_KEY is unset."""
     from scripts.backfill_encrypt_gemini_key import backfill
 
     monkeypatch.setattr(settings, "gemini_encryption_key", "")

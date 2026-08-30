@@ -29,7 +29,7 @@ cp .env.example .env
 #    POSTGRES_PASSWORD, LINKEDIN_IMPORT_TOKEN (for the posts importer),
 #    PUBLIC_SERVER_NAME / ADMIN_SERVER_NAME, ADMIN_ALLOWED_CIDRS (keep empty =
 #    loopback-only admin until you add your operator IPs).
-#    Optional: GEMINI_API_KEY (+ GEMINI_ENCRYPTION_KEY) — without it the AI
+#    Optional: HIREFOLIO_GEMINI_API_KEY (+ HIREFOLIO_GEMINI_ENCRYPTION_KEY) — without it the AI
 #    features fall back to the in-stack Ollama.
 #    Image coordinates: IMAGE_REPO defaults to ghcr.io/mavrovde/hirefolio;
 #    set IMAGE_TAG to the release you are deploying (e.g. 1.9.0).

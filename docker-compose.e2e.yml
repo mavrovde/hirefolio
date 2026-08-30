@@ -14,7 +14,7 @@ services:
       # key was running the E2E stack with a live paid credential. Setting it
       # here protects every path that uses this overlay, not just the one that
       # remembers to export it.
-      - GEMINI_API_KEY=
+      - HIREFOLIO_GEMINI_API_KEY=
 
   frontend:
     build:

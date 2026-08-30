@@ -21,7 +21,7 @@ pipeline. **Public repo** (`github.com/mavrovde/hirefolio`) — never commit or 
 
 Backend (`cd backend`, venv at `backend/venv`):
 - `pytest` — needs Postgres on `127.0.0.1:5433` and `TEST_DATABASE_URL` pointing at a `test_*` DB
-  (e.g. `test_mavrov`) plus `GEMINI_API_KEY=""`. Without those it hangs on / would wipe the live dev DB.
+  (e.g. `test_mavrov`) plus `HIREFOLIO_GEMINI_API_KEY=""`. Without those it hangs on / would wipe the live dev DB.
 - `ruff check .` && `ruff format --check .` · `mypy app --ignore-missing-imports --no-error-summary`
   · `bandit -r app -ll --skip B101`
 
@@ -59,7 +59,7 @@ Full stack: `./manage.sh start|stop|logs` · `./verify_all.sh` (full suite incl.
    consent. Only `test_*` databases may be dropped autonomously.
 10. **NEVER use real API keys or paid-service credentials in tests or CI.** Mock paid calls at the
     test boundary (`page.route`, monkeypatch) or supply an empty/dummy credential so the code takes
-    a free local fallback (Ollama). CI test jobs inject `GEMINI_API_KEY: ""` — never `secrets.*`.
+    a free local fallback (Ollama). CI test jobs inject `HIREFOLIO_GEMINI_API_KEY: ""` — never `secrets.*`.
     Real credentials belong only to the production runtime environment.
 11. **Every PR needs an independent review verdict before merge — no exceptions.** Green CI and the
     author's own validation are necessary but not sufficient. Hotfixes get an expedited review, not

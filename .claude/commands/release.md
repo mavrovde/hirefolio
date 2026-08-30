@@ -11,7 +11,7 @@ explicit green verification and explicit user go-ahead.
 
 ## 0. Preconditions (release.sh setup)
 - Ensure tooling on PATH: docker/podman, and npm via nvm (`. "$NVM_DIR/nvm.sh"`).
-- Load `.env` (exports `GEMINI_API_KEY`, `IMAGE_TAG`, etc.).
+- Load `.env` (exports `HIREFOLIO_GEMINI_API_KEY`, `IMAGE_TAG`, etc.).
 - If `DOCKER_HOST` is unset and Podman is used, set it to the Podman socket.
 - Require a bump type (`--patch|--minor|--major`) and a **non-empty** release message (fail otherwise).
 

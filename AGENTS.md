@@ -17,7 +17,7 @@ LinkedIn → site content pipeline (`scraper/`, `importer/`).
 Backend (`cd backend`; venv at `backend/venv`):
 ```
 TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov \
-GEMINI_API_KEY="" venv/bin/pytest          # needs Postgres on 127.0.0.1:5433; 100% coverage
+HIREFOLIO_GEMINI_API_KEY="" venv/bin/pytest          # needs Postgres on 127.0.0.1:5433; 100% coverage
 venv/bin/ruff check . && venv/bin/ruff format --check .
 venv/bin/mypy app --ignore-missing-imports --no-error-summary
 venv/bin/bandit -r app -ll --skip B101
@@ -53,7 +53,7 @@ Full stack: `./manage.sh start|stop|logs` · full verification incl. Docker E2E:
    `system prune`, dropping non-`test_*` DBs, recursive `rm` of data dirs) without explicit user
    authorization naming the resource.
 10. **No real API keys / paid-service credentials in any test or CI job** — mock the call or use an
-    empty/dummy credential (free local fallback). CI passes `GEMINI_API_KEY: ""`.
+    empty/dummy credential (free local fallback). CI passes `HIREFOLIO_GEMINI_API_KEY: ""`.
 11. Every PR needs an independent `pr-reviewer` verdict before merge — no exceptions.
 
 Operational rule (not a numbered CLAUDE.md rule, but non-negotiable in practice): **never run

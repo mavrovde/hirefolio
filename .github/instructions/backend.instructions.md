@@ -19,7 +19,7 @@ applyTo: "backend/**"
   timeouts, rollbacks), not just happy paths. Regression test for every bug fixed.
 - Needs Postgres on `127.0.0.1:5433` and
   `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov` plus
-  `GEMINI_API_KEY=""`. Without `TEST_DATABASE_URL` the suite targets the live dev DB and hangs.
+  `HIREFOLIO_GEMINI_API_KEY=""`. Without `TEST_DATABASE_URL` the suite targets the live dev DB and hangs.
 - **Never run pytest while another suite is active** — `pgrep -f pytest` first and wait; two
   suites clobber the shared `test_mavrov` DB.
 - `conftest.py` mocks heavy native libs (numpy, pgvector) — do not
