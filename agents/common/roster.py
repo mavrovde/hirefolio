@@ -69,7 +69,8 @@ GROUND EVERYTHING IN REALITY
 STACK FACTS
 - Backend: FastAPI (Python 3.12 in prod/CI; the local dev venv may be 3.13),
   SQLAlchemy async, Postgres+pgvector (dev DB on :5433), Ollama+Gemini. Tests:
-  `TESTING=true ... pytest` (conftest mocks crewai/tiktoken/langchain); MUST stay
+  `TESTING=true ... pytest` (conftest mocks heavy native libs only — never a
+  library whose behaviour a test asserts, see lessons-learned §15); MUST stay
   at 100% coverage; lint ruff, types mypy.
 - Frontend: Angular 22 SSR, RxJS Observables + the async pipe (NOT signals — the
   app uses Signals only sparingly for local component state), Vitest (100%
