@@ -278,6 +278,31 @@ Angular publishes every framework package with exact-version peers (`@angular/fo
 
 ---
 
+## 15. NEVER module-mock a dependency you assert against — and beware exceptions raised *inside* a streaming generator
+
+**The trap (2026-08-30, #180):** `POST /ai/multi-chat` was broken in production for five weeks
+while 778 backend tests stayed green. Two independent failures made that possible:
+
+1. **Vacuous module mocks.** `conftest.py` did `sys.modules["crewai"] = MagicMock()` (and the whole
+   `langchain_*` tree). A MagicMock accepts *any* constructor call, so `Agent(llm=<ChatOpenAI>)` —
+   which real crewai 1.x rejects with a `ValidationError` — "passed" in every test. Mocking a whole
+   module makes every assertion about that library meaningless. Mock at the **network boundary**
+   (httpx/respx, `page.route`), not the library boundary; module-mock only a dependency that
+   genuinely cannot be imported in tests, and never one whose behavior the code depends on.
+2. **A raise inside a streaming endpoint is invisible to `response.ok`.** The exception fired
+   *before* the async generator's first `yield`, i.e. after Starlette had already sent
+   `http.response.start`. The client therefore saw **HTTP 200 + `Transfer-Encoding: chunked`**, then
+   a mid-body connection close — not a 500. Frontend guards keyed on `response.ok` never tripped;
+   the page just rendered "Connection Error". **In any streaming handler, do all setup that can fail
+   inside a `try` and degrade into an error chunk on the stream**, because status codes are no
+   longer available to you once the body has started.
+
+Corollaries: an E2E that `page.route`-mocks the very endpoint it is named after proves nothing about
+that endpoint (`multi-agent.spec.ts` mocked it); and when a library bump is "validated" by a suite
+that mocks the library, the validation is vacuous — check what the tests actually exercise.
+
+---
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–9, issue-tracking flow,
