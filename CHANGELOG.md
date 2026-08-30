@@ -93,7 +93,9 @@ All notable changes to this project will be documented in this file.
   (lessons-learned §13), local proxy HTTPS on host port 10443, and the "green `deploy.yml` =
   images published, NOT live on the host" doctrine (#112/#156). `.claude/commands/release.md`
   drops its stale verify_all.sh conda-path warning (fixed long ago) and both `release.md` and
-  `verify.md` encode the same lessons.
+  `verify.md` encode the same lessons. Dev/release charters (and the Copilot files) now also
+  require every PR to carry ≥1 type + ≥1 area label, same scheme as issues (agent PRs had been
+  going out unlabeled, e.g. #171/#174).
 - **GitHub Copilot parity** (Refs #115, #121, #122) — `.github/copilot-instructions.md` rewritten
   in sync with the current `CLAUDE.md` (RxJS-primary — the old file wrongly mandated
   "Signals only" on "Angular 18" — engineering rules 1–11, issue flow, published≠live,

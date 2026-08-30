@@ -56,5 +56,7 @@ Full stack: `./manage.sh start|stop|logs` · full verification incl. Docker E2E:
 ## Issues & PRs
 
 Work is issue-driven: every issue carries a milestone, one priority label (`P0`–`P3`), and ≥1 area
-label. PRs use `Closes #NN`/`Refs #NN` and state how each acceptance criterion is met. The repo is
-public — never paste secrets into code, issues, or PRs.
+label. PRs use `Closes #NN`/`Refs #NN` and state how each acceptance criterion is met. Every PR
+also carries ≥1 type label (`bug`/`enhancement`/`documentation`/`dependencies`/`security`) + ≥1
+area label — same scheme as issues (`gh pr create --label`). The repo is public — never paste
+secrets into code, issues, or PRs.

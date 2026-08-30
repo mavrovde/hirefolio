@@ -69,6 +69,8 @@ suffix (`-rc.1`) is allowed when explicitly requested.
 6. **Release PR → main.** Open/curate it: title `Release vX.Y.Z`, body lists every
    `Closes #NN` in the batch and how each is satisfied. Ensure PR CI (CodeQL/Analyze)
    is green. Request the `pr-reviewer` gate if not already approved.
+   Label the PR: ≥1 type label (`bug`/`enhancement`/`documentation`/`dependencies`/`security`)
+   + ≥1 area label — same scheme as issues (`gh pr create --label` / `gh pr edit --add-label`).
 7. **Merge** (squash or merge per repo norm) — this is the sanctioned prod trigger.
    Merging to `main` is irreversible/outward-facing: proceed when the batch is
    authorized and green; otherwise surface the blocker.

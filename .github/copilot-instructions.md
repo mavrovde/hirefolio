@@ -87,6 +87,8 @@ Full stack: `./manage.sh start|stop|logs` · `./verify_all.sh` (full suite incl.
   Proposed action → Acceptance criteria → How to verify → Links.
 - PRs link issues (`Closes #NN` / `Refs #NN`) and state how each acceptance criterion is met.
   Verify against acceptance criteria before closing an issue — never close on assumption.
+- **Label every PR** with ≥1 type label (`bug`/`enhancement`/`documentation`/`dependencies`/
+  `security`) + ≥1 area label — same scheme as issues (`gh pr create --label` / `gh pr edit --add-label`).
 
 ## Execution protocol
 

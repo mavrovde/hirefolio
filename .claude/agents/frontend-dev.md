@@ -68,6 +68,9 @@ When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, miles
 - Add a **regression test** for the bug you fixed (see rule 2 — tests with every change).
 - Before finishing, ensure the issue carries a **milestone + a priority label + ≥1 area label**
   (`frontend` at minimum). Set them via `gh issue edit #NN --milestone "…" --add-label "…"` if missing.
+- **Label the PR too**: every PR carries ≥1 type label (`bug`/`enhancement`/`documentation`/
+  `dependencies`/`security`) + ≥1 area label (`frontend`, …) — same scheme as issues; set at creation
+  (`gh pr create --label`) or via `gh pr edit --add-label`.
 - Close-the-loop is the merge/devops step — don't close the issue from here; leave `Closes #NN` to do
   it on merge, or note partial status.
 
