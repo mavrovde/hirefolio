@@ -841,6 +841,10 @@ jobs:
           set -euo pipefail
           umask 077
           cd "$DEPLOY_DIR"
+          # A stale .env.rollback from an earlier run would make the rollback
+          # step roll a healthy prod one deploy backwards if this run aborts
+          # before mutating anything — start from a clean slate.
+          rm -f .env.rollback
           # .env holds every prod secret. Refuse to touch it unless it is a
           # readable file, and never install a rewrite that lost lines — a
           # swallowed grep failure (unreadable/root-owned .env) would otherwise
@@ -850,7 +854,11 @@ jobs:
             echo "FATAL: $DEPLOY_DIR/.env is missing or unreadable by $(id -un) — refusing to roll out." >&2
             exit 1
           fi
-          before=$(grep -c '' .env)
+          before=$(grep -c '' .env || true)
+          if [ "${before:-0}" -lt 1 ]; then
+            echo "FATAL: $DEPLOY_DIR/.env is empty — refusing to roll out." >&2
+            exit 1
+          fi
           # Record ONLY the previous image coordinates for rollback — never a
           # full copy of .env.
           { grep '^IMAGE_TAG=' .env || true; grep '^IMAGE_REPO=' .env || true; } > .env.rollback
@@ -888,6 +896,7 @@ jobs:
         if: steps.gate.outputs.enabled == 'true'
         env:
           PUBLIC_URL: ${{ secrets.DEPLOY_PUBLIC_URL || 'https://mavrov.de' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
         run: |
           echo "Waiting for $PUBLIC_URL to become healthy..."
           ok=false
@@ -900,7 +909,13 @@ jobs:
           # serve the admin SPA route — 404 proves a post-workspace-split build.
           for i in $(seq 1 6); do
             code=$(curl -s -o /dev/null -w '%{http_code}' -m 10 "$PUBLIC_URL/admin/login" || echo 000)
-            if [ "$code" = "404" ]; then echo "Freshness probe OK."; exit 0; fi
+            if [ "$code" = "404" ]; then
+              echo "Freshness probe OK."
+              # Deploy succeeded: drop the rollback marker so nothing later can
+              # roll this healthy release backwards.
+              ssh prod "rm -f '${DEPLOY_DIR:-/opt/mavrov.de}/.env.rollback'" || true
+              exit 0
+            fi
             echo "  freshness attempt $i/6: /admin/login -> $code (want 404)"; sleep 10
           done
           echo "Freshness probe FAILED"; exit 1
@@ -926,7 +941,7 @@ jobs:
               exit 1
             fi
             cat .env.rollback >> .env.new
-            mv .env.new .env
+            cp -a .env .env.bak.$$ && mv .env.new .env && rm -f .env.bak.$$
             chmod 600 .env
             rm -f .env.rollback
             docker compose -f docker-compose.prod.yml pull $APP_SERVICES

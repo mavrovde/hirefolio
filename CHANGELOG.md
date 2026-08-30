@@ -35,10 +35,13 @@ All notable changes to this project will be documented in this file.
 - Placeholder for next release.
 
 - **Automated prod rollout (`deploy` job in `deploy.yml`)** — closes the "published ≠ live" CD gap
-  (#112/#156): after all four images are promoted, the pipeline SSHes to the prod host, rewrites only
-  `IMAGE_REPO`/`IMAGE_TAG` in the host `.env` (previous values kept for rollback), `docker compose
-  pull && up -d`, polls `/api/app/stats/public` until `backend_version` matches `VERSION`, runs the
-  #169 freshness probe (public `/admin/login` → 404), and rolls back on any failure. The job is a
+  (#112/#156): after all four images are promoted, the pipeline SSHes to the prod host and rewrites
+  only `IMAGE_REPO`/`IMAGE_TAG` in the host `.env` to the **immutable `sha-<gitsha>` tag** (guarded so
+  a missing/unreadable/short `.env` aborts untouched rather than losing secrets; only the previous
+  coordinate lines are kept for rollback), pulls and recreates just the four app services
+  (`--no-deps`, so third-party images and volumes are never rolled), verifies every app container by
+  **image digest**, waits on `/api/app/health`, runs the retried #169 freshness probe (public
+  `/admin/login` → 404), and rolls back to the previous sha tag on any failure. The job is a
   guarded no-op until the owner adds `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` secrets, so forks
   and secretless runs stay green; volumes are never touched (rule 9). New `docs/DEPLOYMENT.md` covers
   the clean-server first deploy, the secrets to activate rollout, and the first LinkedIn content
