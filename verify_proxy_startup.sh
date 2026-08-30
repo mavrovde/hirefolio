@@ -11,9 +11,11 @@ echo "========================================"
 export IMAGE_TAG="${IMAGE_TAG:-latest}"
 unset COMPOSE_FILE
 unset COMPOSE_PATH_SEPARATOR
-PROXY_IMAGE="maverickde/mavrov.de-proxy:$IMAGE_TAG"
-BACKEND_IMAGE="maverickde/mavrov.de-backend:$IMAGE_TAG"
-FRONTEND_IMAGE="maverickde/mavrov.de-frontend:$IMAGE_TAG"
+# Same coordinates the compose files use; override IMAGE_REPO to check other images.
+IMAGE_REPO="${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}"
+PROXY_IMAGE="${IMAGE_REPO}-proxy:$IMAGE_TAG"
+BACKEND_IMAGE="${IMAGE_REPO}-backend:$IMAGE_TAG"
+FRONTEND_IMAGE="${IMAGE_REPO}-frontend:$IMAGE_TAG"
 
 cleanup() {
     echo "🧹 Cleaning up..."

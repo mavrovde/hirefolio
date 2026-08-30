@@ -3,7 +3,7 @@
 Two paths: a **first deploy** onto a clean host (manual, one-time) and the
 **automated rollout** that keeps the host current on every green `main` pipeline
 once the owner adds three secrets. CI publishes multi-tagged amd64 images to
-`ghcr.io/mavrovde/mavrov.de-{backend,frontend,admin-frontend,proxy}` —
+`ghcr.io/mavrovde/hirefolio-{backend,frontend,admin-frontend,proxy}` —
 `sha-<gitsha>`, the release version (e.g. `1.8.4`), and `latest`. The packages
 are **public**: any host can `docker compose pull` them with no registry login.
 
@@ -17,7 +17,7 @@ open, DNS for the public + admin hostnames pointed at the host. A panel such as
 ```bash
 # 1. Get the compose project onto the host (default rollout dir; override with
 #    the DEPLOY_DIR secret if you choose another path)
-git clone https://github.com/mavrovde/mavrov.de.git /opt/mavrov.de
+git clone https://github.com/mavrovde/hirefolio.git /opt/mavrov.de
 cd /opt/mavrov.de
 
 # 2. Configure — copy the template and fill EVERY required value
@@ -29,7 +29,7 @@ cp .env.example .env
 #    loopback-only admin until you add your operator IPs).
 #    Optional: GEMINI_API_KEY (+ GEMINI_ENCRYPTION_KEY) — without it the AI
 #    features fall back to the in-stack Ollama.
-#    Image coordinates: IMAGE_REPO defaults to ghcr.io/mavrovde/mavrov.de;
+#    Image coordinates: IMAGE_REPO defaults to ghcr.io/mavrovde/hirefolio;
 #    set IMAGE_TAG to the release you are deploying (e.g. 1.8.4).
 
 # 3. Pull the validated images and start (never use `down -v` — volumes hold
@@ -93,7 +93,20 @@ an IP allowlist on sshd. The key in GitHub should exist nowhere else.
 
 ## Registry notes
 
-- The GHCR packages are public — keep them that way or the host needs a
+- **One-time action after the rename to `hirefolio` (#88/#189):** CI publishes to
+  `ghcr.io/<owner>/<repo>-*`, so the first build after the rename creates four
+  **brand-new** GHCR packages — `hirefolio-backend`, `hirefolio-frontend`,
+  `hirefolio-admin-frontend`, `hirefolio-proxy`. New packages default to
+  **private**, and package visibility does **not** follow a repository rename.
+  The prod host pulls with **no `docker login`**, so make all four public once:
+  GitHub → your profile → **Packages** → each package → *Package settings* →
+  *Change visibility* → **Public**. The rollout job preflights this and fails
+  with an explicit message naming the package if it is still private, before it
+  touches the host.
+- Images published **before** the rename remain at `ghcr.io/mavrovde/mavrov.de-*`
+  (still public). To deploy a pre-rename tag such as `1.8.4`, pin
+  `IMAGE_REPO=ghcr.io/mavrovde/mavrov.de` explicitly.
+- Otherwise the GHCR packages are public — keep them that way or the host needs a
   read-only PAT `docker login`.
 - `build_amd64_and_push.sh` remains as a manual fallback for pushing images
   from a workstation.

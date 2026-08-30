@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **The project is now `Hirefolio`; the repository is `mavrovde/hirefolio`** (#88). The old identity
+  (`mavrov.de` as a *product* name) described one person's site and could not name a reusable,
+  fork-and-go template — `mavrov.de` remains the maintainer's own deployment of it. GitHub redirects
+  the previous repository URLs and existing clones keep working, but remotes should be updated
+  (`git remote set-url origin https://github.com/mavrovde/hirefolio.git`). Repo-slug references were
+  rewritten across the compose files, CI/AI configuration, agent charters and docs (historical
+  `CHANGELOG`/`specs/done` entries are left untouched as a record). **Image-path consequence:** CI
+  publishes to `ghcr.io/${{ github.repository }}-*`, so builds now land at
+  `ghcr.io/mavrovde/hirefolio-*` while previously published tags remain at
+  `ghcr.io/mavrovde/mavrov.de-*` — pin `IMAGE_REPO` explicitly when deploying a pre-rename tag.
+  **Requires a one-time owner action:** the four new GHCR packages are created *private* (package
+  visibility does not follow a repository rename) and the prod host pulls without a `docker login`,
+  so they must be made public once. The rollout job now preflights anonymous pullability and fails
+  with the package name before touching the host. `.env.example` and `verify_proxy_startup.sh`
+  (which gates `release.sh`) also stop naming the retired Docker Hub org.
+
 ### Security
 - **Admin JWTs can no longer be signed with a publicly-known secret** (#177). `jwt_secret_key`
   defaulted to the committed placeholder `your-secret-key-change-in-production`

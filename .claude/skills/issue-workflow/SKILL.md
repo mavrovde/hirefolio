@@ -6,12 +6,12 @@ description: >-
   its milestone/labels/priority, wiring `Closes #NN` into a PR, or closing-the-loop after
   work lands. Encodes the issue template, milestone taxonomy, label+priority scheme, the
   "every issue needs milestone+priority+area" invariant, the `gh` commands, and the
-  no-secrets rule for this PUBLIC repo (`github.com/mavrovde/mavrov.de`).
+  no-secrets rule for this PUBLIC repo (`github.com/mavrovde/hirefolio`).
 ---
 
 # Issue workflow — mavrov.de
 
-Repo: `mavrovde/mavrov.de` (**PUBLIC**). Issues are the project notebook: every idea, plan, bug,
+Repo: `mavrovde/hirefolio` (**PUBLIC**). Issues are the project notebook: every idea, plan, bug,
 deferred fix, shipped milestone, and research decision lives as an issue — not in chat or personal
 memory. Register work up front; close-the-loop when it lands. This skill is the operational
 companion to `CLAUDE.md` → *Issue tracking, milestones & labels*.
@@ -68,7 +68,7 @@ Inspect and list:
 gh issue view 74
 gh issue list --state open --json number,title,milestone,labels
 gh label list --limit 100        # confirm a label exists before adding
-gh api repos/mavrovde/mavrov.de/milestones --jq '.[].title'
+gh api repos/mavrovde/hirefolio/milestones --jq '.[].title'
 ```
 
 Comment + close (close-the-loop):

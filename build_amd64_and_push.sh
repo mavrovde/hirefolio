@@ -2,7 +2,7 @@
 # build_amd64_and_push.sh — MANUAL FALLBACK: build + push AMD64 images from this machine.
 #
 # NOTE: CI is the primary publisher. On every push to main, deploy.yml builds the
-# amd64 images and publishes them to ghcr.io (ghcr.io/mavrovde/mavrov.de-* with
+# amd64 images and publishes them to ghcr.io (ghcr.io/mavrovde/hirefolio-* with
 # sha-<gitsha> tags, anonymously pullable) and promotes them with version/latest
 # tags — see .github/workflows/deploy.yml. Use this script only when a manual
 # out-of-band publish is needed.
@@ -10,7 +10,7 @@
 # Push target (defaults to ghcr.io — Docker Hub is NOT used):
 #   REGISTRY     registry host (default: ghcr.io)
 #   IMAGE_REPO   full repo base incl. registry host
-#                (default: $REGISTRY/mavrovde/mavrov.de; set explicitly for forks)
+#                (default: $REGISTRY/mavrovde/hirefolio; set explicitly for forks)
 #
 # You must already be logged in to the target registry
 # (e.g. `gh auth token | docker login ghcr.io -u <user> --password-stdin`).
@@ -20,7 +20,7 @@ export PATH=/usr/local/bin:/opt/homebrew/bin:$PATH
 
 # Resolve the push target.
 REGISTRY="${REGISTRY:-ghcr.io}"
-IMAGE_REPO="${IMAGE_REPO:-$REGISTRY/mavrovde/mavrov.de}"
+IMAGE_REPO="${IMAGE_REPO:-$REGISTRY/mavrovde/hirefolio}"
 
 # Read version from the latest git tag (authoritative source from release script)
 GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)

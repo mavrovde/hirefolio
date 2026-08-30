@@ -1,6 +1,20 @@
-# mavrov.de
+# Hirefolio
 
-Personal portfolio website with blog functionality powered by semantic search and local AI tag generation.
+**A fork-and-go, self-hostable portfolio + recruiter-communication platform for job-seeking software
+engineers** — semantic blog search, local-AI tagging, and an admin console, deployable under *your*
+own name and domain.
+
+> **Name change (#88):** the project is now **Hirefolio** and the repository is
+> [`mavrovde/hirefolio`](https://github.com/mavrovde/hirefolio) (GitHub redirects the old
+> `mavrovde/mavrov.de` URLs, and `git remote` keeps working — but update your remote when convenient:
+> `git remote set-url origin https://github.com/mavrovde/hirefolio.git`).
+> `mavrov.de` remains the maintainer's own deployment of it, not the product name.
+> Container images publish to `ghcr.io/mavrovde/hirefolio-*` from the first build after the rename;
+> images published earlier still live at `ghcr.io/mavrovde/mavrov.de-*`, so pin `IMAGE_REPO`
+> explicitly when deploying a pre-rename tag. **One-time owner action:** those four new GHCR
+> packages are created **private** (visibility does not follow a repo rename) — make them public
+> once, or the host, which pulls without a login, cannot fetch them. See
+> [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md#registry-notes).
 
 ## 🚀 Features
 
@@ -58,7 +72,7 @@ Personal portfolio website with blog functionality powered by semantic search an
 
 ```bash
 git clone <repository-url>
-cd mavrov.de
+cd hirefolio
 ```
 
 ### 2. Start Everything (Docker)
@@ -200,7 +214,7 @@ Run the entire test suite (Lint, Type Check, Unit, E2E) in one go:
 ## 📁 Project Structure
 
 ```text
-mavrov.de/
+hirefolio/
 ├── backend/                 # FastAPI backend
 │   ├── app/
 │   │   ├── api/            # API endpoints
@@ -279,7 +293,7 @@ identifies you. Every knob has a safe default that preserves the canonical behav
 
 | Knob | Where | Default | What it controls |
 | --- | --- | --- | --- |
-| `IMAGE_REPO` | `.env` (compose) | `maverickde/mavrov.de` (prod), `mavrovde` (dev) | Registry/org/name the compose files pull `-backend/-frontend/-admin-frontend/-proxy` images from |
+| `IMAGE_REPO` | `.env` (compose) | `ghcr.io/mavrovde/hirefolio` (prod), `mavrovde` (dev) | Registry/org/name the compose files pull `-backend/-frontend/-admin-frontend/-proxy` images from |
 | `IMAGE_TAG` | `.env` (compose) | repo `VERSION` | Pinned image tag to run |
 | `REGISTRY`, `IMAGE_NAME` | GitHub **repository variables** | `ghcr.io`, `${{ github.repository }}` | Where `deploy.yml` publishes images (override to retarget the CI publish) |
 | `PUBLIC_SERVER_NAME` | `.env` (proxy) | `mavrov.de www.mavrov.de` | Public site hostname(s) the reverse proxy answers on |

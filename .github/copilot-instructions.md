@@ -1,4 +1,4 @@
-# Copilot instructions — mavrov.de
+# Copilot instructions — Hirefolio
 
 **`CLAUDE.md` at the repo root is the single source of truth for how AI assistants work here.**
 This file summarizes it for GitHub Copilot; if anything below seems to conflict with `CLAUDE.md`,
@@ -9,7 +9,7 @@ before touching SSR/HTTP code, running backend pytest, adding CI caching, or pre
 ## What this project is
 
 Personal portfolio + blog with semantic search and local AI, plus a LinkedIn → mavrov.de content
-pipeline. **Public repo** (`github.com/mavrovde/mavrov.de`) — never commit or paste secrets.
+pipeline. **Public repo** (`github.com/mavrovde/hirefolio`) — never commit or paste secrets.
 
 - `backend/` — FastAPI (Python 3.12 in prod/CI), SQLAlchemy 2 async, PostgreSQL 16 + pgvector, Ollama.
 - `frontend/` — Angular 22 workspace: `projects/public` (SSR), `projects/admin` (CSR), `projects/shared`
