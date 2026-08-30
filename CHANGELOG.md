@@ -47,12 +47,19 @@ All notable changes to this project will be documented in this file.
   Self-test suite: **63 → 112 cases**. Measured rather than asserted — running the final suite
   against each earlier version: pre-`#204` `main` **8** differences (**6** false denials removed,
   **2** destructions newly caught that `main` allowed), first attempt **25**, second **24**, third
-  **5**, fourth **9**. Each condition is mutation-checked individually: flattening the newline
-  sentinel to a space fails 12 cases, removing the heredoc exemption 4, making the
-  all-commands-are-text-tools check always true 7, dropping the quoted-delimiter requirement 2,
-  disabling the quote/comment masking 3, removing the terminator lookahead 1, and removing
-  `quote_split`'s escape handling 6. Note that nothing in CI runs this suite (see #208) — it runs via
-  `verify_all.sh` and the pre-push hook, so a regression here is invisible to the pipeline.
+  **5**, fourth **9**. Each condition is mutation-checked individually against the final suite:
+  flattening the newline sentinel to a space fails **10** cases, removing the heredoc exemption
+  **4**, making the all-commands-are-text-tools check always true **13**, dropping the
+  quoted-delimiter requirement **2**, disabling the quote/comment masking **3**, removing the
+  terminator lookahead **1**, and removing `quote_split`'s escape handling **6**. Note that nothing
+  in CI runs this suite (see #208) — it runs via `verify_all.sh` and the pre-push hook, so a
+  regression here is invisible to the pipeline.
+
+  **Guard cost:** `heredoc_delim` now rejects a line without `<<` before running the masking pass.
+  Without it, every line of a large command paid for two O(n) character loops where `main` paid for
+  one — a 40 000-character command took **42.5 s** against `main`'s **21.2 s**. That is not merely
+  slow: a PreToolUse hook that times out does **not** deny, so doubling the cost halves the input
+  size at which the guard still guards. Measured after the fix: **21.3 s** — `main`'s timing restored.
 
   **Known gap:** writing a script with a text-tool heredoc and executing it in the same command
   (`cat > s.sh <<'EOF' … EOF` then `bash s.sh`) satisfies all four conditions and is allowed, where

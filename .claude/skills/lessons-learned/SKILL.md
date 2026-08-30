@@ -448,7 +448,7 @@ believed the general case had been found and had only found an instance.
    right; when you correct a parsing rule, correct every function that parses.
 
 This is the clearest evidence yet for CLAUDE.md rule 11: an independent reviewer caught a security
-regression three times running that the author, the author's own new tests, and green CI all missed —
+regression in four consecutive rounds that the author, the author's own new tests, and green CI all missed —
 and CI *could not* have caught it, because nothing in the pipeline runs that suite (#208, #210).
 
 ---

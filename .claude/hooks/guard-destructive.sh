@@ -342,6 +342,13 @@ mask_quotes() {
 # delimiter here would exempt it.
 heredoc_delim() {
   local line="$1" masked head rest
+  # Cheap reject FIRST. mask_quotes is an O(n) character loop and this runs per
+  # line, so scanning every line of a large command doubled the guard's cost —
+  # and a PreToolUse hook that times out does NOT deny, so the input size at
+  # which the guard stops guarding was effectively halved. Masking can only blank
+  # characters, never introduce a `<<`, so a raw line without one cannot yield a
+  # heredoc.
+  case "$line" in *'<<'*) ;; *) return 0 ;; esac
   masked="$(mask_quotes "$line")"
   case "$masked" in *"<<"*) ;; *) return 0 ;; esac
   head="${masked%%<<*}"
