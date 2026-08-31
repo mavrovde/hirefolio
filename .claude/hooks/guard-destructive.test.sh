@@ -591,6 +591,69 @@ $D $T
 EOF
 bash other.sh"                                                                   allow
 
+# --- "DID SOMETHING RUN IT?" MUST NOT BE A LIST OF SPELLINGS (#212 review) ---
+# The first version matched `<interpreter> <path>` with the path as the very next
+# word, so every ordinary variation walked past it. That is the same
+# allowlist-of-the-forms-I-thought-of shape this file already warns about for
+# shells reached through a pipe.
+HDOC="cat > s.sh <<'EOF'
+$DV $V
+EOF
+"
+check "run: bash -x"                 "${HDOC}bash -x s.sh"                         deny
+check "run: bash -eu"                "${HDOC}bash -eu s.sh"                        deny
+check "run: bash --"                 "${HDOC}bash -- s.sh"                         deny
+check "run: sh -e"                   "${HDOC}sh -e s.sh"                           deny
+check "run: absolute /bin/bash"      "${HDOC}/bin/bash s.sh"                       deny
+check "run: absolute /bin/sh"        "${HDOC}/bin/sh s.sh"                         deny
+check "run: quoted script operand"   "${HDOC}bash \"s.sh\""                        deny
+check "run: quoted source"           "${HDOC}source \"s.sh\""                      deny
+check "run: sudo bash"               "${HDOC}sudo bash s.sh"                       deny
+# The WRITER side has the same problem: a file can be written without `>`.
+check "write: tee then run"          "tee s.sh <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                          deny
+check "write: tee -a then run"       "tee -a s.sh <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                          deny
+check "write: pipe into tee, run"    "cat <<'EOF' | tee s.sh
+$DV $V
+EOF
+bash s.sh"                                                                          deny
+check "write: quoted target"         "cat > \"s.sh\" <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                          deny
+check "write: fd redirect first"     "cat 2>/dev/null > s.sh <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                          deny
+
+# NEGATIVE SPACE. Every case above is a spelling the matcher was written to
+# catch, so on their own they prove only that it matches what it matches. These
+# are the ones that must NOT fire — a document stays a document, and the fix must
+# not revoke the exemption just because *something* was executed.
+check "doc: never executed"          "cat > notes.md <<'EOF'
+$DV $V
+EOF"                                                                                allow
+check "doc: only read back"          "cat > notes.md <<'EOF'
+$DV $V
+EOF
+cat notes.md"                                                                       allow
+check "doc: unrelated script runs"   "cat > notes.md <<'EOF'
+$DV $V
+EOF
+bash other.sh"                                                                      allow
+check "doc: written, other run"      "cat > a.sh <<'EOF'
+$DV $V
+EOF
+bash b.sh"                                                                          allow
+check "doc: tee, never executed"     "tee notes.md <<'EOF'
+$DV $V
+EOF"                                                                                allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

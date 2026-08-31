@@ -15,10 +15,22 @@ All notable changes to this project will be documented in this file.
   Both the redirect target and the execution are matched **outside quotes**, so a `>` inside a
   message is not a target.
 
-  Verified in both directions: 7 new deny-cases fail against the pre-fix hook and **no** allow-case
-  changes. A document that is never executed — including one written and then read back with `cat`,
-  and one written alongside an *unrelated* script being run — stays allowed, and a 22-command benign
-  corpus is untouched. Suite **126 → 136 cases**.
+  "Did something run it?" is deliberately **not** a list of spellings. The first version matched
+  `<interpreter> <path>` with the path as the very next word, so `bash -x s.sh`, `/bin/bash s.sh` and
+  `bash "s.sh"` all walked past it — the same allowlist-of-the-forms-I-thought-of shape this guard
+  keeps regrowing. It now normalises the command the way the rest of the guard does (absolute
+  interpreter path resolved, options and their values consumed, quotes stripped) before asking
+  whether an execution position names the file. The writer side needed the same treatment: `tee`
+  writes a file with no redirect operator at all, and only the *first* `>` was being examined, so
+  `cat 2>/dev/null > s.sh` resolved its target to `/dev/null`.
+
+  Verified in both directions. Against `main`: **21** differences, **every one `allow → deny`**.
+  Suite **177 → 206 cases**, of which 5 are deliberate *negative space* — a document that is never
+  executed, one only read back with `cat`, one written alongside an unrelated script being run, and a
+  basename collision — because a suite made only of spellings the matcher was written to catch proves
+  only that it matches what it matches. Mutation: disabling either helper fails **21** cases. A
+  differential cross-product of 361 generated commands reports **0** real bypasses and **0** real
+  false denials introduced, 48 bypasses closed.
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 

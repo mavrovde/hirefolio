@@ -527,32 +527,118 @@ line_is_all_text_tools() {
 #   3. the terminator actually appears later — otherwise "skip to the end" would
 #      swallow the rest of the command, including anything destructive in it.
 # Any doubt on any of the three and the body stays fully inspected.
-# The file a line redirects stdout into (`> path` / `>> path`), or empty. Only a
-# redirect OUTSIDE quotes counts, so a `>` inside a message is not a target.
-redirect_target() {
-  local masked head rest
-  masked="$(mask_quotes "$1")"
-  case "$masked" in *">"*) ;; *) return 0 ;; esac
-  head="${masked%%>*}"
-  rest="${1:${#head}}"
-  printf '%s' "$rest" | sed -nE 's/^>>?[[:space:]]*([^[:space:];|&<>]+).*/\1/p'
+# Every file a line writes, or empty. A heredoc's body is only exempt while it
+# stays a document, so "what did this line write?" has to be answered generously:
+# missing a writer means the exemption is granted to something that is really a
+# script.
+#
+# Covers `>`, `>>`, and the fd/clobber spellings (`1>`, `2>`, `&>`, `>|`), each
+# only OUTSIDE quotes so a `>` inside a message is not a target — and `tee FILE`,
+# which writes a file with no redirect operator at all and is itself a text tool.
+# ALL targets on the line are returned, not just the first: `cat 2>/dev/null >
+# s.sh` would otherwise resolve to `/dev/null`.
+redirect_targets() {
+  local line="$1" masked i n c tgt
+  masked="$(mask_quotes "$line")"
+  n=${#masked}
+  for (( i=0; i<n; i++ )); do
+    c="${masked:i:1}"
+    [ "$c" = ">" ] || continue
+    # Skip the second char of `>>`, and step over `|` in `>|`.
+    [ "${masked:i-1:1}" = ">" ] && continue
+    tgt="${line:i}"
+    tgt="$(printf '%s' "$tgt" | sed -E 's/^>>?\|?[[:space:]]*//')"
+    tgt="${tgt%%[[:space:];|&<>]*}"
+    tgt="$(unquote "$tgt")"
+    [ -n "$tgt" ] && printf '%s\n' "$tgt"
+  done
+  # `tee [-a] FILE …` — a writer that uses no redirect operator, and is itself a
+  # text tool, so a heredoc piped into it looks exactly like a document. Checked
+  # per SEGMENT so `cat <<'EOF' | tee s.sh` is covered as well as a leading tee.
+  local seg tw OLD2="$IFS"
+  IFS=$'\n'
+  for seg in $(quote_split "$line"); do
+    seg="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
+    case "$seg" in
+      tee\ *)
+        tw="${seg#tee }"
+        while [ "${tw:0:1}" = "-" ]; do tw="${tw#* }"; done
+        tw="${tw%% *}"
+        tw="$(unquote "$tw")"
+        [ -n "$tw" ] && printf '%s\n' "$tw"
+        ;;
+    esac
+  done
+  IFS="$OLD2"
 }
 
-# Does the command execute this path anywhere? Covers the interpreter forms
-# (`bash f`, `sh f`, `source f`, `. f`) and the direct form (`./f`, `chmod +x f`
-# then `./f`). Matched on the basename too, since `cat > ./s.sh` and `bash s.sh`
-# name the same file differently.
+# Strip one layer of surrounding quotes: `"s.sh"` and `'s.sh'` name the same file
+# as `s.sh`, and quoting either side must not decide whether a script is a script.
+unquote() {
+  local s="$1"
+  s="${s#[\"\']}"; s="${s%[\"\']}"
+  printf '%s' "$s"
+}
+
+# Does the command execute this path anywhere?
+#
+# Deliberately NOT a list of spellings. The first version matched only
+# `<interpreter> <path>` with the path as the very next word, so `bash -x s.sh`,
+# `/bin/bash s.sh` and `bash "s.sh"` all walked past it — the same
+# "allowlist of the first forms that came to mind" this file already warns about
+# for shells reached through a pipe. Instead: normalise the command the way the
+# rest of the guard does (absolute interpreter path stripped, options consumed),
+# then ask whether an execution position names this file.
 executes_path() {
-  local cmd="$1" path="$2" base="${2##*/}"
+  local cmd="$1" base="${2##*/}" seg first rest
   [ -z "$base" ] && return 1
-  local esc="${base//./\\.}"
-  printf '%s' "$cmd" | grep -Eq "(^|[;|&[:space:]])(bash|sh|zsh|dash|source|\.)[[:space:]]+[^[:space:];|&]*${esc}([[:space:]]|$|;|\||&)" && return 0
-  printf '%s' "$cmd" | grep -Eq "(^|[;|&[:space:]])\./[^[:space:];|&]*${esc}([[:space:]]|$|;|\||&)" && return 0
+  base="$(unquote "$base")"
+  [ -z "$base" ] && return 1
+
+  local OLD="$IFS"; IFS=$'\n'
+  for seg in $(quote_split "$cmd"); do
+    seg="$(printf '%s' "$seg" | tr '\n\t' '  ' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
+    # Peel wrappers and env assignments, then resolve an absolute interpreter
+    # path — `/bin/bash` is as much an interpreter as `bash`.
+    while printf '%s' "$seg" | grep -Eq '^([A-Za-z_][A-Za-z0-9_]*=[^ ]*|sudo|env|command|exec|nohup|time|xargs)( |$)'; do
+      seg="$(printf '%s' "$seg" | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^ ]*|sudo|env|command|exec|nohup|time|xargs) *//')"
+    done
+    seg="$(printf '%s' "$seg" | sed -E 's#^/[^ ]*/##')"
+    first="${seg%% *}"
+    rest="${seg#"$first"}"; rest="${rest# }"
+
+    case "$first" in
+      bash|sh|zsh|dash|source|.)
+        # Consume interpreter options (and the values of the ones that take a
+        # value) so the script operand is reached however it is spelled.
+        while [ "${rest:0:1}" = "-" ]; do
+          local flag="${rest%% *}"
+          [ "$flag" = "$rest" ] && rest=""
+          [ -z "$rest" ] && break
+          rest="${rest#* }"
+          case "$flag" in -[oO]|--rcfile|--init-file) rest="${rest#* }" ;; esac
+          [ "$flag" = "--" ] && break
+        done
+        [ "$(unquote "${rest%% *}")" = "$base" ] && { IFS="$OLD"; return 0; }
+        [ "$(basename_of "$(unquote "${rest%% *}")")" = "$base" ] && { IFS="$OLD"; return 0; }
+        ;;
+      *)
+        # Direct execution: `./s.sh`, `dir/s.sh`, `"./s.sh"`.
+        local w; w="$(unquote "$first")"
+        case "$w" in
+          ./*|*/*) [ "$(basename_of "$w")" = "$base" ] && { IFS="$OLD"; return 0; } ;;
+        esac
+        ;;
+    esac
+  done
+  IFS="$OLD"
   return 1
 }
 
+basename_of() { printf '%s' "${1##*/}"; }
+
 strip_text_heredocs() {
-  local input="$1" out="" line delim i j n end target
+  local input="$1" out="" line delim i j n end target _skip
   local -a lines=()
   while IFS= read -r line; do lines+=("$line"); done <<< "$input"
   n=${#lines[@]}
@@ -575,10 +661,14 @@ strip_text_heredocs() {
     # A document is only a document until something runs it. If this heredoc is
     # redirected into a file and any LATER part of the same command executes that
     # file, the body was a script all along — keep it and inspect it (#212).
-    target="$(redirect_target "$line")"
-    if [ -n "$target" ] && executes_path "$input" "$target"; then
-      continue
-    fi
+    # Any file this line writes; if the command later runs one of them, the
+    # body was a script all along.
+    _skip=0
+    while IFS= read -r target; do
+      [ -z "$target" ] && continue
+      if executes_path "$input" "$target"; then _skip=1; break; fi
+    done <<< "$(redirect_targets "$line")"
+    [ "$_skip" = 1 ] && continue
 
     i=$end                          # skip the body AND the terminator line
   done
