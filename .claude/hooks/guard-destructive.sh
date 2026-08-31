@@ -74,6 +74,23 @@ NL_SENTINEL=$'\x01'
 # Nesting depth of shell-wrapper unwrapping (see inspect_inner_script).
 INNER_DEPTH=0
 
+# Wall-clock budget, in seconds, for the whole analysis.
+#
+# The hook is registered with a 15 s timeout in .claude/settings.json, and a hook
+# that times out does NOT deny — so an unbounded analysis is itself a bypass: pad
+# a command with enough inner commands and the guard never gets to answer.
+#
+# This is a TIME bound rather than a count of segments, deliberately. Per-segment
+# cost varies with machine speed and with how much text each segment carries, so
+# any fixed count is simultaneously too small on a fast machine (false denials on
+# legitimately long commands) and too large on a slow one (timeouts). `SECONDS`
+# is a bash builtin counting from process start, so this costs nothing to read.
+#
+# Exceeding it DENIES: refusing to analyse must never mean allowing.
+# Overridable so the self-test can force the deadline path in milliseconds
+# instead of shipping an 8-second test case.
+INSPECT_DEADLINE="${GUARD_INSPECT_DEADLINE:-8}"
+
 # A quoted argument that turns out to be shell code: put the newlines back, split
 # it like a real script, and inspect every command in it. Returns 0 (and leaves
 # REASON set) when something in there is blocked.
@@ -85,12 +102,23 @@ inspect_inner_script() {
   # Depth bound. It must fail CLOSED: returning "nothing found" at the bound
   # would mean 8 stacked wrappers deny and 9 allow, i.e. the bypass is simply
   # "nest one level deeper". At the bound we stop analysing and say so.
-  # Depth bound. Returning "nothing found" here is safe ONLY because the caller
-  # falls through and still inspects the flattened body — verified: a destructive
-  # command nested 9/12/16 wrappers deep is denied by that pass. Denying AT the
-  # bound instead was tried and reverted: it pinned nothing (mutation score 0)
-  # and it turned a benign deeply-nested command into a false denial.
-  [ "$INNER_DEPTH" -ge 8 ] && return 1
+  # Depth bound, and it must DENY rather than report "nothing found".
+  #
+  # This was reverted once, on the argument that the flattened fall-through
+  # already caught deep destructive nests so the deny only cost a false denial on
+  # benign deep nesting. That argument was made purely on the deny axis and was
+  # wrong on two counts. The fall-through is now conditional (see
+  # needs_flat_pass), so returning "nothing found" here fails OPEN. And the deny
+  # was also the only cap on analysis cost: without it, cost is 2^depth — 25 s at
+  # depth 9 against a 15 s hook timeout, and a hook that times out does not deny.
+  #
+  # So a command nested this deep is refused rather than analysed. Nesting shell
+  # wrappers 8 deep is not something ordinary work does; the escape hatch is the
+  # usual explicit one.
+  if [ "$INNER_DEPTH" -ge 8 ]; then
+    REASON="BLOCKED: command nests shell wrappers 8+ deep, which this guard refuses to analyse (the analysis cost grows exponentially and an unanalysed command must not be allowed). Simplify it, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
+    return 0
+  fi
   INNER_DEPTH=$((INNER_DEPTH + 1))
 
   # Restore any quoted newlines, then split on them. A body with NO newline is
@@ -121,9 +149,34 @@ inspect_inner_script() {
   [ -n "$REASON" ]
 }
 
+# Does this body need the SECOND, flattened pass as well?
+#
+# The flattened pass exists for exactly one reason: `quote_split` treats `(`, `)`
+# and backtick as separators, so a command substitution in the middle of an
+# invocation fragments it and the multi-condition rules never see all their
+# conditions at once. If none of those characters is present, no fragmentation is
+# possible and the inner pass has already covered the body.
+#
+# Running it unconditionally cost 2^depth: inspect_inner_script recurses into
+# inspect_segment, and then `changed=1` made the enclosing loop descend the SAME
+# subtree a second time. Measured 25 s at depth 9 against a 15 s hook timeout —
+# and a hook that times out does not deny, so the cost was itself a bypass.
+needs_flat_pass() {
+  case "$1" in
+    *"("*|*")"*|*'`'*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # Inspect one command segment (already separator-split). Sets REASON on a hit.
 inspect_segment() {
   local seg="$1"
+
+  if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
+    REASON="BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
+    return 0
+  fi
+
   seg="$(printf '%s' "$seg" | tr '\n\t' '  ' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
 
   # Peel leading env-assignments; a leading GUARD_DESTRUCTIVE=0 authorizes THIS
@@ -170,10 +223,12 @@ inspect_segment() {
     if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +-c '; then
       seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +-c +//; s/^[\"']//")"
       inspect_inner_script "$seg" && return 0
+      needs_flat_pass "$seg" || return 0
       changed=1
     elif printf '%s' "$seg" | grep -Eq '^eval '; then
       seg="$(printf '%s' "$seg" | sed -E "s/^eval +//; s/^[\"']//")"
       inspect_inner_script "$seg" && return 0
+      needs_flat_pass "$seg" || return 0
       changed=1
     elif printf '%s' "$seg" | grep -Eq '^ssh '; then
       # `ssh host "…"` runs its argument on the remote shell. Same reasoning, and

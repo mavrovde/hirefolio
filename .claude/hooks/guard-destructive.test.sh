@@ -7,6 +7,23 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 HOOK="$HERE/guard-destructive.sh"
 fails=0
 
+# Wall-clock assertion. Cost is a SECURITY property here, not ergonomics: the
+# hook has a 15 s timeout and a hook that times out does not deny, so an analysis
+# that is too slow is a bypass. Correctness tests cannot see this — the decision
+# is right, it just arrives too late — so it needs its own kind of check.
+check_fast() { # desc cmd max_seconds
+  local desc="$1" cmd="$2" max="$3" t0 t1 el
+  t0=$(date +%s)
+  printf '{"tool_input":{"command":%s}}' "$(jq -Rn --arg c "$cmd" '$c')" | bash "$HOOK" >/dev/null
+  t1=$(date +%s); el=$((t1 - t0))
+  if [ "$el" -le "$max" ]; then
+    printf 'PASS  [%ss<=%ss]  %s\n' "$el" "$max" "$desc"
+  else
+    printf 'FAIL  took=%ss max=%ss  %s\n' "$el" "$max" "$desc"
+    fails=$((fails + 1))
+  fi
+}
+
 check() { # desc cmd expect
   local desc="$1" cmd="$2" expect="$3" out dec
   out="$(printf '{"tool_input":{"command":%s}}' "$(jq -Rn --arg c "$cmd" '$c')" | bash "$HOOK")"
@@ -404,7 +421,11 @@ BENIGNDEEP=""
 for _i in 1 2 3 4 5 6 7 8 9; do BENIGNDEEP="${BENIGNDEEP}eval \""; done
 BENIGNDEEP="${BENIGNDEEP}echo hello"
 for _i in 1 2 3 4 5 6 7 8 9; do BENIGNDEEP="${BENIGNDEEP}\""; done
-check "depth: 9 deep but benign"     "$BENIGNDEEP"                                 allow
+# Refused, not allowed: at this depth the guard stops analysing, and an
+# unanalysed command must not be let through. Deliberate trade — ordinary work
+# does not nest shell wrappers 8 deep, and the cost of analysing it exceeds the
+# hook's own timeout, at which point a "safe" allow is not safe at all.
+check "depth: 9 deep but benign"     "$BENIGNDEEP"                                 deny
 
 # --- OPTION VALUES ARE NOT SCRIPT OPERANDS (self-audit of the #214 allowlist) -
 # `-o`, `--rcfile` and `--init-file` take a VALUE. Without consuming it, `bash -o
@@ -417,6 +438,32 @@ check "opt-value: -x -s"             "echo \"$DV $V\" | bash -x -s"             
 check "operand after -o value"       "bash -o posix deploy.sh"                     allow
 check "operand after --rcfile value" "bash --rcfile /dev/null setup.sh"            allow
 check "operand after -x"             "bash -x deploy.sh"                           allow
+
+# --- THE ANALYSIS ITSELF MUST BE BOUNDED (#214 review round 3) --------------
+# The hook is registered with a 15 s timeout, and a hook that times out does NOT
+# deny — so unbounded analysis is a bypass in its own right: pad a command with
+# enough inner commands and the guard never gets to answer. Cost was 2^depth
+# (25 s at depth 9, against a command `main` decides in 153 ms) because the
+# flattened pass re-descended the same subtree the inner pass had just walked.
+#
+# Two bounds now: the flattened pass runs only when it can help (the body
+# contains `(`, `)` or a backtick — the fragmentation it exists for), and a
+# wall-clock deadline stops analysis entirely. Both DENY when hit.
+GUARD_INSPECT_DEADLINE=0 check "deadline: refuses rather than allows" "echo hello" deny
+check "deadline: normal work unaffected" "echo hello"                              allow
+
+# Analysis cost was 2^depth: the flattened pass re-descended the same subtree the
+# inner pass had just walked. Depth 9 took 25 s against a command `main` decides
+# in 153 ms — over the hook's 15 s timeout, i.e. an effective allow. These bound
+# it. They are generous (a correct build answers in well under a second) so they
+# fail on an exponential regression, not on a slow machine.
+NEST7=""
+for _i in 1 2 3 4 5 6 7; do NEST7="${NEST7}eval \""; done
+NEST7="${NEST7}npm run build"
+for _i in 1 2 3 4 5 6 7; do NEST7="${NEST7}\""; done
+check_fast "cost: depth-7 nest is fast"   "$NEST7"                                 3
+check_fast "cost: depth-9 nest is fast"   "$DEEP"                                  3
+check_fast "cost: 200-command wrapper"    "bash -c \"$(printf 'echo x; %.0s' $(seq 1 200))echo done\"" 8
 
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."

@@ -19,11 +19,11 @@ All notable changes to this project will be documented in this file.
 
   Same root cause as the #204 rounds, and the same rule applies: what the guard inspects has to be
   what the shell executes. Verified in both directions — running the final suite against `main`'s
-  hook gives **18** differences, **every one `allow → deny`**, so bypasses close with no allow-case
-  moving. Suite **112 → 153 cases**; a 33-command benign corpus stays fully allowed.
-  Mutation-checked: disabling the pipeline detection fails **10** cases, removing the flattened-body
-  fall-through **8**, removing the script-operand check **4**, and treating an option VALUE as a
-  script operand **2**.
+  hook gives **20** differences, **every one `allow → deny`**, so bypasses close with no allow-case
+  moving. Suite **112 → 155 cases**; a 33-command benign corpus stays fully allowed.
+  Mutation-checked: disabling the pipeline detection fails **13** cases, removing the flattened-body
+  fall-through **8**, removing the script-operand check **4**, treating an option VALUE as a script
+  operand **2**, and removing either cost bound **1** each.
 
   Two of those conditions exist because review caught this change making the guard *worse*, and both
   are worth recording rather than smoothing over. Replacing the flattened-body pass with the new
@@ -34,6 +34,21 @@ All notable changes to this project will be documented in this file.
   which denied `bash <script> && git commit -m "…"` — this repo's own pre-push-then-commit flow —
   because a script-file operand reads a file, not the pipe. The forms that genuinely read the
   pipeline are now matched explicitly.
+
+  **The analysis is now bounded, because cost here is a security property.** The hook has a 15 s
+  timeout, and a hook that times out does **not** deny — so an analysis that is too slow is itself a
+  bypass. Review found the cost was `2^depth`: the flattened-body pass re-descended the same subtree
+  the inner pass had just walked. A depth-9 nest followed by a destruction took **25 s** where `main`
+  decides in **153 ms**, i.e. an effective allow on a protected path. Two bounds now: the flattened
+  pass runs only when it can help (the body contains `(`, `)` or a backtick — the fragmentation it
+  exists for), and a wall-clock deadline stops analysis entirely. Both **deny** when hit; refusing to
+  analyse must never mean allowing. Measured after: depth 9 **185 ms**, depth 12 **188 ms** (was
+  25 s and 190 s). Pinned by wall-clock regression tests, since correctness tests cannot see this —
+  the decision is right, it just arrives too late.
+
+  A related bound is **not** fixed here and is filed as #219: the initial quoting scan is O(n) in
+  bash, so a 40 000-character command takes ~21 s on `main` and on this branch alike, exceeding the
+  timeout before any inspection starts. Pre-existing, and this change neither causes nor cures it.
 
   **Cost, measured rather than hand-waved:** inspecting a wrapper's inner commands is real work, so a
   `bash -c` containing *n* commands now costs about 22 ms × *n* (1 command ≈ 0.07 s, 10 ≈ 0.26 s,
