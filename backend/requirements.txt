@@ -17,7 +17,7 @@ passlib[bcrypt]==1.7.4
 email-validator==2.3.0
 python-multipart==0.0.32
 Pillow==12.3.0
-setuptools==83.0.0
+setuptools==84.0.0
 
 
 google-genai==2.19.0
