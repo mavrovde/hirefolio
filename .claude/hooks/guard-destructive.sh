@@ -593,9 +593,12 @@ unquote() {
 # registered with a 15 s timeout, and a hook that times out does NOT deny. The
 # analysis meant to close a bypass had become one.
 #
-# It is also the one place a wrapper peel is needed twice, so it shares
-# peel_wrappers with pipes_into_shell rather than carrying a thinner copy —
-# lessons-learned §21 item 12, applied rather than relearned.
+# NOTE, honestly: `pipes_into_shell` still carries its OWN inline peel. Two
+# copies of one idea is exactly the drift §21 item 12 warns about, and unifying
+# them is tracked in #217 — not done here because that function needs the peel to
+# also report whether it went through `xargs`, so sharing it would change a
+# second call site late in review. The duplication is recorded rather than
+# claimed away.
 collect_executed_paths() {
   local cmd="$1" seg first rest w flag
   local OLD="$IFS"; IFS=$'\n'
@@ -634,8 +637,7 @@ collect_executed_paths() {
 }
 
 # Peel env assignments and wrappers, INCLUDING their options — `sudo -E bash f`
-# and `env -i bash f` are the same execution as `sudo bash f`. Shared with
-# pipes_into_shell so the two cannot drift apart.
+# and `env -i bash f` are the same execution as `sudo bash f`.
 peel_wrappers() {
   local seg="$1"
   while printf '%s' "$seg" | grep -Eq '^([A-Za-z_][A-Za-z0-9_]*=[^ ]*|/?([a-z/]*/)?(sudo|env|command|exec|nohup|time|xargs|doas))( |$)'; do
@@ -649,9 +651,19 @@ peel_wrappers() {
       _f="${seg%% *}"
       [ "$_f" = "$seg" ] && { seg=""; break; }
       seg="${seg#* }"
+      # Consume the flag's VALUE — but never when that "value" is itself the
+      # command. The list cannot be right for every wrapper (`sudo -n` takes no
+      # value while `sudo -u` does), so guessing wrong in the consuming direction
+      # eats the interpreter and the execution disappears: `sudo -n bash f`
+      # became invisible. When the next word looks like an interpreter or a
+      # path, it is the command, not an argument.
       case "$_f" in
-        -u|-g|-p|-U|-C|-h|-n|-P|-I|-a|-d|-L|-s|-e|--user|--group|--prompt|--max-args|--replace)
-          seg="${seg#* }" ;;
+        -u|-g|-p|-U|-C|-h|-I|-a|-d|-L|-s|--user|--group|--prompt|--max-args|--replace)
+          case "${seg%% *}" in
+            bash|sh|zsh|dash|source|.|*/*) ;;   # that is the command — keep it
+            *) seg="${seg#* }" ;;
+          esac
+          ;;
       esac
     done
   done
@@ -662,9 +674,21 @@ peel_wrappers() {
 # made `cat > docs/build.sh …; bash scripts/build.sh` a false denial: two
 # different files sharing a name are not the same file.
 norm_path() {
-  local s="$1"
-  while [ "${s#./}" != "$s" ]; do s="${s#./}"; done
-  printf '%s' "$s"
+  # Collapse the spellings that name the same file, so a comparison cannot be
+  # defeated by punctuation: `.//s.sh`, `dir//s.sh`, `dir/./s.sh`, `a/../s.sh`,
+  # a trailing slash. Stripping only a leading `./` left `.//s.sh` as `/s.sh` —
+  # an absolute path — which matched nothing.
+  #
+  # Done in one sed pass with a bounded loop rather than in shell string
+  # operations: the obvious `${s%%...}` version did not terminate on every input,
+  # and a guard that hangs is a guard that never answers.
+  printf '%s' "$1" | sed -E ':a
+    s#//+#/#g
+    s#(^|/)\./#\1#g
+    s#(^|/)[^/]+/\.\./#\1#g
+    ta
+    s#/$##
+    s#^\./##'
 }
 
 basename_of() { printf '%s' "${1##*/}"; }
@@ -789,6 +813,11 @@ quoted_payloads() {
 
 # Executed paths, computed ONCE and wrapped in sentinels so a lookup is an exact
 # whole-string match rather than a substring hit.
+# Inside the time budget like everything else: this pre-pass walks the whole
+# command, and an analysis that outruns the hook's timeout does not deny.
+if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
+  deny "BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
+fi
 EXECUTED_PATHS="$NL_SENTINEL"
 while IFS= read -r _p; do
   [ -n "$_p" ] && EXECUTED_PATHS="${EXECUTED_PATHS}${_p}${NL_SENTINEL}"

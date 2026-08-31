@@ -658,8 +658,9 @@ EOF"                                                                            
 # The wrapper peel here was a THINNER copy of the one pipes_into_shell already
 # had — it ate wrapper names but not their options, so `sudo -E bash f` walked
 # past while `sudo bash f` (the spelling the suite happened to test) denied. Two
-# copies of one idea drifting apart is §21 item 12, inside the commit that names
-# it; there is now one shared peel.
+# copies of one idea drifting apart is §21 item 12. This peel now consumes
+# options and their values; `pipes_into_shell` still has its own, and unifying
+# them is #217 — stated rather than claimed done.
 check "wrap: sudo -E bash"           "${HDOC}sudo -E bash s.sh"                    deny
 check "wrap: sudo -u NAME bash"      "${HDOC}sudo -u postgres bash s.sh"           deny
 check "wrap: env -i bash"            "${HDOC}env -i bash s.sh"                     deny
@@ -699,6 +700,44 @@ check "write: pipe char refuses strip" "cat >| s.sh <<'EOF'
 $DV $V
 EOF
 bash s.sh"                                                                          deny
+
+# --- A FLAG'S VALUE IS NOT ALWAYS A VALUE (#212 review round 3) -------------
+# Consuming option values made the peel guess, and the list cannot be right for
+# every wrapper: `sudo -u` takes one, `sudo -n` does not. Guessing wrong in the
+# CONSUMING direction ate the interpreter, so the execution vanished entirely —
+# a fail-open introduced by a fix for a fail-open. The peel now refuses to
+# consume a "value" that is itself an interpreter or a path.
+check "flagval: sudo -n bash"        "${HDOC}sudo -n bash s.sh"                    deny
+check "flagval: sudo -P bash"        "${HDOC}sudo -P bash s.sh"                    deny
+check "flagval: doas -n bash"        "${HDOC}doas -n bash s.sh"                    deny
+check "flagval: time -p bash"        "${HDOC}time -p bash s.sh"                    deny
+check "flagval: command -p bash"     "${HDOC}command -p bash s.sh"                 deny
+# ...while flags that really do take a value still have it consumed.
+check "flagval: sudo -u NAME bash"   "${HDOC}sudo -u postgres bash s.sh"           deny
+check "flagval: xargs -n1 bash"      "${HDOC}xargs -n1 bash s.sh"                  deny
+# ...and none of that may make ordinary privileged work look destructive.
+check "flagval: benign sudo -n"      "sudo -n true"                                allow
+check "flagval: benign time -p"      "time -p npm test"                            allow
+
+# --- SAME FILE, DIFFERENT SPELLING -----------------------------------------
+# Comparing paths only after stripping a leading `./` left `.//s.sh` as `/s.sh`,
+# an absolute path matching nothing. These are all one file.
+check "path: .//s.sh"                "cat > s.sh <<'EOF'
+$DV $V
+EOF
+bash .//s.sh"                                                                       deny
+check "path: ./dir/../s.sh"          "cat > s.sh <<'EOF'
+$DV $V
+EOF
+bash ./dir/../s.sh"                                                                 deny
+check "path: dir//s.sh"              "cat > dir/s.sh <<'EOF'
+$DV $V
+EOF
+bash dir//s.sh"                                                                     deny
+check "path: dir/./s.sh"             "cat > dir/s.sh <<'EOF'
+$DV $V
+EOF
+bash dir/./s.sh"                                                                    deny
 
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."

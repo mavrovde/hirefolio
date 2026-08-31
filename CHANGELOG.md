@@ -34,17 +34,19 @@ All notable changes to this project will be documented in this file.
 
   Paths are compared by normalised spelling rather than basename: `cat > docs/build.sh …;
   bash scripts/build.sh` is two different files, and matching on the name alone made it a false
-  denial. The wrapper peel is now **shared** with `pipes_into_shell` instead of being a thinner copy
-  that ate wrapper names but not their options — `sudo -E bash f`, `sudo -u postgres bash f`,
-  `env -i bash f` and `xargs -n1 bash f` all walked past the copy while the one spelling the suite
-  happened to test denied.
+  denial. The wrapper peel here now consumes wrapper options **and their values**, so
+  `sudo -E bash f`, `sudo -u postgres bash f`, `env -i bash f` and `xargs -n1 bash f` no longer walk
+  past while the one spelling the suite happened to test denied — and it refuses to consume a
+  "value" that is itself an interpreter, since guessing wrong in that direction made `sudo -n bash f`
+  disappear entirely. `pipes_into_shell` still carries its own separate peel; unifying the two is
+  tracked in **#217** rather than claimed here.
 
-  Verified in both directions. Against `main`: **30** differences, **every one `allow → deny`**.
-  Suite **177 → 219 cases**, of which several are deliberate *negative space* — a document never
+  Verified in both directions. Against `main`: **41** differences, **every one `allow → deny`**.
+  Suite **177 → 232 cases**, of which several are deliberate *negative space* — a document never
   executed, one only read back with `cat`, one written alongside an unrelated script, a basename
   collision, and benign `sudo -u` / `env -i` usage — because a suite made only of spellings the
   matcher was written to catch proves only that it matches what it matches. Mutation: disabling
-  either helper fails **30** cases; not consuming wrapper option values **1**; not consuming
+  either helper fails **41** cases; not consuming wrapper option values **1**; not consuming
   interpreter option values **2**. A differential cross-product of 361 generated commands reports
   **0** real bypasses and **0** real false denials introduced, 48 bypasses closed.
 
