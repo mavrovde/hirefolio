@@ -19,12 +19,19 @@ All notable changes to this project will be documented in this file.
 
   Same root cause as the #204 rounds, and the same rule applies: what the guard inspects has to be
   what the shell executes. Verified in both directions — running the final suite against `main`'s
-  hook gives **20** differences, **every one `allow → deny`**, so bypasses close with no allow-case
-  moving. Suite **112 → 161 cases**; a 33-command benign corpus stays fully allowed.
-  Mutation-checked: disabling the pipeline detection fails **13** cases, removing the flattened-body
-  fall-through **10**, removing the script-operand check **4**, treating an option VALUE as a script
-  operand **2**, dropping the line-continuation clause **3**, and removing either cost bound **1**
-  each.
+  hook gives **24** differences: **21** are `allow → deny` (bypasses closed) and **3** are
+  `deny → allow` — false denials `main` had, where a wrapped teardown of a scratch `test_*` database
+  was blocked. That is the one destructive operation rule 9 explicitly authorises, and it was being
+  denied on this repo's own prescribed test loop: unwrapping strips a wrapper's leading quote but not
+  its trailing one, so the inner body ended in a stray quote and rule 4's `([ ]|$)` boundary stopped
+  recognising the name as a test database. Rule 5 was hardened for exactly this in #188; rule 4 was
+  not. Suite **112 → 171 cases**; a 33-command benign corpus stays fully allowed.
+
+  Mutation-checked (mutant definitions stated so the numbers are reproducible): making
+  `pipes_into_shell` return false fails **13** cases, `needs_flat_pass` always true **1**, removing
+  the flattened-body fall-through **10**, the script-operand check **4**, an option VALUE read as a
+  script operand **2**, ignoring the line-continuation flag **3**, removing the deadline check **2**,
+  removing the depth deny **1**, and reverting rule 4's boundary **5**.
 
   Two of those conditions exist because review caught this change making the guard *worse*, and both
   are worth recording rather than smoothing over. Replacing the flattened-body pass with the new

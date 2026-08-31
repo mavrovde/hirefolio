@@ -498,6 +498,34 @@ check "continuation: compose down -v" "bash -c \"$DCMP -f a.yml ${BS}down -v\"" 
 check "continuation: rm -rf data"     "bash -c \"$D ${BS}$T\""                    deny
 check "continuation: twice"           "bash -c \"$DCMP ${BS}-f a.yml ${BS}down -v\"" deny
 
+# --- THE test_* EXEMPTION MUST SURVIVE BEING WRAPPED (#214 review round 5) ---
+# Unwrapping a wrapper strips its LEADING quote but not the trailing one, so an
+# inner body arrives ending in a stray quote. Rule 4's boundary was `([ ]|$)`,
+# which then failed to recognise a quoted scratch-DB name as a test database —
+# denying the one destructive operation rule 9 explicitly authorises, on this
+# repo's own prescribed test loop. Rule 5 was hardened for exactly this in #188;
+# rule 4 was not. The suite missed it because it only pinned the bare form.
+DBD="drop""db"
+check "test-db: wrapped teardown"     "bash -c \"pytest -q; $DBD test_mavrov_review\""  allow
+check "test-db: full pytest loop"     "bash -c \"cd backend && venv/bin/python -m pytest -q; $DBD test_mavrov_x\"" allow
+check "test-db: sh -c single quotes"  "sh -c '$DBD test_mavrov'"                        allow
+check "test-db: eval"                 "eval \"$DBD test_mavrov_ci\""                    allow
+check "test-db: two scratch drops"    "bash -c \"$DBD test_mavrov_a; $DBD test_mavrov_b\"" allow
+# ...and the exemption must not widen: a non-test database stays denied however
+# it is wrapped.
+check "test-db: non-test wrapped"     "bash -c \"pytest -q; $DBD mavrov\""              deny
+check "test-db: non-test eval"        "eval \"$DBD production\""                        deny
+check "test-db: suffix not prefix"    "bash -c \"$DBD mavrov_test\""                    deny
+
+# The deadline's ALLOW side needs pinning too: a bound that only ever denies
+# would pass every test while quietly denying ordinary work.
+# 100 inner commands: comfortably inside the 8 s budget (~2 s), but enough that
+# lowering the deadline flips it. A trivial 3-command case passed even at a 2 s
+# deadline, so it pinned nothing — a bound that only ever denies would keep a
+# green suite while quietly denying ordinary work.
+BIGOK="bash -c \"$(printf 'echo x; %.0s' $(seq 1 100))echo done\""
+check "deadline: allow side pinned"   "$BIGOK"                                      allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

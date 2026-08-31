@@ -327,7 +327,15 @@ inspect_segment() {
   fi
   # 4. Dropping a non-`test_*` database.
   if printf '%s' "$seg" | grep -Eq '^dropdb\b'; then
-    if ! printf '%s' "$seg" | grep -Eq '(^|[ ])test_[A-Za-z0-9_]+([ ]|$)'; then
+    # Boundaries accept a surrounding quote, exactly as rule 5 does below. A
+    # wrapper's LEADING quote is stripped when it is unwrapped but the trailing
+    # one is not, so an inner body arrives ending in a stray quote. A boundary of
+    # ([ ]|$) then fails to recognise a quoted test-database name as a test
+    # database, and DENIES the one destructive operation rule 9 explicitly
+    # authorises: tearing down a scratch DB at the end of a wrapped test run.
+    # That is this repo's own prescribed loop, so the false denial lands on
+    # exactly the workflow the exemption exists for.
+    if ! printf '%s' "$seg" | grep -Eq '(^|[ ="'"'"'])test_[A-Za-z0-9_]+([ ="'"'"';]|$)'; then
       REASON="BLOCKED: 'dropdb' on a non-test database is irreversible data loss. Only 'test_*' databases may be dropped autonomously. Prefix GUARD_DESTRUCTIVE=0 if the user named this DB to drop."
       return 0
     fi
