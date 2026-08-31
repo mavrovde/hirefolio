@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
+  guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
+
+  1. Separators packed inside a shell wrapper's quoted argument —
+     `bash -c "echo hi; <docker volume rm>"`. The outer quote-aware split correctly protects those
+     separators *because they are inside quotes*, so the whole script arrived as one `echo`-led
+     segment. A wrapper's argument is now re-split as the script it is, not read as one command.
+  2. A pipeline whose final stage is a shell reading stdin —
+     `printf "%s" "<destroy>" | bash`. Neither segment is dangerous alone: `printf` is a text tool
+     and `bash` by itself destroys nothing. But the construct means "execute this text", so quoted
+     payloads earlier in such a pipeline are now read as code.
+
+  Same root cause as the #204 rounds, and the same rule applies: what the guard inspects has to be
+  what the shell executes. Verified in both directions — running the final suite against `main`'s
+  hook gives **24** differences: **21** are `allow → deny` (bypasses closed) and **3** are
+  `deny → allow` — false denials `main` had, where a wrapped teardown of a scratch `test_*` database
+  was blocked. That is the one destructive operation rule 9 explicitly authorises, and it was being
+  denied on this repo's own prescribed test loop: unwrapping strips a wrapper's leading quote but not
+  its trailing one, so the inner body ended in a stray quote and rule 4's `([ ]|$)` boundary stopped
+  recognising the name as a test database. Rule 5 was hardened for exactly this in #188; rule 4 was
+  not. Suite **112 → 177 cases**; a 33-command benign corpus stays fully allowed.
+
+  Mutation-checked (mutant definitions stated so the numbers are reproducible): making
+  `pipes_into_shell` return false fails **13** cases, `needs_flat_pass` always true **1**, removing
+  the flattened-body fall-through **10**, the script-operand check **4**, an option VALUE read as a
+  script operand **2**, ignoring the line-continuation flag **3**, removing the deadline check **2**,
+  removing the depth deny **2**, reverting rule 4's boundary **5**, and removing the option-value
+  strip **1**. Measured against a generated cross-product (destructive and benign cores × 14 wrapper
+  shapes, 266 commands) rather than a curated list — a hand-written corpus keeps agreeing with
+  whoever wrote it: **0** real bypasses introduced, **0** real false denials introduced, 72 bypasses
+  closed, 3 false denials removed.
+
+  Two of those conditions exist because review caught this change making the guard *worse*, and both
+  are worth recording rather than smoothing over. Replacing the flattened-body pass with the new
+  inner-script pass looked like a strict improvement but was not — `quote_split` treats `(`, `)` and
+  backtick as separators, so a command substitution inside an invocation fragments it and the
+  multi-condition rules never see all their conditions at once; six protected paths went
+  `deny → allow`. And phrasing the shell test as "any shell that is not `-c`" made it a **negation**,
+  which denied `bash <script> && git commit -m "…"` — this repo's own pre-push-then-commit flow —
+  because a script-file operand reads a file, not the pipe. The forms that genuinely read the
+  pipeline are now matched explicitly.
+
+  **The analysis is now bounded, because cost here is a security property.** The hook has a 15 s
+  timeout, and a hook that times out does **not** deny — so an analysis that is too slow is itself a
+  bypass. Review found the cost was `2^depth`: the flattened-body pass re-descended the same subtree
+  the inner pass had just walked. A depth-9 nest followed by a destruction took **25 s** where `main`
+  decides in **153 ms**, i.e. an effective allow on a protected path. Two bounds now: the flattened
+  pass runs only when it can help — when the body contains `(`, `)` or a backtick, or the command uses
+  a line continuation (bash joins those lines into one invocation while the inner pass splits on the
+  newline; a *bare* newline genuinely terminates the command, so splitting there is correct) — and a
+  wall-clock deadline stops analysis entirely. Both **deny** when hit; refusing to
+  analyse must never mean allowing. Being wall-clock, that bound is load-dependent: under heavy
+  load a large command can be denied that would be allowed on an idle machine. The direction is
+  deliberate — deny, never allow — but the non-determinism is real and is recorded here rather
+  than left to be discovered. Measured after: depth 9 **185 ms**, depth 12 **188 ms** (was
+  25 s and 190 s). Pinned by wall-clock regression tests, since correctness tests cannot see this —
+  the decision is right, it just arrives too late.
+
+  A related bound is **not** fixed here and is filed as #219: the initial quoting scan is O(n) in
+  bash, so a 40 000-character command takes ~21 s on `main` and on this branch alike, exceeding the
+  timeout before any inspection starts. Pre-existing, and this change neither causes nor cures it.
+
+  **Cost, and the user-visible contract it creates.** Inspecting a wrapper's inner commands is real
+  work: a `bash -c` containing *n* commands costs roughly 22 ms × *n* (1 ≈ 0.07 s, 10 ≈ 0.26 s,
+  50 ≈ 1.1 s) against a flat ~0.05 s before, and commands *without* a shell wrapper are unaffected.
+  Beyond roughly **350 inner commands** the deadline is reached and the command is **denied** rather
+  than allowed — that is the new contract, and it is stated here rather than left to be discovered.
+
+  One shape is bounded rather than flat: a command carrying a **line continuation** must run the
+  flattened pass (it is the only thing that catches a fragmented invocation), and inside a nest that
+  means running it at every level. Measured: depth 7 ≈ 6.5 s, depth 8 denied at ≈ 7.1 s by the
+  deadline, depth 10 denied at ≈ 0.2 s by the depth bound. An ordinary continuation with no nesting
+  is ≈ 0.1 s. Bounded, deliberate, and pinned by wall-clock tests.
 - **`guard-destructive.sh` no longer treats prose as a command — without weakening the guard**
   (#204) — a quoted argument spanning newlines was split on the raw newline, so a line of *text* that
   merely began with a destructive verb was inspected as an invocation. Writing documentation about
@@ -103,7 +176,9 @@ All notable changes to this project will be documented in this file.
   the variable from the developer's environment (and `.env`). Process environment *overrides* `.env`,
   so a key exported from a shell profile reached the backend container silently. Verified on a real
   machine: with the previous overlay `docker compose config` resolved a live 53-character key into
-  the stack; with the fix it resolves `""`. `docker-compose.e2e.yml` now pins the (renamed) Gemini key empty for the backend, so **every** consumer of the E2E overlay is covered — not only the invocation that
+  the stack; with the fix it resolves `""`. `docker-compose.e2e.yml` now pins the (renamed)
+  Gemini key empty for the backend, so **every** consumer of the E2E overlay is covered — not
+  only the invocation that
   remembers to export it — and the backend falls back to the in-stack Ollama exactly as in CI
   (verified: container env empty, stack healthy, the five Gemini-touching admin specs pass in 12.5 s).
   `deploy.yml`'s backend test job also sets it explicitly rather than relying on the runner simply

@@ -71,15 +71,81 @@ REASON=""
 # keeps it intact through the space-collapsing normaliser below.
 NL_SENTINEL=$'\x01'
 
+# Does the ORIGINAL command contain a line continuation (backslash immediately
+# before a newline)? bash joins those lines into ONE command, but the inner pass
+# splits on the newline, so a single invocation is fragmented and the
+# multi-condition rules see only halves.
+#
+# Computed once, here, because inspect_segment normalises newlines to spaces
+# before the wrapper branch runs — by then the continuation is unrecoverable, and
+# testing for a bare backslash instead would fire on every nested `eval "…\"…\""`
+# and bring back the exponential cost this bound exists to prevent.
+case "$CMD" in
+  *\\$'\n'*) HAS_CONTINUATION=1 ;;
+  *) HAS_CONTINUATION=0 ;;
+esac
+
+# Nesting depth of shell-wrapper unwrapping (see inspect_inner_script).
+INNER_DEPTH=0
+
+# Wall-clock budget, in seconds, for the whole analysis.
+#
+# The hook is registered with a 15 s timeout in .claude/settings.json, and a hook
+# that times out does NOT deny — so an unbounded analysis is itself a bypass: pad
+# a command with enough inner commands and the guard never gets to answer.
+#
+# This is a TIME bound rather than a count of segments, deliberately. Per-segment
+# cost varies with machine speed and with how much text each segment carries, so
+# any fixed count is simultaneously too small on a fast machine (false denials on
+# legitimately long commands) and too large on a slow one (timeouts). `SECONDS`
+# is a bash builtin counting from process start, so this costs nothing to read.
+#
+# Exceeding it DENIES: refusing to analyse must never mean allowing.
+#
+# Overridable so the self-test can force the deadline path in milliseconds rather
+# than shipping an 8-second test case. A non-numeric override falls back to the
+# default instead of making `[ "$SECONDS" -ge "$INSPECT_DEADLINE" ]` error out —
+# on a guard, a malformed setting must not become a way to switch it off.
+INSPECT_DEADLINE="${GUARD_INSPECT_DEADLINE:-8}"
+case "$INSPECT_DEADLINE" in
+  ''|*[!0-9]*) INSPECT_DEADLINE=8 ;;
+esac
+
 # A quoted argument that turns out to be shell code: put the newlines back, split
 # it like a real script, and inspect every command in it. Returns 0 (and leaves
 # REASON set) when something in there is blocked.
 inspect_inner_script() {
   local body="$1" line inner
-  case "$body" in
-    *"$NL_SENTINEL"*) ;;
-    *) return 1 ;;   # single-line: the caller's normal path already covers it
-  esac
+  # Recursion guard: wrappers can nest (`bash -c "bash -c '…'"`). The depth is
+  # bounded so a pathological input cannot spin here; hitting the bound is
+  # treated as "cannot analyse", and the caller's normal path still applies.
+  # Depth bound. It must fail CLOSED: returning "nothing found" at the bound
+  # would mean 8 stacked wrappers deny and 9 allow, i.e. the bypass is simply
+  # "nest one level deeper". At the bound we stop analysing and say so.
+  # Depth bound, and it must DENY rather than report "nothing found".
+  #
+  # This was reverted once, on the argument that the flattened fall-through
+  # already caught deep destructive nests so the deny only cost a false denial on
+  # benign deep nesting. That argument was made purely on the deny axis and was
+  # wrong on two counts. The fall-through is now conditional (see
+  # needs_flat_pass), so returning "nothing found" here fails OPEN. And the deny
+  # was also the only cap on analysis cost: without it, cost is 2^depth — 25 s at
+  # depth 9 against a 15 s hook timeout, and a hook that times out does not deny.
+  #
+  # So a command nested this deep is refused rather than analysed. Nesting shell
+  # wrappers 8 deep is not something ordinary work does; the escape hatch is the
+  # usual explicit one.
+  if [ "$INNER_DEPTH" -ge 8 ]; then
+    REASON="BLOCKED: command nests shell wrappers 8+ deep, which this guard refuses to analyse (the analysis cost grows exponentially and an unanalysed command must not be allowed). Simplify it, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
+    return 0
+  fi
+  INNER_DEPTH=$((INNER_DEPTH + 1))
+
+  # Restore any quoted newlines, then split on them. A body with NO newline is
+  # still processed: `bash -c "echo hi; <destroy>"` packs its commands with a
+  # semicolon, and because that separator sat inside the wrapper's quotes the
+  # outer quote_split protected it — leaving one segment whose benign first
+  # token hid the rest (#210).
   body="${body//$NL_SENTINEL/$'\n'}"
 
   # Split on the restored NEWLINES FIRST, then apply quote_split within each
@@ -99,12 +165,44 @@ inspect_inner_script() {
     IFS="$OLD"
   done <<< "$body"
   IFS="$OLD"
+  INNER_DEPTH=$((INNER_DEPTH - 1))
   [ -n "$REASON" ]
+}
+
+# Does this body need the SECOND, flattened pass as well?
+#
+# The flattened pass exists for exactly one reason: `quote_split` treats `(`, `)`
+# and backtick as separators, so a command substitution in the middle of an
+# invocation fragments it and the multi-condition rules never see all their
+# conditions at once. If none of those characters is present, no fragmentation is
+# possible and the inner pass has already covered the body.
+#
+# Running it unconditionally cost 2^depth: inspect_inner_script recurses into
+# inspect_segment, and then `changed=1` made the enclosing loop descend the SAME
+# subtree a second time. Measured 25 s at depth 9 against a 15 s hook timeout —
+# and a hook that times out does not deny, so the cost was itself a bypass.
+needs_flat_pass() {
+  case "$1" in
+    *"("*|*")"*|*'`'*) return 0 ;;
+  esac
+  # A LINE CONTINUATION also fragments a single invocation. bash joins
+  # `<cmd> \` + newline + `<args>` into one command, but the inner pass splits on
+  # that newline, so the multi-condition rules see the halves separately. A bare
+  # newline is different: it really does terminate the command, so splitting
+  # there is correct and needs no flattened pass.
+  [ "$HAS_CONTINUATION" = 1 ] && return 0
+  return 1
 }
 
 # Inspect one command segment (already separator-split). Sets REASON on a hit.
 inspect_segment() {
-  local seg="$1"
+  local seg="$1" _dbargs
+
+  if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
+    REASON="BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
+    return 0
+  fi
+
   seg="$(printf '%s' "$seg" | tr '\n\t' '  ' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
 
   # Peel leading env-assignments; a leading GUARD_DESTRUCTIVE=0 authorizes THIS
@@ -139,12 +237,25 @@ inspect_segment() {
     fi
     # bash -c "…" / sh -c '…' / zsh -c … / eval … / ssh host "…" — the quoted
     # argument is a SCRIPT, so inspect the command(s) inside it.
+    #
+    # Two passes are needed, and BOTH matter. `inspect_inner_script` re-splits the
+    # body so packed separators are seen (#210) — but `quote_split` also treats
+    # `(`, `)` and backtick as separators, so a command substitution in the middle
+    # of an invocation FRAGMENTS it, and the multi-condition rules (compose +
+    # `down` + `-v`; `rm` + recursive + data path) never see all their conditions
+    # in one piece. Falling through afterwards re-inspects the FLATTENED body as a
+    # single segment, which is what catches those. Returning early here made the
+    # guard strictly weaker than before on six protected paths.
     if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +-c '; then
-      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +-c +//; s/^[\"']//")"; changed=1
+      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +-c +//; s/^[\"']//")"
       inspect_inner_script "$seg" && return 0
+      needs_flat_pass "$seg" || return 0
+      changed=1
     elif printf '%s' "$seg" | grep -Eq '^eval '; then
-      seg="$(printf '%s' "$seg" | sed -E "s/^eval +//; s/^[\"']//")"; changed=1
+      seg="$(printf '%s' "$seg" | sed -E "s/^eval +//; s/^[\"']//")"
       inspect_inner_script "$seg" && return 0
+      needs_flat_pass "$seg" || return 0
+      changed=1
     elif printf '%s' "$seg" | grep -Eq '^ssh '; then
       # `ssh host "…"` runs its argument on the remote shell. Same reasoning, and
       # the blast radius there is someone else's machine.
@@ -216,7 +327,35 @@ inspect_segment() {
   fi
   # 4. Dropping a non-`test_*` database.
   if printf '%s' "$seg" | grep -Eq '^dropdb\b'; then
-    if ! printf '%s' "$seg" | grep -Eq '(^|[ ])test_[A-Za-z0-9_]+([ ]|$)'; then
+    # Boundaries accept a surrounding QUOTE only — deliberately narrower than
+    # rule 5's class, which also accepts `=` and `/`.
+    #
+    # POLARITY IS THE POINT. Rule 5's class sits on a DENY condition, where a
+    # wider class denies more and is therefore conservative. This one sits on an
+    # EXEMPTION, where a wider class ALLOWS more — so the same widening inverts.
+    # Adding `=` here let any `--dbname=test_x` anywhere in the segment disarm the
+    # rule while the actual operand was the production database. When copying a
+    # boundary between rules, check which way its polarity runs.
+    #
+    # The fix this class exists for: a
+    # wrapper's LEADING quote is stripped when it is unwrapped but the trailing
+    # one is not, so an inner body arrives ending in a stray quote. A boundary of
+    # ([ ]|$) then fails to recognise a quoted test-database name as a test
+    # database, and DENIES the one destructive operation rule 9 explicitly
+    # authorises: tearing down a scratch DB at the end of a wrapped test run.
+    # That is this repo's own prescribed loop, so the false denial lands on
+    # exactly the workflow the exemption exists for.
+    # Option VALUES are not the operand. `--dbname=test_x <prod>` names a test
+    # database in a flag while dropping production, so `=`-joined flags are
+    # stripped before asking whether a test database is being dropped.
+    #
+    # SCOPE: `=`-joined only. A SPACE-separated value (`--maintenance-db test_x
+    # <prod>`, `-U test_admin <prod>`) still grants the exemption — tracked in
+    # #217 along with the same bug in the wrapper unwrap and in
+    # pipes_into_shell. Stating the limit here rather than implying the flag
+    # class is fully handled.
+    _dbargs="$(printf '%s' "$seg" | sed -E 's/(^| )--?[A-Za-z][A-Za-z-]*=[^ ]*//g')"
+    if ! printf '%s' "$_dbargs" | grep -Eq '(^|[ "'"'"'])test_[A-Za-z0-9_]+([ "'"'"']|$)'; then
       REASON="BLOCKED: 'dropdb' on a non-test database is irreversible data loss. Only 'test_*' databases may be dropped autonomously. Prefix GUARD_DESTRUCTIVE=0 if the user named this DB to drop."
       return 0
     fi
@@ -414,7 +553,101 @@ strip_text_heredocs() {
   printf '%s' "$out"
 }
 
+# Is any segment a BARE shell — i.e. a shell reading its script from stdin?
+# `… | bash`, `… | sh -s`, `… | sudo bash`. That construct means "execute the
+# text that reaches me", so quoted text earlier in the pipeline is CODE, however
+# innocent its producing command looks (#210).
+pipes_into_shell() {
+  local seg first rest optless via_xargs
+  local OLD="$IFS"; IFS=$'\n'
+  for seg in $1; do
+    # Peel wrappers, including ones that take their own options (`sudo -E`,
+    # `xargs -0`), then an absolute path — `/bin/bash` is as much a shell as
+    # `bash`. Matching two exact spellings made this an allowlist of the first
+    # two forms that came to mind; every other spelling executed unguarded.
+    seg="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
+    via_xargs=0
+    while printf '%s' "$seg" | grep -Eq '^(sudo|env|command|exec|nohup|time|xargs)( |$)'; do
+      printf '%s' "$seg" | grep -Eq '^xargs( |$)' && via_xargs=1
+      seg="$(printf '%s' "$seg" | sed -E 's/^(sudo|env|command|exec|nohup|time|xargs) *//')"
+      while printf '%s' "$seg" | grep -Eq '^-'; do
+        seg="$(printf '%s' "$seg" | sed -E 's/^-[^ ]* *//')"
+      done
+    done
+    seg="$(printf '%s' "$seg" | sed -E 's#^/[^ ]*/##')"
+    first="${seg%% *}"
+    case "$first" in
+      bash|sh|zsh|dash)
+        # Behind xargs the piped text becomes the `-c` argument, so it is code
+        # arriving by pipe however the rest of the line reads.
+        if [ "$via_xargs" = 1 ]; then IFS="$OLD"; return 0; fi
+
+        # Which forms actually read the PIPE? Match them EXPLICITLY. Phrasing this
+        # as "anything that is not -c" made it a negation, and negations here are
+        # how this guard grows false denials: `bash ci.sh` takes its script from a
+        # FILE operand, reads nothing from the pipe, and was being treated as a
+        # shell executing the pipeline — which reclassified every quoted string on
+        # the line as code and denied this repo's own
+        # `bash …test.sh && git commit -m "…"` flow.
+        rest="${seg#"$first"}"
+        rest="${rest# }"
+        case "$rest" in
+          "")            IFS="$OLD"; return 0 ;;   # bare `bash` — reads stdin
+          "-"|"-s"|"-s "*|"- "*)                    # explicit stdin forms
+                         IFS="$OLD"; return 0 ;;
+          -*)            # Options only, no operand: still stdin (`bash -x`, `bash -e -x`).
+                         # `-o`/`--rcfile`/`--init-file` take a VALUE, which would
+                         # otherwise read as a script operand — `bash -o posix`
+                         # still reads stdin.
+                         optless="$(printf '%s' "$rest" | sed -E 's/(^| )(-o|--rcfile|--init-file) +[^ ]+//g')"
+                         case "$optless" in
+                           *" "[!-]*) ;;            # ...unless a real operand follows
+                           *) IFS="$OLD"; return 0 ;;
+                         esac
+                         ;;
+        esac
+        ;;
+    esac
+  done
+  IFS="$OLD"; return 1
+}
+
+# The contents of each quoted region in a segment, one per line.
+quoted_payloads() {
+  local s="$1" cur="" i c q="" n=${#1}
+  for (( i=0; i<n; i++ )); do
+    c="${s:i:1}"
+    if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
+      [ -n "$q" ] && cur+="${s:i+1:1}"
+      i=$((i + 1)); continue
+    fi
+    if [ -n "$q" ]; then
+      if [ "$c" = "$q" ]; then q=""; printf '%s\n' "$cur"; cur=""; else cur+="$c"; fi
+      continue
+    fi
+    case "$c" in \'|\") q="$c" ;; esac
+  done
+  [ -n "$q" ] && [ -n "$cur" ] && printf '%s\n' "$cur"
+}
+
 SEGMENTS="$(quote_split "$(strip_text_heredocs "$CMD")")"
+
+# When the command feeds a shell from stdin, re-read every quoted argument in it
+# as a script before the normal pass. Without this, `printf "%s" "<destroy>" |
+# bash` is two segments — one led by a text tool, one that is just `bash` — and
+# neither looks destructive on its own.
+if pipes_into_shell "$SEGMENTS"; then
+  OLDIFS="$IFS"; IFS=$'\n'
+  for seg in $SEGMENTS; do
+    [ -n "$REASON" ] && break
+    for payload in $(quoted_payloads "$seg"); do
+      [ -n "$REASON" ] && break
+      inspect_inner_script "$payload"
+    done
+  done
+  IFS="$OLDIFS"
+fi
+
 OLDIFS="$IFS"; IFS=$'\n'
 for seg in $SEGMENTS; do
   [ -n "$REASON" ] && break

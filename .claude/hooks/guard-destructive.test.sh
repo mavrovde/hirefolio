@@ -7,6 +7,23 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 HOOK="$HERE/guard-destructive.sh"
 fails=0
 
+# Wall-clock assertion. Cost is a SECURITY property here, not ergonomics: the
+# hook has a 15 s timeout and a hook that times out does not deny, so an analysis
+# that is too slow is a bypass. Correctness tests cannot see this — the decision
+# is right, it just arrives too late — so it needs its own kind of check.
+check_fast() { # desc cmd max_seconds
+  local desc="$1" cmd="$2" max="$3" t0 t1 el
+  t0=$(date +%s)
+  printf '{"tool_input":{"command":%s}}' "$(jq -Rn --arg c "$cmd" '$c')" | bash "$HOOK" >/dev/null
+  t1=$(date +%s); el=$((t1 - t0))
+  if [ "$el" -le "$max" ]; then
+    printf 'PASS  [%ss<=%ss]  %s\n' "$el" "$max" "$desc"
+  else
+    printf 'FAIL  took=%ss max=%ss  %s\n' "$el" "$max" "$desc"
+    fails=$((fails + 1))
+  fi
+}
+
 check() { # desc cmd expect
   local desc="$1" cmd="$2" expect="$3" out dec
   out="$(printf '{"tool_input":{"command":%s}}' "$(jq -Rn --arg c "$cmd" '$c')" | bash "$HOOK")"
@@ -317,6 +334,214 @@ $DV $V
 EOF"                                                                             deny
 # ...and an escaped quote in an ordinary message stays allowed.
 check "escq: commit msg, no heredoc" "git commit -m \"the \\\" char and $D $T\"" allow
+
+# --- PACKED COMMANDS BEHIND A BENIGN TOKEN (#210) ---------------------------
+# Two shapes where a destructive command hides behind something harmless. Both
+# were allowed on `main` and are the same root cause as #204's rounds: the guard
+# inspects the FIRST token of a segment, so anything that keeps the destruction
+# out of first position slips past.
+
+# (a) Separators packed INSIDE a shell wrapper's quoted argument. The outer
+#     quote_split correctly protects them (they are inside quotes), so the whole
+#     script arrives as one `echo`-led segment. The wrapper's argument is now
+#     re-split as the script it is.
+check "packed: ; inside bash -c"     "bash -c \"echo hi; $DV $V\""                deny
+check "packed: && inside bash -c"    "bash -c \"echo hi && $D $T\""               deny
+check "packed: || inside sh -c"      "sh -c \"false || $DV $V\""                  deny
+check "packed: ; inside eval"        "eval \"echo hi; $DV $V\""                   deny
+check "packed: nested bash -c"       "bash -c \"bash -c '$DV $V'\""               deny
+
+# (b) A pipeline whose final stage is a shell reading stdin. `printf`/`echo` are
+#     text tools and `bash` alone is not destructive, so neither segment looks
+#     dangerous on its own — but the construct means "execute this text".
+check "pipe: printf into bash"       "printf \"%s\" \"$DV $V\" | bash"            deny
+check "pipe: echo into sh"           "echo \"$D $T\" | sh"                        deny
+check "pipe: echo into sudo bash"    "echo \"$DV $V\" | sudo bash"                deny
+check "pipe: echo into bash -s"      "echo \"$D $T\" | bash -s"                   deny
+
+# ...and none of that may cost a false denial.
+check "pipe: benign echo into bash"  "echo \"hello\" | bash"                      allow
+check "pipe: curl into bash"         "curl -s https://example.com/i.sh | bash"    allow
+check "packed: benign bash -c"       "bash -c \"echo hello world\""               allow
+check "packed: prose in bash -c"     "bash -c \"echo 'note: $D $T is bad'\""      allow
+check "pipe: grep into wc, no shell" "grep -r \"$D $T\" docs/ | wc -l"            allow
+
+# --- BOTH PASSES OVER A WRAPPER BODY ARE LOAD-BEARING (#210 review) ---------
+# Re-splitting a wrapper's argument catches packed separators — but `quote_split`
+# also treats `(`, `)` and backtick as separators, so a COMMAND SUBSTITUTION in
+# the middle of an invocation fragments it, and the multi-condition rules
+# (compose + `down` + `-v`; `rm` + recursive + data path) never see all their
+# conditions in one piece. The fall-through that re-inspects the FLATTENED body
+# as one segment is what catches those. Dropping it made the guard strictly
+# weaker than before on these six paths.
+DCMP="docker com""pose"
+check "subst: compose down -v, \$()"  "bash -c \"$DCMP -f \$(echo docker-compose.yml) down -v\"" deny
+check "subst: compose down -v, btick" "bash -c \"$DCMP -f \`echo docker-compose.yml\` down -v\"" deny
+check "subst: eval compose down -v"   "eval \"$DCMP -f \$(echo docker-compose.yml) down -v\""    deny
+check "subst: rm data, \$()"          "bash -c \"$D \$(pwd)/data\""                              deny
+check "subst: rm data, backtick"      "bash -c \"$D \`pwd\`/data\""                              deny
+check "subst: sh -c rm data"          "sh -c \"$D \$(pwd)/data\""                                deny
+check "subst: eval rm data"           "eval \"$D \$(pwd)/data\""                                 deny
+
+# --- A SHELL BY ANY OTHER SPELLING (#210 review, finding 3) -----------------
+# The first version matched two exact spellings, which made it an allowlist of
+# the forms that came to mind rather than a test for "is this a shell". Anything
+# that is not `-c` reads its script from elsewhere — stdin, `-s`, `-`, a
+# here-string — and text arriving by pipe is then code.
+check "pipe: bash -x"                "echo \"$DV $V\" | bash -x"                   deny
+check "pipe: bash -"                 "echo \"$DV $V\" | bash -"                    deny
+check "pipe: absolute /bin/bash"     "echo \"$DV $V\" | /bin/bash"                 deny
+check "pipe: sudo -E bash"           "echo \"$D $T\" | sudo -E bash"               deny
+check "pipe: xargs -0 bash -c"       "echo \"$DV $V\" | xargs -0 bash -c"          deny
+check "pipe: zsh"                    "echo \"$D $T\" | zsh"                        deny
+# ...and ordinary xargs pipelines stay allowed.
+check "pipe: benign xargs echo"      "ls | xargs -n1 echo"                         allow
+check "pipe: xargs rm of logs"       "find . -name '*.log' | xargs rm -f"          allow
+
+# The wrapper-depth bound must fail CLOSED: if it returned "nothing found", the
+# bypass would simply be "nest one level deeper".
+# A shell with a SCRIPT-FILE OPERAND reads that file, not the pipe. Phrasing the
+# test as "any shell that is not -c" made it a negation, and it denied this
+# repo's own pre-push-then-commit flow — §21.5 ("exempt via an allowlist, never a
+# negation") and §21.7 ("a guard that fires on documentation is a real bug"),
+# both of which I wrote before breaking them here.
+check "operand: test.sh && commit"   "bash .claude/hooks/guard-destructive.test.sh && git commit -m \"$DV stays blocked\"" allow
+check "operand: release && tag"      "bash release.sh --patch && git tag -a v1.11.0 -m \"$D $T guard\"" allow
+check "operand: verify; gh release"  "time bash ./verify_all.sh; gh release create v1.11.0 --notes \"$DCMP down -v blocked\"" allow
+check "operand: script + quoted arg" "bash ci.sh && echo \"$DV $V\""                allow
+# A deeply nested destructive command is still caught — by the flattened-body
+# pass, which is why denying AT the depth bound was unnecessary (and cost a false
+# denial on benign deep nesting).
+DEEP=""
+for _i in 1 2 3 4 5 6 7 8 9; do DEEP="${DEEP}eval \""; done
+DEEP="${DEEP}${DV} ${V}"
+for _i in 1 2 3 4 5 6 7 8 9; do DEEP="${DEEP}\""; done
+check "depth: 9 stacked evals"       "$DEEP"                                       deny
+BENIGNDEEP=""
+for _i in 1 2 3 4 5 6 7 8 9; do BENIGNDEEP="${BENIGNDEEP}eval \""; done
+BENIGNDEEP="${BENIGNDEEP}echo hello"
+for _i in 1 2 3 4 5 6 7 8 9; do BENIGNDEEP="${BENIGNDEEP}\""; done
+# Refused, not allowed: at this depth the guard stops analysing, and an
+# unanalysed command must not be let through. Deliberate trade — ordinary work
+# does not nest shell wrappers 8 deep, and the cost of analysing it exceeds the
+# hook's own timeout, at which point a "safe" allow is not safe at all.
+check "depth: 9 deep but benign"     "$BENIGNDEEP"                                 deny
+
+# --- OPTION VALUES ARE NOT SCRIPT OPERANDS (self-audit of the #214 allowlist) -
+# `-o`, `--rcfile` and `--init-file` take a VALUE. Without consuming it, `bash -o
+# posix` looked like it had a script operand, so the pipeline reading stdin was
+# missed. The pair of directions is the point: the value must not be mistaken for
+# a script, and a real script must still be recognised as one.
+check "opt-value: -o posix"          "echo \"$DV $V\" | bash -o posix"             deny
+check "opt-value: --rcfile"          "echo \"$DV $V\" | bash --rcfile /dev/null"   deny
+check "opt-value: -x -s"             "echo \"$DV $V\" | bash -x -s"                deny
+check "operand after -o value"       "bash -o posix deploy.sh"                     allow
+check "operand after --rcfile value" "bash --rcfile /dev/null setup.sh"            allow
+check "operand after -x"             "bash -x deploy.sh"                           allow
+
+# --- THE ANALYSIS ITSELF MUST BE BOUNDED (#214 review round 3) --------------
+# The hook is registered with a 15 s timeout, and a hook that times out does NOT
+# deny — so unbounded analysis is a bypass in its own right: pad a command with
+# enough inner commands and the guard never gets to answer. Cost was 2^depth
+# (25 s at depth 9, against a command `main` decides in 153 ms) because the
+# flattened pass re-descended the same subtree the inner pass had just walked.
+#
+# Two bounds now: the flattened pass runs only when it can help (the body
+# contains `(`, `)` or a backtick — the fragmentation it exists for), and a
+# wall-clock deadline stops analysis entirely. Both DENY when hit.
+GUARD_INSPECT_DEADLINE=0 check "deadline: refuses rather than allows" "echo hello" deny
+check "deadline: normal work unaffected" "echo hello"                              allow
+
+# Analysis cost was 2^depth: the flattened pass re-descended the same subtree the
+# inner pass had just walked. Depth 9 took 25 s against a command `main` decides
+# in 153 ms — over the hook's 15 s timeout, i.e. an effective allow. These bound
+# it. They are generous (a correct build answers in well under a second) so they
+# fail on an exponential regression, not on a slow machine.
+NEST7=""
+for _i in 1 2 3 4 5 6 7; do NEST7="${NEST7}eval \""; done
+NEST7="${NEST7}npm run build"
+for _i in 1 2 3 4 5 6 7; do NEST7="${NEST7}\""; done
+check_fast "cost: depth-7 nest is fast"   "$NEST7"                                 3
+# A depth-9 nest trips the depth bound immediately, so timing it proves nothing —
+# it passed at 0 s even against the exponential mutant. Time a nest that is
+# BELOW the bound and carries quoted newlines, which is the shape whose cost
+# actually blew up.
+# A real backslash followed by a real newline. Written this way because inline it
+# would be a line continuation *of this file* and vanish before the hook sees it.
+BS="\\"$'\n'
+# A command carrying a line continuation MUST run the flattened pass (it is the
+# only thing that catches a fragmented invocation), and inside a nest that means
+# running it at every level — so this shape stays exponential up to the depth
+# bound. It is bounded, not flat, and the bound is what gets pinned: the deadline
+# decides before the hook's own 15 s timeout. Measured: depth 7 ~6.5 s, depth 8
+# denies at ~7.1 s, depth 10 denies at ~0.2 s via the depth bound. An ordinary
+# continuation with no nesting is ~0.1 s.
+NEST8NL=""
+for _i in 1 2 3 4 5 6 7 8; do NEST8NL="${NEST8NL}eval \""; done
+NEST8NL="${NEST8NL}npm run build${BS}  --verbose"
+for _i in 1 2 3 4 5 6 7 8; do NEST8NL="${NEST8NL}\""; done
+check_fast "cost: continuation nest bounded" "$NEST8NL"                            10
+check_fast "cost: plain continuation fast"   "npm run build${BS}  --verbose"        1
+check_fast "cost: 200-command wrapper"    "bash -c \"$(printf 'echo x; %.0s' $(seq 1 200))echo done\"" 8
+
+# --- LINE CONTINUATION FRAGMENTS AN INVOCATION TOO ------------------------
+# Making the flattened pass conditional (to kill the 2^depth cost) needed an
+# exact answer to "what fragments a single invocation?". Parens and backticks
+# were the documented answer; a LINE CONTINUATION is the one that was missed.
+# bash joins `<cmd> \` + newline + `<args>` into ONE command, but the inner pass
+# splits on that newline, so the multi-condition rules see only the halves.
+#
+# A BARE newline is deliberately not in that set: it genuinely terminates the
+# command, so splitting there is correct — `<compose> -f a.yml` followed by
+# `down -v` really is two commands, and the second is not destructive.
+check "continuation: compose down -v" "bash -c \"$DCMP -f a.yml ${BS}down -v\""   deny
+check "continuation: rm -rf data"     "bash -c \"$D ${BS}$T\""                    deny
+check "continuation: twice"           "bash -c \"$DCMP ${BS}-f a.yml ${BS}down -v\"" deny
+
+# --- THE test_* EXEMPTION MUST SURVIVE BEING WRAPPED (#214 review round 5) ---
+# Unwrapping a wrapper strips its LEADING quote but not the trailing one, so an
+# inner body arrives ending in a stray quote. Rule 4's boundary was `([ ]|$)`,
+# which then failed to recognise a quoted scratch-DB name as a test database —
+# denying the one destructive operation rule 9 explicitly authorises, on this
+# repo's own prescribed test loop. Rule 5 was hardened for exactly this in #188;
+# rule 4 was not. The suite missed it because it only pinned the bare form.
+DBD="drop""db"
+check "test-db: wrapped teardown"     "bash -c \"pytest -q; $DBD test_mavrov_review\""  allow
+check "test-db: full pytest loop"     "bash -c \"cd backend && venv/bin/python -m pytest -q; $DBD test_mavrov_x\"" allow
+check "test-db: sh -c single quotes"  "sh -c '$DBD test_mavrov'"                        allow
+check "test-db: eval"                 "eval \"$DBD test_mavrov_ci\""                    allow
+check "test-db: two scratch drops"    "bash -c \"$DBD test_mavrov_a; $DBD test_mavrov_b\"" allow
+# ...and the exemption must not widen: a non-test database stays denied however
+# it is wrapped.
+check "test-db: non-test wrapped"     "bash -c \"pytest -q; $DBD mavrov\""              deny
+check "test-db: non-test eval"        "eval \"$DBD production\""                        deny
+check "test-db: suffix not prefix"    "bash -c \"$DBD mavrov_test\""                    deny
+
+# The deadline's ALLOW side needs pinning too: a bound that only ever denies
+# would pass every test while quietly denying ordinary work.
+# 100 inner commands: comfortably inside the 8 s budget (~2 s), but enough that
+# lowering the deadline flips it. A trivial 3-command case passed even at a 2 s
+# deadline, so it pinned nothing — a bound that only ever denies would keep a
+# green suite while quietly denying ordinary work.
+BIGOK="bash -c \"$(printf 'echo x; %.0s' $(seq 1 100))echo done\""
+check "deadline: allow side pinned"   "$BIGOK"                                      allow
+
+# --- AN EXEMPTION'S BOUNDARY MUST NOT WIDEN (#214 review round 6) -----------
+# The round-5 fix widened rule 4's boundary by copying rule 5's character class.
+# Rule 5's class sits on a DENY condition, where wider means "denies more" —
+# conservative. Rule 4's grants an EXEMPTION, where wider means "allows more".
+# The same two characters therefore inverted: `=` let a test-database name in a
+# FLAG disarm the rule while the operand was the production database.
+#
+# The suite could not catch it: every case pinned an operand-position name.
+PRODDB="mav""rov"
+check "exempt: flag names a test db"  "$DBD --dbname=test_x $PRODDB"                deny
+check "exempt: quoted flag value"     "$DBD --dbname=\"test_x\" $PRODDB"            deny
+check "exempt: flag after operand"    "$DBD $PRODDB --dbname=test_x"                deny
+check "exempt: wrapped flag form"     "bash -c \"$DBD --dbname=test_x $PRODDB\""    deny
+check "exempt: maintenance-db flag"   "$DBD --maintenance-db=test_x $PRODDB"        deny
+# ...while a genuine flag alongside a scratch operand still works.
+check "exempt: --if-exists scratch"   "$DBD --if-exists test_mavrov"                allow
 
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
