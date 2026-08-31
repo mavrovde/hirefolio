@@ -465,6 +465,24 @@ check_fast "cost: depth-7 nest is fast"   "$NEST7"                              
 check_fast "cost: depth-9 nest is fast"   "$DEEP"                                  3
 check_fast "cost: 200-command wrapper"    "bash -c \"$(printf 'echo x; %.0s' $(seq 1 200))echo done\"" 8
 
+# --- LINE CONTINUATION FRAGMENTS AN INVOCATION TOO ------------------------
+# Making the flattened pass conditional (to kill the 2^depth cost) needed an
+# exact answer to "what fragments a single invocation?". Parens and backticks
+# were the documented answer; a LINE CONTINUATION is the one that was missed.
+# bash joins `<cmd> \` + newline + `<args>` into ONE command, but the inner pass
+# splits on that newline, so the multi-condition rules see only the halves.
+#
+# A BARE newline is deliberately not in that set: it genuinely terminates the
+# command, so splitting there is correct — `<compose> -f a.yml` followed by
+# `down -v` really is two commands, and the second is not destructive.
+# BS holds a real backslash followed by a real newline. Writing it inline would
+# not survive: inside a double-quoted string, backslash-newline is a line
+# continuation *of this file* and is removed before the hook ever sees it.
+BS="\\"$'\n'
+check "continuation: compose down -v" "bash -c \"$DCMP -f a.yml ${BS}down -v\""   deny
+check "continuation: rm -rf data"     "bash -c \"$D ${BS}$T\""                    deny
+check "continuation: twice"           "bash -c \"$DCMP ${BS}-f a.yml ${BS}down -v\"" deny
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

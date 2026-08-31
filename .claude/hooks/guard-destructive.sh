@@ -71,6 +71,20 @@ REASON=""
 # keeps it intact through the space-collapsing normaliser below.
 NL_SENTINEL=$'\x01'
 
+# Does the ORIGINAL command contain a line continuation (backslash immediately
+# before a newline)? bash joins those lines into ONE command, but the inner pass
+# splits on the newline, so a single invocation is fragmented and the
+# multi-condition rules see only halves.
+#
+# Computed once, here, because inspect_segment normalises newlines to spaces
+# before the wrapper branch runs — by then the continuation is unrecoverable, and
+# testing for a bare backslash instead would fire on every nested `eval "…\"…\""`
+# and bring back the exponential cost this bound exists to prevent.
+case "$CMD" in
+  *\\$'\n'*) HAS_CONTINUATION=1 ;;
+  *) HAS_CONTINUATION=0 ;;
+esac
+
 # Nesting depth of shell-wrapper unwrapping (see inspect_inner_script).
 INNER_DEPTH=0
 
@@ -164,8 +178,14 @@ inspect_inner_script() {
 needs_flat_pass() {
   case "$1" in
     *"("*|*")"*|*'`'*) return 0 ;;
-    *) return 1 ;;
   esac
+  # A LINE CONTINUATION also fragments a single invocation. bash joins
+  # `<cmd> \` + newline + `<args>` into one command, but the inner pass splits on
+  # that newline, so the multi-condition rules see the halves separately. A bare
+  # newline is different: it really does terminate the command, so splitting
+  # there is correct and needs no flattened pass.
+  [ "$HAS_CONTINUATION" = 1 ] && return 0
+  return 1
 }
 
 # Inspect one command segment (already separator-split). Sets REASON on a hit.

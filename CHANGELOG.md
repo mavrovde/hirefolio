@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
   Same root cause as the #204 rounds, and the same rule applies: what the guard inspects has to be
   what the shell executes. Verified in both directions — running the final suite against `main`'s
   hook gives **20** differences, **every one `allow → deny`**, so bypasses close with no allow-case
-  moving. Suite **112 → 155 cases**; a 33-command benign corpus stays fully allowed.
+  moving. Suite **112 → 161 cases**; a 33-command benign corpus stays fully allowed.
   Mutation-checked: disabling the pipeline detection fails **13** cases, removing the flattened-body
   fall-through **8**, removing the script-operand check **4**, treating an option VALUE as a script
   operand **2**, and removing either cost bound **1** each.
@@ -40,8 +40,10 @@ All notable changes to this project will be documented in this file.
   bypass. Review found the cost was `2^depth`: the flattened-body pass re-descended the same subtree
   the inner pass had just walked. A depth-9 nest followed by a destruction took **25 s** where `main`
   decides in **153 ms**, i.e. an effective allow on a protected path. Two bounds now: the flattened
-  pass runs only when it can help (the body contains `(`, `)` or a backtick — the fragmentation it
-  exists for), and a wall-clock deadline stops analysis entirely. Both **deny** when hit; refusing to
+  pass runs only when it can help — when the body contains `(`, `)` or a backtick, or the command uses
+  a line continuation (bash joins those lines into one invocation while the inner pass splits on the
+  newline; a *bare* newline genuinely terminates the command, so splitting there is correct) — and a
+  wall-clock deadline stops analysis entirely. Both **deny** when hit; refusing to
   analyse must never mean allowing. Measured after: depth 9 **185 ms**, depth 12 **188 ms** (was
   25 s and 190 s). Pinned by wall-clock regression tests, since correctness tests cannot see this —
   the decision is right, it just arrives too late.
