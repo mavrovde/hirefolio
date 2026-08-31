@@ -536,8 +536,9 @@ line_is_all_text_tools() {
 # only OUTSIDE quotes so a `>` inside a message is not a target — and `tee FILE`,
 # `>|` is deliberately NOT handled: a `|` anywhere on the line makes
 # line_is_all_text_tools refuse the exemption regardless, so the code would be
-# unreachable. Verified by mutation — removing `>|` support failed zero cases,
-# which is what unreachable looks like.
+# unreachable ON THIS PATH — the heredoc exemption is where it was measured, not
+# universally. Removing the support failed zero cases here, which is why it went
+# rather than being pinned.
 # which writes a file with no redirect operator at all and is itself a text tool.
 # ALL targets on the line are returned, not just the first: `cat 2>/dev/null >
 # s.sh` would otherwise resolve to `/dev/null`.
