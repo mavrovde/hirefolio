@@ -447,7 +447,14 @@ believed the general case had been found and had only found an instance.
    conditions at once. The old flattened pass caught exactly those. Six protected paths went
    deny → allow. **Two overlapping imperfect checks beat one clever check**: keep both and let the
    first hit win.
-10. **If two functions jointly enforce an invariant, they must share one model of the input.** Round 4
+10. **On a guard, COST is a correctness property.** The hook has a 15 s timeout, and a hook that
+   times out does **not** deny — so an analysis that is too slow is an allow. #210 shipped an
+   analysis that was `2^depth` (25 s at depth 9, on a command `main` decided in 153 ms) and every
+   correctness test passed, because the decision was right and merely arrived too late. Two
+   consequences: bound the work and make exceeding the bound **deny**, never "found nothing"; and
+   pin it with **wall-clock** tests, because a correctness suite is structurally blind to this — the
+   exponential mutant scored **0** against 155 passing cases.
+11. **If two functions jointly enforce an invariant, they must share one model of the input.** Round 4
    was *introduced by the round-3 fix*: `mask_quotes` was taught about backslash escapes and its
    partner `quote_split` was not, so they disagreed about where a quoted region ended — and an
    everyday `git commit -m "… \" …"` made one see a real redirect while the other saw an unclosed

@@ -462,7 +462,26 @@ for _i in 1 2 3 4 5 6 7; do NEST7="${NEST7}eval \""; done
 NEST7="${NEST7}npm run build"
 for _i in 1 2 3 4 5 6 7; do NEST7="${NEST7}\""; done
 check_fast "cost: depth-7 nest is fast"   "$NEST7"                                 3
-check_fast "cost: depth-9 nest is fast"   "$DEEP"                                  3
+# A depth-9 nest trips the depth bound immediately, so timing it proves nothing —
+# it passed at 0 s even against the exponential mutant. Time a nest that is
+# BELOW the bound and carries quoted newlines, which is the shape whose cost
+# actually blew up.
+# A real backslash followed by a real newline. Written this way because inline it
+# would be a line continuation *of this file* and vanish before the hook sees it.
+BS="\\"$'\n'
+# A command carrying a line continuation MUST run the flattened pass (it is the
+# only thing that catches a fragmented invocation), and inside a nest that means
+# running it at every level — so this shape stays exponential up to the depth
+# bound. It is bounded, not flat, and the bound is what gets pinned: the deadline
+# decides before the hook's own 15 s timeout. Measured: depth 7 ~6.5 s, depth 8
+# denies at ~7.1 s, depth 10 denies at ~0.2 s via the depth bound. An ordinary
+# continuation with no nesting is ~0.1 s.
+NEST8NL=""
+for _i in 1 2 3 4 5 6 7 8; do NEST8NL="${NEST8NL}eval \""; done
+NEST8NL="${NEST8NL}npm run build${BS}  --verbose"
+for _i in 1 2 3 4 5 6 7 8; do NEST8NL="${NEST8NL}\""; done
+check_fast "cost: continuation nest bounded" "$NEST8NL"                            10
+check_fast "cost: plain continuation fast"   "npm run build${BS}  --verbose"        1
 check_fast "cost: 200-command wrapper"    "bash -c \"$(printf 'echo x; %.0s' $(seq 1 200))echo done\"" 8
 
 # --- LINE CONTINUATION FRAGMENTS AN INVOCATION TOO ------------------------
@@ -475,10 +494,6 @@ check_fast "cost: 200-command wrapper"    "bash -c \"$(printf 'echo x; %.0s' $(s
 # A BARE newline is deliberately not in that set: it genuinely terminates the
 # command, so splitting there is correct — `<compose> -f a.yml` followed by
 # `down -v` really is two commands, and the second is not destructive.
-# BS holds a real backslash followed by a real newline. Writing it inline would
-# not survive: inside a double-quoted string, backslash-newline is a line
-# continuation *of this file* and is removed before the hook ever sees it.
-BS="\\"$'\n'
 check "continuation: compose down -v" "bash -c \"$DCMP -f a.yml ${BS}down -v\""   deny
 check "continuation: rm -rf data"     "bash -c \"$D ${BS}$T\""                    deny
 check "continuation: twice"           "bash -c \"$DCMP ${BS}-f a.yml ${BS}down -v\"" deny

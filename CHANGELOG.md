@@ -22,8 +22,9 @@ All notable changes to this project will be documented in this file.
   hook gives **20** differences, **every one `allow → deny`**, so bypasses close with no allow-case
   moving. Suite **112 → 161 cases**; a 33-command benign corpus stays fully allowed.
   Mutation-checked: disabling the pipeline detection fails **13** cases, removing the flattened-body
-  fall-through **8**, removing the script-operand check **4**, treating an option VALUE as a script
-  operand **2**, and removing either cost bound **1** each.
+  fall-through **10**, removing the script-operand check **4**, treating an option VALUE as a script
+  operand **2**, dropping the line-continuation clause **3**, and removing either cost bound **1**
+  each.
 
   Two of those conditions exist because review caught this change making the guard *worse*, and both
   are worth recording rather than smoothing over. Replacing the flattened-body pass with the new
@@ -52,12 +53,17 @@ All notable changes to this project will be documented in this file.
   bash, so a 40 000-character command takes ~21 s on `main` and on this branch alike, exceeding the
   timeout before any inspection starts. Pre-existing, and this change neither causes nor cures it.
 
-  **Cost, measured rather than hand-waved:** inspecting a wrapper's inner commands is real work, so a
-  `bash -c` containing *n* commands now costs about 22 ms × *n* (1 command ≈ 0.07 s, 10 ≈ 0.26 s,
-  50 ≈ 1.1 s, 400 ≈ 9.4 s, versus a flat ~0.05 s before). Growth is linear, not quadratic, and
-  ordinary commands — anything without a shell wrapper — are unaffected. Realistic one-liners stay
-  well under a third of a second; a 400-command single invocation is slow, and that trade is
-  deliberate rather than unnoticed.
+  **Cost, and the user-visible contract it creates.** Inspecting a wrapper's inner commands is real
+  work: a `bash -c` containing *n* commands costs roughly 22 ms × *n* (1 ≈ 0.07 s, 10 ≈ 0.26 s,
+  50 ≈ 1.1 s) against a flat ~0.05 s before, and commands *without* a shell wrapper are unaffected.
+  Beyond roughly **350 inner commands** the deadline is reached and the command is **denied** rather
+  than allowed — that is the new contract, and it is stated here rather than left to be discovered.
+
+  One shape is bounded rather than flat: a command carrying a **line continuation** must run the
+  flattened pass (it is the only thing that catches a fragmented invocation), and inside a nest that
+  means running it at every level. Measured: depth 7 ≈ 6.5 s, depth 8 denied at ≈ 7.1 s by the
+  deadline, depth 10 denied at ≈ 0.2 s by the depth bound. An ordinary continuation with no nesting
+  is ≈ 0.1 s. Bounded, deliberate, and pinned by wall-clock tests.
 - **`guard-destructive.sh` no longer treats prose as a command — without weakening the guard**
   (#204) — a quoted argument spanning newlines was split on the raw newline, so a line of *text* that
   merely began with a destructive verb was inspected as an invocation. Writing documentation about

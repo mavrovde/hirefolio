@@ -101,9 +101,15 @@ INNER_DEPTH=0
 # is a bash builtin counting from process start, so this costs nothing to read.
 #
 # Exceeding it DENIES: refusing to analyse must never mean allowing.
-# Overridable so the self-test can force the deadline path in milliseconds
-# instead of shipping an 8-second test case.
+#
+# Overridable so the self-test can force the deadline path in milliseconds rather
+# than shipping an 8-second test case. A non-numeric override falls back to the
+# default instead of making `[ "$SECONDS" -ge "$INSPECT_DEADLINE" ]` error out —
+# on a guard, a malformed setting must not become a way to switch it off.
 INSPECT_DEADLINE="${GUARD_INSPECT_DEADLINE:-8}"
+case "$INSPECT_DEADLINE" in
+  ''|*[!0-9]*) INSPECT_DEADLINE=8 ;;
+esac
 
 # A quoted argument that turns out to be shell code: put the newlines back, split
 # it like a real script, and inspect every command in it. Returns 0 (and leaves
