@@ -526,6 +526,23 @@ check "test-db: suffix not prefix"    "bash -c \"$DBD mavrov_test\""            
 BIGOK="bash -c \"$(printf 'echo x; %.0s' $(seq 1 100))echo done\""
 check "deadline: allow side pinned"   "$BIGOK"                                      allow
 
+# --- AN EXEMPTION'S BOUNDARY MUST NOT WIDEN (#214 review round 6) -----------
+# The round-5 fix widened rule 4's boundary by copying rule 5's character class.
+# Rule 5's class sits on a DENY condition, where wider means "denies more" —
+# conservative. Rule 4's grants an EXEMPTION, where wider means "allows more".
+# The same two characters therefore inverted: `=` let a test-database name in a
+# FLAG disarm the rule while the operand was the production database.
+#
+# The suite could not catch it: every case pinned an operand-position name.
+PRODDB="mav""rov"
+check "exempt: flag names a test db"  "$DBD --dbname=test_x $PRODDB"                deny
+check "exempt: quoted flag value"     "$DBD --dbname=\"test_x\" $PRODDB"            deny
+check "exempt: flag after operand"    "$DBD $PRODDB --dbname=test_x"                deny
+check "exempt: wrapped flag form"     "bash -c \"$DBD --dbname=test_x $PRODDB\""    deny
+check "exempt: maintenance-db flag"   "$DBD --maintenance-db=test_x $PRODDB"        deny
+# ...while a genuine flag alongside a scratch operand still works.
+check "exempt: --if-exists scratch"   "$DBD --if-exists test_mavrov"                allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

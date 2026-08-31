@@ -454,7 +454,14 @@ believed the general case had been found and had only found an instance.
    consequences: bound the work and make exceeding the bound **deny**, never "found nothing"; and
    pin it with **wall-clock** tests, because a correctness suite is structurally blind to this — the
    exponential mutant scored **0** against 155 passing cases.
-11. **If two functions jointly enforce an invariant, they must share one model of the input.** Round 4
+11. **Check a pattern's POLARITY before copying it between rules.** #214 fixed a false denial by
+   copying a neighbouring rule's character class. The neighbour's class sat on a **deny** condition,
+   where a wider class denies more — conservative. The copy landed on an **exemption**, where a wider
+   class *allows* more. The same two characters therefore inverted: `=` let a scratch-database name
+   in a `--dbname=` flag disarm the rule while the actual operand was the production database, and
+   17 destructive commands went `deny → allow`. Widening is safe on an alarm and dangerous on an
+   excuse; a boundary is not portable between them.
+12. **If two functions jointly enforce an invariant, they must share one model of the input.** Round 4
    was *introduced by the round-3 fix*: `mask_quotes` was taught about backslash escapes and its
    partner `quote_split` was not, so they disagreed about where a quoted region ended — and an
    everyday `git commit -m "… \" …"` made one see a real redirect while the other saw an unclosed

@@ -31,7 +31,11 @@ All notable changes to this project will be documented in this file.
   `pipes_into_shell` return false fails **13** cases, `needs_flat_pass` always true **1**, removing
   the flattened-body fall-through **10**, the script-operand check **4**, an option VALUE read as a
   script operand **2**, ignoring the line-continuation flag **3**, removing the deadline check **2**,
-  removing the depth deny **1**, and reverting rule 4's boundary **5**.
+  removing the depth deny **2**, reverting rule 4's boundary **5**, and removing the option-value
+  strip **1**. Measured against a generated cross-product (destructive and benign cores × 14 wrapper
+  shapes, 266 commands) rather than a curated list — a hand-written corpus keeps agreeing with
+  whoever wrote it: **0** real bypasses introduced, **0** real false denials introduced, 72 bypasses
+  closed, 3 false denials removed.
 
   Two of those conditions exist because review caught this change making the guard *worse*, and both
   are worth recording rather than smoothing over. Replacing the flattened-body pass with the new

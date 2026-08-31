@@ -196,7 +196,7 @@ needs_flat_pass() {
 
 # Inspect one command segment (already separator-split). Sets REASON on a hit.
 inspect_segment() {
-  local seg="$1"
+  local seg="$1" _dbargs
 
   if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
     REASON="BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
@@ -327,7 +327,17 @@ inspect_segment() {
   fi
   # 4. Dropping a non-`test_*` database.
   if printf '%s' "$seg" | grep -Eq '^dropdb\b'; then
-    # Boundaries accept a surrounding quote, exactly as rule 5 does below. A
+    # Boundaries accept a surrounding QUOTE only — deliberately narrower than
+    # rule 5's class, which also accepts `=` and `/`.
+    #
+    # POLARITY IS THE POINT. Rule 5's class sits on a DENY condition, where a
+    # wider class denies more and is therefore conservative. This one sits on an
+    # EXEMPTION, where a wider class ALLOWS more — so the same widening inverts.
+    # Adding `=` here let any `--dbname=test_x` anywhere in the segment disarm the
+    # rule while the actual operand was the production database. When copying a
+    # boundary between rules, check which way its polarity runs.
+    #
+    # The fix this class exists for: a
     # wrapper's LEADING quote is stripped when it is unwrapped but the trailing
     # one is not, so an inner body arrives ending in a stray quote. A boundary of
     # ([ ]|$) then fails to recognise a quoted test-database name as a test
@@ -335,7 +345,11 @@ inspect_segment() {
     # authorises: tearing down a scratch DB at the end of a wrapped test run.
     # That is this repo's own prescribed loop, so the false denial lands on
     # exactly the workflow the exemption exists for.
-    if ! printf '%s' "$seg" | grep -Eq '(^|[ ="'"'"'])test_[A-Za-z0-9_]+([ ="'"'"';]|$)'; then
+    # Option VALUES are not the operand. `--dbname=test_x <prod>` names a test
+    # database in a flag while dropping production, so the flags are stripped
+    # before asking whether a test database is being dropped.
+    _dbargs="$(printf '%s' "$seg" | sed -E 's/(^| )--?[A-Za-z][A-Za-z-]*=[^ ]*//g')"
+    if ! printf '%s' "$_dbargs" | grep -Eq '(^|[ "'"'"'])test_[A-Za-z0-9_]+([ "'"'"']|$)'; then
       REASON="BLOCKED: 'dropdb' on a non-test database is irreversible data loss. Only 'test_*' databases may be dropped autonomously. Prefix GUARD_DESTRUCTIVE=0 if the user named this DB to drop."
       return 0
     fi
