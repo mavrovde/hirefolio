@@ -25,7 +25,7 @@ All notable changes to this project will be documented in this file.
   denied on this repo's own prescribed test loop: unwrapping strips a wrapper's leading quote but not
   its trailing one, so the inner body ended in a stray quote and rule 4's `([ ]|$)` boundary stopped
   recognising the name as a test database. Rule 5 was hardened for exactly this in #188; rule 4 was
-  not. Suite **112 → 171 cases**; a 33-command benign corpus stays fully allowed.
+  not. Suite **112 → 177 cases**; a 33-command benign corpus stays fully allowed.
 
   Mutation-checked (mutant definitions stated so the numbers are reproducible): making
   `pipes_into_shell` return false fails **13** cases, `needs_flat_pass` always true **1**, removing
@@ -56,7 +56,10 @@ All notable changes to this project will be documented in this file.
   a line continuation (bash joins those lines into one invocation while the inner pass splits on the
   newline; a *bare* newline genuinely terminates the command, so splitting there is correct) — and a
   wall-clock deadline stops analysis entirely. Both **deny** when hit; refusing to
-  analyse must never mean allowing. Being wall-clock, that bound is load-dependent: under heavy load a large command can be denied that would be allowed on an idle machine. The direction is deliberate — deny, never allow — but the non-determinism is real and is recorded here rather than left to be discovered. Measured after: depth 9 **185 ms**, depth 12 **188 ms** (was
+  analyse must never mean allowing. Being wall-clock, that bound is load-dependent: under heavy
+  load a large command can be denied that would be allowed on an idle machine. The direction is
+  deliberate — deny, never allow — but the non-determinism is real and is recorded here rather
+  than left to be discovered. Measured after: depth 9 **185 ms**, depth 12 **188 ms** (was
   25 s and 190 s). Pinned by wall-clock regression tests, since correctness tests cannot see this —
   the decision is right, it just arrives too late.
 
@@ -173,7 +176,9 @@ All notable changes to this project will be documented in this file.
   the variable from the developer's environment (and `.env`). Process environment *overrides* `.env`,
   so a key exported from a shell profile reached the backend container silently. Verified on a real
   machine: with the previous overlay `docker compose config` resolved a live 53-character key into
-  the stack; with the fix it resolves `""`. `docker-compose.e2e.yml` now pins the (renamed) Gemini key empty for the backend, so **every** consumer of the E2E overlay is covered — not only the invocation that
+  the stack; with the fix it resolves `""`. `docker-compose.e2e.yml` now pins the (renamed)
+  Gemini key empty for the backend, so **every** consumer of the E2E overlay is covered — not
+  only the invocation that
   remembers to export it — and the backend falls back to the in-stack Ollama exactly as in CI
   (verified: container env empty, stack healthy, the five Gemini-touching admin specs pass in 12.5 s).
   `deploy.yml`'s backend test job also sets it explicitly rather than relying on the runner simply

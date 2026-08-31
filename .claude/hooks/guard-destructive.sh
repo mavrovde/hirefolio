@@ -346,8 +346,14 @@ inspect_segment() {
     # That is this repo's own prescribed loop, so the false denial lands on
     # exactly the workflow the exemption exists for.
     # Option VALUES are not the operand. `--dbname=test_x <prod>` names a test
-    # database in a flag while dropping production, so the flags are stripped
-    # before asking whether a test database is being dropped.
+    # database in a flag while dropping production, so `=`-joined flags are
+    # stripped before asking whether a test database is being dropped.
+    #
+    # SCOPE: `=`-joined only. A SPACE-separated value (`--maintenance-db test_x
+    # <prod>`, `-U test_admin <prod>`) still grants the exemption — tracked in
+    # #217 along with the same bug in the wrapper unwrap and in
+    # pipes_into_shell. Stating the limit here rather than implying the flag
+    # class is fully handled.
     _dbargs="$(printf '%s' "$seg" | sed -E 's/(^| )--?[A-Za-z][A-Za-z-]*=[^ ]*//g')"
     if ! printf '%s' "$_dbargs" | grep -Eq '(^|[ "'"'"'])test_[A-Za-z0-9_]+([ "'"'"']|$)'; then
       REASON="BLOCKED: 'dropdb' on a non-test database is irreversible data loss. Only 'test_*' databases may be dropped autonomously. Prefix GUARD_DESTRUCTIVE=0 if the user named this DB to drop."
