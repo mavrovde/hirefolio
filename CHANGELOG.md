@@ -56,7 +56,7 @@ All notable changes to this project will be documented in this file.
   a line continuation (bash joins those lines into one invocation while the inner pass splits on the
   newline; a *bare* newline genuinely terminates the command, so splitting there is correct) — and a
   wall-clock deadline stops analysis entirely. Both **deny** when hit; refusing to
-  analyse must never mean allowing. Measured after: depth 9 **185 ms**, depth 12 **188 ms** (was
+  analyse must never mean allowing. Being wall-clock, that bound is load-dependent: under heavy load a large command can be denied that would be allowed on an idle machine. The direction is deliberate — deny, never allow — but the non-determinism is real and is recorded here rather than left to be discovered. Measured after: depth 9 **185 ms**, depth 12 **188 ms** (was
   25 s and 190 s). Pinned by wall-clock regression tests, since correctness tests cannot see this —
   the decision is right, it just arrives too late.
 
