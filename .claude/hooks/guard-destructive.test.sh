@@ -739,6 +739,16 @@ $DV $V
 EOF
 bash dir/./s.sh"                                                                    deny
 
+# A large UNWRAPPED command: no existing timing case could see this, because
+# `cost: 200-command wrapper` hides its 200 commands inside `bash -c "…"`, which
+# stays one segment. The executed-path pre-pass forks per segment, so this is the
+# shape whose cost ran past the hook's own 15 s timeout — at which point the
+# process is killed with no output, and no decision means the command runs
+# unanalysed. A deny that became an allow, invisible to every correctness test.
+BIGFLAT="$(printf 'echo building module %s\n' $(seq 1 400))${DV} ${V}"
+check_fast "cost: 400 unwrapped lines"       "$BIGFLAT"                            12
+check      "cost: 400 unwrapped lines denies" "$BIGFLAT"                           deny
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

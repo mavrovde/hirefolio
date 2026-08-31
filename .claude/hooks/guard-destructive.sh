@@ -71,6 +71,10 @@ REASON=""
 # keeps it intact through the space-collapsing normaliser below.
 NL_SENTINEL=$'\x01'
 
+# Emitted by collect_executed_paths when it runs out of budget, so the caller
+# denies rather than proceeding with a half-built set.
+DEADLINE_MARKER=$'\x02deadline\x02'
+
 # Does the ORIGINAL command contain a line continuation (backslash immediately
 # before a newline)? bash joins those lines into ONE command, but the inner pass
 # splits on the newline, so a single invocation is fragmented and the
@@ -585,6 +589,24 @@ unquote() {
   printf '%s' "$s"
 }
 
+# Drop every heredoc BODY, whoever consumes it. Used only to decide "what does
+# this command execute", where a body is never a command — the question of
+# whether a particular body is exempt is answered separately, and much more
+# carefully, by strip_text_heredocs.
+strip_all_heredoc_bodies() {
+  local input="$1" out="" line delim="" skipping=0
+  while IFS= read -r line; do
+    if [ "$skipping" = 1 ]; then
+      [ "$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//')" = "$delim" ] && skipping=0
+      continue
+    fi
+    out+="$line"$'\n'
+    delim="$(printf '%s' "$line" | sed -nE "s/.*<<-?[[:space:]]*[\"']?([A-Za-z_][A-Za-z0-9_]*).*/\1/p")"
+    [ -n "$delim" ] && skipping=1
+  done <<< "$input"
+  printf '%s' "$out"
+}
+
 # Every path this command EXECUTES, computed ONCE.
 #
 # The first version answered "does the command execute this path?" by re-splitting
@@ -602,8 +624,22 @@ unquote() {
 # claimed away.
 collect_executed_paths() {
   local cmd="$1" seg first rest w flag
+  # Heredoc BODIES are data, not commands. Scanning them made a document that
+  # merely mentions running itself look like an execution — and made this pass
+  # walk every prose line of every document, which is most of its cost.
+  cmd="$(strip_all_heredoc_bodies "$cmd")"
   local OLD="$IFS"; IFS=$'\n'
   for seg in $(quote_split "$cmd"); do
+    # The bound belongs HERE, inside the loop that does the work. Checking it
+    # before the pass could not bound the pass: this loop forks per segment, so
+    # on a large command the total outran the hook's 15 s timeout, the process
+    # was killed with no output, and no decision means the command runs
+    # unanalysed — a deny that became an allow.
+    if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
+      IFS="$OLD"
+      printf '%s\n' "$DEADLINE_MARKER"
+      return 0
+    fi
     seg="$(printf '%s' "$seg" | tr '\n\t' '  ' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
     seg="$(peel_wrappers "$seg")"
     first="$(unquote "${seg%% *}")"
@@ -702,6 +738,14 @@ strip_text_heredocs() {
   for (( i=0; i<n; i++ )); do
     line="${lines[i]}"
     out+="$line"$'\n'
+
+    # Same bound as everywhere else. This loop calls heredoc_delim and
+    # redirect_targets per line, each of which walks the line character by
+    # character, so a command carrying hundreds of documents spends most of the
+    # budget here — outside any check, it simply ran past the hook's timeout.
+    if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
+      deny "BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
+    fi
 
     delim="$(heredoc_delim "$line")"
     [ -z "$delim" ] && continue
@@ -816,12 +860,13 @@ quoted_payloads() {
 # whole-string match rather than a substring hit.
 # Inside the time budget like everything else: this pre-pass walks the whole
 # command, and an analysis that outruns the hook's timeout does not deny.
-if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
-  deny "BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
-fi
 EXECUTED_PATHS="$NL_SENTINEL"
 while IFS= read -r _p; do
-  [ -n "$_p" ] && EXECUTED_PATHS="${EXECUTED_PATHS}${_p}${NL_SENTINEL}"
+  [ -z "$_p" ] && continue
+  if [ "$_p" = "$DEADLINE_MARKER" ]; then
+    deny "BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
+  fi
+  EXECUTED_PATHS="${EXECUTED_PATHS}${_p}${NL_SENTINEL}"
 done <<< "$(collect_executed_paths "$CMD")"
 
 SEGMENTS="$(quote_split "$(strip_text_heredocs "$CMD")")"

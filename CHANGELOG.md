@@ -32,6 +32,15 @@ All notable changes to this project will be documented in this file.
   the analysis meant to close a bypass had become one. The executed paths are now collected **once**
   and looked up; the same input costs 0.45 s and 0.84 s.
 
+  Bounding that pass took two attempts, and the first was cosmetic. Checking the deadline *before*
+  the pass cannot bound the pass: it forks per segment, so a 700-line command ran 17 s against the
+  hook's 15 s timeout — the process is killed with no output, and **no decision means the command
+  runs unanalysed**. A deny that became an allow, invisible to every correctness test. The bound now
+  sits inside both loops that do the work, and heredoc **bodies** are excluded from the
+  executed-path scan entirely, since a body is data rather than a command. Measured against `main`:
+  700 lines 9.2 s → **7.5 s**, 900 lines 13.4 s → **9.0 s**, 300 documents 7.6 s → 8.0 s, 500
+  documents 10.3 s → **7.6 s** — all deciding, none timing out.
+
   Paths are compared by normalised spelling rather than basename: `cat > docs/build.sh …;
   bash scripts/build.sh` is two different files, and matching on the name alone made it a false
   denial. The wrapper peel here now consumes wrapper options **and their values**, so
@@ -42,7 +51,7 @@ All notable changes to this project will be documented in this file.
   tracked in **#217** rather than claimed here.
 
   Verified in both directions. Against `main`: **41** differences, **every one `allow → deny`**.
-  Suite **177 → 232 cases**, of which several are deliberate *negative space* — a document never
+  Suite **177 → 234 cases**, of which several are deliberate *negative space* — a document never
   executed, one only read back with `cat`, one written alongside an unrelated script, a basename
   collision, and benign `sudo -u` / `env -i` usage — because a suite made only of spellings the
   matcher was written to catch proves only that it matches what it matches. Mutation: disabling
