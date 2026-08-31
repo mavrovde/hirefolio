@@ -532,8 +532,12 @@ line_is_all_text_tools() {
 # missing a writer means the exemption is granted to something that is really a
 # script.
 #
-# Covers `>`, `>>`, and the fd/clobber spellings (`1>`, `2>`, `&>`, `>|`), each
+# Covers `>`, `>>` and the fd spellings (`1>`, `2>`, `&>`), each
 # only OUTSIDE quotes so a `>` inside a message is not a target — and `tee FILE`,
+# `>|` is deliberately NOT handled: a `|` anywhere on the line makes
+# line_is_all_text_tools refuse the exemption regardless, so the code would be
+# unreachable. Verified by mutation — removing `>|` support failed zero cases,
+# which is what unreachable looks like.
 # which writes a file with no redirect operator at all and is itself a text tool.
 # ALL targets on the line are returned, not just the first: `cat 2>/dev/null >
 # s.sh` would otherwise resolve to `/dev/null`.
@@ -547,7 +551,7 @@ redirect_targets() {
     # Skip the second char of `>>`, and step over `|` in `>|`.
     [ "${masked:i-1:1}" = ">" ] && continue
     tgt="${line:i}"
-    tgt="$(printf '%s' "$tgt" | sed -E 's/^>>?\|?[[:space:]]*//')"
+    tgt="$(printf '%s' "$tgt" | sed -E 's/^>>?[[:space:]]*//')"
     tgt="${tgt%%[[:space:];|&<>]*}"
     tgt="$(unquote "$tgt")"
     [ -n "$tgt" ] && printf '%s\n' "$tgt"
@@ -580,59 +584,87 @@ unquote() {
   printf '%s' "$s"
 }
 
-# Does the command execute this path anywhere?
+# Every path this command EXECUTES, computed ONCE.
 #
-# Deliberately NOT a list of spellings. The first version matched only
-# `<interpreter> <path>` with the path as the very next word, so `bash -x s.sh`,
-# `/bin/bash s.sh` and `bash "s.sh"` all walked past it — the same
-# "allowlist of the first forms that came to mind" this file already warns about
-# for shells reached through a pipe. Instead: normalise the command the way the
-# rest of the guard does (absolute interpreter path stripped, options consumed),
-# then ask whether an execution position names this file.
-executes_path() {
-  local cmd="$1" base="${2##*/}" seg first rest
-  [ -z "$base" ] && return 1
-  base="$(unquote "$base")"
-  [ -z "$base" ] && return 1
-
+# The first version answered "does the command execute this path?" by re-splitting
+# the whole raw input on every call — per heredoc, per redirect target — with a
+# handful of subprocesses per segment. On a command carrying a dozen documents
+# that is O(heredocs x targets x lines) forks: measured at 24 s against a hook
+# registered with a 15 s timeout, and a hook that times out does NOT deny. The
+# analysis meant to close a bypass had become one.
+#
+# It is also the one place a wrapper peel is needed twice, so it shares
+# peel_wrappers with pipes_into_shell rather than carrying a thinner copy —
+# lessons-learned §21 item 12, applied rather than relearned.
+collect_executed_paths() {
+  local cmd="$1" seg first rest w flag
   local OLD="$IFS"; IFS=$'\n'
   for seg in $(quote_split "$cmd"); do
     seg="$(printf '%s' "$seg" | tr '\n\t' '  ' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
-    # Peel wrappers and env assignments, then resolve an absolute interpreter
-    # path — `/bin/bash` is as much an interpreter as `bash`.
-    while printf '%s' "$seg" | grep -Eq '^([A-Za-z_][A-Za-z0-9_]*=[^ ]*|sudo|env|command|exec|nohup|time|xargs)( |$)'; do
-      seg="$(printf '%s' "$seg" | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^ ]*|sudo|env|command|exec|nohup|time|xargs) *//')"
-    done
-    seg="$(printf '%s' "$seg" | sed -E 's#^/[^ ]*/##')"
-    first="${seg%% *}"
-    rest="${seg#"$first"}"; rest="${rest# }"
+    seg="$(peel_wrappers "$seg")"
+    first="$(unquote "${seg%% *}")"
+    rest="${seg#"${seg%% *}"}"; rest="${rest# }"
 
-    case "$first" in
+    case "${first##*/}" in
       bash|sh|zsh|dash|source|.)
-        # Consume interpreter options (and the values of the ones that take a
-        # value) so the script operand is reached however it is spelled.
+        # Consume interpreter options, and the values of those that take one, so
+        # the script operand is reached however it is spelled. `-c` is NOT an
+        # execution of a file: there the script is the STRING and the next word
+        # becomes $0 (verified against bash), so the operand is not run.
         while [ "${rest:0:1}" = "-" ]; do
-          local flag="${rest%% *}"
-          [ "$flag" = "$rest" ] && rest=""
-          [ -z "$rest" ] && break
+          flag="${rest%% *}"
+          case "$flag" in *c*) [ "${flag:0:2}" != "--" ] && { rest=""; break; } ;; esac
+          [ "$flag" = "$rest" ] && { rest=""; break; }
           rest="${rest#* }"
           case "$flag" in -[oO]|--rcfile|--init-file) rest="${rest#* }" ;; esac
           [ "$flag" = "--" ] && break
         done
-        [ "$(unquote "${rest%% *}")" = "$base" ] && { IFS="$OLD"; return 0; }
-        [ "$(basename_of "$(unquote "${rest%% *}")")" = "$base" ] && { IFS="$OLD"; return 0; }
+        [ -n "$rest" ] && printf '%s\n' "$(norm_path "$(unquote "${rest%% *}")")"
         ;;
       *)
-        # Direct execution: `./s.sh`, `dir/s.sh`, `"./s.sh"`.
-        local w; w="$(unquote "$first")"
+        # Direct execution: `./s.sh`, `dir/s.sh`, `/tmp/s.sh`, quoted forms.
+        w="$(unquote "${seg%% *}")"
         case "$w" in
-          ./*|*/*) [ "$(basename_of "$w")" = "$base" ] && { IFS="$OLD"; return 0; } ;;
+          ./*|/*|*/*) printf '%s\n' "$(norm_path "$w")" ;;
         esac
         ;;
     esac
   done
   IFS="$OLD"
-  return 1
+}
+
+# Peel env assignments and wrappers, INCLUDING their options — `sudo -E bash f`
+# and `env -i bash f` are the same execution as `sudo bash f`. Shared with
+# pipes_into_shell so the two cannot drift apart.
+peel_wrappers() {
+  local seg="$1"
+  while printf '%s' "$seg" | grep -Eq '^([A-Za-z_][A-Za-z0-9_]*=[^ ]*|/?([a-z/]*/)?(sudo|env|command|exec|nohup|time|xargs|doas))( |$)'; do
+    seg="$(printf '%s' "$seg" | sed -E 's#^([A-Za-z_][A-Za-z0-9_]*=[^ ]*|/?([a-z/]*/)?(sudo|env|command|exec|nohup|time|xargs|doas)) *##')"
+    # Consume options AND the values of the ones that take a value. Stripping the
+    # flag alone leaves its value sitting where the command should be, so
+    # `sudo -u postgres bash f` reads as if `postgres` were the command — the
+    # same option-value confusion tracked in #217.
+    local _f
+    while printf '%s' "$seg" | grep -Eq '^-'; do
+      _f="${seg%% *}"
+      [ "$_f" = "$seg" ] && { seg=""; break; }
+      seg="${seg#* }"
+      case "$_f" in
+        -u|-g|-p|-U|-C|-h|-n|-P|-I|-a|-d|-L|-s|-e|--user|--group|--prompt|--max-args|--replace)
+          seg="${seg#* }" ;;
+      esac
+    done
+  done
+  printf '%s' "$seg"
+}
+
+# Compare paths by their NORMALISED spelling, not by basename. Basename matching
+# made `cat > docs/build.sh …; bash scripts/build.sh` a false denial: two
+# different files sharing a name are not the same file.
+norm_path() {
+  local s="$1"
+  while [ "${s#./}" != "$s" ]; do s="${s#./}"; done
+  printf '%s' "$s"
 }
 
 basename_of() { printf '%s' "${1##*/}"; }
@@ -666,7 +698,10 @@ strip_text_heredocs() {
     _skip=0
     while IFS= read -r target; do
       [ -z "$target" ] && continue
-      if executes_path "$input" "$target"; then _skip=1; break; fi
+      target="$(norm_path "$target")"
+      case "$EXECUTED_PATHS" in
+        *"$NL_SENTINEL$target$NL_SENTINEL"*) _skip=1; break ;;
+      esac
     done <<< "$(redirect_targets "$line")"
     [ "$_skip" = 1 ] && continue
 
@@ -751,6 +786,13 @@ quoted_payloads() {
   done
   [ -n "$q" ] && [ -n "$cur" ] && printf '%s\n' "$cur"
 }
+
+# Executed paths, computed ONCE and wrapped in sentinels so a lookup is an exact
+# whole-string match rather than a substring hit.
+EXECUTED_PATHS="$NL_SENTINEL"
+while IFS= read -r _p; do
+  [ -n "$_p" ] && EXECUTED_PATHS="${EXECUTED_PATHS}${_p}${NL_SENTINEL}"
+done <<< "$(collect_executed_paths "$CMD")"
 
 SEGMENTS="$(quote_split "$(strip_text_heredocs "$CMD")")"
 

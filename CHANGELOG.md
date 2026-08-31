@@ -24,13 +24,34 @@ All notable changes to this project will be documented in this file.
   writes a file with no redirect operator at all, and only the *first* `>` was being examined, so
   `cat 2>/dev/null > s.sh` resolved its target to `/dev/null`.
 
-  Verified in both directions. Against `main`: **21** differences, **every one `allow → deny`**.
-  Suite **177 → 206 cases**, of which 5 are deliberate *negative space* — a document that is never
-  executed, one only read back with `cat`, one written alongside an unrelated script being run, and a
-  basename collision — because a suite made only of spellings the matcher was written to catch proves
-  only that it matches what it matches. Mutation: disabling either helper fails **21** cases. A
-  differential cross-product of 361 generated commands reports **0** real bypasses and **0** real
-  false denials introduced, 48 bypasses closed.
+  **The analysis had to be restructured to fit inside the guard's own time budget.** Asking "does
+  this command execute that path?" per heredoc, per target, re-split the whole raw input each time —
+  every prose line of every document became a segment, with several subprocesses apiece. Seven
+  ordinary documents went from 0.6 s allow to a *false denial*, and a destructive command padded with
+  a dozen documents needed 24 s against a 15 s hook timeout — a hook that times out does not deny, so
+  the analysis meant to close a bypass had become one. The executed paths are now collected **once**
+  and looked up; the same input costs 0.45 s and 0.84 s.
+
+  Paths are compared by normalised spelling rather than basename: `cat > docs/build.sh …;
+  bash scripts/build.sh` is two different files, and matching on the name alone made it a false
+  denial. The wrapper peel is now **shared** with `pipes_into_shell` instead of being a thinner copy
+  that ate wrapper names but not their options — `sudo -E bash f`, `sudo -u postgres bash f`,
+  `env -i bash f` and `xargs -n1 bash f` all walked past the copy while the one spelling the suite
+  happened to test denied.
+
+  Verified in both directions. Against `main`: **30** differences, **every one `allow → deny`**.
+  Suite **177 → 219 cases**, of which several are deliberate *negative space* — a document never
+  executed, one only read back with `cat`, one written alongside an unrelated script, a basename
+  collision, and benign `sudo -u` / `env -i` usage — because a suite made only of spellings the
+  matcher was written to catch proves only that it matches what it matches. Mutation: disabling
+  either helper fails **30** cases; not consuming wrapper option values **1**; not consuming
+  interpreter option values **2**. A differential cross-product of 361 generated commands reports
+  **0** real bypasses and **0** real false denials introduced, 48 bypasses closed.
+
+  One piece of advertised support was **removed rather than shipped**: handling for the `>|` clobber
+  redirect was unreachable, because a `|` anywhere on the line already makes the exemption refuse.
+  Mutation confirmed it — deleting the support failed zero cases, which is what unreachable looks
+  like.
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 

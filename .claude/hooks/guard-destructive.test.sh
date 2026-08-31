@@ -654,6 +654,52 @@ check "doc: tee, never executed"     "tee notes.md <<'EOF'
 $DV $V
 EOF"                                                                                allow
 
+# --- WRAPPER OPTIONS, ABSOLUTE PATHS, AND COLLISIONS (#212 review round 2) ---
+# The wrapper peel here was a THINNER copy of the one pipes_into_shell already
+# had — it ate wrapper names but not their options, so `sudo -E bash f` walked
+# past while `sudo bash f` (the spelling the suite happened to test) denied. Two
+# copies of one idea drifting apart is §21 item 12, inside the commit that names
+# it; there is now one shared peel.
+check "wrap: sudo -E bash"           "${HDOC}sudo -E bash s.sh"                    deny
+check "wrap: sudo -u NAME bash"      "${HDOC}sudo -u postgres bash s.sh"           deny
+check "wrap: env -i bash"            "${HDOC}env -i bash s.sh"                     deny
+check "wrap: /usr/bin/env bash"      "${HDOC}/usr/bin/env bash s.sh"               deny
+check "wrap: xargs -n1 bash"         "${HDOC}xargs -n1 bash s.sh"                  deny
+check "wrap: doas bash"              "${HDOC}doas bash s.sh"                       deny
+# ...and the wrapper peel must not make ordinary privileged work look destructive.
+check "wrap: benign sudo -u psql"    "sudo -u postgres psql -c 'SELECT 1'"         allow
+check "wrap: benign env -i"          "env -i npm test"                             allow
+
+# Absolute-path direct execution: stripping the directory to normalise the
+# interpreter had also stripped it from the SCRIPT, so `/tmp/s.sh` stopped
+# looking like a path at all.
+check "abs: chmod then /tmp/s.sh"    "cat > /tmp/s.sh <<'EOF'
+$DV $V
+EOF
+chmod +x /tmp/s.sh && /tmp/s.sh"                                                    deny
+
+# NEGATIVE SPACE — a basename COLLISION is not the same file. Matching on
+# basename made this a false denial, and the CHANGELOG claimed it as a covered
+# case when no such case existed.
+check "collide: different dirs"      "cat > docs/build.sh <<'EOF'
+$DV $V
+EOF
+bash scripts/build.sh"                                                              allow
+
+# Sub-features that were advertised and pinned by nothing (both mutation-scored 0
+# before these): interpreter options that take a VALUE, and the `>|` clobber
+# spelling of a redirect.
+check "opt-value: bash -o posix"     "${HDOC}bash -o posix s.sh"                   deny
+check "opt-value: bash --rcfile f"   "${HDOC}bash --rcfile /dev/null s.sh"         deny
+# `cat >| s.sh …` denies, but NOT via redirect handling — the `|` makes
+# line_is_all_text_tools refuse the exemption first. Labelled for what it
+# actually tests, since a case that passes for the wrong reason is worse than no
+# case at all.
+check "write: pipe char refuses strip" "cat >| s.sh <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                          deny
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0
