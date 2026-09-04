@@ -190,3 +190,13 @@ async def test_get_public_stats_with_forwarded_for(client: AsyncClient):
     )
     assert response.status_code == 200
     assert response.json()["visitor_ip"] == "1.2.3.4"
+
+
+@pytest.mark.asyncio
+async def test_208_demo_deliberate_failure(client: AsyncClient):
+    """Deliberately failing test: #208 demo that the PR verification gate goes red.
+
+    This commit lives only on the throwaway `test/208-demo-red` branch and its
+    draft PR; it is never merged.
+    """
+    assert False, "#208 demo: the pull_request verification gate must fail on this"
