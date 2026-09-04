@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **Dev compose now passes `LINKEDIN_IMPORT_TOKEN` into the backend** (#228) — prod compose forwarded
+  it; the dev stack never did, so a token set in `.env` per `.env.example` still produced
+  `401 Import requires a valid X-Import-Token` from the local importer (the backend saw an empty
+  configured token, which `_import_authorized` rightly never accepts). Verified live: with the fix
+  the container's token matches `.env` (sha-compare) and `python -m importer` imported 7 posts
+  against `http://localhost:8000`; an empty token still 401s token-only requests.
+
+### Fixed
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 
