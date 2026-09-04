@@ -81,7 +81,10 @@ specs/      Feature specs (planned/done)
   local pytest, adding a CI cache, a release, or destructive local commands — it exists so we don't
   re-research what we already know.
 - **Slash commands** (`.claude/commands/`): project flows — `/verify`, `/release`, `/issue-triage`,
-  `/linkedin-sync`.
+  `/linkedin-sync`, `/prep-pr` (pre-PR hygiene gate: stale-main, CHANGELOG duplicates, stale
+  old-behavior assertions — #119). The **`env-gotchas` skill** (`.claude/skills/env-gotchas/`)
+  documents the macOS/BSD/gh platform pitfalls (no `timeout`, BSD `grep -E`/`sed -i ''`,
+  same-identity `gh pr review --approve` block) — consult it before writing cross-platform shell.
 
 ## Engineering rules (non-negotiable)
 
