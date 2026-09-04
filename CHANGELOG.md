@@ -16,6 +16,139 @@ All notable changes to this project will be documented in this file.
   reached the merge gate because nothing in CI would have caught it.
 
 ### Fixed
+- **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
+  guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
+
+  1. Separators packed inside a shell wrapper's quoted argument —
+     `bash -c "echo hi; <docker volume rm>"`. The outer quote-aware split correctly protects those
+     separators *because they are inside quotes*, so the whole script arrived as one `echo`-led
+     segment. A wrapper's argument is now re-split as the script it is, not read as one command.
+  2. A pipeline whose final stage is a shell reading stdin —
+     `printf "%s" "<destroy>" | bash`. Neither segment is dangerous alone: `printf` is a text tool
+     and `bash` by itself destroys nothing. But the construct means "execute this text", so quoted
+     payloads earlier in such a pipeline are now read as code.
+
+  Same root cause as the #204 rounds, and the same rule applies: what the guard inspects has to be
+  what the shell executes. Verified in both directions — running the final suite against `main`'s
+  hook gives **24** differences: **21** are `allow → deny` (bypasses closed) and **3** are
+  `deny → allow` — false denials `main` had, where a wrapped teardown of a scratch `test_*` database
+  was blocked. That is the one destructive operation rule 9 explicitly authorises, and it was being
+  denied on this repo's own prescribed test loop: unwrapping strips a wrapper's leading quote but not
+  its trailing one, so the inner body ended in a stray quote and rule 4's `([ ]|$)` boundary stopped
+  recognising the name as a test database. Rule 5 was hardened for exactly this in #188; rule 4 was
+  not. Suite **112 → 177 cases**; a 33-command benign corpus stays fully allowed.
+
+  Mutation-checked (mutant definitions stated so the numbers are reproducible): making
+  `pipes_into_shell` return false fails **13** cases, `needs_flat_pass` always true **1**, removing
+  the flattened-body fall-through **10**, the script-operand check **4**, an option VALUE read as a
+  script operand **2**, ignoring the line-continuation flag **3**, removing the deadline check **2**,
+  removing the depth deny **2**, reverting rule 4's boundary **5**, and removing the option-value
+  strip **1**. Measured against a generated cross-product (destructive and benign cores × 14 wrapper
+  shapes, 266 commands) rather than a curated list — a hand-written corpus keeps agreeing with
+  whoever wrote it: **0** real bypasses introduced, **0** real false denials introduced, 72 bypasses
+  closed, 3 false denials removed.
+
+  Two of those conditions exist because review caught this change making the guard *worse*, and both
+  are worth recording rather than smoothing over. Replacing the flattened-body pass with the new
+  inner-script pass looked like a strict improvement but was not — `quote_split` treats `(`, `)` and
+  backtick as separators, so a command substitution inside an invocation fragments it and the
+  multi-condition rules never see all their conditions at once; six protected paths went
+  `deny → allow`. And phrasing the shell test as "any shell that is not `-c`" made it a **negation**,
+  which denied `bash <script> && git commit -m "…"` — this repo's own pre-push-then-commit flow —
+  because a script-file operand reads a file, not the pipe. The forms that genuinely read the
+  pipeline are now matched explicitly.
+
+  **The analysis is now bounded, because cost here is a security property.** The hook has a 15 s
+  timeout, and a hook that times out does **not** deny — so an analysis that is too slow is itself a
+  bypass. Review found the cost was `2^depth`: the flattened-body pass re-descended the same subtree
+  the inner pass had just walked. A depth-9 nest followed by a destruction took **25 s** where `main`
+  decides in **153 ms**, i.e. an effective allow on a protected path. Two bounds now: the flattened
+  pass runs only when it can help — when the body contains `(`, `)` or a backtick, or the command uses
+  a line continuation (bash joins those lines into one invocation while the inner pass splits on the
+  newline; a *bare* newline genuinely terminates the command, so splitting there is correct) — and a
+  wall-clock deadline stops analysis entirely. Both **deny** when hit; refusing to
+  analyse must never mean allowing. Being wall-clock, that bound is load-dependent: under heavy
+  load a large command can be denied that would be allowed on an idle machine. The direction is
+  deliberate — deny, never allow — but the non-determinism is real and is recorded here rather
+  than left to be discovered. Measured after: depth 9 **185 ms**, depth 12 **188 ms** (was
+  25 s and 190 s). Pinned by wall-clock regression tests, since correctness tests cannot see this —
+  the decision is right, it just arrives too late.
+
+  A related bound is **not** fixed here and is filed as #219: the initial quoting scan is O(n) in
+  bash, so a 40 000-character command takes ~21 s on `main` and on this branch alike, exceeding the
+  timeout before any inspection starts. Pre-existing, and this change neither causes nor cures it.
+
+  **Cost, and the user-visible contract it creates.** Inspecting a wrapper's inner commands is real
+  work: a `bash -c` containing *n* commands costs roughly 22 ms × *n* (1 ≈ 0.07 s, 10 ≈ 0.26 s,
+  50 ≈ 1.1 s) against a flat ~0.05 s before, and commands *without* a shell wrapper are unaffected.
+  Beyond roughly **350 inner commands** the deadline is reached and the command is **denied** rather
+  than allowed — that is the new contract, and it is stated here rather than left to be discovered.
+
+  One shape is bounded rather than flat: a command carrying a **line continuation** must run the
+  flattened pass (it is the only thing that catches a fragmented invocation), and inside a nest that
+  means running it at every level. Measured: depth 7 ≈ 6.5 s, depth 8 denied at ≈ 7.1 s by the
+  deadline, depth 10 denied at ≈ 0.2 s by the depth bound. An ordinary continuation with no nesting
+  is ≈ 0.1 s. Bounded, deliberate, and pinned by wall-clock tests.
+- **`guard-destructive.sh` no longer treats prose as a command — without weakening the guard**
+  (#204) — a quoted argument spanning newlines was split on the raw newline, so a line of *text* that
+  merely began with a destructive verb was inspected as an invocation. Writing documentation about
+  the very commands this guard exists for was blocked, which trains reflexive `GUARD_DESTRUCTIVE=0`
+  use, and a bypass reached for by habit protects nothing.
+
+  The root cause is that a newline inside quotes is **data** when the quoted text is an argument and
+  a **separator** when it is code. A quoted newline now becomes a sentinel that is neither a
+  separator nor whitespace; the shell-code paths (`bash|sh|zsh|dash -c`, `eval`, `ssh`) restore the
+  newlines, split line-first, and inspect every inner command, while everything else flattens the
+  sentinel to a space and reads as prose. An unterminated quote falls back to treating newlines as
+  separators, because the data boundary was never actually known.
+
+  Additionally, a heredoc fed to a **text tool** (`cat > notes.md <<'EOF'`) is a document, so its
+  body is no longer inspected — the issue's first acceptance criterion. That exemption fails closed
+  on three independent conditions: the `<<` must be outside quotes and not a here-string, **every**
+  command on the opening line must be a text tool (so `echo hi && bash <<'EOF'` keeps its body), and
+  the terminator must actually appear (an unterminated heredoc strips nothing rather than swallowing
+  the rest of the command).
+
+  Four rounds of independent review each found that an earlier version of this fix **weakened** the
+  guard, every time in the same shape: an exemption whose condition was checked too narrowly, so a
+  benign leading token hid what followed. First by flattening multi-line scripts; then by attributing
+  a heredoc to the *first* command on the line rather than the one that consumes it; then by treating
+  a `<<` inside a comment or after an escaped quote as a real redirect, and by exempting **unquoted**
+  delimiters whose bodies the shell actually expands (so `$(…)` in one would execute); finally
+  because the two functions that jointly grant the exemption disagreed about what a line even was —
+  one had been taught about backslash escapes and the other had not, so `git commit -m "the \" char"
+  ; bash <<'EOF'` read as "every command here is a text tool" and exempted the shell heredoc behind
+  it. That last one was **introduced by the round-3 fix itself**: teaching one half of a two-function
+  invariant about escapes opened a hole that had not existed while both halves were consistently
+  wrong. All were caught before merge and are pinned by tests.
+
+  The exemption is therefore deliberately narrow. A heredoc body is skipped only when **all four**
+  hold: the delimiter is quoted or backslash-escaped (an unexpanded body); the `<<` is a real
+  redirect — outside quotes, outside comments, not a here-string; **every** command on the opening
+  line is a text tool; and the terminator actually appears. Any doubt on any condition and the body
+  stays inspected.
+
+  Self-test suite: **63 → 112 cases**. Measured rather than asserted — running the final suite
+  against each earlier version: pre-`#204` `main` **8** differences (**6** false denials removed,
+  **2** destructions newly caught that `main` allowed), first attempt **25**, second **24**, third
+  **5**, fourth **9**. Each condition is mutation-checked individually against the final suite:
+  flattening the newline sentinel to a space fails **10** cases, removing the heredoc exemption
+  **4**, making the all-commands-are-text-tools check always true **13**, dropping the
+  quoted-delimiter requirement **2**, disabling the quote/comment masking **3**, removing the
+  terminator lookahead **1**, and removing `quote_split`'s escape handling **6**. Note that nothing
+  in CI runs this suite (see #208) — it runs via `verify_all.sh` and the pre-push hook, so a
+  regression here is invisible to the pipeline.
+
+  **Guard cost:** `heredoc_delim` now rejects a line without `<<` before running the masking pass.
+  Without it, every line of a large command paid for two O(n) character loops where `main` paid for
+  one — a 40 000-character command took **42.5 s** against `main`'s **21.2 s**. That is not merely
+  slow: a PreToolUse hook that times out does **not** deny, so doubling the cost halves the input
+  size at which the guard still guards. Measured after the fix: **21.3 s** — `main`'s timing restored.
+
+  **Known gap:** writing a script with a text-tool heredoc and executing it in the same command
+  (`cat > s.sh <<'EOF' … EOF` then `bash s.sh`) satisfies all four conditions and is allowed, where
+  pre-`#204` `main` denied it. That is inherent to exempting document-writing at all; tracked in
+  #212 rather than left implicit.
 - **The encryption-migration tests no longer collide under `pytest -n auto`** — they shared one
   scratch database, so concurrent xdist workers dropped a database another was mid-migration on
   (reproduced on unmodified `main`: 3 failed + 1 error). The name is now worker-scoped, keeping the
@@ -54,7 +187,9 @@ All notable changes to this project will be documented in this file.
   the variable from the developer's environment (and `.env`). Process environment *overrides* `.env`,
   so a key exported from a shell profile reached the backend container silently. Verified on a real
   machine: with the previous overlay `docker compose config` resolved a live 53-character key into
-  the stack; with the fix it resolves `""`. `docker-compose.e2e.yml` now pins the (renamed) Gemini key empty for the backend, so **every** consumer of the E2E overlay is covered — not only the invocation that
+  the stack; with the fix it resolves `""`. `docker-compose.e2e.yml` now pins the (renamed)
+  Gemini key empty for the backend, so **every** consumer of the E2E overlay is covered — not
+  only the invocation that
   remembers to export it — and the backend falls back to the in-stack Ollama exactly as in CI
   (verified: container env empty, stack healthy, the five Gemini-touching admin specs pass in 12.5 s).
   `deploy.yml`'s backend test job also sets it explicitly rather than relying on the runner simply
