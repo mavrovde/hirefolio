@@ -783,6 +783,26 @@ check_fast "cost: unterminated heredocs bounded" "$UNTERM"                      
 # `--` before the -c script is still the script.
 check "spell: bash -c -- destroy"    "bash -c -- \"$DV $V\""                     deny
 
+# --- ROUND-3 REVIEW OF THIS PR (#225): non-heredoc bulk shapes --------------
+# Every earlier cost pin was heredoc- or nesting-shaped, which is why this
+# survived three rounds: the token-peel loops (env-assignments, xargs options)
+# forked 2-3 processes per token AFTER the one deadline check they passed —
+# ~19 KB of env-assignments took 22 s, 12 KB of xargs options 18 s, both under
+# the 24 KB size bound and past the 15 s hook timeout. Single-pass seds now;
+# and correctness is pinned in BOTH directions: the peel must still reveal a
+# destructive tail behind the bulk.
+ENVRUN=""
+for _i in $(seq 1 1400); do ENVRUN+="A$_i=xxxxxxxx "; done
+check_fast "cost: 20KB env-assignment run"    "${ENVRUN}echo done"                8
+check      "cost: env-run destroy tail"        "${ENVRUN}$DV $V"                  deny
+check      "cost: env-run benign tail"         "${ENVRUN}npm run build"           allow
+XOPTS="cat v.txt | xargs "
+for _i in $(seq 1 1500); do XOPTS+="-a "; done
+check_fast "cost: 5KB xargs-option run"       "${XOPTS}echo hi"                   8
+check      "cost: xargs-opts destroy tail"     "${XOPTS}$DV"                      deny
+# ...and the leading-run bypass check still honors a buried GUARD_DESTRUCTIVE=0.
+check "bypass: mid-run GUARD_DESTRUCTIVE=0"   "FOO=1 GUARD_DESTRUCTIVE=0 $DV $V"  allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

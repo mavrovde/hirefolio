@@ -273,7 +273,7 @@ peel_wrapper() {
     tok="${rest%% *}"
     [ "$tok" = "$rest" ] && { rest=""; break; }
     rest="${rest#* }"
-    if [ -n "$valflags" ] && printf '%s' "$tok" | grep -Eq "^($valflags)$"; then
+    if [ -n "$valflags" ] && [[ "$tok" =~ ^($valflags)$ ]]; then
       case "$rest" in *" "*) rest="${rest#* }" ;; *) rest="" ;; esac
     fi
   done
@@ -306,17 +306,29 @@ inspect_segment() {
   seg="${seg#\\}"
 
   # Peel leading env-assignments; a leading GUARD_DESTRUCTIVE=0 authorizes THIS
-  # segment specifically (deliberate, scoped bypass).
-  while printf '%s' "$seg" | grep -Eq '^[A-Za-z_][A-Za-z0-9_]*='; do
-    printf '%s' "$seg" | grep -Eq '^GUARD_DESTRUCTIVE=0([ ]|$)' && return 0
-    seg="$(printf '%s' "$seg" | sed -E 's/^[A-Za-z_][A-Za-z0-9_]*=[^ ]* ?//')"
-  done
+  # segment specifically (deliberate, scoped bypass). ONE pass, not a loop: the
+  # per-token loop forked 3 processes per assignment, and a ~19 KB run of them
+  # outlived the 15 s hook timeout under the 24 KB size bound (round-3 review
+  # of #225 — cost is a security property, #219). The bypass check looks for
+  # GUARD_DESTRUCTIVE=0 anywhere in the LEADING assignment run, which is
+  # exactly the set the loop used to test one head at a time.
+  if printf '%s' "$seg" | grep -Eq '^([A-Za-z_][A-Za-z0-9_]*=[^ ]* )*GUARD_DESTRUCTIVE=0( |$)'; then
+    return 0
+  fi
+  seg="$(printf '%s' "$seg" | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^ ]* )*//')"
+
 
   # Transparently unwrap indirection so wrapped invocations are still inspected.
   # Loop because wrappers stack (e.g. `sudo env FOO=bar xargs docker volume rm`).
   local changed=1 guard=0
   while [ "$changed" = "1" ] && [ "$guard" -lt 8 ]; do
     changed=0; guard=$((guard + 1))
+    # The unwrap loop itself must respect the budget: $SECONDS is a builtin, so
+    # this costs nothing, and every branch below forks (round-3 review, #219).
+    if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
+      REASON="BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
+      return 0
+    fi
     # sudo/command/nohup/time/exec/env/nice/ionice/stdbuf/setsid/timeout/… — one
     # shared wrapper model (#217), options and their values consumed.
     if _peeled="$(peel_wrapper "$seg")"; then
@@ -324,18 +336,19 @@ inspect_segment() {
     fi
     # A wrapper can hand its argv to an alias-suppressed spelling too (#213).
     if [ "${seg:0:1}" = '\' ]; then seg="${seg#\\}"; changed=1; fi
-    # more env-assignments after a wrapper
-    while printf '%s' "$seg" | grep -Eq '^[A-Za-z_][A-Za-z0-9_]*='; do
-      printf '%s' "$seg" | grep -Eq '^GUARD_DESTRUCTIVE=0([ ]|$)' && return 0
-      seg="$(printf '%s' "$seg" | sed -E 's/^[A-Za-z_][A-Za-z0-9_]*=[^ ]* ?//')"; changed=1
-    done
+    # more env-assignments after a wrapper — same single-pass shape as above
+    if printf '%s' "$seg" | grep -Eq '^[A-Za-z_][A-Za-z0-9_]*='; then
+      if printf '%s' "$seg" | grep -Eq '^([A-Za-z_][A-Za-z0-9_]*=[^ ]* )*GUARD_DESTRUCTIVE=0( |$)'; then
+        return 0
+      fi
+      seg="$(printf '%s' "$seg" | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^ ]* )*//')"; changed=1
+    fi
     # xargs [options...] <cmd> — drop `xargs` and its option/replacement tokens.
     if printf '%s' "$seg" | grep -Eq '^xargs( |$)'; then
-      seg="$(printf '%s' "$seg" | sed -E 's/^xargs +//')"
-      # strip leading xargs options: -0, -n1, -P4, -I{}, -I '{}', --max-args=1, {}
-      while printf '%s' "$seg" | grep -Eq '^(-[^ ]+|\{\}|[A-Za-z]=)( |$)'; do
-        seg="$(printf '%s' "$seg" | sed -E 's/^(-[^ ]+|\{\}|[A-Za-z]=) +//; s/^(-[^ ]+|\{\})$//')"
-      done
+      # strip xargs + its leading options (-0, -n1, -P4, -I{}, --max-args=1, {})
+      # in ONE sed pass — the per-token loop forked twice per option and a 12 KB
+      # option run outlived the hook timeout (round-3 review, #219).
+      seg="$(printf '%s' "$seg" | sed -E 's/^xargs +//; s/^((-[^ ]+|\{\}|[A-Za-z]=) )*//; s/^(-[^ ]+|\{\}|[A-Za-z]=)$//')"
       changed=1
     fi
     # bash -c "…" / sh -c '…' / zsh -c … / eval … / ssh host "…" — the quoted
@@ -804,10 +817,9 @@ pipes_into_shell() {
     while :; do
       if printf '%s' "$seg" | grep -Eq '^xargs( |$)'; then
         via_xargs=1
-        seg="$(printf '%s' "$seg" | sed -E 's/^xargs *//')"
-        while printf '%s' "$seg" | grep -Eq '^-'; do
-          seg="$(printf '%s' "$seg" | sed -E 's/^-[^ ]* *//')"
-        done
+        # one pass — a per-token strip loop here has the same fork-per-option
+        # cost profile the round-3 review measured in inspect_segment (#219)
+        seg="$(printf '%s' "$seg" | sed -E 's/^xargs *//; s/^(-[^ ]+ )*//; s/^-[^ ]*$//')"
         continue
       fi
       if _p="$(peel_wrapper "$seg")"; then seg="$_p"; continue; fi

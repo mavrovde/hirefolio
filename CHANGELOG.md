@@ -80,6 +80,18 @@ All notable changes to this project will be documented in this file.
   with an in-loop budget hand-through, 19 s → 7 s on a 90-block shape, wall-clock pinned), and
   `bash -c -- "…"` hid the script behind the option terminator. Suite **263 cases**; the new pins
   fail against the round-2 revision (9 both-direction cases + the cost pin isolating at 19 s vs 7 s).
+
+  Round 3 confirmed all of that by re-measurement (0 differences vs `main` in either direction on a
+  119-command corpus) and falsified the last cost claim with two NON-heredoc bulk shapes — ~19 KB of
+  env-assignments (22 s) and 12 KB of xargs options (18 s), both under the 24 KB size bound, both
+  past the 15 s hook timeout: the token-peel loops forked 2–3 processes per token after the one
+  deadline check they passed, and every existing cost pin was heredoc- or nesting-shaped, which is
+  why it survived three rounds. Fixed by collapsing each peel loop into ONE sed pass (reviewer-
+  validated: identical remainders; measured 22 s → 1.2 s), a fork-free bash-regex valflags match, and
+  a costless `$SECONDS` budget check inside the unwrap loop. The single-pass bypass check now honors
+  `GUARD_DESTRUCTIVE=0` anywhere in the leading assignment RUN — the same set the loop tested one
+  head at a time (pinned). Suite **269 cases**; the two new wall-clock pins fail against the round-3
+  revision, and the destructive-tail-behind-bulk direction is pinned deny.
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 
