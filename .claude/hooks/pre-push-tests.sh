@@ -103,6 +103,8 @@ run_checks() {
   fi
 
   if [ "$PREPUSH_RUN_FRONTEND" = "1" ]; then
+    echo "== frontend cd-safety (zoneless repaint hazards, #118) =="
+    ( cd "$ROOT/frontend" && node scripts/check-cd-safety.mjs ) || return 1
     echo "== frontend tests (shared + public + admin) =="
     ( cd "$ROOT/frontend" && npm test ) || return 1
   fi

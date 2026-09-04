@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **`ssr-cd-safety` skill + `lint:cd-safety` check** (#118) — the zoneless/SSR silent-failure class
+  (#94: properties assigned in subscribe/interval callbacks never repaint; unit tests bundle
+  zone.js and cannot see it) is now (a) a committed skill stating the contract — async mutation ⇒
+  `async` pipe | signal | `markForCheck()`; SSR URL rewrite lives in an `HttpBackend` delegating to
+  `HttpXhrBackend`, never `FetchBackend` — referenced from the `frontend-dev` and `pr-reviewer`
+  charters, and (b) a dependency-free checker (`frontend/scripts/check-cd-safety.mjs`, run as
+  `npm run lint:cd-safety` and in the pre-push gate) that flags imperative-callback `this.*`
+  assignments in `projects/public` with no repaint path, with a required-justification
+  `// cd-safety-ok: <reason>` escape. It found one real site on `main` (`blog.component.ts:89`,
+  SSR-only — now carrying its justification). The workspace has no ESLint today; adopting
+  angular-eslint is registered as a separate deliberate effort rather than smuggled in here.
+  Also corrects `pr-reviewer.md`'s stale "no zoneless provider" claim (zoneless is explicit since
+  #105).
+
 ### Fixed
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:

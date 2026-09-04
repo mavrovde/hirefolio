@@ -17,6 +17,7 @@
     "test:coverage:shared": "vitest run --coverage --config projects/shared/vitest.config.ts",
     "test:coverage:public": "vitest run --coverage --config projects/public/vitest.config.ts",
     "test:coverage:admin": "vitest run --coverage --config projects/admin/vitest.config.ts",
+    "lint:cd-safety": "node scripts/check-cd-safety.mjs",
     "test:coverage": "npm run test:coverage:shared && npm run test:coverage:public && npm run test:coverage:admin",
     "e2e": "npx playwright test",
     "serve:ssr:public": "node dist/public/server/server.mjs"
