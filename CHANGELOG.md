@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **`/deploy-status` command** (#120) — one command that reports the TRUE deploy state: latest
+  `deploy.yml` run + whether the secrets-gated rollout job ran or silently skipped, repo
+  `VERSION`/latest tag, published image tags, and the LIVE prod version from
+  `/api/app/stats/public` — ending in an explicit live/behind verdict. Bakes in the
+  published ≠ live doctrine (#112): a green pipeline publishes images; only the rollout job (or the
+  live version itself) proves the host updated. The `devops-pipeline` charter now also names the
+  #147 concurrency queue (deploys serialize, never overlap) and points at `/deploy-status`.
+
 ### Fixed
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:

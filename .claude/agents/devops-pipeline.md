@@ -73,6 +73,9 @@ verifies containers by image digest, health-gates `/api/app/health`, freshness-p
 configured. Without them it emits a skip notice and the run is still green with nothing rolled out.
 So: read the job's status before reporting. If it was skipped, never say "prod is updated" — verify
 the live site itself (footer `BE: vX.Y.Z`) or state that host rollout is pending.
+Deploys are serialized by the workflow's concurrency guard (#147): a second merge QUEUES behind
+the running deploy rather than cancelling it — expect a wait, and never trigger overlapping deploys
+by hand. The one-command status check for all of this is `/deploy-status` (#120).
 
 ## Issue workflow — close-the-loop after a green deploy
 Once the pipeline is green for a merge that `Closes #NN` / `Fixes #NN` / `Refs #NN` (see `CLAUDE.md`
