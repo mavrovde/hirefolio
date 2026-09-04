@@ -351,8 +351,8 @@ inspect_segment() {
     # guard strictly weaker than before on six protected paths.
     # The `-c` may hide inside a cluster (`-lc`), behind other options
     # (`-e -c`, `--login -c`) — all the same script argument (#220).
-    if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +((-o [^ ]+|--rcfile [^ ]+|--init-file [^ ]+|-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c[A-Za-z]* '; then
-      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +((-o [^ ]+|--rcfile [^ ]+|--init-file [^ ]+|-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c[A-Za-z]* +//; s/^\\\$?[\"']//")"
+    if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +((-o [^ ]+|--rcfile [^ ]+|--init-file [^ ]+|-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c[A-Za-z]* (-- +)?'; then
+      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +((-o [^ ]+|--rcfile [^ ]+|--init-file [^ ]+|-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c[A-Za-z]* +(-- +)?//; s/^\\\$?[\"']//")"
       inspect_inner_script "$seg" && return 0
       needs_flat_pass "$seg" || return 0
       changed=1
@@ -673,8 +673,13 @@ heredoc_write_target() {
 # delimited against exactly that array, so re-deriving it here could disagree.
 heredoc_target_executed() {
   local tgts="$1" open="$2" close="$3" b besc j others="" tgt
+  # Past the budget: report "executed" so the body STAYS INSPECTED — the
+  # inspection pass then trips inspect_segment's deadline check, which denies.
+  # deny() must not be called here: this runs inside a command substitution,
+  # where its JSON is captured into a variable and its exit kills only the
+  # subshell — a deny that fails OPEN (round-2 review).
   if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
-    deny "BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix it with GUARD_DESTRUCTIVE=0 if it is authorized."
+    return 0
   fi
   for (( j=0; j<n; j++ )); do
     [ "$j" -ge "$open" ] && [ "$j" -le "$close" ] && continue
@@ -686,7 +691,13 @@ heredoc_target_executed() {
     [ -z "$b" ] && continue
     case "$others" in *"$b"*) ;; *) continue ;; esac   # cheap reject first
     besc="$(printf '%s' "$b" | sed -E 's/[][^$.*/\\+?(){}|]/\\&/g')"
-    if printf '%s' "$others" | grep -Eq "(^|[;&|() ])((bash|sh|zsh|dash|source|exec|\.) +([^;&|]* )?([^ ;&|]*/)?$besc|chmod +[^;&|]*$besc|\.{0,2}/([^ ;&|]*/)*$besc)( |\$|;)"; then
+    # Command-position aware, like the guard itself (header, #204): the
+    # interpreter/path/chmod must sit at line start or right after a real
+    # separator — a bare space before them means ARGUMENT position, which is
+    # how `git add . notes.md` once read as dot-sourcing (round-2 review).
+    # chmod counts only when the mode actually adds execute (`+x`/`u+x`/octal
+    # with an odd digit) — `chmod 644 notes.md` is document housekeeping.
+    if printf '%s' "$others" | grep -Eq "(^|[;&|()] *)((bash|sh|zsh|dash|source|exec|\.) +([^;&|]* )?([^ ;&|]*/)?$besc|chmod +(-[A-Za-z]+ +)*([ugoa]*[+=][rwstugo]*x[rwstugo]*|[0-7]*[1357][0-7]*) +[^;&|]*$besc|\.{0,2}/([^ ;&|]*/)*$besc)( |\$|;)"; then
       return 0
     fi
   done <<< "$tgts"
@@ -724,7 +735,7 @@ line_is_all_text_tools() {
 #      swallow the rest of the command, including anything destructive in it.
 # Any doubt on any of the three and the body stays fully inspected.
 strip_text_heredocs() {
-  local input="$1" out="" line delim i j n end
+  local input="$1" out="" line delim i j n end _t
   local -a lines=()
   while IFS= read -r line; do lines+=("$line"); done <<< "$input"
   n=${#lines[@]}
@@ -736,9 +747,24 @@ strip_text_heredocs() {
     [ -z "$delim" ] && continue
     line_is_all_text_tools "$line" || continue
 
+    # Budget check: this loop used to fork a sed PER LINE looking for the
+    # terminator, which on a command full of unterminated heredocs was
+    # O(lines^2) subprocess spawns — 52 s on a 3.8 KB command (round-2 review),
+    # i.e. the #219 bypass again. The strip is now pure bash, and past the
+    # budget we stop stripping and hand the rest through UNstripped: the full
+    # inspection pass then hits inspect_segment's own deadline check, which
+    # DENIES — fail closed without ever calling deny() from inside a command
+    # substitution (where its output would be captured and its exit would kill
+    # only the subshell — the round-2 "deny fails open" finding).
+    if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
+      for (( j=i+1; j<n; j++ )); do out+="${lines[j]}"$'\n'; done
+      break
+    fi
     end=-1
     for (( j=i+1; j<n; j++ )); do
-      if [ "$(printf '%s' "${lines[j]}" | sed -E 's/^[[:space:]]+//')" = "$delim" ]; then
+      _t="${lines[j]}"
+      _t="${_t#"${_t%%[![:space:]]*}"}"    # ltrim without a fork
+      if [ "$_t" = "$delim" ]; then
         end=$j; break
       fi
     done

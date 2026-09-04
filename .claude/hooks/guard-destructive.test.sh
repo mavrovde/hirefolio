@@ -733,6 +733,56 @@ EOF
 git add notes.md"                                                                allow
 check "spell: bash -o posix script"   "bash -o posix deploy.sh"                   allow
 
+# --- ROUND-2 REVIEW OF THIS PR (#225) ---------------------------------------
+# The #212 execution scan violated the guard's own command-position principle:
+# a bare space before `.` / a path admitted ARGUMENT positions, chmod matched
+# any mode, and fd-redirect operands became "targets" — five ordinary
+# doc-writing commands went allow→deny (the #204 class). Position + exec-mode
+# aware now; both directions pinned.
+check "w+x fp: git add . notes.md"   "cat > notes.md <<'EOF'
+$D $T prose here
+EOF
+git add . notes.md"                                                              allow
+check "w+x fp: ls -la . notes.md"    "cat > notes.md <<'EOF'
+$D $T prose here
+EOF
+ls -la . notes.md"                                                               allow
+check "w+x fp: chmod 644 notes.md"   "cat > notes.md <<'EOF'
+$D $T prose here
+EOF
+chmod 644 notes.md"                                                              allow
+check "w+x fp: later /dev/null"      "cat > notes.md 2>/dev/null <<'EOF'
+$D $T prose
+EOF
+wc -l notes.md /dev/null"                                                        allow
+check "w+x fp: grep -c . err.log"    "cat > notes.md 2>err.log <<'EOF'
+$D $T prose
+EOF
+grep -c . err.log"                                                               allow
+# ...while execute-intent chmod and command-position execution still deny.
+check "w+x: chmod 755 then sh"       "cat > s.sh <<'EOF'
+$DV $V
+EOF
+chmod 755 s.sh; sh s.sh"                                                         deny
+# The deadline inside the heredoc machinery must fail CLOSED — it runs in a
+# command substitution where a direct deny() is captured and fails OPEN
+# (round-2 finding): past budget the body is handed through uninspected-strip
+# and the main pass's deadline denies.
+GUARD_INSPECT_DEADLINE=0 check "deadline: strip path fails closed" "cat > s.sh <<'EOF'
+echo benign
+EOF
+bash s.sh"                                                                       deny
+# Unterminated-heredoc cost: the terminator search forked a sed per line —
+# O(lines^2) spawns, 52 s at 3.8 KB (round-2). Pure-bash ltrim + in-loop budget
+# now: the same shape answers inside the budget.
+UNTERM=""
+for _i in $(seq 1 90); do UNTERM+="cat > longer-file-name-n$_i.md <<'EOF'
+doc line without terminator
+"; done
+check_fast "cost: unterminated heredocs bounded" "$UNTERM"                       10
+# `--` before the -c script is still the script.
+check "spell: bash -c -- destroy"    "bash -c -- \"$DV $V\""                     deny
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

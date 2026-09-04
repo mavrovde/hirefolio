@@ -67,6 +67,19 @@ All notable changes to this project will be documented in this file.
   `bash <<<'x'` (no space), `-cx` clusters and `-o posix -c` evaded the #220 arms (widened), and
   `env -S` consumed the command as its flag value (env's `-S` value IS the command; no longer
   consumed). All ten review findings are pinned by tests that fail against the pre-review revision.
+
+  Round 2 of the review confirmed all round-1 fixes by re-measurement and found one further blocker
+  plus three residuals, all fixed here: the #212 execution scan violated the guard's own
+  command-position principle (a bare space admitted `.`/paths in ARGUMENT position, chmod matched
+  any mode, and fd-redirect operands became "targets" — five ordinary doc-writing commands like
+  `git add . notes.md` and `chmod 644 notes.md` went allow→deny, the #204 class; now
+  separator-anchored and execute-mode aware), the heredoc machinery's internal deny ran inside a
+  command substitution and FAILED OPEN (its JSON captured, its exit killing only the subshell — now
+  it reports "keep inspecting" and the main pass's deadline denies), the terminator search forked a
+  sed per line (O(lines²) spawns, 52 s at 3.8 KB of unterminated heredocs — now a pure-bash ltrim
+  with an in-loop budget hand-through, 19 s → 7 s on a 90-block shape, wall-clock pinned), and
+  `bash -c -- "…"` hid the script behind the option terminator. Suite **263 cases**; the new pins
+  fail against the round-2 revision (9 both-direction cases + the cost pin isolating at 19 s vs 7 s).
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 
