@@ -64,6 +64,11 @@ Other: `Proxy Config Audit`, `Build * Image`, and E2E/deploy jobs.
    at which point summarize what was tried and why it's still failing, and ask
    the user how to proceed.
 
+## Reproducing the E2E locally
+When a pipeline E2E job is red and you need a local repro, load the `e2e-validation` skill
+(`/e2e`) — the known-good bring-up + readiness gate + seed + run loop with the recurring traps
+(open-webui volume, pre-schema 500 race) documented (#117). Never re-derive it.
+
 ## Green pipeline ≠ live on the host (#112 / #156)
 **A green `deploy.yml` run always means the images were PUBLISHED to the registry; it means the
 prod host was updated only if the secrets-gated `deploy` job actually ran.** Since #175 the pipeline
