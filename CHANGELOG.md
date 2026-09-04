@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **Destruction guard: six standing bypass classes closed** (#212, #213, #217, #218, #219, #220) —
+  all pre-existing on `main`, found across the #206/#214 review rounds; every one is the same
+  recurring root cause (the guard recognised a textual *framing* while the shell executes an
+  *effect*):
+
+  1. **Bulk alone defeated the guard** (#219). The quoting scan is pure bash and ran before the
+     wall-clock deadline could see anything, so a ~40 KB command outlived the hook's 15 s timeout —
+     and a hook that times out does **not** deny. Two halves: byte-wise scanning (`LC_ALL=C`; bash's
+     `${s:i:1}` is O(n) per access under UTF-8, making the loops quadratic — measured 24 KB
+     7.9 s → 2.2 s), and an input-size bound (`GUARD_MAX_CMD_LEN`, default 24000, measured not
+     guessed) that **denies** above the bound — refusing to analyse must never mean allowing.
+     Pinned with wall-clock assertions, since correctness tests cannot see a decision that is right
+     but late.
+  2. **Wrappers outside the unwrap allowlist ran uninspected** (#217). `nice`, `ionice`, `stdbuf`,
+     `setsid`, `timeout`, `chrt`, `taskset`, `busybox` and `doas` each run the command that follows
+     them unchanged; `nice <docker volume rm>` passed in both the direct and the piped-into-shell
+     shape. One shared `peel_wrapper` model now serves `inspect_segment` and `pipes_into_shell`
+     (two functions enforcing one invariant must share one model of the input), consuming options,
+     the separate-token values of value-taking flags (`nice -n 10`, `timeout -k 5`, `sudo -u root`)
+     and the bare duration/priority/mask operands (`timeout 60`, `chrt 50`, `taskset 0x1`).
+     `timeout 60 npm test`, `nice -n10 npm run build`, `ionice -c3 rsync` stay allowed.
+  3. **`' -execdir? '` never matched plain `find -exec`** (#218) — in ERE the `?` binds to one
+     character, so the pattern read `-execdi` + optional `r`. Now `-(exec|ok)(dir)?`, covering the
+     `-ok`/`-okdir` interactive twins too, and gated on the segment's command *being* `find` so the
+     widened pattern cannot fire on a commit message that merely quotes a `find -exec …` line.
+  4. **ANSI-C quoting and a leading backslash evaded the command-position check** (#213). `$'…'` is
+     a third quoting model (its `\'` is an escaped quote *inside* the region, its `\n` expands to a
+     real newline before execution); `quote_split`, `mask_quotes` and `quoted_payloads` all learned
+     it, and `bash -c $'…'` bodies are unwrapped. A leading `\` on the command word (alias
+     suppression — `\docker volume rm` runs docker all the same) is stripped before the anchored
+     rules run.
+  5. **A "document" the same command then executes is a script** (#212). The #204 heredoc exemption
+     held all four of its conditions for `cat > s.sh <<'EOF' … EOF` + `bash s.sh`, so the body was
+     skipped while it plainly runs. The write target (last `>`/`>>` redirect operand, or `tee`'s
+     operand) is now tracked: when any line outside the body executes it — `bash`/`sh`/`zsh`/`dash`/
+     `source`/`.`/`exec`, a `./t` path execution, or a `chmod` touching it — the body stays fully
+     inspected. Prose written to `notes.md` and then merely `git add`ed stays exempt.
+  6. **Unquoted pipeline payloads and other shell spellings** (#220). `echo <destroy> | bash`
+     executes identically to the quoted form but produced no quoted payload, so nothing inspected
+     it — a text-tool producer's unquoted remainder (quotes masked out, so prose stays prose) is now
+     read as code. The `-c` unwrap also matched only the immediate `bash -c`: `-lc`, `-e -c`,
+     `--login -c` and the `bash <<< "…"` here-string all hid the script, and all are now unwrapped.
+
+  Suite 177 → **241 cases**, all green; every fix mutation-checked (reverting each fails exactly its
+  own cases: `-execdir?` 3, wrapper list 17, ANSI model 1 + unwrap strip 2, backslash strip 3, size
+  bound 1, write-then-execute 6, unquoted payloads 2, shell spellings 6) and each bypass shape proven
+  to actually execute with a harmless `touch` payload before being counted. Knob: `GUARD_MAX_CMD_LEN`
+  (default 24000; non-numeric overrides fall back rather than disarming the bound).
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 

@@ -543,6 +543,151 @@ check "exempt: maintenance-db flag"   "$DBD --maintenance-db=test_x $PRODDB"    
 # ...while a genuine flag alongside a scratch operand still works.
 check "exempt: --if-exists scratch"   "$DBD --if-exists test_mavrov"                allow
 
+# --- EVERY WRAPPER OUTSIDE THE LIST WAS A BYPASS (#217) ---------------------
+# The unwrap loop recognised sudo/command/nohup/time/exec/env — an allowlist of
+# the wrappers someone thought of. `nice`, `stdbuf`, `ionice`, `setsid`,
+# `timeout`, `chrt`, `taskset`, `busybox` and `doas` each run the command that
+# follows them unchanged, and every one of them carried a destruction straight
+# past the guard, in both the direct and the piped-into-shell shape. Option
+# VALUES must be consumed too: `nice -n 10 <destroy>` hid the destruction behind
+# the value token.
+check "wrap: nice"                    "nice $DV $V"                                 deny
+check "wrap: nice -n 10 (sep value)"  "nice -n 10 $DV $V"                           deny
+check "wrap: nice -n10 (joined)"      "nice -n10 $DP -af"                           deny
+check "wrap: stdbuf -o0"              "stdbuf -o0 $DV $V"                           deny
+check "wrap: ionice -c3"              "ionice -c3 $D $T"                            deny
+check "wrap: setsid"                  "setsid $DV $V"                               deny
+check "wrap: timeout 60 (operand)"    "timeout 60 $DV $V"                           deny
+check "wrap: timeout -k 5 60"         "timeout -k 5 60 $DV $V"                      deny
+check "wrap: chrt 50"                 "chrt 50 $DV $V"                              deny
+check "wrap: taskset 0x1"             "taskset 0x1 $DV $V"                          deny
+check "wrap: busybox applet"          "busybox $D $T"                               deny
+check "wrap: doas"                    "doas $DV $V"                                 deny
+check "wrap: stacked nice+sudo"       "nice -n10 sudo $DV $V"                       deny
+check "wrap: sudo -u value consumed"  "sudo -u root $DV $V"                         deny
+# ...the same wrappers in the piped-into-shell position.
+check "wrap-pipe: nice bash"          "echo \"$DV $V\" | nice bash"                 deny
+check "wrap-pipe: stdbuf -o0 bash"    "echo \"$D $T\" | stdbuf -o0 bash"            deny
+check "wrap-pipe: busybox sh"         "echo \"$DV $V\" | busybox sh"                deny
+check "wrap-pipe: timeout 60 bash"    "echo \"$D $T\" | timeout 60 bash"            deny
+# ...and the ordinary commands these wrappers exist for stay allowed.
+check "wrap: timeout 60 npm test"     "timeout 60 npm test"                         allow
+check "wrap: nice -n10 npm build"     "nice -n10 npm run build"                     allow
+check "wrap: ionice -c3 rsync"        "ionice -c3 rsync -a src/ dst/"               allow
+check "wrap: stdbuf -oL coverage"     "stdbuf -oL npm run test:coverage"            allow
+check "wrap: timeout verify_all"      "timeout 1800 bash ./verify_all.sh"           allow
+
+# --- ' -execdir? ' NEVER MATCHED PLAIN -exec (#218) -------------------------
+# In ERE the `?` binds to the single preceding character, so the pattern read as
+# `-execdi` plus an optional `r`: it matched `-execdir` and `-execdi` but never
+# the common `-exec` spelling, whose command was never inspected. `-ok`/`-okdir`
+# are the same family (interactive, but they still execute). The branch is also
+# gated on the segment's command BEING `find` — without the gate, widening the
+# pattern would make a commit message that merely quotes `find -exec …` deny.
+check "find: plain -exec destroys"    "find . -name '*.tmp' -exec $DV {} \\;"       deny
+check "find: -execdir still denied"   "find . -name '*.tmp' -execdir $DV {} \\;"    deny
+check "find: -ok destroys"            "find /x -ok $D $T {} \\;"                    deny
+check "find: -okdir destroys"         "find /x -okdir $DV $V {} \\;"                deny
+check "find: benign -exec rm -f"      "find . -name '*.log' -exec rm -f {} \\;"     allow
+check "find: prose quoting -exec"     "git commit -m \"find . -exec $DV {} ;\""     allow
+
+# --- ANSI-C QUOTING AND A LEADING BACKSLASH (#213) --------------------------
+# $'…' is a THIRD quoting model with its own escape rules: \' is an escaped
+# quote INSIDE the region, not a terminator, and \n expands to a real newline
+# before the shell runs the text. Neither quoting function knew the model, so a
+# destruction written this way was allowed. And a leading backslash on the
+# command word (`\docker …`) only suppresses alias expansion — the same command
+# runs — but it defeated every anchored rule.
+check "ansi: bash -c \$'…' escaped q" "bash -c \$'$DV \\'$V\\''"                    deny
+check "ansi: \$'…\\n…' second cmd"    "bash -c \$'echo hi\\n$DV $V'"                deny
+check "ansi: eval \$'…'"              "eval \$'$DP -af'"                            deny
+check "ansi: payload piped to bash"   "echo \$'$DV $V' | bash"                      deny
+check "backslash: \\docker direct"    "\\$DV $V"                                    deny
+check "backslash: sudo \\docker"      "sudo \\$DV $V"                               deny
+check "backslash: inside bash -c"     "bash -c \"\\$DV $V\""                        deny
+# ...and ANSI-C text on a text tool, or an alias-suppressed text tool, is prose.
+check "ansi: prose on a text tool"    "git commit -m \$'note: $D $T blocked'"       allow
+check "backslash: \\grep is grep"     "\\grep -rn \"$DV $V\" .claude/hooks"         allow
+
+# --- BULK ALONE MUST NOT DEFEAT THE GUARD (#219) ----------------------------
+# The quoting scan is pure bash and runs BEFORE the wall-clock deadline can see
+# anything, so a large enough command used to outlive the hook's own 15 s
+# timeout — and a hook that times out does NOT deny. Two halves to the fix:
+# byte-wise scanning (LC_ALL=C) makes the scan ~3.5x cheaper, and an input-size
+# bound (GUARD_MAX_CMD_LEN, default 24000) DENIES above it — refusing to analyse
+# must never mean allowing. Wall-clock assertions, because correctness tests
+# cannot see this failure mode: the decision is right, it merely arrives late.
+PAD25K="$(printf 'x%.0s' $(seq 1 25000))"
+check      "bound: 25k is denied"          "echo \"$PAD25K\""                       deny
+check_fast "bound: 25k denied instantly"   "echo \"$PAD25K\""                       2
+PAD6K="$(printf 'y%.0s' $(seq 1 6000))"
+check      "bound: 6k prose is allowed"    "gh pr comment 1 --body \"$PAD6K\""      allow
+check_fast "bound: 6k prose is fast"       "gh pr comment 1 --body \"$PAD6K\""      5
+PAD16K="$(printf 'z%.0s' $(seq 1 16000))"
+check_fast "bound: 16k inside the budget"  "echo \"$PAD16K\""                       4
+# The bound is a knob, not a constant — and a malformed override must fall back
+# to the default rather than switching the bound off.
+GUARD_MAX_CMD_LEN=100 check "bound: override tightens" "echo \"$PAD6K\""            deny
+GUARD_MAX_CMD_LEN=bogus check "bound: bogus override falls back" "echo ok"          allow
+
+# --- A DOCUMENT THE SAME COMMAND EXECUTES IS A SCRIPT (#212) ----------------
+# The #204 heredoc exemption is correct for `cat > notes.md <<'EOF'` — and wrong
+# the moment the "document" is then run. All four exemption conditions held for
+# write-then-execute, so the body was skipped. When the write target is executed
+# by any line outside the body (bash/sh/source/`.`/exec, `./t`, or a chmod that
+# touches it), the body now stays fully inspected.
+check "w+x: cat > s.sh; bash s.sh"   "cat > s.sh <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                       deny
+check "w+x: sh runs it"              "cat > s.sh <<'EOF'
+$D $T
+EOF
+sh s.sh"                                                                         deny
+check "w+x: source"                  "cat > s.sh <<'EOF'
+$DV $V
+EOF
+source s.sh"                                                                     deny
+check "w+x: dot-source"              "cat > s.sh <<'EOF'
+$DV $V
+EOF
+. s.sh"                                                                          deny
+check "w+x: chmod && ./s.sh"         "cat > s.sh <<'EOF'
+$D $T
+EOF
+chmod +x s.sh && ./s.sh"                                                         deny
+check "w+x: tee then bash"           "tee s.sh <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                       deny
+# ...and the documents the exemption exists for stay documents.
+check "w+x: notes.md then git add"   "cat > notes.md <<'EOF'
+$D $T is what #91 did.
+EOF
+git add notes.md"                                                                allow
+check "w+x: notes.md, no execution"  "cat > notes.md <<'EOF'
+Never run $DV $V on prod.
+EOF"                                                                             allow
+
+# --- UNQUOTED PAYLOADS AND OTHER SHELL SPELLINGS (#220) ---------------------
+# Only QUOTED arguments were re-read as code when a pipeline feeds a shell, so
+# dropping the quotes was a bypass: `echo <destroy> | bash` executes identically.
+# And the `-c` unwrap matched only the immediate `bash -c` form — an option
+# before or around it (`-lc`, `-e -c`, `--login -c`) hid the script, as did the
+# here-string spelling.
+check "unq: echo payload into bash"  "echo $DV $V | bash"                         deny
+check "unq: masked quotes stay text" "printf '%s ' $DV $V | sh"                   deny
+check "spell: bash -lc"              "bash -lc \"$DV $V\""                        deny
+check "spell: bash -e -c"            "bash -e -c \"$D $T\""                       deny
+check "spell: bash --login -c"       "bash --login -c \"$DV $V\""                 deny
+check "spell: sh -ec"                "sh -ec \"$DP -af\""                         deny
+check "spell: bash <<< destroy"      "bash <<< \"$DV $V\""                        deny
+check "spell: sh <<< destroy"        "sh <<< \"$D $T\""                          deny
+# ...with no new false denials on the benign counterparts.
+check "unq: benign unquoted pipe"    "echo hello world | bash"                    allow
+check "spell: bash -lc benign"       "bash -lc \"echo hi\""                       allow
+check "spell: here-string benign"    "bash <<< \"echo hi\""                       allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

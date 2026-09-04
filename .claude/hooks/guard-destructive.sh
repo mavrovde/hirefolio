@@ -33,6 +33,16 @@ set -uo pipefail
 # was typed. Disable pathname expansion for the whole script.
 set -f
 
+# Byte-wise scanning (#219). Under a UTF-8 locale, bash's ${s:i:1} indexing is
+# O(n) per access (it re-counts multibyte characters from the start), which made
+# the character loops below quadratic — a 24 KB command cost ~8 s against a 15 s
+# hook timeout, and a hook that times out does NOT deny. Every character this
+# guard dispatches on (quotes, backslash, separators, `<<`, `#`, `$`) is ASCII,
+# and UTF-8 continuation bytes always have the high bit set, so they can never
+# alias any of them: scanning bytes is semantically identical and ~3.5x faster
+# (measured: 24 KB 7.9 s → 2.2 s).
+export LC_ALL=C
+
 # Session master switch (inherited from the hook's environment / settings env).
 : "${GUARD_DESTRUCTIVE:=1}"
 
@@ -51,6 +61,27 @@ deny() {
 INPUT="$(cat)"
 CMD="$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)"
 [ -z "$CMD" ] && CMD="$INPUT"
+
+# Input-size bound (#219). The quoting scan below is O(n^2)-ish in pure bash and
+# runs BEFORE the wall-clock deadline can see anything, so a large enough command
+# used to outlive the hook's 15 s timeout — and a hook that times out does not
+# deny, meaning bulk alone defeated the guard regardless of parsing correctness.
+# Refusing to analyse must never mean allowing: above the bound we DENY.
+#
+# The default is measured, not guessed: with byte-wise scanning a 24 KB command
+# costs ~2.2 s to split on this class of machine, which together with the 8 s
+# inspection deadline stays well inside the 15 s hook timeout. Ordinary work is
+# far below it — a multi-paragraph `gh pr comment --body` is 3–6 KB and a full
+# `verify_all.sh` invocation a few hundred bytes. Overridable for slower/faster
+# machines; a non-numeric override falls back to the default rather than
+# becoming a way to switch the bound off.
+GUARD_MAX_CMD_LEN="${GUARD_MAX_CMD_LEN:-24000}"
+case "$GUARD_MAX_CMD_LEN" in
+  ''|*[!0-9]*) GUARD_MAX_CMD_LEN=24000 ;;
+esac
+if [ "${#CMD}" -gt "$GUARD_MAX_CMD_LEN" ]; then
+  deny "BLOCKED: this command is ${#CMD} characters, above the ${GUARD_MAX_CMD_LEN}-character bound the guard can analyse within its time budget — and a command that was never analysed must not be allowed. Split it into smaller commands (e.g. write long content to a file first), or prefix it with GUARD_DESTRUCTIVE=0 if it is authorized."
+fi
 
 # Text/VCS tools: if a segment's command is one of these, any destructive-looking
 # text in it is an ARGUMENT (message, search pattern, echoed string), not an
@@ -194,9 +225,63 @@ needs_flat_pass() {
   return 1
 }
 
+# Transparent wrappers (#217): commands that run the command following them
+# unchanged. ONE list, used by both inspect_segment's unwrap loop and
+# pipes_into_shell, so the two cannot disagree about what a wrapper is (§21: two
+# functions jointly enforcing an invariant must share one model of the input).
+# The shell executes an effect, not a framing — every wrapper missing here is a
+# bypass — so this list errs long: anything that merely re-nices, re-buffers,
+# times, or re-users its argv belongs in it.
+#
+# Prints the peeled remainder and returns 0 when the first word was a wrapper;
+# consumes its options, the separate-token VALUES of value-taking flags
+# (`nice -n 10`, `timeout -k 5`, `sudo -u root`), and the bare operand of
+# duration/priority/mask-taking wrappers (`timeout 60`, `chrt 50`,
+# `taskset 0x1`). A joined value (`-n10`, `-o0`, `-c3`) needs no extra token.
+# Value flags are per-wrapper, not shared: consuming a value after a flag that
+# does not take one (`env -i`) would swallow the real command — a false ALLOW.
+peel_wrapper() {
+  local seg="$1" w rest tok valflags=""
+  w="${seg%% *}"
+  [ "$w" = "$seg" ] && return 1          # bare word — nothing follows to run
+  case "$w" in
+    busybox) printf '%s' "${seg#busybox }"; return 0 ;;  # applet name follows
+    sudo|doas|command|nohup|time|exec|env|nice|ionice|stdbuf|setsid|chrt|taskset|timeout) ;;
+    *) return 1 ;;
+  esac
+  rest="${seg#* }"
+  case "$w" in
+    sudo)    valflags='-u|-g|-p|-C|-D|-U|-R|-T' ;;
+    doas)    valflags='-u|-C|-a' ;;
+    exec)    valflags='-a' ;;
+    env)     valflags='-u|-C|-S' ;;
+    nice)    valflags='-n|--adjustment' ;;
+    ionice)  valflags='-c|-n|-t|-p' ;;
+    stdbuf)  valflags='-i|-o|-e' ;;
+    timeout) valflags='-k|-s|--kill-after|--signal' ;;
+  esac
+  while [ "${rest:0:1}" = "-" ]; do
+    tok="${rest%% *}"
+    [ "$tok" = "$rest" ] && { rest=""; break; }
+    rest="${rest#* }"
+    if [ -n "$valflags" ] && printf '%s' "$tok" | grep -Eq "^($valflags)$"; then
+      case "$rest" in *" "*) rest="${rest#* }" ;; *) rest="" ;; esac
+    fi
+  done
+  case "$w" in
+    timeout|chrt|taskset)
+      tok="${rest%% *}"
+      if [ "$tok" != "$rest" ] && printf '%s' "$tok" | grep -Eq '^(0x)?[0-9][0-9a-fA-F.,:smhd-]*$'; then
+        rest="${rest#* }"
+      fi ;;
+  esac
+  printf '%s' "$rest"
+  return 0
+}
+
 # Inspect one command segment (already separator-split). Sets REASON on a hit.
 inspect_segment() {
-  local seg="$1" _dbargs
+  local seg="$1" _dbargs _peeled
 
   if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
     REASON="BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
@@ -204,6 +289,12 @@ inspect_segment() {
   fi
 
   seg="$(printf '%s' "$seg" | tr '\n\t' '  ' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
+
+  # A leading backslash on the command word only suppresses alias expansion —
+  # `\docker volume rm` runs docker all the same — but it defeated the anchored
+  # rules below (#213). Strip exactly one: `\\docker` names a command literally
+  # called `\docker`, which is not the guarded binary.
+  seg="${seg#\\}"
 
   # Peel leading env-assignments; a leading GUARD_DESTRUCTIVE=0 authorizes THIS
   # segment specifically (deliberate, scoped bypass).
@@ -217,10 +308,13 @@ inspect_segment() {
   local changed=1 guard=0
   while [ "$changed" = "1" ] && [ "$guard" -lt 8 ]; do
     changed=0; guard=$((guard + 1))
-    # sudo / command / nohup / time / exec / env (simple prefixes)
-    if printf '%s' "$seg" | grep -Eq '^(sudo|command|nohup|time|exec|env) '; then
-      seg="$(printf '%s' "$seg" | sed -E 's/^(sudo|command|nohup|time|exec|env) +//')"; changed=1
+    # sudo/command/nohup/time/exec/env/nice/ionice/stdbuf/setsid/timeout/… — one
+    # shared wrapper model (#217), options and their values consumed.
+    if _peeled="$(peel_wrapper "$seg")"; then
+      seg="$_peeled"; changed=1
     fi
+    # A wrapper can hand its argv to an alias-suppressed spelling too (#213).
+    if [ "${seg:0:1}" = '\' ]; then seg="${seg#\\}"; changed=1; fi
     # more env-assignments after a wrapper
     while printf '%s' "$seg" | grep -Eq '^[A-Za-z_][A-Za-z0-9_]*='; do
       printf '%s' "$seg" | grep -Eq '^GUARD_DESTRUCTIVE=0([ ]|$)' && return 0
@@ -246,13 +340,23 @@ inspect_segment() {
     # in one piece. Falling through afterwards re-inspects the FLATTENED body as a
     # single segment, which is what catches those. Returning early here made the
     # guard strictly weaker than before on six protected paths.
-    if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +-c '; then
-      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +-c +//; s/^[\"']//")"
+    # The `-c` may hide inside a cluster (`-lc`), behind other options
+    # (`-e -c`, `--login -c`) — all the same script argument (#220).
+    if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +((-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c '; then
+      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +((-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c +//; s/^\\\$?[\"']//")"
+      inspect_inner_script "$seg" && return 0
+      needs_flat_pass "$seg" || return 0
+      changed=1
+    # A here-string feeds its word to the shell as its script — same object as
+    # `-c`, different spelling (#220). heredoc_delim already refuses `<<<`, so
+    # nothing upstream has stripped it.
+    elif printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash)( +-[A-Za-z-]+)* +<<< '; then
+      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash)( +-[A-Za-z-]+)* +<<< +//; s/^\\\$?[\"']//")"
       inspect_inner_script "$seg" && return 0
       needs_flat_pass "$seg" || return 0
       changed=1
     elif printf '%s' "$seg" | grep -Eq '^eval '; then
-      seg="$(printf '%s' "$seg" | sed -E "s/^eval +//; s/^[\"']//")"
+      seg="$(printf '%s' "$seg" | sed -E "s/^eval +//; s/^\\\$?[\"']//")"
       inspect_inner_script "$seg" && return 0
       needs_flat_pass "$seg" || return 0
       changed=1
@@ -280,15 +384,21 @@ inspect_segment() {
           -[bcDEeFIiJLlmOopQRSWw]) rest="${rest#* }" ;;  # flag took a separate value
         esac
       done
-      seg="$(printf '%s' "$rest" | sed -E "s/^[^ ]+ +//; s/^[\"']//")"
+      seg="$(printf '%s' "$rest" | sed -E "s/^[^ ]+ +//; s/^\\\$?[\"']//")"
       changed=1
     fi
   done
 
-  # `find … -exec <cmd> …` — inspect the command that follows -exec/-execdir.
-  if printf '%s' "$seg" | grep -Eq ' -execdir? '; then
+  # `find … -exec <cmd> …` — inspect the command that follows
+  # -exec/-execdir/-ok/-okdir (all four execute it; -ok merely prompts first).
+  # The old pattern was ' -execdir? ': in ERE the `?` binds to the single
+  # preceding character, so it matched `-execdir` and `-execdi` but never the
+  # common plain `-exec` (#218). Gated on the segment's command being `find`
+  # itself — without the gate, widening the pattern would make a commit message
+  # that merely QUOTES a `find -exec …` invocation deny (the #204 class).
+  if [ "${seg%% *}" = "find" ] && printf '%s' "$seg" | grep -Eq ' -(exec|ok)(dir)? '; then
     local post
-    post="$(printf '%s' "$seg" | sed -E 's/^.* -execdir? +//')"
+    post="$(printf '%s' "$seg" | sed -E 's/^.* -(exec|ok)(dir)? +//')"
     [ -n "$post" ] && [ "$post" != "$seg" ] && inspect_segment "$post"
     [ -n "$REASON" ] && return 0
   fi
@@ -405,7 +515,14 @@ quote_split() {
     # "all text tools" and the shell heredoc behind it was exempted.
     if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
       nx="${s:i+1:1}"
-      if [ -n "$q" ] && [ "$nx" = $'\n' ]; then out+="$NL_SENTINEL"; else out+="$c$nx"; fi
+      if [ -n "$q" ] && [ "$nx" = $'\n' ]; then out+="$NL_SENTINEL"
+      # Inside ANSI-C quoting, `\n` EXPANDS to a newline before the shell runs
+      # the text — for a body handed to a shell that newline is a command
+      # separator, so it gets the same sentinel treatment as a real quoted
+      # newline. Leaving it as the two literal characters hid the second command
+      # of `bash -c $'echo hi\n<destroy>'` behind a benign first token (#213).
+      elif [ "$q" = "A" ] && [ "$nx" = "n" ]; then out+="$NL_SENTINEL"
+      else out+="$c$nx"; fi
       i=$((i + 1)); continue
     fi
     if [ -n "$q" ]; then
@@ -420,8 +537,16 @@ quote_split() {
       # turn out to be executed as shell code restore it (see restore_newlines);
       # everything else flattens it to a space and treats it as prose.
       if [ "$c" = $'\n' ]; then out+="$NL_SENTINEL"; else out+="$c"; fi
-      [ "$c" = "$q" ] && q=""
+      if [ "$c" = "$q" ] || { [ "$q" = "A" ] && [ "$c" = "'" ]; }; then q=""; fi
       continue
+    fi
+    # ANSI-C quoting $'…' is a THIRD quoting model (#213): quoted text whose
+    # backslash rules differ from both '…' and "…" — in particular \' is an
+    # escaped quote INSIDE the region, not a terminator. Tracked with q="A"
+    # (never a real input character) so the backslash branch above stays active
+    # while the plain-single-quote rule (backslash is literal) does not.
+    if [ "$c" = '$' ] && [ $((i + 1)) -lt "$n" ] && [ "${s:i+1:1}" = "'" ]; then
+      q="A"; out+="\$'"; i=$((i + 1)); continue
     fi
     case "$c" in
       \'|\") q="$c"; out+="$c" ;;
@@ -452,8 +577,13 @@ mask_quotes() {
     fi
     if [ -n "$q" ]; then
       out+=" "
-      [ "$c" = "$q" ] && q=""
+      if [ "$c" = "$q" ] || { [ "$q" = "A" ] && [ "$c" = "'" ]; }; then q=""; fi
       continue
+    fi
+    # ANSI-C quoting $'…' — same third quoting model as in quote_split (#213);
+    # the two functions must share one model or the heredoc exemption misfires.
+    if [ "$c" = '$' ] && [ $((i + 1)) -lt "$n" ] && [ "${s:i+1:1}" = "'" ]; then
+      q="A"; out+="  "; i=$((i + 1)); continue
     fi
     # An unquoted `#` at the start of a word begins a comment: the rest of the
     # line is not code, so a `<<EOF` in it never opens a heredoc. Treating it as
@@ -495,6 +625,54 @@ heredoc_delim() {
   [ "${rest:2:1}" = "<" ] && return 0     # here-string, not a heredoc
   printf '%s' "$rest" |
     sed -nE "s/^<<-?[[:space:]]*(\"([A-Za-z_][A-Za-z0-9_]*)\"|'([A-Za-z_][A-Za-z0-9_]*)'|\\\\([A-Za-z_][A-Za-z0-9_]*)).*/\2\3\4/p"
+}
+
+# The file a text-tool heredoc line writes to, best-effort: the operand of the
+# last `>`/`>>` redirect, else the first non-option operand of a leading `tee`.
+# Empty when the line writes nowhere we can name (#212). Quoted regions are
+# masked first so a `>` inside prose is not read as a redirect.
+heredoc_write_target() {
+  local line="$1" masked t=""
+  masked="$(mask_quotes "$line")"
+  masked="${masked%%<<*}"       # the heredoc word itself is not an operand
+  if printf '%s' "$masked" | grep -Eq '>>? *[^ ]+'; then
+    t="$(printf '%s' "$masked" | sed -E 's/^.*>+ *([^ >]+).*$/\1/')"
+  elif printf '%s' "$masked" | grep -Eq '^ *tee +'; then
+    t="$(printf '%s' "$masked" | sed -E 's/^ *tee +(-[^ ]+ +)*([^ ]+).*$/\2/')"
+  fi
+  printf '%s' "$t"
+}
+
+# Does any line OUTSIDE the heredoc body execute the file it wrote? (#212)
+# Covered spellings: `bash t` / `sh t` / `zsh t` / `dash t` / `source t` /
+# `. t` / `exec t`, a path-execution `./t` (any prefix), and a `chmod` that
+# touches it — chmod'ing the file you just wrote is the execute-next tell.
+# Matching errs wide deliberately: a hit only means the body STAYS INSPECTED,
+# which is the fail-closed direction; prose bodies stay exempt because the
+# document they write is never executed.
+#
+# Reads the caller's `lines`/`n` via bash's dynamic scoping — the body was
+# delimited against exactly that array, so re-deriving it here could disagree.
+heredoc_target_executed() {
+  local tgt="$1" open="$2" close="$3" b besc j other
+  b="${tgt##*/}"
+  [ -z "$b" ] && return 1
+  besc="$(printf '%s' "$b" | sed -E 's/[][^$.*/\\+?(){}|]/\\&/g')"
+  for (( j=0; j<n; j++ )); do
+    [ "$j" -ge "$open" ] && [ "$j" -le "$close" ] && continue
+    other="${lines[j]}"
+    case "$other" in *"$b"*) ;; *) continue ;; esac   # cheap reject first
+    if printf '%s' "$other" | grep -Eq "(^|[;&|() ])(bash|sh|zsh|dash|source|exec|\.) +([^;&|]* )?([^ ;&|]*/)?$besc( |\$|;)"; then
+      return 0
+    fi
+    if printf '%s' "$other" | grep -Eq "(^|[;&|() ])chmod +[^;&|]*$besc( |\$|;)"; then
+      return 0
+    fi
+    if printf '%s' "$other" | grep -Eq "(^|[;&|() ])\.{0,2}/([^ ;&|]*/)*$besc( |\$|;)"; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 # True only when EVERY command on the line is a text tool. The heredoc is
@@ -548,6 +726,16 @@ strip_text_heredocs() {
     done
     [ "$end" -lt 0 ] && continue   # no terminator: strip nothing
 
+    # A "document" the SAME command then executes is a script (#212): all four
+    # exemption conditions hold for `cat > s.sh <<'EOF' … EOF` + `bash s.sh`,
+    # yet the body runs. When the write target is later executed, keep the body
+    # fully inspected instead of stripping it.
+    local _tgt
+    _tgt="$(heredoc_write_target "$line")"
+    if [ -n "$_tgt" ] && heredoc_target_executed "$_tgt" "$i" "$end"; then
+      continue
+    fi
+
     i=$end                          # skip the body AND the terminator line
   done
   printf '%s' "$out"
@@ -558,21 +746,28 @@ strip_text_heredocs() {
 # text that reaches me", so quoted text earlier in the pipeline is CODE, however
 # innocent its producing command looks (#210).
 pipes_into_shell() {
-  local seg first rest optless via_xargs
+  local seg first rest optless via_xargs _p
   local OLD="$IFS"; IFS=$'\n'
   for seg in $1; do
     # Peel wrappers, including ones that take their own options (`sudo -E`,
-    # `xargs -0`), then an absolute path — `/bin/bash` is as much a shell as
-    # `bash`. Matching two exact spellings made this an allowlist of the first
-    # two forms that came to mind; every other spelling executed unguarded.
+    # `xargs -0`, `timeout 60`, `stdbuf -o0`), then an absolute path —
+    # `/bin/bash` is as much a shell as `bash`. Matching two exact spellings
+    # made this an allowlist of the first two forms that came to mind; every
+    # other spelling executed unguarded. The wrapper set itself is the SHARED
+    # peel_wrapper model (#217) so this cannot drift from inspect_segment's.
     seg="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
     via_xargs=0
-    while printf '%s' "$seg" | grep -Eq '^(sudo|env|command|exec|nohup|time|xargs)( |$)'; do
-      printf '%s' "$seg" | grep -Eq '^xargs( |$)' && via_xargs=1
-      seg="$(printf '%s' "$seg" | sed -E 's/^(sudo|env|command|exec|nohup|time|xargs) *//')"
-      while printf '%s' "$seg" | grep -Eq '^-'; do
-        seg="$(printf '%s' "$seg" | sed -E 's/^-[^ ]* *//')"
-      done
+    while :; do
+      if printf '%s' "$seg" | grep -Eq '^xargs( |$)'; then
+        via_xargs=1
+        seg="$(printf '%s' "$seg" | sed -E 's/^xargs *//')"
+        while printf '%s' "$seg" | grep -Eq '^-'; do
+          seg="$(printf '%s' "$seg" | sed -E 's/^-[^ ]* *//')"
+        done
+        continue
+      fi
+      if _p="$(peel_wrapper "$seg")"; then seg="$_p"; continue; fi
+      break
     done
     seg="$(printf '%s' "$seg" | sed -E 's#^/[^ ]*/##')"
     first="${seg%% *}"
@@ -618,12 +813,21 @@ quoted_payloads() {
   for (( i=0; i<n; i++ )); do
     c="${s:i:1}"
     if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
-      [ -n "$q" ] && cur+="${s:i+1:1}"
+      # In ANSI-C quoting `\n` expands to a real newline before execution; the
+      # payload is later split on newlines, so emit one (#213).
+      if [ "$q" = "A" ] && [ "${s:i+1:1}" = "n" ]; then cur+=$'\n'
+      elif [ -n "$q" ]; then cur+="${s:i+1:1}"; fi
       i=$((i + 1)); continue
     fi
     if [ -n "$q" ]; then
-      if [ "$c" = "$q" ]; then q=""; printf '%s\n' "$cur"; cur=""; else cur+="$c"; fi
+      if [ "$c" = "$q" ] || { [ "$q" = "A" ] && [ "$c" = "'" ]; }; then
+        q=""; printf '%s\n' "$cur"; cur=""
+      else cur+="$c"; fi
       continue
+    fi
+    # ANSI-C quoting $'…' — same third quoting model as in quote_split (#213).
+    if [ "$c" = '$' ] && [ $((i + 1)) -lt "$n" ] && [ "${s:i+1:1}" = "'" ]; then
+      q="A"; i=$((i + 1)); continue
     fi
     case "$c" in \'|\") q="$c" ;; esac
   done
@@ -644,6 +848,21 @@ if pipes_into_shell "$SEGMENTS"; then
       [ -n "$REASON" ] && break
       inspect_inner_script "$payload"
     done
+    # An UNQUOTED payload is code too (#220): `echo <destroy> | bash` executes
+    # identically to the quoted spelling, but produced no quoted payload at all,
+    # so nothing above inspected it. When the segment's command is a text tool
+    # (the producer whose arguments become the piped text), inspect its unquoted
+    # remainder as a command. Quoted regions are masked out first — they were
+    # already inspected as payloads, and leaving them in would re-read prose as
+    # code and bring back the #204 false denials.
+    if [ -z "$REASON" ]; then
+      _unq="$(mask_quotes "$seg")"
+      _unq="$(printf '%s' "$_unq" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g; s/[[:space:]]+$//')"
+      _unq_first="${_unq%% *}"
+      if [ "$_unq_first" != "$_unq" ] && is_text_tool "$_unq_first"; then
+        inspect_segment "${_unq#* }"
+      fi
+    fi
   done
   IFS="$OLDIFS"
 fi
