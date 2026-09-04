@@ -48,11 +48,25 @@ All notable changes to this project will be documented in this file.
      read as code. The `-c` unwrap also matched only the immediate `bash -c`: `-lc`, `-e -c`,
      `--login -c` and the `bash <<< "…"` here-string all hid the script, and all are now unwrapped.
 
-  Suite 177 → **241 cases**, all green; every fix mutation-checked (reverting each fails exactly its
+  Suite 177 → **253 cases**, all green; every fix mutation-checked (reverting each fails exactly its
   own cases: `-execdir?` 3, wrapper list 17, ANSI model 1 + unwrap strip 2, backslash strip 3, size
-  bound 1, write-then-execute 6, unquoted payloads 2, shell spellings 6) and each bypass shape proven
-  to actually execute with a harmless `touch` payload before being counted. Knob: `GUARD_MAX_CMD_LEN`
-  (default 24000; non-numeric overrides fall back rather than disarming the bound).
+  bound 2, write-then-execute 6, unquoted payloads 2, shell spellings 6, review-round-1 fixes 10) and
+  each bypass shape proven to actually execute with a harmless `touch` payload before being counted.
+  Knob: `GUARD_MAX_CMD_LEN` (default 24000; non-numeric overrides fall back rather than disarming
+  the bound).
+
+  The independent round-1 review of this PR (rule 11 — the sixth consecutive guard round where
+  review caught the fix regressing the guard, lessons-learned §21) found and this revision fixes:
+  the first #212 fix forked greps per line per heredoc (O(heredocs×lines), 27 s on a 2.2 KB
+  command — past the 15 s hook timeout, i.e. the #219 bypass reintroduced; now one join + one grep
+  per target, deadline-checked and DENYING at the budget), the ANSI-C quote marker was the in-band
+  character `A` (a literal A inside `$'…'` closed the region early — bypass one way, #204-class
+  false denial the other; now the out-of-band control char `\x02` like `NL_SENTINEL`),
+  `heredoc_write_target` missed `2>err.log` second redirects / redirects after the heredoc word /
+  quoted targets (now ALL redirect operands, quote-dropped, heredoc word removed not truncated),
+  `bash <<<'x'` (no space), `-cx` clusters and `-o posix -c` evaded the #220 arms (widened), and
+  `env -S` consumed the command as its flag value (env's `-S` value IS the command; no longer
+  consumed). All ten review findings are pinned by tests that fail against the pre-review revision.
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 

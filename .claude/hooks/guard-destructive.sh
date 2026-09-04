@@ -102,6 +102,12 @@ REASON=""
 # keeps it intact through the space-collapsing normaliser below.
 NL_SENTINEL=$'\x01'
 
+# Quote-state marker for an open ANSI-C $'…' region. A control character for the
+# same reason as NL_SENTINEL: the round-1 review of #213 showed the in-band
+# marker "A" let a literal uppercase A inside $'…' close the region early --
+# `bash -c $'echo DONE A\n<destroy>'` was allowed and prose with an A denied.
+ANSI_Q=$'\x02'
+
 # Does the ORIGINAL command contain a line continuation (backslash immediately
 # before a newline)? bash joins those lines into ONE command, but the inner pass
 # splits on the newline, so a single invocation is fragmented and the
@@ -254,7 +260,10 @@ peel_wrapper() {
     sudo)    valflags='-u|-g|-p|-C|-D|-U|-R|-T' ;;
     doas)    valflags='-u|-C|-a' ;;
     exec)    valflags='-a' ;;
-    env)     valflags='-u|-C|-S' ;;
+    # env's -S splits its value into argv and PREPENDS it -- the value IS the
+    # command (round-1 review: `env -S <destroy>` was allowed because -S ate
+    # the command word as its value). -u/-C take true values.
+    env)     valflags='-u|-C' ;;
     nice)    valflags='-n|--adjustment' ;;
     ionice)  valflags='-c|-n|-t|-p' ;;
     stdbuf)  valflags='-i|-o|-e' ;;
@@ -342,16 +351,16 @@ inspect_segment() {
     # guard strictly weaker than before on six protected paths.
     # The `-c` may hide inside a cluster (`-lc`), behind other options
     # (`-e -c`, `--login -c`) — all the same script argument (#220).
-    if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +((-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c '; then
-      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +((-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c +//; s/^\\\$?[\"']//")"
+    if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +((-o [^ ]+|--rcfile [^ ]+|--init-file [^ ]+|-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c[A-Za-z]* '; then
+      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +((-o [^ ]+|--rcfile [^ ]+|--init-file [^ ]+|-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c[A-Za-z]* +//; s/^\\\$?[\"']//")"
       inspect_inner_script "$seg" && return 0
       needs_flat_pass "$seg" || return 0
       changed=1
     # A here-string feeds its word to the shell as its script — same object as
     # `-c`, different spelling (#220). heredoc_delim already refuses `<<<`, so
     # nothing upstream has stripped it.
-    elif printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash)( +-[A-Za-z-]+)* +<<< '; then
-      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash)( +-[A-Za-z-]+)* +<<< +//; s/^\\\$?[\"']//")"
+    elif printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash)( +-[A-Za-z-]+)* +<<<'; then
+      seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash)( +-[A-Za-z-]+)* +<<< *//; s/^\\\$?[\"']//")"
       inspect_inner_script "$seg" && return 0
       needs_flat_pass "$seg" || return 0
       changed=1
@@ -521,7 +530,7 @@ quote_split() {
       # separator, so it gets the same sentinel treatment as a real quoted
       # newline. Leaving it as the two literal characters hid the second command
       # of `bash -c $'echo hi\n<destroy>'` behind a benign first token (#213).
-      elif [ "$q" = "A" ] && [ "$nx" = "n" ]; then out+="$NL_SENTINEL"
+      elif [ "$q" = "$ANSI_Q" ] && [ "$nx" = "n" ]; then out+="$NL_SENTINEL"
       else out+="$c$nx"; fi
       i=$((i + 1)); continue
     fi
@@ -537,16 +546,16 @@ quote_split() {
       # turn out to be executed as shell code restore it (see restore_newlines);
       # everything else flattens it to a space and treats it as prose.
       if [ "$c" = $'\n' ]; then out+="$NL_SENTINEL"; else out+="$c"; fi
-      if [ "$c" = "$q" ] || { [ "$q" = "A" ] && [ "$c" = "'" ]; }; then q=""; fi
+      if [ "$c" = "$q" ] || { [ "$q" = "$ANSI_Q" ] && [ "$c" = "'" ]; }; then q=""; fi
       continue
     fi
     # ANSI-C quoting $'…' is a THIRD quoting model (#213): quoted text whose
     # backslash rules differ from both '…' and "…" — in particular \' is an
-    # escaped quote INSIDE the region, not a terminator. Tracked with q="A"
+    # escaped quote INSIDE the region, not a terminator. Tracked with q=$ANSI_Q
     # (never a real input character) so the backslash branch above stays active
     # while the plain-single-quote rule (backslash is literal) does not.
     if [ "$c" = '$' ] && [ $((i + 1)) -lt "$n" ] && [ "${s:i+1:1}" = "'" ]; then
-      q="A"; out+="\$'"; i=$((i + 1)); continue
+      q="$ANSI_Q"; out+="\$'"; i=$((i + 1)); continue
     fi
     case "$c" in
       \'|\") q="$c"; out+="$c" ;;
@@ -577,13 +586,13 @@ mask_quotes() {
     fi
     if [ -n "$q" ]; then
       out+=" "
-      if [ "$c" = "$q" ] || { [ "$q" = "A" ] && [ "$c" = "'" ]; }; then q=""; fi
+      if [ "$c" = "$q" ] || { [ "$q" = "$ANSI_Q" ] && [ "$c" = "'" ]; }; then q=""; fi
       continue
     fi
     # ANSI-C quoting $'…' — same third quoting model as in quote_split (#213);
     # the two functions must share one model or the heredoc exemption misfires.
     if [ "$c" = '$' ] && [ $((i + 1)) -lt "$n" ] && [ "${s:i+1:1}" = "'" ]; then
-      q="A"; out+="  "; i=$((i + 1)); continue
+      q="$ANSI_Q"; out+="  "; i=$((i + 1)); continue
     fi
     # An unquoted `#` at the start of a word begins a comment: the rest of the
     # line is not code, so a `<<EOF` in it never opens a heredoc. Treating it as
@@ -627,51 +636,60 @@ heredoc_delim() {
     sed -nE "s/^<<-?[[:space:]]*(\"([A-Za-z_][A-Za-z0-9_]*)\"|'([A-Za-z_][A-Za-z0-9_]*)'|\\\\([A-Za-z_][A-Za-z0-9_]*)).*/\2\3\4/p"
 }
 
-# The file a text-tool heredoc line writes to, best-effort: the operand of the
-# last `>`/`>>` redirect, else the first non-option operand of a leading `tee`.
-# Empty when the line writes nowhere we can name (#212). Quoted regions are
-# masked first so a `>` inside prose is not read as a redirect.
+# The files a text-tool heredoc line writes to, one per output line (#212):
+# EVERY `>`/`>>` redirect operand (a `2>err.log` alongside `> s.sh` must not
+# hide the script — review round 1) plus a `tee` operand. Quotes are DROPPED,
+# not masked, so `cat > 's.sh'` still names its target; over-extraction from
+# prose quotes only ever ADDS candidates, which keeps bodies inspected more
+# often — the fail-closed direction. The heredoc word itself is removed rather
+# than truncating at `<<`, so `cat <<'EOF' > s.sh` (redirect AFTER the heredoc
+# word) is seen too.
 heredoc_write_target() {
-  local line="$1" masked t=""
-  masked="$(mask_quotes "$line")"
-  masked="${masked%%<<*}"       # the heredoc word itself is not an operand
-  if printf '%s' "$masked" | grep -Eq '>>? *[^ ]+'; then
-    t="$(printf '%s' "$masked" | sed -E 's/^.*>+ *([^ >]+).*$/\1/')"
-  elif printf '%s' "$masked" | grep -Eq '^ *tee +'; then
-    t="$(printf '%s' "$masked" | sed -E 's/^ *tee +(-[^ ]+ +)*([^ ]+).*$/\2/')"
+  local line="$1" noq
+  noq="$(printf '%s' "$line" | tr -d "\"'" | sed -E 's/<<-?\\?[A-Za-z_][A-Za-z0-9_]*//g')"
+  printf '%s' "$noq" | grep -oE '[0-9]*>{1,2} *[^ >]+' | sed -E 's/^[0-9]*>{1,2} *//'
+  if printf '%s' "$noq" | grep -Eq '(^|[ |;&])tee '; then
+    printf '%s\n' "$(printf '%s' "$noq" | sed -E 's/^.*(^|[ |;&])tee +(-[^ ]+ +)*([^ >]+).*$/\3/')"
   fi
-  printf '%s' "$t"
 }
 
-# Does any line OUTSIDE the heredoc body execute the file it wrote? (#212)
-# Covered spellings: `bash t` / `sh t` / `zsh t` / `dash t` / `source t` /
-# `. t` / `exec t`, a path-execution `./t` (any prefix), and a `chmod` that
-# touches it — chmod'ing the file you just wrote is the execute-next tell.
-# Matching errs wide deliberately: a hit only means the body STAYS INSPECTED,
-# which is the fail-closed direction; prose bodies stay exempt because the
-# document they write is never executed.
+# Does any line OUTSIDE the heredoc body execute one of the files it wrote?
+# (#212) Covered spellings: `bash t` / `sh t` / `zsh t` / `dash t` /
+# `source t` / `. t` / `exec t`, a path-execution `./t` (any prefix), and a
+# `chmod` that touches it — chmod'ing the file you just wrote is the
+# execute-next tell. Matching errs wide deliberately: a hit only means the body
+# STAYS INSPECTED, which is the fail-closed direction; prose bodies stay exempt
+# because the document they write is never executed.
+#
+# COST DISCIPLINE (round-1 review of this fix): the first version forked up to
+# three greps per line per heredoc — O(heredocs × lines) subprocess spawns,
+# 27 s on a 2.2 KB command of 50 heredoc blocks, which is past the 15 s hook
+# timeout, i.e. the #219 bypass reintroduced by the #212 fix. Now the
+# out-of-body lines are joined ONCE per heredoc and each target costs one grep
+# over that text; and this runs BEFORE inspect_segment's deadline can see
+# anything, so the budget is checked here too — past it we DENY outright.
 #
 # Reads the caller's `lines`/`n` via bash's dynamic scoping — the body was
 # delimited against exactly that array, so re-deriving it here could disagree.
 heredoc_target_executed() {
-  local tgt="$1" open="$2" close="$3" b besc j other
-  b="${tgt##*/}"
-  [ -z "$b" ] && return 1
-  besc="$(printf '%s' "$b" | sed -E 's/[][^$.*/\\+?(){}|]/\\&/g')"
+  local tgts="$1" open="$2" close="$3" b besc j others="" tgt
+  if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
+    deny "BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix it with GUARD_DESTRUCTIVE=0 if it is authorized."
+  fi
   for (( j=0; j<n; j++ )); do
     [ "$j" -ge "$open" ] && [ "$j" -le "$close" ] && continue
-    other="${lines[j]}"
-    case "$other" in *"$b"*) ;; *) continue ;; esac   # cheap reject first
-    if printf '%s' "$other" | grep -Eq "(^|[;&|() ])(bash|sh|zsh|dash|source|exec|\.) +([^;&|]* )?([^ ;&|]*/)?$besc( |\$|;)"; then
-      return 0
-    fi
-    if printf '%s' "$other" | grep -Eq "(^|[;&|() ])chmod +[^;&|]*$besc( |\$|;)"; then
-      return 0
-    fi
-    if printf '%s' "$other" | grep -Eq "(^|[;&|() ])\.{0,2}/([^ ;&|]*/)*$besc( |\$|;)"; then
-      return 0
-    fi
+    others+="${lines[j]}"$'\n'
   done
+  while IFS= read -r tgt; do
+    [ -z "$tgt" ] && continue
+    b="${tgt##*/}"
+    [ -z "$b" ] && continue
+    case "$others" in *"$b"*) ;; *) continue ;; esac   # cheap reject first
+    besc="$(printf '%s' "$b" | sed -E 's/[][^$.*/\\+?(){}|]/\\&/g')"
+    if printf '%s' "$others" | grep -Eq "(^|[;&|() ])((bash|sh|zsh|dash|source|exec|\.) +([^;&|]* )?([^ ;&|]*/)?$besc|chmod +[^;&|]*$besc|\.{0,2}/([^ ;&|]*/)*$besc)( |\$|;)"; then
+      return 0
+    fi
+  done <<< "$tgts"
   return 1
 }
 
@@ -815,19 +833,19 @@ quoted_payloads() {
     if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
       # In ANSI-C quoting `\n` expands to a real newline before execution; the
       # payload is later split on newlines, so emit one (#213).
-      if [ "$q" = "A" ] && [ "${s:i+1:1}" = "n" ]; then cur+=$'\n'
+      if [ "$q" = "$ANSI_Q" ] && [ "${s:i+1:1}" = "n" ]; then cur+=$'\n'
       elif [ -n "$q" ]; then cur+="${s:i+1:1}"; fi
       i=$((i + 1)); continue
     fi
     if [ -n "$q" ]; then
-      if [ "$c" = "$q" ] || { [ "$q" = "A" ] && [ "$c" = "'" ]; }; then
+      if [ "$c" = "$q" ] || { [ "$q" = "$ANSI_Q" ] && [ "$c" = "'" ]; }; then
         q=""; printf '%s\n' "$cur"; cur=""
       else cur+="$c"; fi
       continue
     fi
     # ANSI-C quoting $'…' — same third quoting model as in quote_split (#213).
     if [ "$c" = '$' ] && [ $((i + 1)) -lt "$n" ] && [ "${s:i+1:1}" = "'" ]; then
-      q="A"; i=$((i + 1)); continue
+      q="$ANSI_Q"; i=$((i + 1)); continue
     fi
     case "$c" in \'|\") q="$c" ;; esac
   done

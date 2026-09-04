@@ -688,6 +688,51 @@ check "unq: benign unquoted pipe"    "echo hello world | bash"                  
 check "spell: bash -lc benign"       "bash -lc \"echo hi\""                       allow
 check "spell: here-string benign"    "bash <<< \"echo hi\""                       allow
 
+# --- ROUND-1 REVIEW OF THIS PR (#225): the fixes' own regressions -----------
+# 1. The first #212 fix forked greps per line per heredoc — O(heredocs×lines)
+#    spawns, 27 s on a 2.2 KB command (50 text-heredoc blocks + one destroy),
+#    past the 15 s hook timeout = the #219 bypass reintroduced. Wall-clock
+#    pinned: the shape must DENY and answer inside the budget.
+WXBOMB=""
+for _i in $(seq 1 50); do WXBOMB+="cat > s.sh <<'EOF'
+note about s.sh here
+EOF
+"; done
+WXBOMB+="$DV $V"
+check      "w+x cost: 50-heredoc destroy"      "$WXBOMB"                          deny
+check_fast "w+x cost: answers in budget"       "$WXBOMB"                          8
+# 2. The ANSI-C marker was the in-band character "A": a literal A inside $'…'
+#    closed the region early — a bypass one way, a #204-class false denial the
+#    other. Now an out-of-band control char, like NL_SENTINEL.
+check "ansi: literal A then destroy"  "bash -c \$'echo DONE A\\n$DV $V'"          deny
+check "ansi: prose containing A"      "git commit -m \$'Fix A; $D $T prose'"      allow
+# 3. heredoc_write_target: a second redirect, a redirect AFTER the heredoc
+#    word, and a quoted target must not hide the script.
+check "w+x: 2>err.log beside target"  "cat > s.sh 2>err.log <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                       deny
+check "w+x: redirect after heredoc"   "cat <<'EOF' > s.sh
+$D $T
+EOF
+sh s.sh"                                                                         deny
+check "w+x: quoted target"            "cat > 's.sh' <<'EOF'
+$DV $V
+EOF
+bash s.sh"                                                                       deny
+# 4. #220 arms were one character from evasion.
+check "spell: <<<'x' no space"        "bash <<<'$DV $V'"                          deny
+check "spell: -cx cluster"            "bash -cx \"$D $T\""                        deny
+check "spell: -o posix -c"            "bash -o posix -c \"$DV $V\""               deny
+# 5. env -S prepends its value to argv — the value IS the command.
+check "wrap: env -S eats the command" "env -S $DV $V"                             deny
+# ...and the benign counterparts stay allowed.
+check "w+x: notes + err.log, no exec" "cat > notes.md 2>err.log <<'EOF'
+$D $T prose
+EOF
+git add notes.md"                                                                allow
+check "spell: bash -o posix script"   "bash -o posix deploy.sh"                   allow
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0
