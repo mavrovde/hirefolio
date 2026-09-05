@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`ssr-cd-safety` skill + `lint:cd-safety` check** (#118) — the zoneless/SSR silent-failure class
+  (#94: properties assigned in subscribe/interval callbacks never repaint; unit tests bundle
+  zone.js and cannot see it) is now (a) a committed skill stating the contract — async mutation ⇒
+  `async` pipe | signal | `markForCheck()`; SSR URL rewrite lives in an `HttpBackend` delegating to
+  `HttpXhrBackend`, never `FetchBackend` — referenced from the `frontend-dev` and `pr-reviewer`
+  charters, and (b) a dependency-free checker (`frontend/scripts/check-cd-safety.mjs`, run as
+  `npm run lint:cd-safety` and in the pre-push gate) that flags imperative-callback `this.*`
+  assignments in `projects/public` with no repaint path, with a required-justification
+  `// cd-safety-ok: <reason>` escape. It found one real site on `main` (`blog.component.ts:89`,
+  SSR-only — now carrying its justification). The workspace has no ESLint today; adopting
+  angular-eslint is registered as a separate deliberate effort rather than smuggled in here.
+  Also corrects the stale "no zoneless provider" claim in BOTH charters that carried it
+  (`pr-reviewer.md`, and `frontend-dev.md` found by the round-1 review — zoneless is explicit since
+  #105). The round-1 review (rule 11) drove four more fixes: the checker now strips comments before
+  its repaint decision so PROSE mentioning markForCheck can never satisfy it (suppression rides the
+  explicit `cd-safety-ok:` marker only), `.then(` joined the trigger set (an `await` continuation
+  remains the documented blind spot for the #234 AST lint), a 9-case fixture self-test
+  (`check-cd-safety.test.mjs`) pins the parser both directions, and an `npm run lint` script now
+  exists — which makes CI's previously no-op `Frontend Lint` job (`npm run lint --if-present`)
+  actually run the self-test + checker on every PR.
+
 - **`/prep-pr` command + `env-gotchas` skill** (#119) — the pre-PR hygiene gate: stale-`main`
   detection (the #103/#104 duplicate-CHANGELOG cause), single-`[Unreleased]`-block check, a
   stale-old-behavior-assertion sweep across the WHOLE spec tree (the #108→#110 deploy-red cause),

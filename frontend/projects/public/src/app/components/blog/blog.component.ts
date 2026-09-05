@@ -90,6 +90,9 @@ export class BlogComponent implements OnInit {
       next: (response) => {
         const existingIds = new Set(this.posts.map(p => p.id));
         const newPosts = response.items.filter(p => !existingIds.has(p.id));
+        // cd-safety-ok: SSR-only path — the isPlatformBrowser branch above returns before this
+        // subscribe; SSR serializes after pending tasks settle, and the error path repaints via
+        // loadFallbackPosts()'s own markForCheck (#118).
         this.posts = [...this.posts, ...newPosts];
         this.hasMore = this.posts.length < response.total;
         this.isLoading = false;
