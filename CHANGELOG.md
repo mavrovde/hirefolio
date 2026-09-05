@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`/prep-pr` command + `env-gotchas` skill** (#119) — the pre-PR hygiene gate: stale-`main`
+  detection (the #103/#104 duplicate-CHANGELOG cause), single-`[Unreleased]`-block check, a
+  stale-old-behavior-assertion sweep across the WHOLE spec tree (the #108→#110 deploy-red cause),
+  `Closes #NN` linkage, a gates summary, and a secrets sweep. `env-gotchas` writes down the
+  platform pitfalls that kept costing cycles — macOS has no `timeout`, BSD `grep -E`/`sed -i ''`,
+  zsh-vs-bash differences, `.env`-sourcing noise, the same-identity `gh pr review --approve` block,
+  the full-sha `gh release create` requirement, shared test-DB rules, and worktree pre-push-hook
+  symlinks — referenced from CLAUDE.md.
+
 - **`/e2e` command + `e2e-validation` skill** (#117) — the known-good full Docker E2E loop, codified:
   prod-topology bring-up, a REAL readiness gate (backend health → SSR → `stats/public` 200, which is
   what prevents the pre-schema `relation "profile_snapshots" does not exist` 500 race), in-container
