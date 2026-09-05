@@ -7,6 +7,22 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Placeholder for next release.
 
+### Fixed
+- **Pre-push hook: the self-gate is now command-position aware** (#237) — the hook decided "this is
+  a push" by raw substring match on the tool-call text, which was wrong in both directions: quoted
+  PROSE mentioning `git push` (e.g. a `gh pr review --body-file` whose review text quoted a push
+  command — hit in practice during the #211 review) triggered the full docs+backend+frontend gate,
+  while a real push spelled without the literal substring (`git -C <dir> push`) was never gated.
+  The gate now fires only when a segment's COMMAND — after quote-aware splitting, compound-keyword
+  (`do`/`then`/…) and wrapper peeling, and `bash -c`/`eval`/`ssh` unwrapping — is `git` with a
+  `push` subcommand; quoted text is data. The parsing model is the destruction guard's, extracted
+  verbatim into a shared `.claude/hooks/hook-parse-lib.sh` sourced by BOTH hooks (lessons-learned
+  §21.12: one model of the input — all 269 guard self-test cases pass unchanged). A new
+  `pre-push-tests.test.sh` self-test (52 cases, wired into the check round's guardtest leg) pins
+  both directions plus cost and polarity: input the analysis cannot finish (size/depth/time bounds)
+  GATES — a redundant check round, never a skipped one. Mutation check: reverting to the old
+  matcher fails 17 cases (15 prose false-gates, 2 missed real pushes).
+
 ## [1.11.0] - 2026-09-05
 > **⚠ Operator action required before the next rollout:** #141 renamed the Gemini
 > configuration keys with no fallback alias — set `HIREFOLIO_GEMINI_API_KEY` and

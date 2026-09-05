@@ -86,8 +86,9 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 | skill | `e2e-validation` | the E2E loop + its traps, for agents (#117) |
 | skill | `env-gotchas` | macOS/BSD/gh platform pitfalls (#119) |
 | skill | `ssr-cd-safety` | zoneless repaint + SSR HTTP contract (#118) |
-| hook | `pre-push-tests.sh` | PreToolUse Bash: docs + backend + frontend gates before every `git push` |
+| hook | `pre-push-tests.sh` | PreToolUse Bash: docs + backend + frontend gates before every real `git push` (command-position aware, #237) |
 | hook | `guard-destructive.sh` | PreToolUse Bash: blocks irreversible local/infra destruction (rule 9) |
+| hook | `hook-parse-lib.sh` | the ONE quote-aware command-parsing model, sourced by both hooks (#237) |
 | plugin | `frontend-design`, `context7`, `playwright`, `pyright-lsp`, `typescript-lsp`, `security-guidance` | see #122 for the curation rationale |
 | MCP | `postgres`, `playwright`, `github` | read-only SQL / browser automation / PRs+issues |
 
@@ -100,8 +101,9 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
   `pre-push-tests.sh` runs docs + backend pytest + backend lint/type (ruff check + ruff format --check
   + mypy) + frontend tests before every `git push` (env-configurable: `PREPUSH_RUN_LINT`/
   `PREPUSH_RUN_RUFF`/`PREPUSH_RUN_MYPY` …, self-gating); `guard-destructive.sh` blocks irreversible
-  local/infra destruction (rule 9) — command-position aware, bypass one command with
-  `GUARD_DESTRUCTIVE=0`.
+  local/infra destruction (rule 9) — bypass one command with `GUARD_DESTRUCTIVE=0`. Both hooks are
+  **command-position aware** (quoted prose is data, #204/#237) and share ONE parsing model,
+  `.claude/hooks/hook-parse-lib.sh`; each has a self-test (`*.test.sh`) beside it.
 - **Plugins** (project scope): frontend-design, context7, playwright, pyright-lsp, typescript-lsp,
   security-guidance.
 - **Skills** (`.claude/skills/`): `issue-workflow` (issue/PR/milestone/label flow) and
