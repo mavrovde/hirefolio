@@ -16,8 +16,15 @@ All notable changes to this project will be documented in this file.
   `// cd-safety-ok: <reason>` escape. It found one real site on `main` (`blog.component.ts:89`,
   SSR-only — now carrying its justification). The workspace has no ESLint today; adopting
   angular-eslint is registered as a separate deliberate effort rather than smuggled in here.
-  Also corrects `pr-reviewer.md`'s stale "no zoneless provider" claim (zoneless is explicit since
-  #105).
+  Also corrects the stale "no zoneless provider" claim in BOTH charters that carried it
+  (`pr-reviewer.md`, and `frontend-dev.md` found by the round-1 review — zoneless is explicit since
+  #105). The round-1 review (rule 11) drove four more fixes: the checker now strips comments before
+  its repaint decision so PROSE mentioning markForCheck can never satisfy it (suppression rides the
+  explicit `cd-safety-ok:` marker only), `.then(` joined the trigger set (an `await` continuation
+  remains the documented blind spot for the #234 AST lint), a 9-case fixture self-test
+  (`check-cd-safety.test.mjs`) pins the parser both directions, and an `npm run lint` script now
+  exists — which makes CI's previously no-op `Frontend Lint` job (`npm run lint --if-present`)
+  actually run the self-test + checker on every PR.
 - **The quality gates now run on pull requests, not only after merge** (#208) — `deploy.yml` was
   `on: push: branches: [main]` only, so a PR was checked by CodeQL alone and the first time CI
   evaluated whether a change was correct was on the branch that deploys to production. A failing test

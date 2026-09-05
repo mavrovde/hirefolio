@@ -31,9 +31,11 @@ will render **once and never again** unless one of these holds:
 3. the callback ends with `this.cdr.markForCheck()` (inject `ChangeDetectorRef`; pattern in
    `stats.component.ts`, `blog.component.ts`).
 
-Audit grep (what the reviewer runs): in `projects/public`, find `subscribe(`/`setInterval(`/
-`setTimeout(` callbacks that assign `this.<prop> =` with no `markForCheck` in the same callback and
-no signal/async-pipe consumption of that property.
+Audit grep (what the reviewer runs): in `projects/public`, find `subscribe(`/`.then(`/
+`setInterval(`/`setTimeout(` callbacks that assign `this.<prop> =` with no `markForCheck` in the
+same callback and no signal/async-pipe consumption of that property — `npm run lint:cd-safety`
+automates exactly this. An `await`-then-assign continuation is the heuristic's known blind spot
+(needs the #234 AST lint) — check those by eye.
 
 ## The SSR HTTP contract
 
