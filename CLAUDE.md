@@ -89,7 +89,7 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 | hook | `pre-push-tests.sh` | PreToolUse Bash: docs + backend + frontend gates before every real `git push` (command-position aware, #237) |
 | hook | `guard-destructive.sh` | PreToolUse Bash: blocks irreversible local/infra destruction (rule 9) |
 | hook | `hook-parse-lib.sh` | the ONE quote-aware command-parsing model, sourced by both hooks (#237) |
-| plugin | `frontend-design`, `context7`, `playwright`, `pyright-lsp`, `typescript-lsp`, `security-guidance` | see #122 for the curation rationale |
+| plugin | `frontend-design`, `context7`, `pyright-lsp`, `typescript-lsp`, `security-guidance` | per-plugin keep-rationale in "Plugins" below (#122) |
 | MCP | `postgres`, `playwright`, `github` | read-only SQL / browser automation / PRs+issues |
 
 - **MCP servers** (`.mcp.json`): `postgres` (read-only SQL on the pgvector DB), `playwright`
@@ -104,16 +104,44 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
   local/infra destruction (rule 9) — bypass one command with `GUARD_DESTRUCTIVE=0`. Both hooks are
   **command-position aware** (quoted prose is data, #204/#237) and share ONE parsing model,
   `.claude/hooks/hook-parse-lib.sh`; each has a self-test (`*.test.sh`) beside it.
-- **Plugins** (project scope): frontend-design, context7, playwright, pyright-lsp, typescript-lsp,
-  security-guidance.
-- **Skills** (`.claude/skills/`): `issue-workflow` (issue/PR/milestone/label flow) and
+- **Plugins** (project scope; curation rationale + review cadence per #122 — re-review each
+  release alongside the security check):
+  - `context7` — KEEP: live library docs beat training-data recall for Angular 22 / FastAPI /
+    Tailwind 4 API questions; used routinely for upgrade work (rule 6).
+  - `playwright` — **DROPPED** by this pass: the plugin ships nothing but an MCP server
+    (`npx @playwright/mcp@latest`) identical to the committed `.mcp.json` `playwright` entry, so
+    enabling both loaded every browser tool twice and spawned a duplicate server process. The
+    project `.mcp.json` entry stays (explicit, on the AI-config map); browser automation for the
+    LinkedIn scraper session and interactive E2E reproduction is unchanged.
+  - `pyright-lsp` / `typescript-lsp` — KEEP: precise go-to-definition/type errors across
+    backend `app/` and the 3-project Angular workspace; cheaper than grep-navigation at this size.
+  - `security-guidance` — KEEP: inline flags on risky patterns (it fired usefully this cycle on a
+    `shell=True` mention); supports security-triage.
+  - `frontend-design` — KEEP (conditionally): used when shaping new public-site UI; candidate to
+    drop if the portfolio-template work (#67 theming) brings its own design system. Re-evaluate
+    at the next release.
+  - **Evaluated and NOT added** (record per #122 so it isn't re-researched) — marketplace
+    candidates reviewed against this stack: `commit-commands` (the repo's rule-3 branch→PR flow,
+    `/prep-pr`, and the `issue-workflow` skill already cover commit/PR hygiene with repo context),
+    `claude-md-management` (CLAUDE.md is curated by hand; the #232 drift-check pattern guards it),
+    `code-review` (rule 11's `pr-reviewer` agent is the merge gate — a generic reviewer has less
+    repo context and no standing in the gate). Nothing filled a gap the in-repo toolkit doesn't;
+    revisit only when a concrete gap surfaces in practice.
+  - **Project plugin (`mavrovde-toolkit`) — DEFERRED, deliberately**: packaging the 7 agents +
+    7 commands + 5 skills + 2 hooks as one installable plugin is the right end-state for the
+    template product (#61/#88), but today every consumer of this config is this repo itself —
+    packaging would add a version-sync surface with zero second consumers. Tracked as follow-up
+    issue **#244**; trigger = the first real fork/template user (milestone #2).
+- **Skills** (`.claude/skills/`): all five — `issue-workflow` (issue/PR/milestone/label flow),
+  `e2e-validation` (#117), `env-gotchas` (#119), `ssr-cd-safety` (#118), and
   **`lessons-learned`** — the committed "do-not-repeat" knowledge base (zoneless-CD + SSR-HttpBackend
   traps, pytest local-DB isolation, GHA multi-GB-cache net-negative, SemVer-by-content, green-pipeline
   release rule, destruction guardrail). **Consult `lessons-learned` before** SSR/HTTP/CD changes,
   local pytest, adding a CI cache, a release, or destructive local commands — it exists so we don't
   re-research what we already know.
-- **Slash commands** (`.claude/commands/`): project flows — `/verify`, `/release`, `/issue-triage`,
-  `/linkedin-sync`, `/prep-pr` (pre-PR hygiene gate: stale-main, CHANGELOG duplicates, stale
+- **Slash commands** (`.claude/commands/`): all seven — `/verify`, `/release`, `/issue-triage`,
+  `/linkedin-sync`, `/deploy-status` (#120), `/e2e` (#117), `/prep-pr` (pre-PR hygiene gate:
+  stale-main, CHANGELOG duplicates, stale
   old-behavior assertions — #119). The **`env-gotchas` skill** (`.claude/skills/env-gotchas/`)
   documents the macOS/BSD/gh platform pitfalls (no `timeout`, BSD `grep -E`/`sed -i ''`,
   same-identity `gh pr review --approve` block) — consult it before writing cross-platform shell.

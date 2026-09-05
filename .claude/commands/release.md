@@ -79,3 +79,9 @@ rollout (step 6).
 Before tagging, check GitHub security scanning and triage: `gh api repos/<owner>/<repo>/code-scanning/alerts?state=open`
 (CodeQL) and `.../dependabot/alerts?state=open`. Note which are pre-existing vs introduced by the
 release; a release is only "confirmed" once the pipeline is green **and** you've reviewed these.
+
+## Plugin curation re-review (every release, alongside the security check — #122)
+Re-check the CLAUDE.md "Plugins" keep-rationales against the release's actual usage: drop any
+plugin that went unused or got duplicated by in-repo tooling, and re-evaluate the conditional
+`frontend-design` KEEP (drop if #67's theming work brought its own design system). Record any
+change in CLAUDE.md (plugin list + AI-config map) in the release PR.

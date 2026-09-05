@@ -92,6 +92,9 @@ suffix (`-rc.1`) is allowed when explicitly requested.
    `gh release create vX.Y.Z --title ... --notes <changelog section>`.
 10. **Security check (rule 8).** Review CodeQL + Dependabot for new/resolved alerts;
     triage (or hand to `security-triage`). Confirm alerts the release fixed show `fixed`.
+    Alongside it, run the **plugin curation re-review** (#122): re-check the CLAUDE.md
+    "Plugins" keep-rationales against actual usage this cycle — including the conditional
+    `frontend-design` KEEP — and record any change in CLAUDE.md (plugin list + AI-config map).
 11. **Close-the-loop.** Comment on each shipped issue with what landed + links,
     verify against its acceptance criteria, then close it. Never close on assumption.
 
