@@ -26,7 +26,7 @@ async def chat_with_llm(
             payload["options"] = {"stop": stop_sequences}
 
         async with (
-            httpx.AsyncClient(timeout=300.0) as client,
+            httpx.AsyncClient(timeout=settings.llm_request_timeout_seconds) as client,
             client.stream(
                 "POST",
                 f"{settings.ollama_url}/api/chat",

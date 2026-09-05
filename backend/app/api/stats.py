@@ -92,7 +92,9 @@ async def get_stats(
 
     ai_status = False
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
+        async with httpx.AsyncClient(
+            timeout=settings.ollama_healthcheck_timeout_seconds
+        ) as client:
             resp = await client.get(settings.ollama_url)
             ai_status = resp.status_code == 200
     except Exception:

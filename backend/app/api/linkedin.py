@@ -40,9 +40,9 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 # the cookie is never sent anywhere but LinkedIn.
 ALLOWED_IMAGE_HOSTS = ("licdn.com",)
 
-# Bounds for the bulk posts-JSON import (resource-exhaustion guards).
-MAX_POSTS_JSON_BYTES = 10 * 1024 * 1024  # 10 MB uploaded file cap
-MAX_POSTS_PER_IMPORT = 500
+# Bounds for the bulk posts-JSON import (resource-exhaustion guards). Both are
+# read from settings at call time — like ``import_max_image_mb`` next door — so
+# an operator can raise or lower them from .env without a rebuild (#207).
 
 router = APIRouter(prefix="/linkedin", tags=["linkedin"])
 logger = logging.getLogger(__name__)
@@ -608,11 +608,14 @@ async def import_posts_json(
         )
 
     # Cap the in-memory read so an oversized upload can't exhaust memory.
-    raw = await file.read(MAX_POSTS_JSON_BYTES + 1)
-    if len(raw) > MAX_POSTS_JSON_BYTES:
+    max_json_bytes = settings.import_max_posts_json_mb * 1024 * 1024
+    raw = await file.read(max_json_bytes + 1)
+    if len(raw) > max_json_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Posts JSON exceeds {MAX_POSTS_JSON_BYTES // (1024 * 1024)} MB limit.",
+            detail=(
+                f"Posts JSON exceeds {settings.import_max_posts_json_mb} MB limit."
+            ),
         )
     try:
         entries = json.loads(raw)
@@ -624,15 +627,16 @@ async def import_posts_json(
         )
 
     total_entries = len(entries)
-    if total_entries > MAX_POSTS_PER_IMPORT:
+    max_entries = settings.import_max_posts_per_request
+    if total_entries > max_entries:
         logger.warning(
             "[LinkedIn] import-posts-json: %d entries exceeds cap %d — processing "
             "the first %d only.",
             total_entries,
-            MAX_POSTS_PER_IMPORT,
-            MAX_POSTS_PER_IMPORT,
+            max_entries,
+            max_entries,
         )
-        entries = entries[:MAX_POSTS_PER_IMPORT]
+        entries = entries[:max_entries]
 
     created = 0
     updated = 0

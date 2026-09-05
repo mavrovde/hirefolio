@@ -9,7 +9,9 @@ logger = get_logger(__name__)
 async def get_embedding(text: str) -> list[float] | None:
     """Generate embedding vector for text using Ollama."""
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(
+            timeout=settings.embedding_request_timeout_seconds
+        ) as client:
             response = await client.post(
                 f"{settings.ollama_url}/api/embeddings",
                 json={

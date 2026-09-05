@@ -314,6 +314,22 @@ IMPORT_MAX_IMAGE_MB=10                          # default: 10 MB
 # /data/linkedin_cookies, backed by the `linkedin_cookies` named volume so the
 # session survives container recreates/deploys.
 LINKEDIN_COOKIES_DIR=/data/linkedin_cookies    # default: /data/linkedin_cookies
+
+# Operational tuning (issue #207). Each default equals the literal it replaced,
+# so omitting the whole block keeps the previous behaviour. These are the values
+# whose correct setting depends on the host rather than on the application —
+# pagination sizes and API-contract bounds are deliberately NOT here, since they
+# are already per-request parameters.
+LLM_REQUEST_TIMEOUT_SECONDS=300            # default: 300 — a full LLM completion
+LLM_STREAM_TIMEOUT_SECONDS=30              # default: 30  — streamed chat POST
+EMBEDDING_REQUEST_TIMEOUT_SECONDS=30       # default: 30
+OLLAMA_HEALTHCHECK_TIMEOUT_SECONDS=2       # default: 2   — drives the AI-status probe
+OLLAMA_STARTUP_CHECK_TIMEOUT_SECONDS=10    # default: 10  — one-shot startup check
+OLLAMA_PREFLIGHT_TIMEOUT_SECONDS=5         # default: 5   — multi-agent conversation pre-flight
+PROFILE_DATA_TIMEOUT_SECONDS=5             # default: 5
+DB_RESTORE_TIMEOUT_SECONDS=300             # default: 300 — psql restore ceiling
+IMPORT_MAX_POSTS_JSON_MB=10                # default: 10 MB
+IMPORT_MAX_POSTS_PER_REQUEST=500           # default: 500 entries
 ```
 
 ### Root Environment (Docker Compose)

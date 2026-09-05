@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **`/deploy-status` command** (#120) — one command that reports the TRUE deploy state: latest
+  `deploy.yml` run + whether the secrets-gated rollout job ran or silently skipped, repo
+  `VERSION`/latest tag, published image tags, and the LIVE prod version from
+  `/api/app/stats/public` — ending in an explicit live/behind verdict. Bakes in the
+  published ≠ live doctrine (#112): a green pipeline publishes images; only the rollout job (or the
+  live version itself) proves the host updated. The `devops-pipeline` charter now also names the
+  #147 concurrency queue (deploys serialize, never overlap) and points at `/deploy-status`.
+- **The quality gates now run on pull requests, not only after merge** (#208) — `deploy.yml` was
+  `on: push: branches: [main]` only, so a PR was checked by CodeQL alone and the first time CI
+  evaluated whether a change was correct was on the branch that deploys to production. A failing test
+  did not fail *review*; it failed the *deployment*. Lint, types, security, unit tests, migrations
+  and version-consistency now run on `pull_request` as well, while every build/publish/deploy job is
+  gated on `github.event_name == 'push'` so a PR can never publish an image or reach the prod host.
+  No PR-running job reads a repository secret, which keeps fork PRs working and keeps rule 10 intact.
+  Found during the independent review of #205, where an environment-dependent "100% coverage" claim
+  reached the merge gate because nothing in CI would have caught it.
+
+### Fixed
 - **CLAUDE.md AI-config map** (#121) — a one-glance index of every agent, command, skill, hook,
   plugin and MCP server in the repo, so a fresh session orients instantly instead of rediscovering
   the tooling; the milestone-buckets list now includes **AI-assisted development & agents**
@@ -48,26 +67,6 @@ All notable changes to this project will be documented in this file.
   volume/schema crash-loop (bump the image pin forward, NEVER wipe the volume — rule 9), the
   reproduce-on-clean-main triage rule, and the 10443 HTTPS port. `frontend-dev` and
   `devops-pipeline` charters now point at the skill instead of re-deriving the steps.
-
-### Added
-- **`/deploy-status` command** (#120) — one command that reports the TRUE deploy state: latest
-  `deploy.yml` run + whether the secrets-gated rollout job ran or silently skipped, repo
-  `VERSION`/latest tag, published image tags, and the LIVE prod version from
-  `/api/app/stats/public` — ending in an explicit live/behind verdict. Bakes in the
-  published ≠ live doctrine (#112): a green pipeline publishes images; only the rollout job (or the
-  live version itself) proves the host updated. The `devops-pipeline` charter now also names the
-  #147 concurrency queue (deploys serialize, never overlap) and points at `/deploy-status`.
-- **The quality gates now run on pull requests, not only after merge** (#208) — `deploy.yml` was
-  `on: push: branches: [main]` only, so a PR was checked by CodeQL alone and the first time CI
-  evaluated whether a change was correct was on the branch that deploys to production. A failing test
-  did not fail *review*; it failed the *deployment*. Lint, types, security, unit tests, migrations
-  and version-consistency now run on `pull_request` as well, while every build/publish/deploy job is
-  gated on `github.event_name == 'push'` so a PR can never publish an image or reach the prod host.
-  No PR-running job reads a repository secret, which keeps fork PRs working and keeps rule 10 intact.
-  Found during the independent review of #205, where an environment-dependent "100% coverage" claim
-  reached the merge gate because nothing in CI would have caught it.
-
-### Fixed
 - **Dev compose now passes `LINKEDIN_IMPORT_TOKEN` into the backend** (#228) — prod compose forwarded
   it; the dev stack never did, so a token set in `.env` per `.env.example` still produced
   `401 Import requires a valid X-Import-Token` from the local importer (the backend saw an empty
@@ -301,6 +300,29 @@ All notable changes to this project will be documented in this file.
   shifted the worker distribution.
 
 ### Changed
+- **Operational timeouts and bulk-import caps are configurable from `.env`** (#207) — the LLM request
+  ceiling was the literal `300.0` repeated at five call sites, and the Ollama liveness probe used a
+  different budget in each of the three places it appears (10 s at startup, 5 s in multi-chat, 2 s in
+  the stats endpoint, where it decides the reported AI status). These values are host-dependent by
+  nature: a cold model on a small VPS needs a long ceiling, while a fast host would rather fail fast
+  than hold a worker. They are now `Settings` fields, each defaulting to the exact literal it
+  replaced, so an unchanged `.env` reproduces the previous behaviour. The bulk posts-JSON import
+  guards got the same treatment — they were module constants while their `import_max_image_mb`
+  neighbour was already configurable, so an operator could raise one cap but not the other.
+  Pagination defaults, `max_turns`, and text truncations were deliberately left alone: they are
+  per-request parameters or presentation rules, not host-dependent operations, and moving them would
+  add configuration surface without giving an operator anything actionable.
+  The round-1 review (rule 11) caught two blockers, both fixed: the knobs were readable from a bare
+  `.env` but never FORWARDED into the backend container (neither compose file has an `env_file`; the
+  ten variables now follow the `IMPORT_MAX_IMAGE_MB` explicit-forwarding pattern in both
+  `docker-compose.yml` and `docker-compose.prod.yml`), and the multi-agent conversation pre-flight
+  had silently moved from its historical 5 s to the 2 s stats-healthcheck budget — it now has its
+  own `ollama_preflight_timeout_seconds` (default 5.0, the literal it replaced), pinned by a test
+  that fails if the call site is reverted to the healthcheck field (the previous test recorded the
+  timeout but asserted only the stream sentinel — a §16 mutation-survivor).
+- **The admin restore-timeout message reported a hardcoded `300s`** (#207) whatever the real ceiling
+  was, so an operator debugging a timeout would have been told the wrong number. It now reports the
+  configured value.
 - **Agent playbook has a single source of truth** (#115) — the shared team discipline that was
   hand-duplicated across `agents/common/roster.py` (`PROJECT_PLAYBOOK`) and implicitly restated in
   the 7 `.claude/agents/*.md` charters now lives in ONE committed file, `agents/PLAYBOOK.md`

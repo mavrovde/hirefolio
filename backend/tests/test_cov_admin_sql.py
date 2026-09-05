@@ -79,14 +79,14 @@ async def test_execute_sql_returns_empty_rows(
 def test_get_db_url_strips_asyncpg():
     fake_settings = MagicMock()
     fake_settings.database_url = "postgresql+asyncpg://u:p@host:5432/db"
-    with patch("app.config.settings", fake_settings):
+    with patch("app.api.admin_sql.settings", fake_settings):
         assert admin_sql._get_db_url() == "postgresql://u:p@host:5432/db"
 
 
 def test_get_db_url_without_asyncpg_untouched():
     fake_settings = MagicMock()
     fake_settings.database_url = "postgresql://u:p@host:5432/db"
-    with patch("app.config.settings", fake_settings):
+    with patch("app.api.admin_sql.settings", fake_settings):
         assert admin_sql._get_db_url() == "postgresql://u:p@host:5432/db"
 
 
