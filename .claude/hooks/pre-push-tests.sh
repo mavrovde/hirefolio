@@ -139,7 +139,7 @@ inner_script_has_push() {
 # --namespace/--config-env) consumed — to be `push`. Everything else,
 # including `git push` sitting inside a quoted argument, is DATA.
 segment_invokes_git_push() {
-  local seg="$1" first rest tok _peeled
+  local seg="$1" first rest tok
   [ "$SECONDS" -ge "$INSPECT_DEADLINE" ] && return 0   # cannot analyse → gate
   seg="$(printf '%s' "$seg" | tr '\n\t' '  ' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
 

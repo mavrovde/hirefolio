@@ -415,9 +415,21 @@ check "pipe: bash -"                 "echo \"$DV $V\" | bash -"                 
 check "pipe: absolute /bin/bash"     "echo \"$DV $V\" | /bin/bash"                 deny
 # Root-level spelling: the old sed strip needed a SECOND '/' to fire, so `/bash`
 # kept its slash and matched no shell name — allowed. The builtin strip (#235)
-# takes the basename of any leading-'/' word, so it denies. Fail-closed and the
-# only decision change this change makes anywhere.
+# takes the basename of any leading-'/' word, so it denies. Fail-closed, and one
+# of only two decision changes #235 makes anywhere (the other is just below).
 check "pipe: root-level /bash"       "echo \"$DV $V\" | /bash"                     deny
+# Whitespace parity (#235 round-3 review): the fork-free path collapses inner
+# whitespace only when it finds some, so the TRIGGER set must be exactly what
+# the sed it replaced normalised. Testing only for a doubled space/tab left a
+# lone \r (a CRLF-pasted line), \v or \f in place, `first` became `bash\r`,
+# no shell was detected and a deny turned into an ALLOW — unexploitable (bash
+# does not word-split on those) but a real, silent decision change. One case
+# per character: a pin on \r alone would not have caught \v or \f.
+check "pipe: bash + trailing CR"     "echo \"$DV $V\" | bash"$'\r'                 deny
+check "pipe: bash + trailing VT"     "echo \"$DV $V\" | bash"$'\v'                 deny
+check "pipe: bash + trailing FF"     "echo \"$DV $V\" | bash"$'\f'                 deny
+# ...and the collapse must not invent a denial where there is none.
+check "pipe: benign CR line"         'npm run build'$'\r'                          allow
 check "pipe: sudo -E bash"           "echo \"$D $T\" | sudo -E bash"               deny
 check "pipe: xargs -0 bash -c"       "echo \"$DV $V\" | xargs -0 bash -c"          deny
 check "pipe: zsh"                    "echo \"$D $T\" | zsh"                        deny
@@ -858,6 +870,22 @@ check_within "cost: many-segment destroy tail" "${MANYSEMI}$DV $V"        deny 1
 # blind spot this change closes survives one space to the right.
 MANYDBL="$(printf 'a  b;%.0s' $(seq 1 3000))"
 check_within "cost: double-space destroy tail" "${MANYDBL}$DV $V"         deny 10
+# ...and the shape that actually enters the PAYLOAD pass. Every case above ends
+# in a bare destructive command, so pipes_into_shell answers "not a shell" and
+# the payload pass never runs — which is why deleting its deadline break left
+# the whole suite green while this shape went from 7.1 s to 17.9 s, past the
+# 15 s hook timeout (round-3 review; rule 2 — a fix needs a failing-first test).
+# The piped shell makes pipes_into_shell return 0 legitimately, so the ~3
+# forks per segment in that loop are paid 5,000 times unless the break is there.
+# Measured on this shape: 7.1 s fixed, 17.9 s with the break deleted, 17.8 s
+# with BOTH halves of the round-2 fix reverted, 53.5 s on the pre-#235 hook.
+# The budget's `return 1` half has deliberately NO pin of its own: with the
+# break in place, `return 0` enters the payload pass and leaves it immediately,
+# so the two spellings produce the same decision at the same cost (measured
+# 7.9 s vs 7.1 s) and there is nothing observable to assert. It stays because
+# it does not depend on a sibling loop remembering to be bounded (§21.18) —
+# and the case above fails the moment that assumption is violated.
+check_within "cost: bulk + piped-shell payload" "${MANYSEMI}echo \"$DV $V\" | bash" deny 10
 
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."

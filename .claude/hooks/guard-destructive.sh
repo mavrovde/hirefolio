@@ -217,7 +217,7 @@ needs_flat_pass() {
 
 # Inspect one command segment (already separator-split). Sets REASON on a hit.
 inspect_segment() {
-  local seg="$1" _dbargs _peeled
+  local seg="$1" _dbargs
 
   if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then
     REASON="BLOCKED: this command is too large for the guard to finish analysing within its time budget, and a command that was never analysed must not be allowed. Split it into smaller commands, or prefix that command with GUARD_DESTRUCTIVE=0 if it is authorized."
@@ -449,7 +449,8 @@ inspect_segment() {
 # text that reaches me", so quoted text earlier in the pipeline is CODE, however
 # innocent its producing command looks (#210).
 pipes_into_shell() {
-  local seg first rest optless via_xargs _TAB=$'\t'
+  local seg first rest optless via_xargs
+  local _TAB=$'\t' _CR=$'\r' _VT=$'\v' _FF=$'\f'
   local OLD="$IFS"; IFS=$'\n'
   for seg in $1; do
     # BUDGET, checked per segment with a costless builtin (#235): this loop
@@ -467,13 +468,20 @@ pipes_into_shell() {
     # (sed normalise, grep xargs-test, $(peel_wrapper)); now a segment pays a
     # fork only when it actually needs one:
     # - ltrim + skip blank segments with pure bash;
-    # - collapse inner whitespace only when a doubled space/tab is present
-    #   (parsing below assumes single spaces);
+    # - collapse inner whitespace only when there is whitespace the parsing
+    #   below (which assumes single spaces) would otherwise trip over;
     # - the xargs test is a case pattern; peel_wrapper returns via a global.
+    # The trigger set must be EXACTLY what the sed it replaced normalised, i.e.
+    # all of [[:space:]] — testing only for a doubled space/tab left a lone
+    # \r/\v/\f in place, so `… | bash\r` no longer read as `bash` and a deny
+    # became an ALLOW (round-3 review of #240). Unexploitable (bash does not
+    # word-split on those) but a real decision change, and exact parity costs
+    # nothing: ordinary input contains none of them and never forks here.
     seg="${seg#"${seg%%[![:space:]]*}"}"
     case "$seg" in "") continue ;; esac
     case "$seg" in
-      *"  "*|*"$_TAB"*) seg="$(printf '%s' "$seg" | sed -E 's/[[:space:]]+/ /g')" ;;
+      *"  "*|*"$_TAB"*|*"$_CR"*|*"$_VT"*|*"$_FF"*)
+        seg="$(printf '%s' "$seg" | sed -E 's/[[:space:]]+/ /g')" ;;
     esac
     # Peel wrappers, including ones that take their own options (`sudo -E`,
     # `xargs -0`, `timeout 60`, `stdbuf -o0`), then an absolute path —

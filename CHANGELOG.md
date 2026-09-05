@@ -11,9 +11,10 @@ All notable changes to this project will be documented in this file.
   (and a hook that times out does not deny), 5,000 `;`-segments took **36.8 s** and 11,000 pipes
   (22 KB) **80.4 s** — an unanalysed allow in production, identical on `main` since the function
   was added. Now: fork-free fast paths (pure-bash ltrim, blank-segment skip, whitespace collapse
-  only when a doubled space/tab is present, `case`-based xargs test, `peel_wrapper` returning via
-  the `PEEL_RESULT` global instead of a per-segment command-substitution subshell — ported into
-  the shared `hook-parse-lib.sh` and both call sites, guard and pre-push hook) plus a costless
+  only when the segment actually contains whitespace needing it, `case`-based xargs test,
+  `peel_wrapper` returning via the `PEEL_RESULT` global instead of a per-segment
+  command-substitution subshell — ported into the shared `hook-parse-lib.sh` and all three call
+  sites, both in the guard and one in the pre-push hook) plus a costless
   per-segment `$SECONDS` budget. **Measured, same shapes: 7.9 s and 7.9 s**; a bulk command with
   a real destruction payload 41.0 s → 7.8 s, its double-spaced variant 31.5 s → 7.9 s; an ordinary
   100-command line still allows (2.9 s → 2.2 s). The budget now fails closed through the **cheap**
@@ -21,13 +22,19 @@ All notable changes to this project will be documented in this file.
   `inspect_segment`'s own deadline check, instead of routing thousands of segments into the payload
   pass — which forks ~3× per segment and could only reach the same denial (17.6 s → 7.9 s on the
   double-space shape); that pass also gained the deadline `break` the other pre-inspection loops
-  already had. Suite 269 → **274 cases** with a new `check_within` helper that asserts decision
-  **and** wall clock together — the previous helpers each asserted only one half, which is how a
-  destroy-tail pin passed against the unfixed hook at 36 s (a deny production would never see).
-  All four new cost pins fail against the pre-fix hook (37 s / 81 s / 36 s / 24 s); the
-  double-space pin also fails against this change's own earlier draft (19 s), so it pins the
-  budget path specifically. One decision changes anywhere: `… | /bash` allow → **deny** (the
-  basename strip no longer needs a second `/`) — fail-closed, and now pinned by a case. Four
+  already had — without it a 10 KB bulk command carrying a piped-shell payload answers at 17.9 s
+  instead of 7.1 s, i.e. past the timeout. Suite 269 → **279 cases** with a new `check_within`
+  helper that asserts decision **and** wall clock together — the previous helpers each asserted
+  only one half, which is how a destroy-tail pin passed against the unfixed hook at 36 s (a deny
+  production would never see). All five cost pins fail against the pre-fix hook (34 s / 75 s /
+  34 s / 20 s / 50 s), and the piped-shell-payload pin also fails against a mutant of THIS change
+  with only the payload-pass `break` deleted (17.9 s), so the `break` is pinned failing-first
+  rather than merely asserted. Two decisions change anywhere, both now covered by cases:
+  `… | /bash` allow → **deny** (the basename strip no longer needs a second `/`) — fail-closed and
+  intended; and `… | bash` followed by a lone `\r`/`\v`/`\f`, which the narrower collapse trigger
+  briefly turned deny → allow — restored to `deny` by matching the replaced `sed`'s full
+  `[[:space:]]` trigger set (unexploitable, since bash does not word-split on those, but a silent
+  decision change all the same). Four
   pre-existing `pipes_into_shell` bypasses found while measuring this (`| \bash`,
   `| /usr/bin/env bash`, `| /usr/bin/sudo bash`, `| /usr/bin/timeout 60 bash` — all identical on
   `main`) and the payload pass's remaining per-segment forks are **not** fixed here; they are
