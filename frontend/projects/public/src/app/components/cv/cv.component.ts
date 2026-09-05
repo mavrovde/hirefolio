@@ -38,9 +38,9 @@ export class CvComponent implements OnInit {
     ngOnInit() {
         this.seoService.updateSeo({
             title: 'Request CV',
-            description: 'Request a full PDF copy of Sergii Mavrov\'s professional CV and resume.',
+            description: 'Request a full PDF copy of the professional CV and resume.',
             url: '/cv',
-            keywords: 'CV, Resume, Sergii Mavrov, Principal Software Engineer, Professional Background'
+            keywords: 'CV, Resume, Professional Background'
         });
     }
 
