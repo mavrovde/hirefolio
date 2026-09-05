@@ -984,6 +984,19 @@ jobs:
             echo "  health attempt $i/30"; sleep 10
           done
           $ok || { echo "Health gate FAILED"; exit 1; }
+          # Version probe (#169): the live backend must report the version this
+          # ref released — a route-shape probe alone can pass on any post-split
+          # build, so assert the actual version string too. Retries because the
+          # backend may still be warming when health first flips.
+          released=$(cat VERSION)
+          vok=false
+          for i in $(seq 1 6); do
+            live=$(curl -s -m 10 "$PUBLIC_URL/api/app/stats/public" | jq -r '.backend_version // empty' 2>/dev/null || echo '')
+            if [ "$live" = "$released" ]; then vok=true; break; fi
+            echo "  version attempt $i/6: live=${live:-none} (want $released)"; sleep 10
+          done
+          $vok || { echo "Version gate FAILED: live backend_version never matched released VERSION=$released"; exit 1; }
+          echo "Version gate OK: live == $released."
           # Freshness probe (#169) with its own retries: the public host must NOT
           # serve the admin SPA route — 404 proves a post-workspace-split build.
           for i in $(seq 1 6); do

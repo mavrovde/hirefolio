@@ -51,8 +51,10 @@ specs/      Feature specs (planned/done)
 - `./manage.sh start|stop|logs` — Docker stack
 - `./verify_all.sh` — full suite incl. Docker E2E (runs backend pytest via `backend/venv` → `python3`;
   override the interpreter with `PYTEST_PYTHON`)
-- Deploy = **push to `main`** → GitHub Actions builds images + `docker compose -f
-  docker-compose.prod.yml up -d`. `release.sh --patch|--minor|--major` bumps version + tags + pushes.
+- Deploy = **push to `main`** → GitHub Actions builds + publishes images; the host is rolled
+  **only** by the secrets-gated `Roll Out To Prod Host` job (`DEPLOY_*` secrets — absent = green run,
+  nothing rolled; #112/#169). The scheduled `Live Freshness` workflow goes red whenever live ≠
+  released. `release.sh --patch|--minor|--major` bumps version + tags + pushes.
 
 **LinkedIn pipeline** (see `importer/README.md`, `scraper/WORKFLOW.md`):
 - Scrape: `cd scraper && PLAYWRIGHT_CHANNEL=chrome HEADLESS=false node scrape-linkedin.js` (profile)
