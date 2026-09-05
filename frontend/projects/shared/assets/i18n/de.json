@@ -112,5 +112,21 @@
     "REQUESTING_PASSWORD_CHANGE": "Passwortänderung wird angefordert...",
     "SQL_ERROR": "Ein Fehler ist bei der Ausführung der Abfrage aufgetreten.",
     "EXECUTING": "Ausführen..."
+  },
+  "CONTACT": {
+    "NAME": "Name",
+    "NAME_PLACEHOLDER": "Ihr Name",
+    "NAME_ERROR": "Name ist erforderlich (mind. 2 Zeichen).",
+    "EMAIL": "E-Mail",
+    "EMAIL_ERROR": "Eine gültige E-Mail-Adresse ist erforderlich.",
+    "COMPANY": "Unternehmen (optional)",
+    "COMPANY_PLACEHOLDER": "Ihr Unternehmen",
+    "MESSAGE": "Nachricht",
+    "MESSAGE_PLACEHOLDER": "Erzählen Sie mir von der Rolle oder Ihrer Frage...",
+    "MESSAGE_ERROR": "Eine Nachricht ist erforderlich (mind. 5 Zeichen).",
+    "SUBMIT": "senden",
+    "SUBMITTING": "wird gesendet...",
+    "SUCCESS": "Nachricht erhalten — ich melde mich in Kürze.",
+    "ERROR": "Senden fehlgeschlagen. Bitte erneut versuchen oder die E-Mail oben nutzen."
   }
 }
