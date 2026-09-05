@@ -116,6 +116,36 @@ async def test_cv_request_indexed_in_inbox(client: AsyncClient, db_session):
     assert rows[0].payload["position_description"] == "Staff role"
 
 
+@pytest.mark.asyncio
+async def test_cv_request_survives_inbox_indexing_failure(
+    client: AsyncClient, db_session
+):
+    """The inbox is an index, never a gate: if creating the Interaction blows
+    up, the CV request itself must still succeed (cv.py's guarded block)."""
+    db_session.add(
+        CvDocument(filename="cv.pdf", data=b"%PDF-1.4", version="t", is_active=True)
+    )
+    await db_session.commit()
+
+    with patch(
+        "app.models.interaction.Interaction.__init__",
+        side_effect=RuntimeError("inbox down"),
+    ):
+        resp = await client.post(
+            f"{settings.api_prefix}/cv/request",
+            json={
+                "name": "Carla Careful",
+                "email": "carla@corp.example",
+                "company": "Corp",
+                "message": "CV please",
+                "position_description": None,
+                "subscribe_to_updates": False,
+            },
+        )
+    assert resp.status_code == 200
+    assert resp.json()["success"] is True
+
+
 # --- admin inbox --------------------------------------------------------------
 
 
