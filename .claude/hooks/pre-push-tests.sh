@@ -164,8 +164,9 @@ segment_invokes_git_push() {
       changed=1
     fi
     # Transparent wrappers — sudo/env/nohup/time/… (shared model, #217).
-    if _peeled="$(peel_wrapper "$seg")"; then
-      seg="$_peeled"; changed=1
+    # peel_wrapper returns via the PEEL_RESULT global, not stdout (#235).
+    if peel_wrapper "$seg"; then
+      seg="$PEEL_RESULT"; changed=1
     fi
     # xargs [opts] git push — same one-pass strip as the guard's (#219).
     if printf '%s' "$seg" | grep -Eq '^xargs( |$)'; then

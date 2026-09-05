@@ -257,8 +257,8 @@ inspect_segment() {
     fi
     # sudo/command/nohup/time/exec/env/nice/ionice/stdbuf/setsid/timeout/… — one
     # shared wrapper model (#217), options and their values consumed.
-    if _peeled="$(peel_wrapper "$seg")"; then
-      seg="$_peeled"; changed=1
+    if peel_wrapper "$seg"; then
+      seg="$PEEL_RESULT"; changed=1
     fi
     # A wrapper can hand its argv to an alias-suppressed spelling too (#213).
     if [ "${seg:0:1}" = '\' ]; then seg="${seg#\\}"; changed=1; fi
@@ -449,29 +449,56 @@ inspect_segment() {
 # text that reaches me", so quoted text earlier in the pipeline is CODE, however
 # innocent its producing command looks (#210).
 pipes_into_shell() {
-  local seg first rest optless via_xargs _p
+  local seg first rest optless via_xargs _TAB=$'\t'
   local OLD="$IFS"; IFS=$'\n'
   for seg in $1; do
+    # BUDGET, checked per segment with a costless builtin (#235): this loop
+    # runs once per separator-split segment, and a command made of thousands
+    # of tiny segments used to spend ~3 forks on each — 40 s on a 10 KB
+    # command, past the 15 s hook timeout. Past the budget we return 1: NOT
+    # "this is safe" but "stop paying for this pass" — the unconditional main
+    # pass below runs next and inspect_segment's own deadline check DENIES it.
+    # Returning 0 here would be equally fail-closed in principle but routes
+    # thousands of segments through the payload pass, which forks ~3× per
+    # segment and can only reach the same deadline deny — 19.7 s vs 7.2 s
+    # measured (round-5 review). Cheapest path to the same denial wins.
+    if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then IFS="$OLD"; return 1; fi
+    # Fork-free fast paths (#235). Every dispatch below used to fork
+    # (sed normalise, grep xargs-test, $(peel_wrapper)); now a segment pays a
+    # fork only when it actually needs one:
+    # - ltrim + skip blank segments with pure bash;
+    # - collapse inner whitespace only when a doubled space/tab is present
+    #   (parsing below assumes single spaces);
+    # - the xargs test is a case pattern; peel_wrapper returns via a global.
+    seg="${seg#"${seg%%[![:space:]]*}"}"
+    case "$seg" in "") continue ;; esac
+    case "$seg" in
+      *"  "*|*"$_TAB"*) seg="$(printf '%s' "$seg" | sed -E 's/[[:space:]]+/ /g')" ;;
+    esac
     # Peel wrappers, including ones that take their own options (`sudo -E`,
     # `xargs -0`, `timeout 60`, `stdbuf -o0`), then an absolute path —
     # `/bin/bash` is as much a shell as `bash`. Matching two exact spellings
     # made this an allowlist of the first two forms that came to mind; every
     # other spelling executed unguarded. The wrapper set itself is the SHARED
     # peel_wrapper model (#217) so this cannot drift from inspect_segment's.
-    seg="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
     via_xargs=0
     while :; do
-      if printf '%s' "$seg" | grep -Eq '^xargs( |$)'; then
-        via_xargs=1
-        # one pass — a per-token strip loop here has the same fork-per-option
-        # cost profile the round-3 review measured in inspect_segment (#219)
-        seg="$(printf '%s' "$seg" | sed -E 's/^xargs *//; s/^(-[^ ]+ )*//; s/^-[^ ]*$//')"
-        continue
-      fi
-      if _p="$(peel_wrapper "$seg")"; then seg="$_p"; continue; fi
+      case "$seg" in
+        xargs|"xargs "*)
+          via_xargs=1
+          # one pass — a per-token strip loop here has the same fork-per-option
+          # cost profile the round-3 review measured in inspect_segment (#219)
+          seg="$(printf '%s' "$seg" | sed -E 's/^xargs *//; s/^(-[^ ]+ )*//; s/^-[^ ]*$//')"
+          continue ;;
+      esac
+      if peel_wrapper "$seg"; then seg="$PEEL_RESULT"; continue; fi
       break
     done
-    seg="$(printf '%s' "$seg" | sed -E 's#^/[^ ]*/##')"
+    # absolute-path shells: /bin/bash is as much a shell as bash — strip the
+    # directory with builtins, only for segments that actually start with '/'
+    case "$seg" in
+      /*) first="${seg%% *}"; seg="${first##*/}${seg#"$first"}" ;;
+    esac
     first="${seg%% *}"
     case "$first" in
       bash|sh|zsh|dash)
@@ -546,6 +573,13 @@ if pipes_into_shell "$SEGMENTS"; then
   OLDIFS="$IFS"; IFS=$'\n'
   for seg in $SEGMENTS; do
     [ -n "$REASON" ] && break
+    # This pass forks ~3× per segment ($(quoted_payloads), $(mask_quotes), a
+    # sed), so it needs the same budget check the other pre-inspection loops
+    # already have (strip_text_heredocs, heredoc_target_executed): past the
+    # deadline it can no longer find anything anyway — every path in it that
+    # sets REASON goes through inspect_segment, which just denies on the
+    # deadline — so stopping here is fail-closed AND far cheaper (#235).
+    [ "$SECONDS" -ge "$INSPECT_DEADLINE" ] && break
     for payload in $(quoted_payloads "$seg"); do
       [ -n "$REASON" ] && break
       inspect_inner_script "$payload"

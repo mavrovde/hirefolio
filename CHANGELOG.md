@@ -4,8 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- Placeholder for next release.
+### Fixed
+- **Destruction guard: the many-segment cost hole is closed — #219's last residual** (#235) —
+  `pipes_into_shell()` forked ~3 processes per separator-split segment with no budget check, so
+  bulk alone still defeated the guard: 5,000 `;`-segments (10 KB) took 40 s and 11,000 pipes
+  (22 KB) 119 s against the 15 s hook timeout — an unanalysed allow in production, identical on
+  `main` since the function was added (measured in #225's round-4 review, which validated this
+  exact fix). Now: fork-free fast paths (pure-bash ltrim, blank-segment skip, conditional
+  whitespace collapse, `case`-based xargs test, and `peel_wrapper` returning via a global instead
+  of a subshell) plus a costless per-segment `$SECONDS` budget that FAILS CLOSED — past the budget
+  the payload pass inspects and the main pass's deadline denies. Measured: all four attack shapes
+  (`;`, `&`, `|`, `(`) now answer in ≤8 s; pure-separator noise allows in 0.17 s; a destructive
+  tail behind the bulk still denies. Suite 269 → **272 cases**; the two new wall-clock pins fail
+  against the pre-fix hook (46 s / 119 s) — closing the "every cost pin was heredoc- or
+  token-run-shaped" blind spot, the fifth and final instance of that pattern.
 
 ## [1.11.1] - 2026-09-05
 

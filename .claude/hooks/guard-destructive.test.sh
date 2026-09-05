@@ -803,6 +803,20 @@ check      "cost: xargs-opts destroy tail"     "${XOPTS}$DV"                    
 # ...and the leading-run bypass check still honors a buried GUARD_DESTRUCTIVE=0.
 check "bypass: mid-run GUARD_DESTRUCTIVE=0"   "FOO=1 GUARD_DESTRUCTIVE=0 $DV $V"  allow
 
+# --- MANY-SEGMENT BULK (#235 — the last #219 residual) ----------------------
+# pipes_into_shell forked ~3× per segment with no budget check: 5,000 ';'
+# segments (10 KB) took 40 s — past the 15 s hook timeout, i.e. an unanalysed
+# allow in production. Fork-free fast paths + a per-segment $SECONDS budget
+# that fails CLOSED now: the shapes answer inside the budget (deny via the
+# deadline is the designed answer for pathological bulk; an ordinary command
+# with a normal segment count stays allowed — BIGOK above pins that side).
+MANYSEMI="$(printf 'x;%.0s' $(seq 1 5000))"
+check_fast "cost: 5000 ;-segments in budget"  "$MANYSEMI"                        10
+MANYPIPE="$(printf 'x|%.0s' $(seq 1 11000))"
+check_fast "cost: 11000 |-segments in budget" "$MANYPIPE"                        10
+# ...and a destructive tail behind the bulk must still be denied.
+check "cost: many-segment destroy tail"       "${MANYSEMI}$DV $V"               deny
+
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
   exit 0

@@ -49,19 +49,26 @@ ANSI_Q=$'\x02'
 # bypass — so this list errs long: anything that merely re-nices, re-buffers,
 # times, or re-users its argv belongs in it.
 #
-# Prints the peeled remainder and returns 0 when the first word was a wrapper;
-# consumes its options, the separate-token VALUES of value-taking flags
-# (`nice -n 10`, `timeout -k 5`, `sudo -u root`), and the bare operand of
+# Returns 0 when the first word was a wrapper, with the peeled remainder in
+# PEEL_RESULT; consumes its options, the separate-token VALUES of value-taking
+# flags (`nice -n 10`, `timeout -k 5`, `sudo -u root`), and the bare operand of
 # duration/priority/mask-taking wrappers (`timeout 60`, `chrt 50`,
 # `taskset 0x1`). A joined value (`-n10`, `-o0`, `-c3`) needs no extra token.
 # Value flags are per-wrapper, not shared: consuming a value after a flag that
 # does not take one (`env -i`) would swallow the real command — a false ALLOW.
+#
+# The result comes back in PEEL_RESULT (a global), NOT on stdout: a command
+# substitution forks a subshell, and this runs per segment — on a many-segment
+# command those forks alone outlived the hook timeout, and a hook that times out
+# does not deny, so the cost was itself a bypass (#235). Every caller must read
+# PEEL_RESULT; `$(peel_wrapper …)` now yields the empty string.
 peel_wrapper() {
   local seg="$1" w rest tok valflags=""
+  PEEL_RESULT=""
   w="${seg%% *}"
   [ "$w" = "$seg" ] && return 1          # bare word — nothing follows to run
   case "$w" in
-    busybox) printf '%s' "${seg#busybox }"; return 0 ;;  # applet name follows
+    busybox) PEEL_RESULT="${seg#busybox }"; return 0 ;;  # applet name follows
     sudo|doas|command|nohup|time|exec|env|nice|ionice|stdbuf|setsid|chrt|taskset|timeout) ;;
     *) return 1 ;;
   esac
@@ -94,7 +101,7 @@ peel_wrapper() {
         rest="${rest#* }"
       fi ;;
   esac
-  printf '%s' "$rest"
+  PEEL_RESULT="$rest"
   return 0
 }
 
