@@ -105,15 +105,10 @@ suffix (`-rc.1`) is allowed when explicitly requested.
   changes alike — urgent means the review is expedited, not skipped. Merge only when: all gates green
   AND a posted `pr-reviewer` APPROVAL. If you find a PR that was merged without one, get a
   retrospective review posted and fix-forward on any finding.
-- **No irreversible local/infra destruction** (CLAUDE.md rule 9): never `docker volume rm`/`prune`,
-  `docker compose down -v`, `docker system prune`, `docker image prune -a`, DROP/recreate a
-  non-`test_*` DB, or `rm -rf` a data/volume path without explicit user authorization naming the
-  resource — a backup is not consent. (`.claude/hooks/guard-destructive.sh` enforces this.)
-- **NEVER use real API keys / paid credentials in tests or CI** (CLAUDE.md rule 10 — STRICTLY
-  FORBIDDEN): before shipping, confirm no test/CI stack passes a real paid-service credential (a
-  `secrets.*` key into a test job) and that paid-API endpoints are mocked or on a free local fallback
-  with an empty/dummy credential. A release that would run real paid-service calls in CI is a no-ship.
-  Real credentials live only in the prod runtime env.
+- Rules 9 and 10 apply as the shared playbook states them (`agents/PLAYBOOK.md`, #115);
+  release delta: a release never requires destroying local state, and release-time CI must keep
+  test stacks on empty/placeholder credentials.
+
 - Be honest about state: if the deploy is red or a step was skipped, say so with the
   evidence. A release is not "done" until the pipeline is green and the tag exists.
 - Report: the version + bump rationale, the CHANGELOG section, the deploy run result,

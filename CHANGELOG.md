@@ -254,8 +254,8 @@ All notable changes to this project will be documented in this file.
   `PROJECT_PLAYBOOK` with zero other edits). The round-1 review (rule 11) hardened it further, all
   fixed here: the drift check compared CONTENT only, so a byte-identical re-inlined duplicate passed
   undetected — a source-level assertion now fails if `roster.py` carries the playbook text inline;
-  the three charters that still restated the shared rule-9/rule-10 blocks verbatim now carry only a
-  pointer plus their role delta; and the sync test actually RUNS somewhere — wired into both the
+  ALL seven charters' verbatim rule-9/rule-10 blocks now carry only a
+  pointer plus their role delta (round 2 finished the remaining four); and the sync test actually RUNS somewhere — wired into both the
   pre-push hook's backend leg and CI's Backend Tests job (it previously gated nothing — §18,
   verify-that-gates-actually-gate).
 - **The Gemini environment variables are project-scoped: `HIREFOLIO_GEMINI_API_KEY` and
