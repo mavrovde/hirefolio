@@ -1,0 +1,69 @@
+<div class="p-6">
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold">Inbox</h1>
+    <div class="flex gap-3">
+      <select [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()" aria-label="filter by status"
+        class="border rounded px-3 py-2 bg-white">
+        <option value="">All statuses</option>
+        <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+      </select>
+      <select [(ngModel)]="sourceFilter" (ngModelChange)="onFilterChange()" aria-label="filter by source"
+        class="border rounded px-3 py-2 bg-white">
+        <option value="">All sources</option>
+        <option *ngFor="let s of sources" [value]="s">{{ s }}</option>
+      </select>
+    </div>
+  </div>
+
+  <p *ngIf="error" class="text-red-600 mb-4" role="alert">{{ error }}</p>
+  <p *ngIf="loading" class="text-gray-500 mb-4">Loading…</p>
+
+  <p *ngIf="!loading && items.length === 0 && !error" class="text-gray-500">
+    No interactions yet — contact-form submissions and CV requests land here.
+  </p>
+
+  <div *ngIf="items.length > 0" class="overflow-x-auto">
+    <table class="min-w-full border divide-y">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-2 text-left text-sm font-semibold">When</th>
+          <th class="px-4 py-2 text-left text-sm font-semibold">From</th>
+          <th class="px-4 py-2 text-left text-sm font-semibold">Company</th>
+          <th class="px-4 py-2 text-left text-sm font-semibold">Source</th>
+          <th class="px-4 py-2 text-left text-sm font-semibold">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        <ng-container *ngFor="let i of items">
+          <tr (click)="toggleExpand(i.id)" class="cursor-pointer hover:bg-gray-50"
+            [attr.data-testid]="'row-' + i.id">
+            <td class="px-4 py-2 text-sm whitespace-nowrap">{{ i.created_at | date: 'medium' }}</td>
+            <td class="px-4 py-2 text-sm">
+              <span class="font-medium">{{ i.name }}</span>
+              <span class="text-gray-500 block">{{ i.email }}</span>
+            </td>
+            <td class="px-4 py-2 text-sm">{{ i.company || '—' }}</td>
+            <td class="px-4 py-2 text-sm"><span class="rounded bg-gray-100 px-2 py-1">{{ i.source }}</span></td>
+            <td class="px-4 py-2 text-sm" (click)="$event.stopPropagation()">
+              <select [ngModel]="i.status" (ngModelChange)="setStatus(i, $event)"
+                [attr.aria-label]="'status of ' + i.name" class="border rounded px-2 py-1 bg-white">
+                <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+              </select>
+            </td>
+          </tr>
+          <tr *ngIf="expandedId === i.id">
+            <td colspan="5" class="px-4 py-3 bg-gray-50 text-sm whitespace-pre-wrap">{{ i.message }}</td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="pages > 1" class="flex items-center gap-3 mt-4">
+    <button (click)="goToPage(page - 1)" [disabled]="page <= 1"
+      class="border rounded px-3 py-1 disabled:opacity-40">Prev</button>
+    <span class="text-sm text-gray-600">Page {{ page }} / {{ pages }} · {{ total }} total</span>
+    <button (click)="goToPage(page + 1)" [disabled]="page >= pages"
+      class="border rounded px-3 py-1 disabled:opacity-40">Next</button>
+  </div>
+</div>

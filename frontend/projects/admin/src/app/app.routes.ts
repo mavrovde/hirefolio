@@ -43,6 +43,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'inbox',
+        loadComponent: () =>
+          import('./components/admin/inbox/inbox.component').then(
+            (m) => m.InboxComponent,
+          ),
+      },
+      {
         path: 'profile-data',
         loadComponent: () =>
           import('./components/admin/profile-data/profile-data.component').then(
