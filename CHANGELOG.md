@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Placeholder for next release.
+- **Recruiter communication hub: a unified inbox — no recruiter contact is ever missed** (#69) —
+  the first piece of the Job-search CRM milestone. New `Interaction` model + `inbox0003` migration:
+  every inbound touch is ONE indexable record with `source`, a status workflow
+  (new → contacted → in_progress → closed), and a JSON payload for source-specific extras. The
+  public site gains a real **contact form** (terminal-styled, EN/DE, validated) posting to
+  `POST /interactions/contact`; **CV requests are now indexed into the same inbox**
+  (`source=cv_request`, linked to the domain record); the owner gets an email per interaction via a
+  new generic `EmailService.send_interaction_notification` (background task, skips gracefully
+  without SMTP, can never block intake). The admin panel gains an **Inbox** view — filter by
+  status/source, expandable messages, inline status control, pagination. 17 backend + 20 frontend
+  tests; all three projects stay at 100% coverage.
 
 ## [1.11.1] - 2026-09-05
 

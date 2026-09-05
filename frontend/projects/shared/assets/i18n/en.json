@@ -112,5 +112,21 @@
     "REQUESTING_PASSWORD_CHANGE": "Requesting password change...",
     "SQL_ERROR": "An error occurred while executing the query.",
     "EXECUTING": "Executing..."
+  },
+  "CONTACT": {
+    "NAME": "Name",
+    "NAME_PLACEHOLDER": "Your name",
+    "NAME_ERROR": "Name is required (min 2 characters).",
+    "EMAIL": "Email",
+    "EMAIL_ERROR": "A valid email is required.",
+    "COMPANY": "Company (optional)",
+    "COMPANY_PLACEHOLDER": "Your company",
+    "MESSAGE": "Message",
+    "MESSAGE_PLACEHOLDER": "Tell me about the role or your question...",
+    "MESSAGE_ERROR": "A message is required (min 5 characters).",
+    "SUBMIT": "send",
+    "SUBMITTING": "sending...",
+    "SUCCESS": "Message received — I will get back to you soon.",
+    "ERROR": "Sending failed. Please try again or use the email above."
   }
 }
