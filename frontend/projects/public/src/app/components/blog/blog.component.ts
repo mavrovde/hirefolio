@@ -1,7 +1,7 @@
 import { Component, OnInit, Input, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BlogService, BlogPost, BlogSearchResult } from '@mavrov/shared';
-import { Observable, map } from 'rxjs';
+import { Observable, map, of, take } from 'rxjs';
 import { TranslatePipe } from '@mavrov/shared';
 import { Router, RouterModule } from '@angular/router';
 import { SeoService } from '../../services/seo.service';
@@ -43,23 +43,28 @@ export class BlogComponent implements OnInit {
     private router: Router,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object,
-    siteConfig?: SiteConfigService
+    private siteConfig?: SiteConfigService
   ) {
-    // Duck-typed: unit tests construct this component manually with positional
-    // junk in the optional slot; only a real config stream is consumed.
-    if (siteConfig && typeof siteConfig.config$?.subscribe === 'function') {
-      // cd-safety-ok: assigns a private field consumed only inside later callbacks — nothing template-bound.
-      siteConfig.config$.subscribe((cfg) => (this.site = cfg));
-    }
+    // cd-safety-ok: assigns a private field consumed only inside later callbacks — nothing template-bound.
+    this.siteConfig?.config$?.subscribe((cfg) => (this.site = cfg));
   }
 
   ngOnInit() {
     if (this.standalone) {
-      this.seoService.updateSeo({
-        title: 'Blog',
-        description: `Read the latest insights and professional reflections from ${this.site.ownerName}, covering Cloud Architecture, AI, and Software Engineering.`,
-        url: '/blog',
-        keywords: `Blog, Technology, Software Engineering, AI, Cloud, ${this.site.ownerName}`
+      // SEO strings must COMPOSE off the config stream (#255 review blocker 1):
+      // reading `this.site` synchronously here races the constructor's async
+      // fetch and bakes the placeholder into the SSR meta — SeoService's
+      // re-apply cannot repair strings already interpolated. take(1) bounds the
+      // one-shot shareReplay stream; SSR waits on the pending HTTP request, so
+      // the server-rendered head carries the real identity.
+      const seo$ = this.siteConfig?.config$ ?? of(DEFAULT_SITE_CONFIG);
+      seo$.pipe(take(1)).subscribe((site) => {
+        this.seoService.updateSeo({
+          title: 'Blog',
+          description: `Read the latest insights and professional reflections from ${site.ownerName}, covering Cloud Architecture, AI, and Software Engineering.`,
+          url: '/blog',
+          keywords: `Blog, Technology, Software Engineering, AI, Cloud, ${site.ownerName}`
+        });
       });
     }
     this.loadInitialPosts();

@@ -24,6 +24,10 @@ export class SeoService {
     // placeholder branding.
     private site: SiteConfig = DEFAULT_SITE_CONFIG;
     private lastSeoData: SeoData | null = null;
+    // The not-found state must survive a config arrival: naively re-applying
+    // lastSeoData would overwrite the #109 not-found title with the page
+    // branding (#255 review round 1).
+    private notFound = false;
 
     public jsonLdSchema$ = new BehaviorSubject<any>(null);
 
@@ -38,8 +42,14 @@ export class SeoService {
             this.site = cfg;
             // Re-brand whatever the current page already applied. Title/Meta
             // are DOM-level services, not change-detection consumers, so this
-            // is zoneless-safe by construction.
-            this.updateSeo(this.lastSeoData ?? {});
+            // is zoneless-safe by construction. A not-found page re-applies
+            // its not-found title (with the fresh owner name), never the
+            // regular branding.
+            if (this.notFound) {
+                this.setNotFound();
+            } else {
+                this.updateSeo(this.lastSeoData ?? {});
+            }
         });
     }
 
@@ -58,6 +68,7 @@ export class SeoService {
 
     updateSeo(data: SeoData): void {
         this.lastSeoData = data;
+        this.notFound = false;
         const fullTitle = data.title ? `${data.title} | ${this.site.ownerName}` : this.baseTitle;
         const description = data.description || this.defaultDescription;
         const image = data.image ? `${this.baseUrl}${data.image}` : this.defaultImage;
@@ -101,6 +112,7 @@ export class SeoService {
      * hydration (#109).
      */
     setNotFound(): void {
+        this.notFound = true;
         this.titleService.setTitle(`Post not found | ${this.site.ownerName}`);
         this.metaService.updateTag({ name: 'robots', content: 'noindex' });
     }

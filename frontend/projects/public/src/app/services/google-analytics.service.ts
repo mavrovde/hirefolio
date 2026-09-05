@@ -31,7 +31,12 @@ export class GoogleAnalyticsService {
         // subscription and re-checks the guards once the id is known.
         // cd-safety-ok: assigns a private service field and injects <script> tags — nothing template-bound.
         this.siteConfig.config$.pipe(take(1)).subscribe((cfg) => {
-            this.googleAnalyticsId = cfg.analyticsId;
+            // The id is interpolated into an inline <script> and a URL — a
+            // config value must never be able to smuggle markup/JS. GA
+            // measurement ids are [A-Za-z0-9-]; anything else is dropped.
+            this.googleAnalyticsId = /^[A-Za-z0-9-]+$/.test(cfg.analyticsId)
+                ? cfg.analyticsId
+                : '';
             if (this.googleAnalyticsId) {
                 this.loadScript();
                 this.initGtag();

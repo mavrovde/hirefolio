@@ -15,7 +15,6 @@ export interface SiteConfig {
     ownerName: string;
     ownerHeadline: string;
     ownerDescription: string;
-    contactEmail: string;
     socialLinks: string[];
     analyticsId: string;
 }
@@ -27,7 +26,6 @@ interface SiteConfigDto {
     owner_name: string;
     owner_headline: string;
     owner_description: string;
-    contact_email: string;
     social_links: string[];
     analytics_id: string;
 }
@@ -42,7 +40,6 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     ownerName: 'Portfolio Owner',
     ownerHeadline: 'Software Engineer',
     ownerDescription: 'Professional software engineering portfolio.',
-    contactEmail: '',
     socialLinks: [],
     analyticsId: '',
 };
@@ -63,7 +60,6 @@ export class SiteConfigService {
                 ownerName: dto.owner_name,
                 ownerHeadline: dto.owner_headline,
                 ownerDescription: dto.owner_description,
-                contactEmail: dto.contact_email,
                 socialLinks: dto.social_links,
                 analyticsId: dto.analytics_id,
             })),

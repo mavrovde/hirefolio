@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { SeoService } from './seo.service';
 import { SiteConfigService } from './site-config.service';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -18,7 +18,7 @@ const MOCK_SITE_CONFIG_PROVIDER = {
             ownerHeadline: 'Principal Software Engineer',
             ownerDescription:
                 'Professional portfolio of Sergii Mavrov, a Principal Software Engineer specialized in Cloud, AI, and Full-Stack Development.',
-            contactEmail: '',
+           
             socialLinks: [],
             analyticsId: '',
         }),
@@ -92,5 +92,56 @@ describe('SeoService', () => {
         serverService.updateSeo({ url: '/server-test' });
         
         expect(document.querySelector("link[rel='canonical']")).toBeNull();
+    });
+});
+
+describe('SeoService config re-apply (#255 review pins)', () => {
+    let subject: Subject<any>;
+    let titleService: Title;
+    let service: SeoService;
+
+    const CFG = {
+        siteName: 'mavrov.de', siteUrl: 'https://real.example',
+        ownerName: 'Real Owner', ownerHeadline: 'Real Headline',
+        ownerDescription: 'Real description.', socialLinks: [], analyticsId: '',
+    };
+
+    beforeEach(() => {
+        subject = new Subject<any>();
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({
+            providers: [
+                SeoService, Title, Meta,
+                { provide: SiteConfigService, useValue: { config$: subject.asObservable() } },
+            ],
+        });
+        service = TestBed.inject(SeoService);
+        titleService = TestBed.inject(Title);
+    });
+
+    it('re-applies the last SEO data when the config arrives (placeholder never sticks)', () => {
+        service.updateSeo({ title: 'Blog' });
+        expect(titleService.getTitle()).toBe('Blog | Portfolio Owner'); // neutral default first
+
+        subject.next(CFG);
+        // Mutation pin: deleting the constructor re-apply leaves the
+        // placeholder in the SSR head — this asserts the re-brand happened.
+        expect(titleService.getTitle()).toBe('Blog | Real Owner');
+    });
+
+    it('a not-found page re-applies its NOT-FOUND title, never the page branding (#109)', () => {
+        service.updateSeo({ title: 'Some Post' });
+        service.setNotFound();
+        expect(titleService.getTitle()).toBe('Post not found | Portfolio Owner');
+
+        subject.next(CFG);
+        expect(titleService.getTitle()).toBe('Post not found | Real Owner');
+    });
+
+    it('updateSeo after a not-found clears the flag (normal navigation resumes)', () => {
+        service.setNotFound();
+        service.updateSeo({ title: 'Home' });
+        subject.next(CFG);
+        expect(titleService.getTitle()).toBe('Home | Real Owner');
     });
 });

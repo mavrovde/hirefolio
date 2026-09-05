@@ -18,7 +18,6 @@ async def test_site_config_returns_all_fields(client: AsyncClient):
         "owner_name",
         "owner_headline",
         "owner_description",
-        "contact_email",
         "social_links",
         "analytics_id",
     ):
@@ -26,15 +25,55 @@ async def test_site_config_returns_all_fields(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_site_config_reflects_settings(client: AsyncClient):
-    """The payload is derived from Settings, not hardcoded."""
+async def test_site_config_reflects_settings(client: AsyncClient, monkeypatch):
+    """The payload is derived from Settings, not hardcoded — pinned by
+    patching DISTINCT values (asserting equality with unmodified settings
+    would also pass against a hardcoded copy of the defaults; #255 review
+    mutation finding)."""
+    monkeypatch.setattr(settings, "site_name", "pin-site")
+    monkeypatch.setattr(settings, "owner_name", "Pin Owner")
+    monkeypatch.setattr(settings, "owner_headline", "Pin Headline")
+    monkeypatch.setattr(settings, "owner_description", "Pin description.")
+    monkeypatch.setattr(settings, "analytics_id", "G-PIN00001")
     response = await client.get(f"{settings.api_prefix}/config/site")
     data = response.json()
-    assert data["site_name"] == settings.site_name
-    assert data["owner_name"] == settings.owner_name
-    assert data["owner_headline"] == settings.owner_headline
-    assert data["contact_email"] == settings.admin_email
-    assert data["analytics_id"] == settings.analytics_id
+    assert data["site_name"] == "pin-site"
+    assert data["owner_name"] == "Pin Owner"
+    assert data["owner_headline"] == "Pin Headline"
+    assert data["owner_description"] == "Pin description."
+    assert data["analytics_id"] == "G-PIN00001"
+
+
+@pytest.mark.asyncio
+async def test_site_config_never_exposes_admin_email(client: AsyncClient):
+    """admin_email doubles as the admin LOGIN USERNAME — it must never appear
+    in this unauthenticated payload (#255 review finding 7)."""
+    response = await client.get(f"{settings.api_prefix}/config/site")
+    body = response.text
+    assert "contact_email" not in body
+    assert settings.admin_email not in body
+
+
+def test_cors_allowlist_comes_from_settings(monkeypatch):
+    """The middleware must be BUILT from settings.cors_origins — pinned by
+    constructing the app with a distinct value and inspecting the installed
+    CORSMiddleware (a value-equality check against defaults survives a
+    hardcoded revert; #255 review mutation finding). Module reload is required
+    because the middleware is wired at import time."""
+    import importlib
+
+    import app.main as main_module
+
+    monkeypatch.setattr(settings, "cors_origins", "https://cors-pin.example")
+    try:
+        importlib.reload(main_module)
+        cors = next(
+            m for m in main_module.app.user_middleware if "CORSMiddleware" in str(m.cls)
+        )
+        assert cors.kwargs["allow_origins"] == ["https://cors-pin.example"]
+    finally:
+        monkeypatch.undo()
+        importlib.reload(main_module)
 
 
 @pytest.mark.asyncio

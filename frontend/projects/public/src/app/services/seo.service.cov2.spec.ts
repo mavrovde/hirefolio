@@ -14,7 +14,7 @@ const MOCK_SITE_CONFIG_PROVIDER = {
       ownerName: 'Sergii Mavrov',
       ownerHeadline: 'Principal Software Engineer',
       ownerDescription: 'Desc.',
-      contactEmail: '',
+     
       socialLinks: [],
       analyticsId: '',
     }),

@@ -58,7 +58,7 @@ async function configure(opts: {
           config$: of({
             siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
             ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
-            ownerDescription: 'Desc.', contactEmail: '',
+            ownerDescription: 'Desc.',
             socialLinks: ['https://linkedin.com/in/smavrov', 'https://github.com/mavrovde'],
             analyticsId: '',
           }),

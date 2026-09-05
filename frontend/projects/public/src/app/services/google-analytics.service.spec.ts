@@ -13,7 +13,7 @@ const MOCK_SITE_CONFIG_PROVIDER = {
     config$: of({
       siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
       ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
-      ownerDescription: 'Desc.', contactEmail: '', socialLinks: [],
+      ownerDescription: 'Desc.', socialLinks: [],
       analyticsId: 'G-1QSMT6N045',
     }),
   },
@@ -118,6 +118,33 @@ describe('GoogleAnalyticsService', () => {
     expect(appendChildSpy).not.toHaveBeenCalled();
   });
 
+  it('rejects a malformed analytics id — nothing may smuggle markup into the inline script', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        GoogleAnalyticsService,
+        { provide: Router, useValue: { events: new Subject() } },
+        {
+          provide: SiteConfigService,
+          useValue: {
+            config$: of({
+              siteName: 's', siteUrl: 'u', ownerName: 'o', ownerHeadline: 'h',
+              ownerDescription: 'd', socialLinks: [],
+              analyticsId: 'G-1\'});alert(1);//',
+            }),
+          },
+        },
+      ]
+    });
+    const svc = TestBed.inject(GoogleAnalyticsService);
+    const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((node: Node) => node);
+
+    svc.initialize();
+
+    expect(appendChildSpy).not.toHaveBeenCalled();
+    expect((svc as any).googleAnalyticsId).toBe('');
+  });
+
   it('should not initialize when the config carries an empty analytics id (#65 disabled state)', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -129,7 +156,7 @@ describe('GoogleAnalyticsService', () => {
           useValue: {
             config$: of({
               siteName: 's', siteUrl: 'u', ownerName: 'o', ownerHeadline: 'h',
-              ownerDescription: 'd', contactEmail: '', socialLinks: [],
+              ownerDescription: 'd', socialLinks: [],
               analyticsId: '',
             }),
           },

@@ -96,13 +96,16 @@ class Settings(BaseSettings):
     )
     # Comma-separated public profile URLs (JSON-LD sameAs + contact links).
     social_links: str = "https://linkedin.com/in/smavrov,https://github.com/mavrovde"
-    # Google Analytics measurement id; empty disables analytics entirely.
+    # Google Analytics measurement id; empty disables analytics entirely — and
+    # empty IS the default: analytics is opt-in for a general-portfolio
+    # template, and a non-empty default was unreachable anyway in the only
+    # supported topology (compose forwards ``${HIREFOLIO_ANALYTICS_ID:-}``, so
+    # an unset host var arrives as "" and — deliberately, see the validator
+    # below — stays "": empty is this field's documented off switch, #255
+    # review round 1). The canonical deployment sets its id in the host .env.
     # Namespaced like the Gemini knobs (#141): an ambient generic name could
-    # silently bind someone else's id. Default is the canonical deployment's id
-    # until #66 anonymizes the defaults.
-    analytics_id: str = Field(
-        default="G-1QSMT6N045", validation_alias="HIREFOLIO_ANALYTICS_ID"
-    )
+    # silently bind someone else's id.
+    analytics_id: str = Field(default="", validation_alias="HIREFOLIO_ANALYTICS_ID")
 
     # Docker compose forwards these as ``SITE_NAME=${SITE_NAME:-}`` — an UNSET
     # host variable therefore arrives as an EMPTY string, which would silently

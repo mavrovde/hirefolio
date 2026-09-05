@@ -14,7 +14,6 @@ const DTO = {
     owner_name: 'Sergii Mavrov',
     owner_headline: 'Principal Software Engineer',
     owner_description: 'Desc.',
-    contact_email: 'admin@example.test',
     social_links: ['https://linkedin.example/x'],
     analytics_id: 'G-TEST0001',
 };
@@ -47,7 +46,7 @@ describe('SiteConfigService', () => {
             ownerName: 'Sergii Mavrov',
             ownerHeadline: 'Principal Software Engineer',
             ownerDescription: 'Desc.',
-            contactEmail: 'admin@example.test',
+            
             socialLinks: ['https://linkedin.example/x'],
             analyticsId: 'G-TEST0001',
         });

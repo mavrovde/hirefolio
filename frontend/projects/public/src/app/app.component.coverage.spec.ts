@@ -33,7 +33,7 @@ describe('AppComponent jsonLd stream', () => {
             config$: of({
               siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
               ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
-              ownerDescription: 'Desc.', contactEmail: '', socialLinks: [],
+              ownerDescription: 'Desc.', socialLinks: [],
               analyticsId: '',
             }),
           },

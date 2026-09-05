@@ -20,7 +20,7 @@ describe('GoogleAnalyticsService gtag-undefined branch (line 67 false)', () => {
           useValue: {
             config$: of({
               siteName: 's', siteUrl: 'u', ownerName: 'o', ownerHeadline: 'h',
-              ownerDescription: 'd', contactEmail: '', socialLinks: [],
+              ownerDescription: 'd', socialLinks: [],
               analyticsId: 'G-TESTID0001',
             }),
           },
