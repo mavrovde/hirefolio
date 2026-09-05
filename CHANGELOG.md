@@ -18,8 +18,104 @@ All notable changes to this project will be documented in this file.
   angular-eslint is registered as a separate deliberate effort rather than smuggled in here.
   Also corrects `pr-reviewer.md`'s stale "no zoneless provider" claim (zoneless is explicit since
   #105).
+- **The quality gates now run on pull requests, not only after merge** (#208) — `deploy.yml` was
+  `on: push: branches: [main]` only, so a PR was checked by CodeQL alone and the first time CI
+  evaluated whether a change was correct was on the branch that deploys to production. A failing test
+  did not fail *review*; it failed the *deployment*. Lint, types, security, unit tests, migrations
+  and version-consistency now run on `pull_request` as well, while every build/publish/deploy job is
+  gated on `github.event_name == 'push'` so a PR can never publish an image or reach the prod host.
+  No PR-running job reads a repository secret, which keeps fork PRs working and keeps rule 10 intact.
+  Found during the independent review of #205, where an environment-dependent "100% coverage" claim
+  reached the merge gate because nothing in CI would have caught it.
 
 ### Fixed
+- **Destruction guard: six standing bypass classes closed** (#212, #213, #217, #218, #219, #220) —
+  all pre-existing on `main`, found across the #206/#214 review rounds; every one is the same
+  recurring root cause (the guard recognised a textual *framing* while the shell executes an
+  *effect*):
+
+  1. **Bulk alone defeated the guard** (#219). The quoting scan is pure bash and ran before the
+     wall-clock deadline could see anything, so a ~40 KB command outlived the hook's 15 s timeout —
+     and a hook that times out does **not** deny. Two halves: byte-wise scanning (`LC_ALL=C`; bash's
+     `${s:i:1}` is O(n) per access under UTF-8, making the loops quadratic — measured 24 KB
+     7.9 s → 2.2 s), and an input-size bound (`GUARD_MAX_CMD_LEN`, default 24000, measured not
+     guessed) that **denies** above the bound — refusing to analyse must never mean allowing.
+     Pinned with wall-clock assertions, since correctness tests cannot see a decision that is right
+     but late.
+  2. **Wrappers outside the unwrap allowlist ran uninspected** (#217). `nice`, `ionice`, `stdbuf`,
+     `setsid`, `timeout`, `chrt`, `taskset`, `busybox` and `doas` each run the command that follows
+     them unchanged; `nice <docker volume rm>` passed in both the direct and the piped-into-shell
+     shape. One shared `peel_wrapper` model now serves `inspect_segment` and `pipes_into_shell`
+     (two functions enforcing one invariant must share one model of the input), consuming options,
+     the separate-token values of value-taking flags (`nice -n 10`, `timeout -k 5`, `sudo -u root`)
+     and the bare duration/priority/mask operands (`timeout 60`, `chrt 50`, `taskset 0x1`).
+     `timeout 60 npm test`, `nice -n10 npm run build`, `ionice -c3 rsync` stay allowed.
+  3. **`' -execdir? '` never matched plain `find -exec`** (#218) — in ERE the `?` binds to one
+     character, so the pattern read `-execdi` + optional `r`. Now `-(exec|ok)(dir)?`, covering the
+     `-ok`/`-okdir` interactive twins too, and gated on the segment's command *being* `find` so the
+     widened pattern cannot fire on a commit message that merely quotes a `find -exec …` line.
+  4. **ANSI-C quoting and a leading backslash evaded the command-position check** (#213). `$'…'` is
+     a third quoting model (its `\'` is an escaped quote *inside* the region, its `\n` expands to a
+     real newline before execution); `quote_split`, `mask_quotes` and `quoted_payloads` all learned
+     it, and `bash -c $'…'` bodies are unwrapped. A leading `\` on the command word (alias
+     suppression — `\docker volume rm` runs docker all the same) is stripped before the anchored
+     rules run.
+  5. **A "document" the same command then executes is a script** (#212). The #204 heredoc exemption
+     held all four of its conditions for `cat > s.sh <<'EOF' … EOF` + `bash s.sh`, so the body was
+     skipped while it plainly runs. The write target (last `>`/`>>` redirect operand, or `tee`'s
+     operand) is now tracked: when any line outside the body executes it — `bash`/`sh`/`zsh`/`dash`/
+     `source`/`.`/`exec`, a `./t` path execution, or a `chmod` touching it — the body stays fully
+     inspected. Prose written to `notes.md` and then merely `git add`ed stays exempt.
+  6. **Unquoted pipeline payloads and other shell spellings** (#220). `echo <destroy> | bash`
+     executes identically to the quoted form but produced no quoted payload, so nothing inspected
+     it — a text-tool producer's unquoted remainder (quotes masked out, so prose stays prose) is now
+     read as code. The `-c` unwrap also matched only the immediate `bash -c`: `-lc`, `-e -c`,
+     `--login -c` and the `bash <<< "…"` here-string all hid the script, and all are now unwrapped.
+
+  Suite 177 → **253 cases**, all green; every fix mutation-checked (reverting each fails exactly its
+  own cases: `-execdir?` 3, wrapper list 17, ANSI model 1 + unwrap strip 2, backslash strip 3, size
+  bound 2, write-then-execute 6, unquoted payloads 2, shell spellings 6, review-round-1 fixes 10) and
+  each bypass shape proven to actually execute with a harmless `touch` payload before being counted.
+  Knob: `GUARD_MAX_CMD_LEN` (default 24000; non-numeric overrides fall back rather than disarming
+  the bound).
+
+  The independent round-1 review of this PR (rule 11 — the sixth consecutive guard round where
+  review caught the fix regressing the guard, lessons-learned §21) found and this revision fixes:
+  the first #212 fix forked greps per line per heredoc (O(heredocs×lines), 27 s on a 2.2 KB
+  command — past the 15 s hook timeout, i.e. the #219 bypass reintroduced; now one join + one grep
+  per target, deadline-checked and DENYING at the budget), the ANSI-C quote marker was the in-band
+  character `A` (a literal A inside `$'…'` closed the region early — bypass one way, #204-class
+  false denial the other; now the out-of-band control char `\x02` like `NL_SENTINEL`),
+  `heredoc_write_target` missed `2>err.log` second redirects / redirects after the heredoc word /
+  quoted targets (now ALL redirect operands, quote-dropped, heredoc word removed not truncated),
+  `bash <<<'x'` (no space), `-cx` clusters and `-o posix -c` evaded the #220 arms (widened), and
+  `env -S` consumed the command as its flag value (env's `-S` value IS the command; no longer
+  consumed). All ten review findings are pinned by tests that fail against the pre-review revision.
+
+  Round 2 of the review confirmed all round-1 fixes by re-measurement and found one further blocker
+  plus three residuals, all fixed here: the #212 execution scan violated the guard's own
+  command-position principle (a bare space admitted `.`/paths in ARGUMENT position, chmod matched
+  any mode, and fd-redirect operands became "targets" — five ordinary doc-writing commands like
+  `git add . notes.md` and `chmod 644 notes.md` went allow→deny, the #204 class; now
+  separator-anchored and execute-mode aware), the heredoc machinery's internal deny ran inside a
+  command substitution and FAILED OPEN (its JSON captured, its exit killing only the subshell — now
+  it reports "keep inspecting" and the main pass's deadline denies), the terminator search forked a
+  sed per line (O(lines²) spawns, 52 s at 3.8 KB of unterminated heredocs — now a pure-bash ltrim
+  with an in-loop budget hand-through, 19 s → 7 s on a 90-block shape, wall-clock pinned), and
+  `bash -c -- "…"` hid the script behind the option terminator. Suite **263 cases**; the new pins
+  fail against the round-2 revision (9 both-direction cases + the cost pin isolating at 19 s vs 7 s).
+
+  Round 3 confirmed all of that by re-measurement (0 differences vs `main` in either direction on a
+  119-command corpus) and falsified the last cost claim with two NON-heredoc bulk shapes — ~19 KB of
+  env-assignments (22 s) and 12 KB of xargs options (18 s), both under the 24 KB size bound, both
+  past the 15 s hook timeout: the token-peel loops forked 2–3 processes per token after the one
+  deadline check they passed, and every existing cost pin was heredoc- or nesting-shaped, which is
+  why it survived three rounds. Fixed by collapsing each peel loop into ONE sed pass (reviewer-
+  validated: identical remainders; measured 22 s → 1.2 s), a fork-free bash-regex valflags match, and
+  a costless `$SECONDS` budget check inside the unwrap loop. The single-pass bypass check now honors
+  `GUARD_DESTRUCTIVE=0` anywhere in the leading assignment RUN — the same set the loop tested one
+  head at a time (pinned). Suite **269 cases**; the two new wall-clock pins fail against the round-3
+  revision, and the destructive-tail-behind-bulk direction is pinned deny.
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 
