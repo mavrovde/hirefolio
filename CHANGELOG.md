@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Placeholder for next release.
+
+## [1.11.1] - 2026-09-05
+
+### Added
 - **Plugin curation is documented, not tribal** (#122) — CLAUDE.md now records a keep-rationale
   for each of the five kept plugins (context7, pyright-lsp, typescript-lsp, security-guidance,
   frontend-design — the last flagged conditional on #67), a recorded evaluated-and-not-added
