@@ -18,10 +18,13 @@ Facts about THIS repo's environments that keep costing cycles. Check here before
   bash-native bound. Anything you *test* with `timeout` locally silently means "the binary was
   missing" — verify the command actually ran (proven live in #225's execution checks: every shape
   but `timeout …` produced its artifact).
-- **BSD `grep`/`sed`.** Alternation and `+`/`?` need `-E` (there is no `grep -P`); `sed -i` requires
+- **BSD `grep`/`sed`.** Alternation and `+`/`?` need `-E`; `sed -i` requires
   an explicit backup suffix argument (`sed -i '' 's/…/…/'`) where GNU sed takes bare `-i`; `\b` word
   boundaries are unreliable — use `(^|[^A-Za-z0-9_])` classes. `cat -A` does not exist (use
-  `LC_ALL=C od -c` or `cat -evt`).
+  `LC_ALL=C od -c` or `cat -evt`). **Watch WHICH grep you test with** (#231 review): on this machine
+  the PATH `grep` is ugrep (accepts `-P` and `\b`) while `/usr/bin/grep` is BSD grep (rejects
+  both) — a `-P` pattern that passes interactively breaks in scripts/hooks/CI that resolve the
+  system grep. `**` globs need bash `globstar` (off by default) — prefer `find`.
 - **`date`**: BSD `date` has no `date -d`; use `date -v-1d` forms or python.
 - **zsh is the interactive shell**; CI and hooks run bash. `echo ===` in zsh can trigger
   `== not found` (zsh treats `=cmd` as a path expansion); `setopt`-dependent behavior and word
