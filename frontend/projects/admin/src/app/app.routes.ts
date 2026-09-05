@@ -50,6 +50,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'pipeline',
+        loadComponent: () =>
+          import('./components/admin/pipeline/pipeline.component').then(
+            (m) => m.PipelineComponent,
+          ),
+      },
+      {
         path: 'profile-data',
         loadComponent: () =>
           import('./components/admin/profile-data/profile-data.component').then(

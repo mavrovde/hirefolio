@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Job-search pipeline: run the search from your own admin panel** (#247, phase 1) — new
+  `Opportunity` + `OpportunityNote` models and `pipeline0004` migration (with the pre-Alembic
+  self-adopt guard): one company/role thread per opportunity, moved through explicit stages
+  (lead → contacted → screening → interviewing → offer → closed won/lost) with every stage move
+  recorded on a notes **timeline**; free-form remarks attach to the thread. The admin panel gains a
+  **Pipeline board** (cards by stage, quick-create, detail panel with timeline + stage control +
+  next-action), and the Inbox gains **↗ Promote to pipeline** — one click turns a recruiter
+  interaction into an opportunity, carrying the message as the first note and the recruiter's
+  contact onto the record (the interaction advances new → in_progress, never regressed). 14 backend
+  + 17 frontend tests; backend 100%, all three frontend projects 100%. Interviews/calendar and CV
+  variants are #247's later phases.
 - **Recruiter communication hub: a unified inbox — no recruiter contact is ever missed** (#69) —
   the first piece of the Job-search CRM milestone. New `Interaction` model + `inbox0003` migration:
   every inbound touch is ONE indexable record with `source`, a status workflow

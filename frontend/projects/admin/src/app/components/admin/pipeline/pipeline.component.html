@@ -1,0 +1,94 @@
+<div class="p-6">
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <h1 class="text-2xl font-bold">Pipeline</h1>
+    <button (click)="showCreate = !showCreate" class="border rounded px-4 py-2 bg-white hover:bg-gray-50">
+      {{ showCreate ? 'Cancel' : '+ Opportunity' }}
+    </button>
+  </div>
+
+  <p *ngIf="error" class="text-red-600 mb-4" role="alert">{{ error }}</p>
+  <p *ngIf="loading" class="text-gray-500 mb-4">Loading…</p>
+
+  <form *ngIf="showCreate" (ngSubmit)="create()" class="flex flex-wrap gap-3 mb-6 items-end border rounded p-4 bg-gray-50">
+    <label class="flex flex-col text-sm">
+      Company
+      <input name="company" [(ngModel)]="draft.company" required class="border rounded px-3 py-2 bg-white" />
+    </label>
+    <label class="flex flex-col text-sm">
+      Role
+      <input name="role_title" [(ngModel)]="draft.role_title" required class="border rounded px-3 py-2 bg-white" />
+    </label>
+    <label class="flex flex-col text-sm">
+      Source
+      <select name="source" [(ngModel)]="draft.source" class="border rounded px-3 py-2 bg-white">
+        <option *ngFor="let s of sources" [value]="s">{{ s }}</option>
+      </select>
+    </label>
+    <button type="submit" [disabled]="!draft.company.trim() || !draft.role_title.trim()"
+      class="border rounded px-4 py-2 bg-white disabled:opacity-40">Create</button>
+  </form>
+
+  <div class="overflow-x-auto">
+    <div class="flex gap-4 min-w-max">
+      <div *ngFor="let stage of stages" class="w-64 shrink-0">
+        <h2 class="text-sm font-semibold uppercase text-gray-500 mb-2">
+          {{ stage }} <span class="text-gray-400">({{ byStage(stage).length }})</span>
+        </h2>
+        <div class="space-y-2 min-h-8">
+          <button *ngFor="let o of byStage(stage)" (click)="open(o)"
+            class="w-full text-left border rounded p-3 bg-white hover:bg-gray-50"
+            [attr.data-testid]="'card-' + o.id">
+            <span class="font-medium block">{{ o.company }}</span>
+            <span class="text-sm text-gray-600 block">{{ o.role_title }}</span>
+            <span *ngIf="o.next_action_date" class="text-xs text-amber-700 block mt-1">
+              → {{ o.next_action || 'next step' }} · {{ o.next_action_date }}
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail panel -->
+  <div *ngIf="selected" class="fixed inset-y-0 right-0 w-full max-w-xl bg-white border-l shadow-xl p-6 overflow-y-auto"
+    role="dialog" aria-label="opportunity detail">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <h2 class="text-xl font-bold">{{ selected.company }}</h2>
+        <p class="text-gray-600">{{ selected.role_title }}</p>
+      </div>
+      <button (click)="close()" class="text-gray-500 hover:text-black text-2xl leading-none" aria-label="close">×</button>
+    </div>
+
+    <div class="space-y-2 text-sm mb-6">
+      <p><span class="text-gray-500">Stage:</span>
+        <select [ngModel]="selected.stage" (ngModelChange)="moveStage($event)" aria-label="stage"
+          class="border rounded px-2 py-1 bg-white ml-2">
+          <option *ngFor="let s of stages" [value]="s">{{ s }}</option>
+        </select>
+      </p>
+      <p *ngIf="selected.recruiter_name"><span class="text-gray-500">Recruiter:</span>
+        {{ selected.recruiter_name }} <span *ngIf="selected.recruiter_email">&lt;{{ selected.recruiter_email }}&gt;</span></p>
+      <p *ngIf="selected.link"><span class="text-gray-500">Posting:</span>
+        <a [href]="selected.link" target="_blank" class="text-blue-700 underline break-all">{{ selected.link }}</a></p>
+      <p *ngIf="selected.salary_note"><span class="text-gray-500">Salary:</span> {{ selected.salary_note }}</p>
+      <p *ngIf="selected.next_action"><span class="text-gray-500">Next:</span>
+        {{ selected.next_action }} <span *ngIf="selected.next_action_date">({{ selected.next_action_date }})</span></p>
+    </div>
+
+    <h3 class="font-semibold mb-2">Timeline</h3>
+    <form (ngSubmit)="addNote()" class="flex gap-2 mb-4">
+      <input name="note" [(ngModel)]="noteDraft" placeholder="Add a remark…"
+        class="border rounded px-3 py-2 flex-1 bg-white" />
+      <button type="submit" [disabled]="!noteDraft.trim()"
+        class="border rounded px-4 py-2 bg-white disabled:opacity-40">Add</button>
+    </form>
+    <ol class="space-y-3">
+      <li *ngFor="let n of selected.notes" class="border-l-2 border-gray-200 pl-3">
+        <p class="text-xs text-gray-500">{{ n.created_at | date: 'medium' }}</p>
+        <p class="text-sm whitespace-pre-wrap">{{ n.body }}</p>
+      </li>
+      <li *ngIf="selected.notes.length === 0" class="text-sm text-gray-500">No notes yet.</li>
+    </ol>
+  </div>
+</div>
