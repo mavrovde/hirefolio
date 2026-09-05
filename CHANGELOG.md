@@ -51,7 +51,6 @@ All notable changes to this project will be documented in this file.
   The deploy-time gate itself also gained a version probe (live `backend_version` == released
   `VERSION`, with warm-up retries) on top of its existing digest + health + route-shape checks.
   `CLAUDE.md` no longer describes a host rollout the pipeline doesn't perform.
->>>>>>> cae579f (feat(cd): live-freshness gate — scheduled live-vs-released alarm + deploy-time version probe (#169))
 
 ## [1.11.1] - 2026-09-05
 

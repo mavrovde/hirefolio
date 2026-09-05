@@ -81,7 +81,13 @@ add these in Settings → Secrets and variables → Actions:
 | `DEPLOY_SSH_KEY` | yes | Private key for that user (generate a dedicated pair; never reuse a personal key) |
 | `DEPLOY_DIR` | no | Compose project dir (default `/opt/mavrov.de`) |
 | `DEPLOY_SSH_PORT` | no | SSH port (default 22) |
-| `DEPLOY_PUBLIC_URL` | no | Public URL for the health gate (default `https://mavrov.de`) |
+| `DEPLOY_PUBLIC_URL` | no | Legacy secret for the health-gate URL — superseded by the `PUBLIC_URL` **variable** below, still honoured |
+
+And one repository **variable** (Settings → Secrets and variables → Actions → Variables):
+
+| Variable | Required | Meaning |
+|---|---|---|
+| `PUBLIC_URL` | forks: yes | The live site's public URL. ONE knob shared by the deploy gate and the scheduled **Live Freshness** workflow (`.github/workflows/live-freshness.yml`, #169) — the secretless daily alarm that goes **red whenever live ≠ released** (version probe + public `/admin/login` → 404), with a distinct "unreachable" verdict for outages. Forks without it skip the workflow instead of probing the canonical site. The verdict logic lives in `scripts/check_live_freshness.sh`, shared by both callers. Note: GitHub auto-disables scheduled workflows after ~60 days of repo inactivity — re-enable it if the repo goes quiet. |
 
 On every green pipeline the job then: rewrites only `IMAGE_REPO`/`IMAGE_TAG`
 in the host `.env`, deploying the **immutable `sha-<gitsha>` tag** (never the

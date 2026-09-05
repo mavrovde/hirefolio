@@ -10,6 +10,13 @@
 # Red here does not block deploys (it is a separate workflow, not a deploy.yml
 # job) — it is the standing alarm that "green pipeline" has drifted from "live
 # site". Silence it by rolling the host forward, never by editing the check.
+# The verdict logic itself lives in scripts/check_live_freshness.sh — ONE
+# contract shared with deploy.yml's post-rollout gate, so the two probes can
+# never drift apart.
+#
+# NOTE: GitHub auto-disables scheduled workflows after ~60 days without repo
+# activity — if this repo goes quiet, re-enable it (Actions → Live Freshness)
+# or run it manually; a silent alarm is the failure mode it exists to prevent.
 name: Live Freshness
 
 on:
@@ -25,6 +32,11 @@ permissions:
 jobs:
   live-freshness:
     name: Live vs Released
+    # Forks: without their own PUBLIC_URL variable this would probe the
+    # canonical deployment against the fork's VERSION — permanently red and
+    # unsolicited traffic. Run only on the canonical repo or when the fork has
+    # configured its own URL.
+    if: github.repository == 'mavrovde/hirefolio' || vars.PUBLIC_URL != ''
     runs-on: ubuntu-latest
     env:
       # A forker points this at their own site via a repository variable; the
@@ -37,43 +49,30 @@ jobs:
         run: |
           set -u
           released=$(cat VERSION)
-          fail=0
-
-          stats=$(curl -s -m 15 "$PUBLIC_URL/api/app/stats/public" || echo '')
-          live=$(printf '%s' "$stats" | jq -r '.backend_version // empty' 2>/dev/null || echo '')
-
-          if [ -z "$live" ]; then
-            echo "::error title=Live probe failed::$PUBLIC_URL/api/app/stats/public returned no backend_version — site down or endpoint moved."
-            fail=1
-          elif [ "$live" != "$released" ]; then
-            echo "::error title=Live is STALE::live backend_version=$live but released VERSION=$released. The last green pipeline did NOT reach the host (rollout skipped or failed) — see #112/#169."
-            fail=1
-          else
-            echo "OK: live backend_version=$live == released VERSION."
-          fi
-
-          # Post-workspace-split shape probe (#169): the public host must NOT
-          # serve the admin SPA route. 200 here proves a pre-split (pre-2026-07)
-          # frontend image is still running regardless of what any tag claims.
-          code=$(curl -s -o /dev/null -w '%{http_code}' -m 15 "$PUBLIC_URL/admin/login" || echo 000)
-          if [ "$code" != "404" ]; then
-            echo "::error title=Frontend is STALE::$PUBLIC_URL/admin/login returned $code (want 404). The live frontend predates the admin/public workspace split."
-            fail=1
-          else
-            echo "OK: /admin/login -> 404 (post-split frontend)."
-          fi
+          # GH steps run bash -e: capture rc explicitly or a red verdict would
+          # kill the step before the summary is written.
+          rc=0
+          out=$(bash scripts/check_live_freshness.sh "$PUBLIC_URL" "$released") || rc=$?
+          echo "$out"
 
           {
-            echo "## Live freshness — $PUBLIC_URL"
+            echo "## Live freshness — $PUBLIC_URL (released: $released)"
             echo ""
-            echo "| Probe | Live | Released | Verdict |"
-            echo "|---|---|---|---|"
-            echo "| backend_version | \`${live:-unreachable}\` | \`$released\` | $([ \"$live\" = \"$released\" ] && echo '✅ fresh' || echo '❌ STALE') |"
-            echo "| /admin/login | \`$code\` | \`404\` | $([ \"$code\" = \"404\" ] && echo '✅ post-split' || echo '❌ pre-split image') |"
-            if [ "$fail" != "0" ]; then
-              echo ""
-              echo "**Live ≠ released.** Roll the host forward (docs/DEPLOYMENT.md) or configure the \`DEPLOY_*\` secrets so the pipeline's rollout job does it (#156). Do not silence this check any other way."
-            fi
+            echo "| Probe | Observed | Verdict |"
+            echo "|---|---|---|"
+            echo "$out" | while read -r probe observed verdict; do
+              echo "| $probe | \`$observed\` | $verdict |"
+            done
+            case "$rc" in
+              0) echo ""; echo "✅ Live matches the release." ;;
+              1) echo ""; echo "❌ **Live is STALE.** The last green pipeline did not reach the host (rollout skipped or failed — #112/#156). Roll the host forward (docs/DEPLOYMENT.md) or configure the \`DEPLOY_*\` secrets. Do not silence this check any other way." ;;
+              *) echo ""; echo "🚨 **Site unreachable** — this is an OUTAGE signal, not staleness." ;;
+            esac
           } >> "$GITHUB_STEP_SUMMARY"
 
-          exit "$fail"
+          if [ "$rc" -eq 1 ]; then
+            echo "::error title=Live is STALE::live ≠ released $released — see the step summary."
+          elif [ "$rc" -ne 0 ]; then
+            echo "::error title=Site unreachable::$PUBLIC_URL did not answer — outage, not staleness."
+          fi
+          exit "$rc"
