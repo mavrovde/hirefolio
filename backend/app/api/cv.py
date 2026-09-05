@@ -55,6 +55,11 @@ async def request_cv(
         db.add(cv_request)
         await db.commit()
         await db.refresh(cv_request)
+        # Captured BEFORE the guarded block below: a rollback there expires the
+        # ORM object, and touching cv_request.id afterwards would lazily reload
+        # it — sync IO inside the async context (greenlet error). Pinned by
+        # test_cv_request_survives_inbox_indexing_failure.
+        cv_request_id = cv_request.id
 
         # 1b. Index it in the unified inbox (#69): the CvRequest stays the
         # domain record; the Interaction is the hub entry linking back via
@@ -65,7 +70,7 @@ async def request_cv(
             db.add(
                 Interaction(
                     source="cv_request",
-                    source_ref=cv_request.id,
+                    source_ref=cv_request_id,
                     status="new",
                     name=payload.name,
                     email=payload.email,
@@ -83,12 +88,12 @@ async def request_cv(
             await db.rollback()
 
         # 2. Send emails in background
-        background_tasks.add_task(process_email_notifications, cv_request.id, payload)
+        background_tasks.add_task(process_email_notifications, cv_request_id, payload)
 
         return {
             "success": True,
             "message": "Request received. You can now download the CV.",
-            "download_url": f"{settings.api_prefix}/cv/download?req_id={cv_request.id}",
+            "download_url": f"{settings.api_prefix}/cv/download?req_id={cv_request_id}",
         }
     except HTTPException:
         raise
