@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **The quality gates now run on pull requests, not only after merge** (#208) — `deploy.yml` was
+  `on: push: branches: [main]` only, so a PR was checked by CodeQL alone and the first time CI
+  evaluated whether a change was correct was on the branch that deploys to production. A failing test
+  did not fail *review*; it failed the *deployment*. Lint, types, security, unit tests, migrations
+  and version-consistency now run on `pull_request` as well, while every build/publish/deploy job is
+  gated on `github.event_name == 'push'` so a PR can never publish an image or reach the prod host.
+  No PR-running job reads a repository secret, which keeps fork PRs working and keeps rule 10 intact.
+  Found during the independent review of #205, where an environment-dependent "100% coverage" claim
+  reached the merge gate because nothing in CI would have caught it.
+
 ### Fixed
 - **Destruction guard: six standing bypass classes closed** (#212, #213, #217, #218, #219, #220) —
   all pre-existing on `main`, found across the #206/#214 review rounds; every one is the same
