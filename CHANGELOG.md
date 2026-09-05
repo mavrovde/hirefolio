@@ -89,6 +89,20 @@ All notable changes to this project will be documented in this file.
   the root `.env.example` gains the #65 identity block; `setup.sh` is explicitly scoped as the
   LOCAL quickstart (servers use `docs/DEPLOYMENT.md`).
 
+### Changed
+- **The repo ships an anonymized demo persona — no more real résumé, photo, CV, or third-party
+  recommendations in source control** (#66) — `profile_data_en.json`/`_de.json` are now the
+  fictional "Jane Doe" (schema-identical, so every consumer keeps working), the ~15 real
+  third-party recommendations with their LinkedIn URLs (third-party PII) are replaced by two
+  clearly-fictional demo entries, `backend/app/static/cv.pdf` is a generated demo CV,
+  `assets/images/profile.png` is a neutral initials avatar (7 KB vs the 718 KB personal photo),
+  and the i18n consent copy names "the site owner" instead of a person. Real content is strictly
+  bring-your-own via the existing admin uploads (Profile Data + CV Manager).
+  **⚠ Operator action (maintainer deployment):** the public profile falls back to these committed
+  assets when no profile was uploaded via the admin panel — before rolling this release onto a
+  host that relies on the fallback, upload the real Profile Data JSON and CV in the admin UI,
+  or visitors will see the demo persona.
+
 ## [1.11.1] - 2026-09-05
 
 ### Added
