@@ -1,12 +1,14 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import {
   InteractionsService,
   Interaction,
   INTERACTION_STATUSES,
   INTERACTION_SOURCES,
 } from '../../../services/interactions.service';
+import { OpportunitiesService } from '../../../services/opportunities.service';
 
 /**
  * Unified recruiter inbox (#69): every inbound interaction — contact form,
@@ -37,6 +39,8 @@ export class InboxComponent implements OnInit {
 
   constructor(
     private interactionsService: InteractionsService,
+    private opportunitiesService: OpportunitiesService,
+    private router: Router,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -86,6 +90,20 @@ export class InboxComponent implements OnInit {
 
   toggleExpand(id: string) {
     this.expandedId = this.expandedId === id ? null : id;
+  }
+
+  /** One click: this inbox item becomes a pipeline opportunity (#247). */
+  promote(interaction: Interaction) {
+    this.opportunitiesService.promote(interaction.id).subscribe({
+      next: () => {
+        this.router.navigate(['/pipeline']);
+      },
+      error: (err) => {
+        console.error('Error promoting interaction:', err);
+        this.error = 'Failed to promote to the pipeline';
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   setStatus(interaction: Interaction, status: string) {

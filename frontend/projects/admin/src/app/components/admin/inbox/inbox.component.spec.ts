@@ -1,8 +1,10 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
+import { Router } from '@angular/router';
 import { InboxComponent } from './inbox.component';
 import { InteractionsService, Interaction } from '../../../services/interactions.service';
+import { OpportunitiesService } from '../../../services/opportunities.service';
 
 function makeInteraction(overrides: Partial<Interaction> = {}): Interaction {
     return {
@@ -24,6 +26,8 @@ describe('InboxComponent', () => {
     let fixture: ComponentFixture<InboxComponent>;
     let component: InboxComponent;
     let serviceSpy: { list: ReturnType<typeof vi.fn>; updateStatus: ReturnType<typeof vi.fn> };
+    let opportunitiesSpy: { promote: ReturnType<typeof vi.fn> };
+    let routerSpy: { navigate: ReturnType<typeof vi.fn> };
 
     beforeEach(async () => {
         serviceSpy = {
@@ -32,9 +36,15 @@ describe('InboxComponent', () => {
             ),
             updateStatus: vi.fn(),
         };
+        opportunitiesSpy = { promote: vi.fn() };
+        routerSpy = { navigate: vi.fn() };
         await TestBed.configureTestingModule({
             imports: [InboxComponent],
-            providers: [{ provide: InteractionsService, useValue: serviceSpy }],
+            providers: [
+                { provide: InteractionsService, useValue: serviceSpy },
+                { provide: OpportunitiesService, useValue: opportunitiesSpy },
+                { provide: Router, useValue: routerSpy },
+            ],
         }).compileComponents();
 
         fixture = TestBed.createComponent(InboxComponent);
@@ -104,6 +114,20 @@ describe('InboxComponent', () => {
     it('ignores a status "change" to the same value', () => {
         component.setStatus(component.items[0], 'new');
         expect(serviceSpy.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('promotes to the pipeline and navigates there (#247)', () => {
+        opportunitiesSpy.promote.mockReturnValue(of({ id: 'o1' }));
+        component.promote(component.items[0]);
+        expect(opportunitiesSpy.promote).toHaveBeenCalledWith('i1');
+        expect(routerSpy.navigate).toHaveBeenCalledWith(['/pipeline']);
+    });
+
+    it('surfaces promote failures', () => {
+        opportunitiesSpy.promote.mockReturnValue(throwError(() => new Error('x')));
+        component.promote(component.items[0]);
+        expect(component.error).toBe('Failed to promote to the pipeline');
+        expect(routerSpy.navigate).not.toHaveBeenCalled();
     });
 
     it('surfaces status-update failures', () => {
