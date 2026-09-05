@@ -29,7 +29,7 @@
     "SUBSCRIBE_TO_UPDATES": "Subscribe to CV updates",
     "POSITION_DESCRIPTION_PLACEHOLDER": "Describe the position or project context (Optional)",
     "POSITION_DESCRIPTION_ERROR": "Description cannot exceed 1000 characters.",
-    "AGREEMENT": "By submitting this request, you acknowledge that Sergii Mavrov will process your provided data to facilitate the CV download and for potential future professional communication.",
+    "AGREEMENT": "By submitting this request, you acknowledge that the site owner will process your provided data to facilitate the CV download and for potential future professional communication.",
     "SUBMIT": "Request Download",
     "SUCCESS": "If the download didn't start automatically, check the notification or try again.",
     "REQUEST_AGAIN": "Request Again",
