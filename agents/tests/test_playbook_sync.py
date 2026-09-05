@@ -22,6 +22,22 @@ def test_roster_playbook_is_the_committed_file() -> None:
     assert PROJECT_PLAYBOOK == PLAYBOOK.read_text(encoding="utf-8")
 
 
+def test_roster_loads_the_file_rather_than_inlining_it() -> None:
+    """Content equality alone cannot detect the duplicate coming BACK: a
+    re-inlined, byte-identical PROJECT_PLAYBOOK string would pass the test
+    above while resurrecting the drift the single source exists to kill
+    (#232 review round 1). So assert on the SOURCE: roster.py must load the
+    file and must not carry the playbook text inline."""
+    src = (REPO / "agents" / "common" / "roster.py").read_text(encoding="utf-8")
+    assert "_PLAYBOOK_PATH" in src and "read_text" in src, (
+        "roster.py no longer loads agents/PLAYBOOK.md"
+    )
+    assert "GROUND EVERYTHING IN REALITY" not in src, (
+        "roster.py carries the playbook text inline again — edit "
+        "agents/PLAYBOOK.md instead (#115)"
+    )
+
+
 def test_playbook_has_the_load_bearing_sections() -> None:
     """Guard against the file being emptied or replaced by a stub."""
     text = PLAYBOOK.read_text(encoding="utf-8")

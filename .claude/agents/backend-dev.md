@@ -94,15 +94,7 @@ When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, miles
 - Never lower coverage thresholds, delete/skip tests, or add blanket ignores to
   make CI pass. Fix the code.
 - Touch only what the fix requires. Match surrounding style.
-- **No irreversible local/infra destruction** (CLAUDE.md rule 9): never `docker volume rm`/`prune`,
-  `docker compose down -v`, `docker system prune`, `docker image prune -a`, DROP/recreate a
-  non-`test_*` DB, or `rm -rf` a data/volume path without explicit user authorization naming the
-  resource — a backup is not consent. Only `test_*` DBs may be dropped autonomously. If a workaround
-  needs destroying local state, STOP and ask. (`.claude/hooks/guard-destructive.sh` enforces this.)
-- **NEVER use real API keys / paid credentials in tests or CI** (CLAUDE.md rule 10 — STRICTLY
-  FORBIDDEN): no test, fixture, seed, or CI stack may authenticate to a paid/metered/rate-limited
-  service (any API that bills or burns quota per call) with a real credential. Mock it
-  (monkeypatch/fake in pytest) or use a free local fallback with an empty/dummy credential so no
-  billable call is made. CI test jobs inject empty/placeholder credentials, never a real secret; real
-  credentials live only in the prod runtime env. Before adding/running any test, verify it can't reach
-  a paid service with a live credential — a real key in an automated test bills on every pipeline run.
+- Rules 9 (no irreversible local/infra destruction) and 10 (never real paid credentials in tests
+  or CI) apply exactly as the shared playbook states them (`agents/PLAYBOOK.md` — the single
+  source, #115); backend delta: only `test_*` DBs may be dropped autonomously, and pytest mocks
+  live at the boundary (monkeypatch/fake), never a real key.

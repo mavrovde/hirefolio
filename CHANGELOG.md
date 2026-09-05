@@ -251,7 +251,13 @@ All notable changes to this project will be documented in this file.
   (`agents/tests/test_playbook_sync.py`) fails when the roster stops consuming the file, the file
   loses a load-bearing section, or a charter drops the reference — mutation-checked (removing a
   charter's reference fails exactly that test; appending a probe line to the playbook propagates to
-  `PROJECT_PLAYBOOK` with zero other edits).
+  `PROJECT_PLAYBOOK` with zero other edits). The round-1 review (rule 11) hardened it further, all
+  fixed here: the drift check compared CONTENT only, so a byte-identical re-inlined duplicate passed
+  undetected — a source-level assertion now fails if `roster.py` carries the playbook text inline;
+  the three charters that still restated the shared rule-9/rule-10 blocks verbatim now carry only a
+  pointer plus their role delta; and the sync test actually RUNS somewhere — wired into both the
+  pre-push hook's backend leg and CI's Backend Tests job (it previously gated nothing — §18,
+  verify-that-gates-actually-gate).
 - **The Gemini environment variables are project-scoped: `HIREFOLIO_GEMINI_API_KEY` and
   `HIREFOLIO_GEMINI_ENCRYPTION_KEY`** (#141) — the generic `GEMINI_API_KEY` is a name developers
   commonly export globally from a shell profile, and a process environment variable **overrides
