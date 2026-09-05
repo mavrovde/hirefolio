@@ -33,22 +33,26 @@ Waiting on container health alone admits the **pre-schema race**: the backend se
 `500 relation "profile_snapshots" does not exist`, which reads as a mystery red. Gate on all three,
 in order, with retries (e.g. up to ~120 s):
 ```bash
-curl -sf http://localhost/health                       # backend up (via proxy)
+curl -sf http://localhost/health                       # THE schema gate: 503 until schema_ready() (#124)
 curl -sf http://localhost/ >/dev/null                  # frontend SSR serving
-curl -sf http://localhost/api/app/stats/public         # DB schema initialised — the real gate
+curl -sf http://localhost/api/app/stats/public         # end-to-end proxy→backend request works
 ```
-Only after all three: seed.
+Only after all three: seed. Note which check does what: `/health` is the real schema gate — it
+returns **503 until `schema_ready()`** (`backend/app/main.py`, #124) — while the stats call proves
+the proxied request path, not the schema.
 
-## 3. Seed E2E data (in-container — it wipes and recreates users/posts in THAT stack's DB)
+## 3. Seed E2E data (in-container — it wipes and recreates the users table in THAT stack's DB)
 ```bash
 docker compose -f docker-compose.prod.yml -f docker-compose.e2e.yml exec -T backend python scripts/seed_e2e_user.py
 ```
-NEVER run `seed_e2e_user.py` against the live dev DB — it obliterates all users and posts.
+NEVER run `seed_e2e_user.py` against the live dev DB — it obliterates all users (posts have no FK to users, but the wiped admin locks you out).
 
 ## 4. Run Playwright
 ```bash
 cd frontend && CI=true BASE_URL=http://localhost npx playwright test --project=public-e2e
 # admin flows: ADMIN_BASE_URL=http://admin.localhost npx playwright test --project=admin-e2e
+# (/verify's historical invocation adds --grep-invert "profile" — drop it only
+# when profile specs are in scope for your change)
 ```
 Run the WHOLE project, not a spec subset — a stale spec asserting removed behavior is exactly what
 a subset run misses (lessons-learned §3, the #108→#110 fix-forward). Report pass/fail counts.
