@@ -83,16 +83,37 @@ own name and domain.
 
 ## 🚀 Quick Start
 
-### 1. Clone Repository
+### One command (recommended — LOCAL quickstart)
+
+> **Scope:** `setup.sh` boots the **dev** compose stack — local builds, dev ports
+> (4200/8000/11434/5433 on all interfaces), default Postgres credentials, and an
+> ephemeral JWT unless you set one. Perfect for trying the product and local
+> development. **For a real server** follow
+> [`docs/DEPLOYMENT.md` → "First deploy (clean server)"](docs/DEPLOYMENT.md) —
+> prod compose, prebuilt images, hardened settings.
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/mavrovde/hirefolio.git
 cd hirefolio
+./setup.sh          # prompts for your name/site; --defaults for a demo persona
 ```
 
-### 2. Start Everything (Docker)
+`setup.sh` creates `.env` from the sample, **generates strong secrets** (JWT signing key + admin
+password — printed once, stored only in your gitignored `.env`), records your identity for the
+runtime site config (#65 — change it later in `.env`, no rebuild), starts the Docker stack, and
+waits for the backend health gate. Re-running is safe: values already set are never overwritten.
 
-The easiest way to run the full stack (Frontend, Backend, DB, Ollama):
+Then open <http://localhost:4200> (public site) and <http://admin.localhost:4200> (admin, user
+`admin`). **Make it yours** — the whole checklist is config + admin uploads, zero code edits:
+
+1. `.env`: `OWNER_NAME`, `OWNER_HEADLINE`, `SITE_NAME`, `SITE_URL`, `SOCIAL_LINKS`,
+   `HIREFOLIO_ANALYTICS_ID` (identity, #65) · `PUBLIC_SERVER_NAME`/`ADMIN_SERVER_NAME` (your
+   domain) · `IMAGE_REPO` (your registry, for prod).
+2. Admin panel: upload your **Profile Data** JSON and your **CV** (Content → replaces the demo).
+3. Optional: LinkedIn import (`importer/README.md`), Gemini key (`HIREFOLIO_GEMINI_API_KEY` —
+   empty keeps the free local Ollama).
+
+### Manual start (the same stack, no wizard)
 
 ```bash
 # Start all services
@@ -105,7 +126,7 @@ The easiest way to run the full stack (Frontend, Backend, DB, Ollama):
 ./manage.sh stop
 ```
 
-### 3. Manual Setup (Local Dev)
+### Manual Setup (Local Dev)
 
 #### Backend
 
@@ -158,7 +179,7 @@ npm install
 npm start
 ```
 
-### 5. Access Application
+### Access Application
 
 - **Frontend**: <http://localhost:4200>
 - **Backend API**: <http://localhost:8000>
@@ -284,7 +305,9 @@ hirefolio/
 
 ### Backend Environment Variables
 
-Create `backend/.env`:
+The Docker stack takes everything from the ROOT `.env` (created by
+`./setup.sh`; full samples in `.env.example` and `backend/.env.example`).
+A `backend/.env` is only for running the backend BARE-METAL outside compose:
 
 ```bash
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov
@@ -596,7 +619,8 @@ open coverage/public/index.html
 
 ## 📄 License
 
-This project is private and proprietary.
+[MIT](LICENSE) — fork it, rebrand it, ship it under your own name. (The demo content and the
+maintainer's own profile data are *not* part of the license grant; bring your own content, #66.)
 
 ## 🙏 Acknowledgments
 
@@ -608,9 +632,11 @@ This project is private and proprietary.
 
 ## 📞 Contact
 
-- **Website**: <https://mavrov.de>
-- **LinkedIn**: [Sergii Mavrov](https://www.linkedin.com/in/smavrov/)
-- **Email**: [sergii.mavrov@gmail.com](mailto:sergii.mavrov@gmail.com)
+Your deployment shows **your** contact details — they come from the site config (#65) and your
+uploaded profile data, never from this repository.
+
+- **Reference deployment**: <https://mavrov.de> (the maintainer's own instance)
+- **Issues / questions about the project**: [GitHub issues](https://github.com/mavrovde/hirefolio/issues)
 
 ## 🗺️ Roadmap
 

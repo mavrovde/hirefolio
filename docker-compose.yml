@@ -87,6 +87,11 @@ services:
       # survive a backend restart.
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
       - JWT_ALLOW_EPHEMERAL_SECRET=${JWT_ALLOW_EPHEMERAL_SECRET:-true}
+      # Without this line the setup.sh-generated admin password never reached
+      # the container (only the PROD compose forwarded it) — the backend then
+      # took the #142 refuse-to-seed branch while the wizard printed login
+      # credentials that could not work (#256 review blocker 1).
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
       # Machine token for the LinkedIn importer — prod compose has passed this
       # since the import endpoints shipped; the dev stack never did, so a token
       # configured in .env silently 401'd locally (#228). Empty default = token

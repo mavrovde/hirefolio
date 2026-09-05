@@ -378,6 +378,8 @@ jobs:
         run: ./bump_version.sh --check
       - name: Self-test the checker itself
         run: bash test-bump-version.sh
+      - name: Self-test the setup wizard's .env helpers
+        run: bash setup.test.sh
 
   # ============================================
   # PROXY QA

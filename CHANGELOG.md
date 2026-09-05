@@ -72,6 +72,23 @@ All notable changes to this project will be documented in this file.
   compose anyway): set `HIREFOLIO_ANALYTICS_ID=<your G-… id>` in the host `.env` **to keep GA**;
   the id no longer lives in the Angular environments or anywhere in source.
 
+- **Onboarding: clone → one command → running site** (#61) — new `./setup.sh` wizard (idempotent;
+  `--defaults` for non-interactive): creates `.env` from the sample, generates strong secrets
+  (JWT signing key, admin password — never overwrites existing values, never committed), prompts
+  for the owner identity consumed by the #65 runtime site config, starts the stack and waits for
+  the backend health gate. An **MIT `LICENSE`** lands at the repo root (the repo previously said
+  "private and proprietary" while being publicly forkable — legally unusable as a template);
+  `backend/.env.example` now documents EVERY key `app/config.py` consumes (was 3 lines) with safe
+  placeholders; the README quickstart leads with the one-command path plus a config-only
+  "make it yours" checklist, and the contact section no longer hardcodes the maintainer's
+  personal details. Review hardening (#256): the dev compose now forwards `ADMIN_PASSWORD` (the
+  generated password previously never reached the container — the backend refused to seed while
+  the wizard printed unusable credentials); the `.env` helpers mend a missing trailing newline
+  before appending and treat whitespace/CR-only values as unset (no 1-byte secrets); both guards
+  are pinned failing-first by a new `setup.test.sh` (10 cases) wired into the pre-push docs leg;
+  the root `.env.example` gains the #65 identity block; `setup.sh` is explicitly scoped as the
+  LOCAL quickstart (servers use `docs/DEPLOYMENT.md`).
+
 ## [1.11.1] - 2026-09-05
 
 ### Added
