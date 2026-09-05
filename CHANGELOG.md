@@ -4,45 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Changed
-- **Operational timeouts and bulk-import caps are configurable from `.env`** (#207) — the LLM request
-  ceiling was the literal `300.0` repeated at five call sites, and the Ollama liveness probe used a
-  different budget in each of the three places it appears (10 s at startup, 5 s in multi-chat, 2 s in
-  the stats endpoint, where it decides the reported AI status). These values are host-dependent by
-  nature: a cold model on a small VPS needs a long ceiling, while a fast host would rather fail fast
-  than hold a worker. They are now `Settings` fields, each defaulting to the exact literal it
-  replaced, so an unchanged `.env` reproduces the previous behaviour. The bulk posts-JSON import
-  guards got the same treatment — they were module constants while their `import_max_image_mb`
-  neighbour was already configurable, so an operator could raise one cap but not the other.
-  Pagination defaults, `max_turns`, and text truncations were deliberately left alone: they are
-  per-request parameters or presentation rules, not host-dependent operations, and moving them would
-  add configuration surface without giving an operator anything actionable.
-  The round-1 review (rule 11) caught two blockers, both fixed: the knobs were readable from a bare
-  `.env` but never FORWARDED into the backend container (neither compose file has an `env_file`; the
-  ten variables now follow the `IMPORT_MAX_IMAGE_MB` explicit-forwarding pattern in both
-  `docker-compose.yml` and `docker-compose.prod.yml`), and the multi-agent conversation pre-flight
-  had silently moved from its historical 5 s to the 2 s stats-healthcheck budget — it now has its
-  own `ollama_preflight_timeout_seconds` (default 5.0, the literal it replaced), pinned by a test
-  that fails if the call site is reverted to the healthcheck field (the previous test recorded the
-  timeout but asserted only the stream sentinel — a §16 mutation-survivor).
-
-- **`/prep-pr` command + `env-gotchas` skill** (#119) — the pre-PR hygiene gate: stale-`main`
-  detection (the #103/#104 duplicate-CHANGELOG cause), single-`[Unreleased]`-block check, a
-  stale-old-behavior-assertion sweep across the WHOLE spec tree (the #108→#110 deploy-red cause),
-  `Closes #NN` linkage, a gates summary, and a secrets sweep. `env-gotchas` writes down the
-  platform pitfalls that kept costing cycles — macOS has no `timeout`, BSD `grep -E`/`sed -i ''`,
-  zsh-vs-bash differences, `.env`-sourcing noise, the same-identity `gh pr review --approve` block,
-  the full-sha `gh release create` requirement, shared test-DB rules, and worktree pre-push-hook
-  symlinks — referenced from CLAUDE.md.
-
-- **`/e2e` command + `e2e-validation` skill** (#117) — the known-good full Docker E2E loop, codified:
-  prod-topology bring-up, a REAL readiness gate (backend health → SSR → `stats/public` 200, which is
-  what prevents the pre-schema `relation "profile_snapshots" does not exist` 500 race), in-container
-  seeding, whole-project Playwright runs, and the recurring traps written down — the open-webui
-  volume/schema crash-loop (bump the image pin forward, NEVER wipe the volume — rule 9), the
-  reproduce-on-clean-main triage rule, and the 10443 HTTPS port. `frontend-dev` and
-  `devops-pipeline` charters now point at the skill instead of re-deriving the steps.
-
 ### Added
 - **`/deploy-status` command** (#120) — one command that reports the TRUE deploy state: latest
   `deploy.yml` run + whether the secrets-gated rollout job ran or silently skipped, repo
@@ -62,9 +23,50 @@ All notable changes to this project will be documented in this file.
   reached the merge gate because nothing in CI would have caught it.
 
 ### Fixed
-- **The admin restore-timeout message reported a hardcoded `300s`** (#207) whatever the real ceiling
-  was, so an operator debugging a timeout would have been told the wrong number. It now reports the
-  configured value.
+- **CLAUDE.md AI-config map** (#121) — a one-glance index of every agent, command, skill, hook,
+  plugin and MCP server in the repo, so a fresh session orients instantly instead of rediscovering
+  the tooling; the milestone-buckets list now includes **AI-assisted development & agents**
+  (milestone #7, area `ai-config`). Housekeeping: pruned the stale `.claude/worktrees/agent-*`
+  checkout left by a worktree-isolated agent (its #123 fix landed on `main` as 949b0cb via #155;
+  verified clean + content-merged before removal) — the path stays gitignored.
+
+- **`ssr-cd-safety` skill + `lint:cd-safety` check** (#118) — the zoneless/SSR silent-failure class
+  (#94: properties assigned in subscribe/interval callbacks never repaint; unit tests bundle
+  zone.js and cannot see it) is now (a) a committed skill stating the contract — async mutation ⇒
+  `async` pipe | signal | `markForCheck()`; SSR URL rewrite lives in an `HttpBackend` delegating to
+  `HttpXhrBackend`, never `FetchBackend` — referenced from the `frontend-dev` and `pr-reviewer`
+  charters, and (b) a dependency-free checker (`frontend/scripts/check-cd-safety.mjs`, run as
+  `npm run lint:cd-safety` and in the pre-push gate) that flags imperative-callback `this.*`
+  assignments in `projects/public` with no repaint path, with a required-justification
+  `// cd-safety-ok: <reason>` escape. It found one real site on `main` (`blog.component.ts:89`,
+  SSR-only — now carrying its justification). The workspace has no ESLint today; adopting
+  angular-eslint is registered as a separate deliberate effort rather than smuggled in here.
+  Also corrects the stale "no zoneless provider" claim in BOTH charters that carried it
+  (`pr-reviewer.md`, and `frontend-dev.md` found by the round-1 review — zoneless is explicit since
+  #105). The round-1 review (rule 11) drove four more fixes: the checker now strips comments before
+  its repaint decision so PROSE mentioning markForCheck can never satisfy it (suppression rides the
+  explicit `cd-safety-ok:` marker only), `.then(` joined the trigger set (an `await` continuation
+  remains the documented blind spot for the #234 AST lint), a 9-case fixture self-test
+  (`check-cd-safety.test.mjs`) pins the parser both directions, and an `npm run lint` script now
+  exists — which makes CI's previously no-op `Frontend Lint` job (`npm run lint --if-present`)
+  actually run the self-test + checker on every PR.
+
+- **`/prep-pr` command + `env-gotchas` skill** (#119) — the pre-PR hygiene gate: stale-`main`
+  detection (the #103/#104 duplicate-CHANGELOG cause), single-`[Unreleased]`-block check, a
+  stale-old-behavior-assertion sweep across the WHOLE spec tree (the #108→#110 deploy-red cause),
+  `Closes #NN` linkage, a gates summary, and a secrets sweep. `env-gotchas` writes down the
+  platform pitfalls that kept costing cycles — macOS has no `timeout`, BSD `grep -E`/`sed -i ''`,
+  zsh-vs-bash differences, `.env`-sourcing noise, the same-identity `gh pr review --approve` block,
+  the full-sha `gh release create` requirement, shared test-DB rules, and worktree pre-push-hook
+  symlinks — referenced from CLAUDE.md.
+
+- **`/e2e` command + `e2e-validation` skill** (#117) — the known-good full Docker E2E loop, codified:
+  prod-topology bring-up, a REAL readiness gate (backend health → SSR → `stats/public` 200, which is
+  what prevents the pre-schema `relation "profile_snapshots" does not exist` 500 race), in-container
+  seeding, whole-project Playwright runs, and the recurring traps written down — the open-webui
+  volume/schema crash-loop (bump the image pin forward, NEVER wipe the volume — rule 9), the
+  reproduce-on-clean-main triage rule, and the 10443 HTTPS port. `frontend-dev` and
+  `devops-pipeline` charters now point at the skill instead of re-deriving the steps.
 - **Dev compose now passes `LINKEDIN_IMPORT_TOKEN` into the backend** (#228) — prod compose forwarded
   it; the dev stack never did, so a token set in `.env` per `.env.example` still produced
   `401 Import requires a valid X-Import-Token` from the local importer (the backend saw an empty
@@ -298,6 +300,29 @@ All notable changes to this project will be documented in this file.
   shifted the worker distribution.
 
 ### Changed
+- **Operational timeouts and bulk-import caps are configurable from `.env`** (#207) — the LLM request
+  ceiling was the literal `300.0` repeated at five call sites, and the Ollama liveness probe used a
+  different budget in each of the three places it appears (10 s at startup, 5 s in multi-chat, 2 s in
+  the stats endpoint, where it decides the reported AI status). These values are host-dependent by
+  nature: a cold model on a small VPS needs a long ceiling, while a fast host would rather fail fast
+  than hold a worker. They are now `Settings` fields, each defaulting to the exact literal it
+  replaced, so an unchanged `.env` reproduces the previous behaviour. The bulk posts-JSON import
+  guards got the same treatment — they were module constants while their `import_max_image_mb`
+  neighbour was already configurable, so an operator could raise one cap but not the other.
+  Pagination defaults, `max_turns`, and text truncations were deliberately left alone: they are
+  per-request parameters or presentation rules, not host-dependent operations, and moving them would
+  add configuration surface without giving an operator anything actionable.
+  The round-1 review (rule 11) caught two blockers, both fixed: the knobs were readable from a bare
+  `.env` but never FORWARDED into the backend container (neither compose file has an `env_file`; the
+  ten variables now follow the `IMPORT_MAX_IMAGE_MB` explicit-forwarding pattern in both
+  `docker-compose.yml` and `docker-compose.prod.yml`), and the multi-agent conversation pre-flight
+  had silently moved from its historical 5 s to the 2 s stats-healthcheck budget — it now has its
+  own `ollama_preflight_timeout_seconds` (default 5.0, the literal it replaced), pinned by a test
+  that fails if the call site is reverted to the healthcheck field (the previous test recorded the
+  timeout but asserted only the stream sentinel — a §16 mutation-survivor).
+- **The admin restore-timeout message reported a hardcoded `300s`** (#207) whatever the real ceiling
+  was, so an operator debugging a timeout would have been told the wrong number. It now reports the
+  configured value.
 - **Agent playbook has a single source of truth** (#115) — the shared team discipline that was
   hand-duplicated across `agents/common/roster.py` (`PROJECT_PLAYBOOK`) and implicitly restated in
   the 7 `.claude/agents/*.md` charters now lives in ONE committed file, `agents/PLAYBOOK.md`
