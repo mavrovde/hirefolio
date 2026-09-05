@@ -86,6 +86,9 @@ run_checks() {
       return 1
     fi
     ( cd "$ROOT/backend" && HIREFOLIO_GEMINI_API_KEY="" ./venv/bin/pytest -q ) || return 1
+    echo "== agent-playbook drift check (#115) =="
+    # Only the sync test: the rest of agents/tests needs the a2a venv. No DB.
+    ( cd "$ROOT" && backend/venv/bin/python -m pytest agents/tests/test_playbook_sync.py -q --no-header -p no:cacheprovider --no-cov ) || return 1
   fi
 
   if [ "$PREPUSH_RUN_LINT" = "1" ]; then
@@ -103,6 +106,8 @@ run_checks() {
   fi
 
   if [ "$PREPUSH_RUN_FRONTEND" = "1" ]; then
+    echo "== frontend cd-safety (zoneless repaint hazards, #118) =="
+    ( cd "$ROOT/frontend" && node scripts/check-cd-safety.mjs ) || return 1
     echo "== frontend tests (shared + public + admin) =="
     ( cd "$ROOT/frontend" && npm test ) || return 1
   fi
