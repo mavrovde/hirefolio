@@ -167,7 +167,8 @@ Never push feature work directly to `main` — branch → PR → merge (the merg
 trigger). Before pushing run the full local round (backend ruff/format + mypy + pytest **and** all
 frontend project tests **and**, for SSR/HTTP/E2E-affecting changes, the Docker E2E). The shared
 pre-push hook (`.claude/hooks/pre-push-tests.sh`) enforces docs + backend + frontend and self-gates
-(only fires on `git push`). When all gates are green and there is no explicit hold order, merge/deploy
+(only fires on a real `git push` invocation — command-position aware since #237; quoted prose
+mentioning a push is data). When all gates are green and there is no explicit hold order, merge/deploy
 without stopping to ask.
 
 ## 10. NEVER use real API keys / paid credentials in tests or CI (strictly forbidden)
@@ -488,6 +489,19 @@ believed the general case had been found and had only found an instance.
    swallows the real command — a false allow — while not consuming one (`nice -n 10`) hides the
    command behind the value token.
 
+16. **The same class lives in every SIBLING matcher — audit them when you fix one** (#237). While the
+   guard grew command-position awareness across #204→#225, `pre-push-tests.sh` right next to it kept
+   deciding "this is a push" by raw substring on the tool-call text — quoted prose in a
+   `gh pr review --body-file` that merely mentioned a push command tripped the full test gate (hit in
+   the #211 review; the body had to be split across four files — item 7's "trains workarounds" in
+   action), while a real `git -C <dir> push` never gated. The fix is item 12 applied ACROSS files:
+   the guard's parsing (`quote_split`, `peel_wrapper`, the text-tool heredoc exemption) now lives in
+   `.claude/hooks/hook-parse-lib.sh`, sourced by BOTH hooks — one model of the input, so a parsing
+   fix or hole cannot diverge between them. And check item 11's polarity when reusing: "cannot
+   analyse" (size/depth/time bound) must DENY on the guard but GATE (run the checks) on the test
+   hook — both conservative, but they are different actions, and copying the guard's habits
+   verbatim would have inverted one of them.
+
 This is the clearest evidence yet for CLAUDE.md rule 11: an independent reviewer caught a security
 regression in four consecutive rounds that the author, the author's own new tests, and green CI all missed —
 and CI *could not* have caught it, because nothing in the pipeline runs that suite (#208, #210).
@@ -501,5 +515,7 @@ and CI *could not* have caught it, because nothing in the pipeline runs that sui
 - **`.claude/agents/*.md`** + **`agents/common/roster.py`** (`PROJECT_PLAYBOOK`) — the agent charters;
   keep the two in sync (they restate overlapping lessons).
 - **`.claude/skills/issue-workflow/`** — the issue/PR/milestone/label operational flow.
-- **`.claude/hooks/`** — `pre-push-tests.sh` (test gate), `guard-destructive.sh` (destruction guard).
+- **`.claude/hooks/`** — `pre-push-tests.sh` (test gate), `guard-destructive.sh` (destruction guard),
+  `hook-parse-lib.sh` (the ONE parsing model both source, #237), plus a `*.test.sh` self-test beside
+  each hook.
 - **`.claude/commands/`** — `/verify`, `/release`, `/issue-triage`, `/linkedin-sync`.
