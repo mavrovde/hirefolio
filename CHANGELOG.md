@@ -4,7 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
 - **`ssr-cd-safety` skill + `lint:cd-safety` check** (#118) — the zoneless/SSR silent-failure class
   (#94: properties assigned in subscribe/interval callbacks never repaint; unit tests bundle
   zone.js and cannot see it) is now (a) a committed skill stating the contract — async mutation ⇒
@@ -25,6 +24,32 @@ All notable changes to this project will be documented in this file.
   (`check-cd-safety.test.mjs`) pins the parser both directions, and an `npm run lint` script now
   exists — which makes CI's previously no-op `Frontend Lint` job (`npm run lint --if-present`)
   actually run the self-test + checker on every PR.
+
+- **`/prep-pr` command + `env-gotchas` skill** (#119) — the pre-PR hygiene gate: stale-`main`
+  detection (the #103/#104 duplicate-CHANGELOG cause), single-`[Unreleased]`-block check, a
+  stale-old-behavior-assertion sweep across the WHOLE spec tree (the #108→#110 deploy-red cause),
+  `Closes #NN` linkage, a gates summary, and a secrets sweep. `env-gotchas` writes down the
+  platform pitfalls that kept costing cycles — macOS has no `timeout`, BSD `grep -E`/`sed -i ''`,
+  zsh-vs-bash differences, `.env`-sourcing noise, the same-identity `gh pr review --approve` block,
+  the full-sha `gh release create` requirement, shared test-DB rules, and worktree pre-push-hook
+  symlinks — referenced from CLAUDE.md.
+
+- **`/e2e` command + `e2e-validation` skill** (#117) — the known-good full Docker E2E loop, codified:
+  prod-topology bring-up, a REAL readiness gate (backend health → SSR → `stats/public` 200, which is
+  what prevents the pre-schema `relation "profile_snapshots" does not exist` 500 race), in-container
+  seeding, whole-project Playwright runs, and the recurring traps written down — the open-webui
+  volume/schema crash-loop (bump the image pin forward, NEVER wipe the volume — rule 9), the
+  reproduce-on-clean-main triage rule, and the 10443 HTTPS port. `frontend-dev` and
+  `devops-pipeline` charters now point at the skill instead of re-deriving the steps.
+
+### Added
+- **`/deploy-status` command** (#120) — one command that reports the TRUE deploy state: latest
+  `deploy.yml` run + whether the secrets-gated rollout job ran or silently skipped, repo
+  `VERSION`/latest tag, published image tags, and the LIVE prod version from
+  `/api/app/stats/public` — ending in an explicit live/behind verdict. Bakes in the
+  published ≠ live doctrine (#112): a green pipeline publishes images; only the rollout job (or the
+  live version itself) proves the host updated. The `devops-pipeline` charter now also names the
+  #147 concurrency queue (deploys serialize, never overlap) and points at `/deploy-status`.
 - **The quality gates now run on pull requests, not only after merge** (#208) — `deploy.yml` was
   `on: push: branches: [main]` only, so a PR was checked by CodeQL alone and the first time CI
   evaluated whether a change was correct was on the branch that deploys to production. A failing test
@@ -36,6 +61,12 @@ All notable changes to this project will be documented in this file.
   reached the merge gate because nothing in CI would have caught it.
 
 ### Fixed
+- **Dev compose now passes `LINKEDIN_IMPORT_TOKEN` into the backend** (#228) — prod compose forwarded
+  it; the dev stack never did, so a token set in `.env` per `.env.example` still produced
+  `401 Import requires a valid X-Import-Token` from the local importer (the backend saw an empty
+  configured token, which `_import_authorized` rightly never accepts). Verified live: with the fix
+  the container's token matches `.env` (sha-compare) and `python -m importer` imported 7 posts
+  against `http://localhost:8000`; an empty token still 401s token-only requests.
 - **Destruction guard: six standing bypass classes closed** (#212, #213, #217, #218, #219, #220) —
   all pre-existing on `main`, found across the #206/#214 review rounds; every one is the same
   recurring root cause (the guard recognised a textual *framing* while the shell executes an
@@ -263,6 +294,21 @@ All notable changes to this project will be documented in this file.
   shifted the worker distribution.
 
 ### Changed
+- **Agent playbook has a single source of truth** (#115) — the shared team discipline that was
+  hand-duplicated across `agents/common/roster.py` (`PROJECT_PLAYBOOK`) and implicitly restated in
+  the 7 `.claude/agents/*.md` charters now lives in ONE committed file, `agents/PLAYBOOK.md`
+  (extracted byte-identically). `roster.py` loads it at import (failing loud if missing), every
+  charter opens with a reference block naming it as authoritative, and a new drift check
+  (`agents/tests/test_playbook_sync.py`) fails when the roster stops consuming the file, the file
+  loses a load-bearing section, or a charter drops the reference — mutation-checked (removing a
+  charter's reference fails exactly that test; appending a probe line to the playbook propagates to
+  `PROJECT_PLAYBOOK` with zero other edits). The round-1 review (rule 11) hardened it further, all
+  fixed here: the drift check compared CONTENT only, so a byte-identical re-inlined duplicate passed
+  undetected — a source-level assertion now fails if `roster.py` carries the playbook text inline;
+  ALL seven charters' verbatim rule-9/rule-10 blocks now carry only a
+  pointer plus their role delta (round 2 finished the remaining four); and the sync test actually RUNS somewhere — wired into both the
+  pre-push hook's backend leg and CI's Backend Tests job (it previously gated nothing — §18,
+  verify-that-gates-actually-gate).
 - **The Gemini environment variables are project-scoped: `HIREFOLIO_GEMINI_API_KEY` and
   `HIREFOLIO_GEMINI_ENCRYPTION_KEY`** (#141) — the generic `GEMINI_API_KEY` is a name developers
   commonly export globally from a shell profile, and a process environment variable **overrides

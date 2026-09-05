@@ -146,6 +146,11 @@ jobs:
           # actual gate: without it CI printed the percentage and passed regardless,
           # so a drop below 100% only ever surfaced in a local run (review of #194).
           pytest -n auto -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=100
+          # Agent-playbook drift check (#115): the single test file only — the
+          # rest of agents/tests needs the a2a dependencies, not installed here.
+          # No DB, no coverage; a drift between agents/PLAYBOOK.md, roster.py
+          # and the .claude/agents charters fails this job.
+          (cd .. && python -m pytest agents/tests/test_playbook_sync.py -q --no-header -p no:cacheprovider --no-cov)
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
