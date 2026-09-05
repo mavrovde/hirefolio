@@ -22,8 +22,6 @@ All notable changes to this project will be documented in this file.
   configured token, which `_import_authorized` rightly never accepts). Verified live: with the fix
   the container's token matches `.env` (sha-compare) and `python -m importer` imported 7 posts
   against `http://localhost:8000`; an empty token still 401s token-only requests.
-
-### Fixed
 - **The destruction guard no longer lets a benign first token hide a packed command** (#210) — the
   guard inspects the FIRST token of each segment, so two everyday shapes slipped past on `main`:
 
