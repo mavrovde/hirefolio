@@ -251,6 +251,34 @@ async def test_startup_check_timeout_is_used(monkeypatch):
     )
 
 
+async def test_preflight_timeout_is_used_by_the_multi_agent_loop(monkeypatch):
+    """The conversation pre-flight keeps its HISTORICAL 5 s budget, not the 2 s
+    stats healthcheck: a failed probe aborts the whole conversation, so the two
+    must stay separate fields. Reverting the call site to
+    ``ollama_healthcheck_timeout_seconds`` makes this assertion fail (#209
+    review round 1: the previous test recorded the timeout but asserted only
+    the stream sentinel, so the revert kept the suite green)."""
+    monkeypatch.setattr(settings, "ollama_preflight_timeout_seconds", SENTINEL)
+    # Distinct value on the WRONG field: if the call site reads it, `seen`
+    # records this value instead of the sentinel and the test fails.
+    monkeypatch.setattr(settings, "ollama_healthcheck_timeout_seconds", SENTINEL + 1)
+    seen, patcher = _record_async_client(get_status=200)
+
+    from app.services.multi_chat import AgentConfig, multi_agent_conversation
+
+    agents = [AgentConfig(id=1, description="first agent", name="A")]
+    with patcher:
+        async for _ in multi_agent_conversation(agents, "a topic", max_turns=1):
+            pass
+
+    assert SENTINEL in seen, (
+        "the conversation pre-flight must use settings.ollama_preflight_timeout_seconds"
+    )
+    assert SENTINEL + 1 not in seen, (
+        "the pre-flight must NOT read the stats healthcheck budget"
+    )
+
+
 async def test_stream_timeout_is_used_by_the_multi_agent_loop(monkeypatch):
     """The streamed conversation has its own, shorter budget than a full completion.
 

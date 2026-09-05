@@ -137,6 +137,11 @@ class Settings(BaseSettings):
     # Liveness probes against Ollama. Kept short on purpose: this decides the
     # public "AI online" badge, so it must not hold a request open.
     ollama_healthcheck_timeout_seconds: float = 2.0
+    # The multi-agent conversation pre-flights Ollama before starting; a failed
+    # probe aborts the WHOLE conversation with an infrastructure error, so its
+    # historical budget (5 s) is more forgiving than the stats healthcheck (2 s)
+    # and must stay the literal it replaced (#209 review round 1).
+    ollama_preflight_timeout_seconds: float = 5.0
     # The one-shot startup infra check, which may race a still-booting Ollama
     # and so tolerates more than a per-request probe.
     ollama_startup_check_timeout_seconds: float = 10.0

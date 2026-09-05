@@ -122,7 +122,7 @@ async def multi_agent_conversation(
                 async with httpx.AsyncClient() as client:
                     resp = await client.get(
                         f"{settings.ollama_url}/api/tags",
-                        timeout=settings.ollama_healthcheck_timeout_seconds,
+                        timeout=settings.ollama_preflight_timeout_seconds,
                     )
                     if resp.status_code == 200:
                         logger.info("Successfully connected to Ollama.")

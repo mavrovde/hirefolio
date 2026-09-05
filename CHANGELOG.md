@@ -258,6 +258,14 @@ All notable changes to this project will be documented in this file.
   Pagination defaults, `max_turns`, and text truncations were deliberately left alone: they are
   per-request parameters or presentation rules, not host-dependent operations, and moving them would
   add configuration surface without giving an operator anything actionable.
+  The round-1 review (rule 11) caught two blockers, both fixed: the knobs were readable from a bare
+  `.env` but never FORWARDED into the backend container (neither compose file has an `env_file`; the
+  ten variables now follow the `IMPORT_MAX_IMAGE_MB` explicit-forwarding pattern in both
+  `docker-compose.yml` and `docker-compose.prod.yml`), and the multi-agent conversation pre-flight
+  had silently moved from its historical 5 s to the 2 s stats-healthcheck budget — it now has its
+  own `ollama_preflight_timeout_seconds` (default 5.0, the literal it replaced), pinned by a test
+  that fails if the call site is reverted to the healthcheck field (the previous test recorded the
+  timeout but asserted only the stream sentinel — a §16 mutation-survivor).
 - **The Gemini environment variables are project-scoped: `HIREFOLIO_GEMINI_API_KEY` and
   `HIREFOLIO_GEMINI_ENCRYPTION_KEY`** (#141) — the generic `GEMINI_API_KEY` is a name developers
   commonly export globally from a shell profile, and a process environment variable **overrides
