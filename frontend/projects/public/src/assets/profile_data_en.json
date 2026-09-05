@@ -1,699 +1,92 @@
 {
-  "name": "Sergii Mavrov",
-  "headline": "Principal Software Engineer @ adesso SE | Driving Software Development Excellence",
-  "location": "Aachen, North Rhine-Westphalia, Germany",
-  "about": "With over a decade of experience in software engineering, I serve as a Principal Software Engineer at adesso SE, leveraging my expertise in DevOps, Retrieval-Augmented Generation (RAG), and Agentic AI Development. My focus lies in crafting resilient, scalable software solutions that address modern business challenges while integrating intelligent automation to enhance operational efficiency.  At adesso SE, I contribute to technical innovation, enabling teams to adopt advanced development practices and technologies. My career spans diverse industries, including logistics, gaming, and construction, where I have consistently collaborated with teams to deliver impactful solutions. Passionate about designing future-proof systems, I focus on empowering organizations with advanced architectures and development methodologies.",
+  "name": "Jane Doe",
+  "headline": "Senior Software Engineer",
+  "location": "Berlin, Germany",
+  "about": "Demo persona for the Hirefolio portfolio template. Jane is a fictional senior software engineer with a decade of experience across backend platforms, cloud infrastructure, and modern web frontends. Replace this profile with your own via the admin panel (Profile Data upload) — no code changes needed.",
   "contact": {
-    "email": "serg.mavrov@gmail.com",
-    "linkedin": "https://www.linkedin.com/in/smavrov"
+    "email": "jane.doe@example.com",
+    "linkedin": "https://www.linkedin.com/in/example-jane-doe"
   },
   "experience": [
     {
-      "title": "Principal Software Engineer",
-      "company": "adesso SE",
+      "title": "Senior Software Engineer",
+      "company": "Acme Cloud GmbH",
       "employmentType": "Full-time",
-      "startDate": "Mar 2025",
+      "startDate": "Mar 2022",
       "endDate": "Present",
-      "duration": "11 mos",
+      "duration": "4 yrs 7 mos",
       "workType": "Hybrid",
-      "skills": [
-        "Kubernetes",
-        "Microservices",
-        "Java",
-        "Docker",
-        "Agile Methodologies"
-      ],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/41629/"
+      "skills": ["Python", "FastAPI", "PostgreSQL", "Kubernetes", "TypeScript"],
+      "companyLinkedInUrl": ""
     },
     {
-      "title": "Senior Software Engineer",
-      "company": "Hapag-Lloyd AG",
-      "employmentType": "Contract",
-      "startDate": "Apr 2025",
-      "endDate": "Dec 2025",
-      "duration": "9 mos",
-      "location": "Hamburg, Germany",
+      "title": "Software Engineer",
+      "company": "Initech Solutions",
+      "employmentType": "Full-time",
+      "startDate": "Jun 2019",
+      "endDate": "Feb 2022",
+      "duration": "2 yrs 9 mos",
       "workType": "Remote",
-      "description": "Freight Information System (FIS3) under Adesso as the contractor.\n\nProject: The Freight Information System (FIS) is Hapag-Lloyd’s central IT platform. It supports all key business processes in container shipping. FIS manages bookings, transport planning, documentation, and billing. The system ensures end-to-end transparency and operational efficiency. It replaces fragmented legacy systems with a unified digital solution. FIS is cloud-ready and designed for scalability and resilience. It integrates internal systems and external partners. DevOps and Continuous Delivery accelerate further development. AI and automation improve decision-making and customer service. FIS is the digital backbone of Hapag-Lloyd’s global logistics.\n\nResponsibilities: \n\nDrive and support the transition toward a microservice‑based architecture, including decomposition of legacy components, definition of service boundaries, and alignment with cloud‑native principles.\n\nLead the implementation of core system capabilities, ensuring scalability, resilience, and adherence to architectural standards.\n\nContribute to the design and evolution of the overall system architecture, participating in solution design, technology selection, and definition of best practices.\n\nAnalyze, troubleshoot, and resolve complex software defects, ensuring system stability and continuous improvement of code quality.\n\nPerform DevOps‑related activities, including CI/CD pipeline optimization, infrastructure automation, and operational reliability improvements.\n\nConduct code reviews and promote Clean Code principles\n\nPostgres,CDI,Liberty Server,SQL,AWS CLI,Podman,JPA,Java 11-17,Maven,Kubernetes,Jenkins,Mockito,Serverless,JSON,Grafana,AWS,Docker Compose,Microservices,Kibana,Python,BDD,Wiremock,Docker",
-      "skills": [
-        "DevOps",
-        "Microservices",
-        "Java",
-        "Amazon Web Services (AWS)"
-      ],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/133790/"
+      "skills": ["Angular", "Node.js", "Docker", "CI/CD"],
+      "companyLinkedInUrl": ""
     },
     {
-      "title": "Senior Software Engineer",
-      "company": "Tipico",
+      "title": "Junior Developer",
+      "company": "Globex Digital",
       "employmentType": "Full-time",
-      "startDate": "Jan 2024",
-      "endDate": "Mar 2025",
-      "duration": "1 yr 3 mos",
-      "location": "Greater Munich Metropolitan Area",
-      "workType": "Hybrid",
-      "description": "Project: License Manager\n\nResponsibilties:\n\nOwned system performance, scalability, and runtime stability, including profiling, bottleneck analysis, and optimization of critical execution paths.\n\nLed architectural modernization, redesigning core components to align with updated technical and regulatory requirements.\n\nDelivered major release cycles end‑to‑end, providing architectural guidance, technical direction, and hands‑on implementation of key system modules.\n\nEnsured operational reliability through monitoring, alerting, and incident response, maintaining high availability in production.\n\nActed as Technical Lead in an agile team, driving engineering standards, architectural decisions, and long‑term technical strategy.\n\nPerformed design and code reviews, enforcing clean architecture, code quality, and best engineering practices.\n\nMentored and onboarded engineers, strengthening team capability and technical maturity.\n\nUtilized technologies such as Microservices, Java 17-21, Java, REST, JSON, Protobuf, Hystrix, Spring, Spring Boot, Kubernetes, Kafka, JPA,\nHibernate, MySql, SQL, Redis Maven, Docker, Kubernetes, AWS, Prometheus, Instana, Grafana, Jenkins.",
-      "skills": [
-        "Software Development Methodologies",
-        "Spring Boot",
-        "Java Concurrency",
-        "Core Java",
-        "Code Review",
-        "Representational State Transfer (REST)",
-        "Elasticsearch"
-      ],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/788331/"
-    },
-    {
-      "title": "Senior Software Development Engineer",
-      "company": "Hilti Deutschland",
-      "employmentType": "Full-time",
-      "startDate": "Jan 2021",
-      "endDate": "Dec 2023",
-      "duration": "3 yrs",
-      "location": "Munich, Bavaria, Germany",
-      "workType": "Hybrid",
-      "description": "Project: Task Force\nA group aimed at solving complex technical issues and optimizing processes between company divisions worldwide. I played a key role during an intensive three-week conference of top performers, providing solutions to key issues.\n\nProject: Hilti On!Track\nHilti On!Track is a software solution for managing your assets and consumables in the construction industry. It allows you to track, document, and assign your tools, equipment, and materials across different locations and projects.\n\nResponsibilities:\n- New features design and development\n- Bugs fixing, participating in the bug intervention team \n- Work on requirements, understand and resolve dependencies, week performance places, review detailed design and key technical areas, provide the suggestion in configuration and in the code which significantly affects the performance, for example, the process of the migration from the previous version was accelerated for more than 40%\n- Code review\n- Help in recruitment and training new members of the team\n- Supporting DevOps processes\n\nProject: Hilti On!Work\nHilti On!Work is a resource management solution that helps you optimize your HR productivity and safety in the construction industry. It allows you to plan, assign, and monitor your workers, tasks, and projects across different locations and time zones.\n\nResponsibilities: \n- Work on requirements, understand and resolve dependencies\n- Worked as part and the player of the Agile team reviewing detailed design and key technical areas\n- Code review and mentoring \n\nProject: Office Dashboard\nThe web application is on the large TV screens in any Hilti office to collect and demonstrate critical information and statuses from Jira, Grafana, Datadog, and other statistic and management tools. \n\nTechnologies: Java 11-17, Kotlin, REST, Graphql, GWT, Microservices, Spring, Spring Boot, ActiveMQ, Kafka, Kubernetes, JPA, Hibernate, Postgres, SQL, MongoDB, Gradle, Docker, Kubernetes, AWS, React, Selenium, Playwright",
-      "skills": [
-        "Leadership",
-        "Swagger API",
-        "Architectural Design",
-        "Docker",
-        "Software Development Methodologies",
-        "Java Enterprise Edition",
-        "Kotlin",
-        "MongoDB",
-        "Design Patterns",
-        "Gradle",
-        "Problem Solving",
-        "Spring Boot",
-        "Code Review"
-      ],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/9253072/"
-    },
-    {
-      "title": "Senior Java Developer",
-      "company": "Amadeus",
-      "employmentType": "Full-time",
-      "startDate": "Apr 2014",
-      "endDate": "Dec 2020",
-      "duration": "6 yrs 9 mos",
-      "location": "Aachen, North Rhine-Westphalia, Germany",
-      "description": "Project: Central Configuration Database\n\nThe group of projects and databases which are the infrastructure of the company: all dictionary (geo, price, etc.) information, an import-export data, etc.  \n\nResponsibilities:\t\n- Work on requirements, understand and resolve dependencies\n- Worked as part and the key player of the Agile team reviewing detailed design and key technical areas\n- Implementing the key functionality\n- Investigation and applying any tools/libraries\n- Configuring and support all DEV and STAGING environment via DevOps \n- Performance and Stress testing\n- Code review and mentoring\n\nTechnologies:\tJ2EE, REST, SOAP, CDI, Weld, Tomcat, JPA, Hibernate, MySQL, MariaDB, SQL, MongoDB, Maven, SpringBoot, Microservices, Java 11, Docker, Kubernetes, PHP, Angular, JavaScript, Nginx\n\nProject: Dynamix Config Packaging Tool v2.0 in Traveltainment\n\nThe application is an important part of the  Amadeus Company ecosystem. The system will be used to configure the search result from the global travel distribution system (flight tickets, hotel booking) depending on the business goals of b2b partners. The web application provides for travel operators agile ability to configure their systems and to provide the product maximally close to the client's wishes. The application works under very high loading and must provide very fast reaction for big size data.\n\nResponsibilities:\t\n- Work on requirements, understand and resolve dependencies from the first idea \n- Worked as part and the key player of the Agile team reviewing detailed design and key technical areas\n- Implementing the key functionality\n- Investigation and applying any tools/libraries\n- Configuring and support all DEV and STAGING environment via DevOps \n- Performance and Stress testing\n- Code review and mentoring\n- Communication and support QA and FE teams\n\nTechnologies:\tJ2EE, Multi-Threading, REST, SOAP, CDI, Weld, Tomcat, Wildfly 8.2-10, JMS, JPA, Hibernate, MySQL, MariaDB, Galera, SQL, Maven",
-      "skills": [
-        "Leadership",
-        "Maven",
-        "Tomcat",
-        "Architectural Design",
-        "Software Development Methodologies",
-        "MongoDB",
-        "Gradle",
-        "Problem Solving",
-        "Spring Boot"
-      ],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/2780/"
-    },
-    {
-      "title": "Senior Java Developer",
-      "company": "GlobalLogic",
-      "startDate": "Mar 2013",
-      "endDate": "Mar 2014",
-      "duration": "1 yr 1 mo",
-      "location": "Kyiv, Ukraine",
-      "description": "Project: Vast\n\nVast is the premier provider of big data solutions for life’s biggest purchases. Vast’s industry-leading big data platform and applications are currently in use at many of the largest automotive, real estate and travel businesses in the world. Vast clients include AOL, Southwest Airlines and USAA.\n\nThe main project is Agent Portal. The web application is being used for organisation links between possible clients, brokers and real estate agents.\n\nResponsibilities:\t\n- Work on requirements, understand and resolve dependencies\n- Worked as part of the team reviewing detailed design and key technical areas\n\nTechnologies:\t J2EE, Scala, Guice, Spray, REST web-services, Maven, Git",
-      "skills": [
-        "Problem Solving"
-      ],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/164008/"
-    },
-    {
-      "title": "Senior Java Developer",
-      "company": "Ciklum",
-      "startDate": "Nov 2012",
-      "endDate": "Mar 2013",
-      "duration": "5 mos",
-      "location": "Odessa, Ukraine",
-      "description": "Project: Teamonline – Bosted/Incorp\n\nThe Bosted System is an IT solution for providers helping people with developmental disabilities. Bosted is the Danish word for 'residential homes'. Providing temporary use of on-line non-downloadable software for collecting, monitoring and analyzing data indicative of the health or condition of an individual for treatment and diagnostic purposes\n\nResponsibilities:\t\n- Work on requirements, understand and resolve dependencies\n- Code review\n- Worked as part of the team reviewing detailed design and key technical areas\n\nTechnologies:\t\tJ2EE, Tomcat, Spring MVC, JSP, JavaScript, SQL, Ant, Maven, JUnit, Eclipse, SVN, Agile",
-      "skills": [
-        "Problem Solving"
-      ],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/9183/"
-    },
-    {
-      "title": "Senior Java Developer",
-      "company": "Lohika",
-      "employmentType": "Full-time",
-      "startDate": "Sep 2009",
-      "endDate": "Sep 2012",
-      "duration": "3 yrs 1 mo",
-      "location": "Odessa, Ukraine",
-      "skills": [
-        "Leadership",
-        "Software Development Methodologies",
-        "Problem Solving"
-      ],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/12127/",
-      "description": "HP Contractor, see below."
-    },
-    {
-      "title": "Senior Java Developer, Activity Leader",
-      "company": "HP",
-      "employmentType": "Full-time",
-      "startDate": "Sep 2009",
-      "endDate": "Sep 2012",
-      "duration": "3 yrs 1 mo",
-      "location": "Odessa, Ukraine",
-      "description": "Activity leader of an R&D team working for HP (HP SiteScope CPE & Content Team,  BSM Core2 Team)\n\nHP SiteScope is an agentless monitoring solution designed to ensure the availability and performance of distributed IT infrastructures — for example, servers, operating systems, network devices, network services, applications, and application components. Quickly collect server and application health across physical, virtual and cloud infrastructures - including HP Cloud Services. SiteScope provides a simple yet powerful way to monitor a broad set of different technologies. This Web-based infrastructure monitoring solution is lightweight, highly customizable, and does not require that data collection agents be installed on your production systems. SiteScope empowers users to automate monitoring for today’s dynamic cloud environments via APIs.\n\nEnvironment:\n- J2SE, Multi-Threading, Memory management/memory optimization/fragmentation, Swing, Spring (IoC), JavaScript, SQL(Oracle), JMS, JMX, Ant, Maven, JProfiler, JUnit, QC, Eclipse, SVN, Agile\n\nResponsibilities & achievements:\n\n- lead CPE process within a team\n- Team is owning the development/enhancement/support of all the SiteScope monitors (120 monitors) - feature development, new monitor development , integration with other HP products & Cloud solutions\n- Help in recruitment and training new members of the team\n- Work on requirements, understand and resolve dependencies\n- Task related to CPE assigning, manage priorities, manage risks\n- CPE result tracking, issues and scope changes\n- Code review\n- Worked as part of the team reviewing detailed design and key technical areas\n- Direct communication with SiteScope customers",
-      "skills": [
-        "Leadership",
-        "Architectural Design",
-        "Software Development Methodologies",
-        "Problem Solving"
-      ],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/5390798/"
-    },
-    {
-      "title": "Senior Java Developer, Architect",
-      "company": "Qmeety Inc., Israel",
-      "startDate": "Oct 2011",
-      "endDate": "Aug 2012",
-      "duration": "11 mos",
-      "location": "Odessa, Ukraine",
-      "workType": "Remote",
-      "description": "Qmeety is full-hosted service, which provides live chat solution for mini-sites within site groups. The application can be introduced to any customers site and provides the service of dialog for visitor-to-visitor, visitor-to-group.\n\nResponsibilities:   \n\n- Work on requirements, understand and resolve dependencies\n- Task related with planning, design, manage priorities, manage risks\n- Implementation back-end of the application based on web-services\n\nTechnologies:        J2EE, JBoss, Hibernate, SOAP, Rest, SQL(postgres), Ant, Maven, Eclipse, SVN, Agile",
-      "skills": [
-        "Leadership",
-        "Architectural Design",
-        "Software Development Methodologies",
-        "Problem Solving"
-      ]
-    },
-    {
-      "title": "Java Developer",
-      "company": "Comodo",
-      "startDate": "Sep 2008",
-      "endDate": "Aug 2009",
-      "duration": "1 yr",
-      "location": "Odessa, Ukraine",
-      "description": "Projects:\nComodo's Two Factor Authentication Solution.\nThe project is authorized service for signing of private clients to secure Internet resources. The most popular solution is protection for online management system of bank accounts. The application checks the online user authentication and registers all users activity on the site in real time mode and blocks all unsecure actions. The solution is transparent for users, it looks like a part of the main system. \n\nCertificate Manager for Secure SSL Certificate Administration.\nThe project is the service to enroll and control of states of certificates for large customers. The application is an intermediary between Comodo company and customer's management to provide the necessary ordering information. The service interacts with the Comodo auth center server for ordering and maintenance of certificates on the basis of the customer's arrangements.\n\nResponsibilities:   \n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas\n- Code review\n- Help in recruitment and training new members of the team\n\nTechnologies: J2SE, J2EE, GWT, JSP, HTML, CSS, JavaScript, SQL(MySQL), Ant, JUnit, Idea, SVN, Agile.",
-      "skills": [
-        "Software Development Methodologies",
-        "Problem Solving"
-      ],
-      "companyLinkedInUrl": "https://www.linkedin.com/company/163167/"
-    },
-    {
-      "title": "Software Developer, Activity leader",
-      "company": "Customs Transnistria",
-      "startDate": "Sep 2005",
-      "endDate": "Aug 2008",
-      "duration": "3 yrs",
-      "location": "Tiraspol, Transnistria autonomous territorial unit, Moldova",
-      "description": "Projects:\nFew large and medium projects related to customs clearance (the main application related with the area was in my full responsibility), staff service, accounting, etc. They were created as \"thick\" Delphi clients + (DB stored procedures + triggers).\n\nTechnologies: Delphi, SQL(MS SQL), Foxpro, DBF, SVN. \n\nNew system based on J2EE should be replaced all previous projects. Many parts of the system have been created and integrated with old systems. The system was designed as few WEB applications with one authentication center for officers and clients.  \n\nTechnologies: J2EE, Applets, JavaScript, JSF, EJB, Hibernate, SQL(MS SQL), JBoss, GlassFish, Netbeans, SVN, Agile.\n \nResponsibilities:\n- Main designing\n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas\n- Code review\n- Help in recruitment and training new members of the team",
-      "skills": [
-        "Leadership",
-        "Software Development Methodologies",
-        "Problem Solving"
-      ]
-    },
-    {
-      "title": "R&D manager",
-      "company": "Tirotex",
-      "startDate": "Jun 2004",
-      "endDate": "Aug 2005",
-      "duration": "1 yr 3 mos",
-      "description": "I coordinated several teams responsible to support the IT environment of the factory. The main tasks were:\n- The introduction of a new ERP system \"Tirotex Max\";\n- The integration of data from the old existing systems to new \"Tirotex Max\" based on SOA architecture using any possible protocols;\n- The development systems based on the two or three-tier applications (Delphi, FoxPro, Informix DB) in places where it was impossible to implement \"Tirotex Max\" way.\n\nMAX+ is an integrated business management system intended for manufacturing, commercial and service companies. The main purpose of this system is to provide the whole range of IT services required for production, sales, procurement and finance management in compliance with strategy, policy and relationship between different business units of the enterprise.\n\nWhile integrating enhanced capabilities in a basic product, MAX+ combines wide functionality with low cost of ownership and enables to easily upgrade the system that makes MAX+ an ideal ERP solution for both small and larger companies. \n\nMAX+ System is designed for fast implementation, and supports different types of production including ‘make to contract’, ‘make to order’, ‘make to store’ and ‘assemble to order’. The modular structure of the system, advanced and high-performance development tools, and the interfaces compliant with industry standards make it possible to flexibly adapt the system to fit the business processes of a company as well as to expand and upgrade the system as the company business grows.\n\nResponsibilities:\n- Coordination teams of developers for fast integration the new system\n- Work on requirements, understand and resolve dependencies\n- Searching ways to combinated old information system with new one\n- Searching ways to optimize the people managment\n- Help in recruitment and training new members of the team\n- Worked as part of the team reviewing detailed design and key technical areas",
-      "skills": [
-        "Leadership",
-        "Software Development Methodologies",
-        "Problem Solving"
-      ],
-      "location": "Tiraspol, Moldova"
-    },
-    {
-      "title": "Software Developer, Activity leader",
-      "company": "Tirotex",
-      "startDate": "Aug 2002",
-      "endDate": "May 2004",
-      "duration": "1 yr 10 mos",
-      "description": "Tirotex is the largest textile company in the southeast of CIS. It is a unique production complex with a strong infrastructure, advanced technical, organizational and scientific basis. It is an export sales oriented company. The volume of export deliveries is about 70% of the whole sales volume. The products of Tirotex are exported to 30 countries all over the world.\n\nI have been involved as software developer in many places critical important to main processes. We were forced to change old data system based on MS DOS and Foxpro to new created oriented to more comfortable Windows design and modern data base servers. I was able to make the main process of the production and the control much more faster, simplest and cheapest in places which have been in my responsibility.\n\nThe main goal was step-by-step migration to new data system. It is an infomedia called “Tirotex MAX” combining all into one line: fiscal accounting, economic process of sale, production, materials management, support of all kinds of production.\n\nTechnologies: Foxpro, DBF, Delphi, Informix, MS SQL.\n\nResponsibilities:\n- New features development\n- Bugs fixing\n- Work on requirements, understand and resolve dependencies,reviewing detailed design and key technical areas",
-      "skills": [
-        "Leadership",
-        "Software Development Methodologies"
-      ],
-      "location": "Tiraspol, Moldova"
+      "startDate": "Aug 2016",
+      "endDate": "May 2019",
+      "duration": "2 yrs 10 mos",
+      "workType": "On-site",
+      "skills": ["Java", "Spring", "SQL"],
+      "companyLinkedInUrl": ""
     }
   ],
   "education": [
     {
-      "school": "Universitatea de Stat din Tiraspol",
-      "degree": "Lizenziat, mathematics, computer science",
-      "years": "1997 - 2002",
-      "skills": "Leadership · Mathematics"
+      "school": "Example Technical University",
+      "degree": "M.Sc. Computer Science",
+      "years": "2014 - 2016",
+      "skills": "Distributed Systems, Machine Learning"
     },
     {
-      "school": "School #12, Tiraspol, Moldova",
-      "degree": "physics, mathematics",
-      "years": "1986 - 1996"
+      "school": "Example University",
+      "degree": "B.Sc. Computer Science",
+      "years": "2011 - 2014",
+      "skills": "Algorithms, Software Engineering"
     }
   ],
   "skills": [
-    "Agentic AI Development",
-    "Swagger API",
-    "Agile Methodologies",
-    "Elasticsearch",
-    "Amazon Web Services (AWS)",
-    "Retrieval-Augmented Generation (RAG)",
-    "Software Development Methodologies",
-    "Multithreaded Development",
-    "Model Context Protocol (MCP)",
-    "DevOps",
-    "LangGraph",
-    "Leadership",
-    "ACP",
-    "Code Review",
-    "MongoDB",
-    "A2A",
-    "Representational State Transfer (REST)",
-    "Python (Programming Language)",
-    "Spring Security",
-    "Software Development",
-    "XML",
-    "PHP",
-    "Java Enterprise Edition",
-    "SOAP",
-    "Core Java",
-    "SQL",
-    "JDBC",
-    "Maven",
-    "Kubernetes",
-    "Gradle",
-    "Spring",
-    "Spring Boot",
-    "Design Patterns",
-    "Linux",
-    "EJB",
-    "Architectural Design",
-    "Servlets",
-    "Web Applications",
-    "C++",
-    "JBoss Application Server",
-    "Kotlin",
-    "Docker",
-    "Debugging",
-    "Problem Solving",
-    "Multithreading",
-    "JavaScript",
-    "Spring Framework",
-    "JMS",
-    "Java Concurrency",
-    "Java Web Services",
-    "Mathematics",
-    "JAX-WS",
-    "Continuous Integration",
-    "OOP",
-    "Solution Architecture",
-    "JIRA",
-    "Microservices",
-    "Web Services",
-    "Java",
-    "JUnit",
-    "Tomcat",
-    "JAXB",
-    "Hibernate",
-    "Refactoring",
-    "Performance Tuning",
-    "MySQL"
+    "Python", "FastAPI", "TypeScript", "Angular", "PostgreSQL", "Kubernetes",
+    "Docker", "CI/CD", "AWS", "REST APIs", "Microservices", "TDD",
+    "System Design", "SQL", "Git", "Agile"
   ],
   "certifications": [
     {
-      "name": "Connect and Protect: Networks and Network Security",
-      "issuer": "Google",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/1TEZPIPRXEW5",
-      "credentialId": "1TEZPIPRXEW5"
-    },
-    {
-      "name": "Assets, Threats, and Vulnerabilities",
-      "issuer": "Google",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/PMOVRSWX1CMS",
-      "credentialId": "PMOVRSWX1CMS"
-    },
-    {
-      "name": "Agentic AI with LangChain and LangGraph",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/J6SFAIW21BDB",
-      "credentialId": "J6SFAIW21BDB"
-    },
-    {
-      "name": "Advanced Data Handling and Reactive Programming Concepts",
-      "issuer": "Edureka",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/59CZZOW9TE8U",
-      "credentialId": "59CZZOW9TE8U"
-    },
-    {
-      "name": "Claude Code in Action",
-      "issuer": "Anthropic",
-      "date": "Issued Jun 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/3A9USJSCVA80",
-      "credentialId": "3A9USJSCVA80"
-    },
-    {
-      "name": "Foundations of Cybersecurity",
-      "issuer": "Google",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/44FZL4AOPHX3",
-      "credentialId": "44FZL4AOPHX3"
-    },
-    {
-      "name": "Model Context Protocol: Advanced Topics",
-      "issuer": "Anthropic",
-      "date": "Issued Jun 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/verify/ZCPEWW2EIE3N",
-      "credentialId": "ZCPEWW2EIE3N"
-    },
-    {
-      "name": "Building AI Agents and Agentic Workflows",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/P4MO673OAQN6",
-      "credentialId": "P4MO673OAQN6"
-    },
-    {
-      "name": "Agentic AI Protocols (MCP, A2A, ACP)",
-      "issuer": "Coursera",
-      "date": "Issued Jul 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/4FLOGNHT2KIS",
-      "credentialId": "4FLOGNHT2KIS"
-    },
-    {
-      "name": "Advanced Multi-Agent AI System",
-      "issuer": "Coursera",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/ZKHFP9M6FQYT",
-      "credentialId": "ZKHFP9M6FQYT"
-    },
-    {
-      "name": "LangGraph Framework",
-      "issuer": "Coursera",
-      "date": "Issued Jul 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/71KPORZAR4TS",
-      "credentialId": "71KPORZAR4TS"
-    },
-    {
-      "name": "Agentic AI with LangGraph, CrewAI, AutoGen and BeeAI",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/P5V43HE5BAT4",
-      "credentialId": "P5V43HE5BAT4"
-    },
-    {
-      "name": "Introduction to Model Context Protocol",
-      "issuer": "Anthropic",
-      "date": "Issued Jun 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/A74J7L5R5C5B",
-      "credentialId": "A74J7L5R5C5B"
-    },
-    {
-      "name": "Advanced RAG with Vector Databases and Retrievers",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/IX4W9UVOO8I0",
-      "credentialId": "IX4W9UVOO8I0"
-    },
-    {
-      "name": "AI Agents: Multi-Agent Design & Governance",
-      "issuer": "Coursera",
-      "date": "Issued Jul 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/OHN3C0P765C9",
-      "credentialId": "OHN3C0P765C9"
-    },
-    {
-      "name": "Fundamentals of Building AI Agents",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/N2LTS77NRN1I",
-      "credentialId": "N2LTS77NRN1I"
-    },
-    {
-      "name": "MCP - Model Content Protocol",
-      "issuer": "Coursera",
-      "date": "Issued Jun 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/KVEF4QKMY09V",
-      "credentialId": "KVEF4QKMY09V"
-    },
-    {
-      "name": "Automate Cybersecurity Tasks with Python",
-      "issuer": "Google",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/G82PMVTGACZ8",
-      "credentialId": "G82PMVTGACZ8"
-    },
-    {
-      "name": "Building AI Agents and Agentic Workflows Specialization",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.credly.com/badges/97982d30-8b3f-48e8-b6de-570b39645f2c/linked_in_profile"
-    },
-    {
-      "name": "Build Multimodal Generative AI Applications",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/NUP1LBN5ITUZ",
-      "credentialId": "NUP1LBN5ITUZ"
-    },
-    {
-      "name": "Mastering Angular Development  Specialization",
-      "issuer": "Edureka",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/P6THW5QG7DBW",
-      "credentialId": "P6THW5QG7DBW"
-    },
-    {
-      "name": "IBM RAG and Agentic AI Specialization",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/GNEGN5XZ69M5",
-      "credentialId": "GNEGN5XZ69M5"
-    },
-    {
-      "name": "Vector Databases: An Introduction with Chroma DB",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/MWOFM6MWYFUL",
-      "credentialId": "MWOFM6MWYFUL"
-    },
-    {
-      "name": "Google Cybersecurity Professional Certificate(v.2)",
-      "issuer": "Google",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.credly.com/badges/36c614d5-bd3c-4ca2-8f55-0c2dda24720c/linked_in_profile"
-    },
-    {
-      "name": "IBM RAG and Agentic AI Specialization",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/GNEGN5XZ69M5",
-      "credentialId": "GNEGN5XZ69M5"
-    },
-    {
-      "name": "Enterprise Architecture in Practice",
-      "issuer": "LinkedIn",
-      "date": "Issued Nov 2023",
-      "credentialUrl": "https://www.linkedin.com/learning/certificates/0c5ac5b00336b9d631d383a54829090611a12a2bd4e472e3dd34df15b55a0101?trk=flagship-lil_details_certification"
-    },
-    {
-      "name": "Play It Safe: Manage Security Risks",
-      "issuer": "Google",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/8WMJNSEGMYXY",
-      "credentialId": "8WMJNSEGMYXY"
-    },
-    {
-      "name": "Testing and Deploying Angular Applications",
-      "issuer": "Edureka",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/X9Y44ZXVDM23",
-      "credentialId": "X9Y44ZXVDM23"
-    },
-    {
-      "name": "Learning Kubernetes",
-      "issuer": "LinkedIn",
-      "date": "Issued Mar 2024",
-      "credentialUrl": "https://www.linkedin.com/learning/certificates/0b9d7c7a05adc91587fd5f2a3d1e8023e5383721beeff2425bd90c4802157cd9?trk=flagship-lil_details_certification"
-    },
-    {
-      "name": "Sound the Alarm: Detection and Response",
-      "issuer": "Google",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/XWG9SXPY6BZG",
-      "credentialId": "XWG9SXPY6BZG"
-    },
-    {
-      "name": "IBM RAG and Agentic AI Specialization",
-      "issuer": "IBM",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/specialization/GNEGN5XZ69M5",
-      "credentialId": "GNEGN5XZ69M5"
-    },
-    {
-      "name": "Top Features Java 21",
-      "issuer": "LinkedIn",
-      "date": "Issued Dec 2024",
-      "credentialUrl": "https://www.linkedin.com/learning/certificates/b5cb9d38ebc6944bd7ef8ed0275418220b3b025d8491c2aa2cc69b63eaa377d6?trk=share_certificate"
-    },
-    {
-      "name": "Vector Database Essentials: Setup, Configuration and Operations",
-      "issuer": "Coursera",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.credly.com/badges/7d4c33df-163b-41f4-baeb-14c095cca714/linked_in_profile"
-    },
-    {
-      "name": "Test your Angular web application using Jasmine and Karma",
-      "issuer": "Coursera",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/KPJIW9I76GAX",
-      "credentialId": "KPJIW9I76GAX"
-    },
-    {
-      "name": "Kubernetes in AWS: Create Cluster in EKS in your own VPC",
-      "issuer": "Coursera",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/JYXV4N8RRP8P",
-      "credentialId": "JYXV4N8RRP8P"
-    },
-    {
-      "name": "Communicating about Culturally Sensitive Issues",
-      "issuer": "LinkedIn",
-      "date": "Issued Dec 2020",
-      "credentialUrl": "https://www.linkedin.com/learning/certificates/a5eca55773aa56cfac9cfb2af5e2c3b9a0d330f6754b4777a5451b71784b15b1?trk=backfilled_certificate"
-    },
-    {
-      "name": "Elasticsearch in Depth",
-      "issuer": "LinkedIn",
-      "date": "Issued Mar 2024",
-      "credentialUrl": "https://www.linkedin.com/learning/certificates/49353277438509dc8b2ef58524571d21ce5c961c2b3562ce4a5c755f99ba60ca?trk=flagship-lil_details_certification"
-    },
-    {
-      "name": "Vector Search with NoSQL Databases using MongoDB & Cassandra",
-      "issuer": "SkillUp Online",
-      "date": "Issued Jan 2026",
-      "credentialUrl": "https://www.coursera.org/account/accomplishments/records/A5W6THT9LC0B",
-      "credentialId": "A5W6THT9LC0B"
-    },
-    {
-      "name": "Enterprise Architecture Foundations",
-      "issuer": "LinkedIn",
-      "date": "Issued Jan 2024",
-      "credentialUrl": "https://www.linkedin.com/learning/certificates/38792bd42c201ed3acdbd4b30dbe42e93d8008391155ef61bcb4d94e015dc1b0?trk=flagship-lil_details_certification"
+      "name": "Example Cloud Practitioner (Demo)",
+      "issuer": "Example Cloud Institute",
+      "date": "2024",
+      "credentialUrl": "",
+      "credentialId": "DEMO-0001"
     }
   ],
   "languages": [
-    {
-      "name": "Bulgarian",
-      "proficiency": "Native or bilingual proficiency"
-    },
-    {
-      "name": "English",
-      "proficiency": "Full professional proficiency"
-    },
-    {
-      "name": "German",
-      "proficiency": "Professional working proficiency"
-    },
-    {
-      "name": "Russian",
-      "proficiency": "Native or bilingual proficiency"
-    }
+    { "name": "English", "proficiency": "Full professional proficiency" },
+    { "name": "German", "proficiency": "Professional working proficiency" }
   ],
   "projects": [],
   "recommendations": [
     {
-      "author": "Dmytro Mula",
-      "authorTitle": "Technical Lead at Hilti Deutschland",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/dmytro-mula-74129794",
-      "text": "I had the pleasure of collaborating with Sergii on a challenging project, during which he was part of one of the most highly skilled teams.\n\nThroughout the course of the project, Sergii distinguished himself through his exceptional commitment to the project. He consistently went above and beyond to ensure the project's success, always maintaining and delivering outstanding quality. What I was always impressed about him is his dedication and deep knowledge of tech expertise. He is great to work with.\n\nI would strongly recommend Sergii for any team as he is not only a technical expert, but also someone who genuinely cares about his work and the people he works with."
+      "author": "Alex Example",
+      "authorTitle": "Engineering Manager (fictional)",
+      "authorLinkedInUrl": "",
+      "text": "This is a demo recommendation shipped with the Hirefolio template. Jane consistently delivered reliable, well-tested systems and elevated the whole team's engineering standards. Replace it with your real recommendations via the admin Profile Data upload."
     },
     {
-      "author": "🇧🇷 🇩🇪 Wesley Santos",
-      "authorTitle": "ISTQB Test Manager | Technical Lead - SDET | Test automation expert",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/adaowesley",
-      "text": "I have the pleasure of working closely with Sergii. He is an exceptional team player who brings his extensive knowledge and expertise to any project. He has many years of experience, possesses excellent programming skills and a deep passion for coding. Sergii consistently demonstrates strong problem-solving abilities. Another thing that stands out, is that he always goes above and beyond to exceed project expectations. His dedication is impressive. It's great to have him on board."
-    },
-    {
-      "author": "Sergii Chudakov",
-      "authorTitle": "Lead Software & DevOps Engineer – Hilti Group",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/sergii-chudakov",
-      "text": "Working with Sergii always meant for me being confident that all goes well. Having solid software engineering background, constant commitment to get the work done and great communication skills, Sergii recommended himself as a valuable team member and colleague you really enjoy to work with."
-    },
-    {
-      "author": "Sergii Redchyts",
-      "authorTitle": "AI Compliance & AI Implementation​ for R&D Efficiency​, Senior Project Manager | PMP | MBA | MSc",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/redchyts",
-      "text": "I would like to reference Mr Sergii Mavrov who was working in 2014 in Amadeus Product & Solution Centre (Ukraine) as Senior Java Developer. Sergii was in charge of the development and delivery of global tours managements and booking platform - Amadeus Traveltainment.\nI recommend Sergii as a skilled professional with deep knowledge of Java technology and all needed tools and environment as well as the specific of travel domain. As a senior professional Sergii also had supported colleagues working as an important team member and mentor."
-    },
-    {
-      "author": "Yuriy Dadichin",
-      "authorTitle": "Solutions Architect, Senior Full Stack JavaScript Developer. Crypto Enthusiast",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/yuriy-dadichin-049a8236",
-      "text": "Sergii is an amazing person to work with. He is real doer and he does never give up.\nAlso Sergii a nice person to talk with.\nI would definitely like to work with Sergii once more if you ask"
-    },
-    {
-      "author": "Omer Vidan",
-      "authorTitle": "B2C\\​B2B Commerce | Agentic AI | Online stores | Digital transformation",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/omervidan",
-      "text": "Sergii did an amazing Software development project for our Startup\nHis work was very professional and he helped us to achieve our goals through a challenging time\n\nThanks you Sergii\n\nOmer"
-    },
-    {
-      "author": "Rodion Kuznetsov",
-      "authorTitle": "Talent Acquisition in Technology (Fintech, Travel, E-commerce)",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/rodzimanos",
-      "text": "It was a great luck to hire Sergiy as Senior Java Software Engineer for Amadeus, CESE, Product & Solution Center. Sergiy made a great contribution to the development of the modern middleware booking engine for one of Amadeus solutions as an architect, senior software engineer. Sergiy expertise in Java helped Amadeus, CESE PSC interviewed and select number of experienced software engineers for other Java teams in company as well. If you are looking for a smart, dedicated and quality-oriented senior software engineer with excellent problem solving attitude and communication skills, contact him and you will not regret."
-    },
-    {
-      "author": "Tim Kassner",
-      "authorTitle": "Softwareingenieur bei ista",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/tim-k-64b97065",
-      "text": "Sergii and me work together in parallel teams of the same department. We were working together in a project for a sepcialised sorftware for customers, to configure their complex needs. Sergii took over the responsibility for the most complex component in this project. He was highly motivated and dutiful to find the best solution with high performance in result and an outstanding code quality. In case of questions or discussions Sergii is willing and able to help with all his knowledge, sepcialised know how and time he could offer. \n \nI can recommend Sergii for every position in a project as a developer - because of his spoken languages - even in many countries of the world."
-    },
-    {
-      "author": "Dr. Yury V. Zaytsev",
-      "authorTitle": "Technical Director and Pilot",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/yuryzaytsev",
-      "text": "I've got to know Sergii as I've joined TravelTainment and although we worked in different departments, I've had the pleasure of interacting with him as we sometimes solved coding challenges together and discussed engineering problems that we were facing in our respective projects over a cup of coffee. I'm only happy to attest that he is a very motivated and curious software engineer, and an excellent communicator!"
-    },
-    {
-      "author": "Denys Maruda 🇺🇦",
-      "authorTitle": "Founder at D-Labs",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/3a902231",
-      "text": "It's always been a pleasure to work with such a well educated person like Sergei. He always demonstrated excellent knowledge in Enterprise Java technologies. Exceptionally self motivated and passionate professional and simply nice guy to drink a beer with."
-    },
-    {
-      "author": "Ekaterina Novykova",
-      "authorTitle": "Team Manager of UA location for EG TeamOnline",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/ekaterina-novykova-2b86445",
-      "text": "Sergey is a senior developer who showed his ability to work with a high performance. He is able to fix a lot of defects in a given period of time, drill down into stories and help others with tasks. He always asks for more work and is highly motivated on the interesting project that can open his capabilities as much as possible"
-    },
-    {
-      "author": "Konstantin Allakhvierdov",
-      "authorTitle": "Project Manager at NDA",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/konstantin-allakhvierdov-56512911",
-      "text": "Very good engineer. All tasks were completed in time (what made our (QA) life more easy) :) Writing code with a little amount of defects and with a good speed. Very nice communication skills."
-    },
-    {
-      "author": "Pavlo Lysianskyi",
-      "authorTitle": "Молодший сержант корпуса морскої піхоти",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/w3838",
-      "text": "We had been working with Sergey at same team for three years. During this time he mostly work under pressure of terms and contradictory requirements of customers. However solutions that he designed and implemented continue working at high-load environment executing business-critical tasks. \nAlso I want to mention his perfect communication skills, desire to work in a team and ability to motivate other developers."
-    },
-    {
-      "author": "Nathan Kligman",
-      "authorTitle": "Self Employed",
-      "authorLinkedInUrl": "https://www.linkedin.com/in/nathan-kligman-252932",
-      "text": "Sergey has been a member of our group for more than three years starting as an engineer and then a CPE activity lead. Sergey’s success was due to a great combination of his deep technical knowledge, outstanding commitment and ability to learn things quickly “from scratch”. Sergey is a person of high motivation and always tries to do his job in the best way possible. This combined with his “can do” attitude and pleasant communication style has made him a very valuable part of our team. I would gladly recommend Sergey to everyone."
+      "author": "Sam Sample",
+      "authorTitle": "Product Lead (fictional)",
+      "authorLinkedInUrl": "",
+      "text": "A demo recommendation: Jane bridges product and engineering effortlessly — pragmatic architecture, clear communication, and shipping cadence you can plan a roadmap around."
     }
   ]
 }
