@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CLAUDE.md AI-config map** (#121) — a one-glance index of every agent, command, skill, hook,
+  plugin and MCP server in the repo, so a fresh session orients instantly instead of rediscovering
+  the tooling; the milestone-buckets list now includes **AI-assisted development & agents**
+  (milestone #7, area `ai-config`). Housekeeping: pruned the stale `.claude/worktrees/agent-*`
+  checkout left by a worktree-isolated agent (its #123 fix landed on `main` as 949b0cb via #155;
+  verified clean + content-merged before removal) — the path stays gitignored.
+
 - **`ssr-cd-safety` skill + `lint:cd-safety` check** (#118) — the zoneless/SSR silent-failure class
   (#94: properties assigned in subscribe/interval callbacks never repaint; unit tests bundle
   zone.js and cannot see it) is now (a) a committed skill stating the contract — async mutation ⇒
