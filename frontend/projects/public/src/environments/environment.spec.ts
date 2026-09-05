@@ -7,8 +7,8 @@ describe('Environment', () => {
         expect(prodEnvironment.production).toBe(true);
     });
 
-    it('should have googleAnalyticsId', () => {
-        expect(environment.googleAnalyticsId).toBe('G-1QSMT6N045');
-        expect(prodEnvironment.googleAnalyticsId).toBe('G-1QSMT6N045');
+    it('should have an EMPTY googleAnalyticsId (deprecated by the runtime site config, #65)', () => {
+        expect(environment.googleAnalyticsId).toBe('');
+        expect(prodEnvironment.googleAnalyticsId).toBe('');
     });
 });

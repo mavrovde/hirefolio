@@ -1,8 +1,29 @@
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
+import { of } from 'rxjs';
 import { SeoService } from './seo.service';
+import { SiteConfigService } from './site-config.service';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+
+// Test identity mirrors the historical branding so the assertions stay
+// meaningful; production values now come from the runtime config (#65).
+const MOCK_SITE_CONFIG_PROVIDER = {
+    provide: SiteConfigService,
+    useValue: {
+        config$: of({
+            siteName: 'mavrov.de',
+            siteUrl: 'https://mavrov.de',
+            ownerName: 'Sergii Mavrov',
+            ownerHeadline: 'Principal Software Engineer',
+            ownerDescription:
+                'Professional portfolio of Sergii Mavrov, a Principal Software Engineer specialized in Cloud, AI, and Full-Stack Development.',
+            contactEmail: '',
+            socialLinks: [],
+            analyticsId: '',
+        }),
+    },
+};
 
 describe('SeoService', () => {
     let service: SeoService;
@@ -11,7 +32,7 @@ describe('SeoService', () => {
 
     beforeEach(() => {
         TestBed.configureTestingModule({
-            providers: [SeoService, Title, Meta]
+            providers: [SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER]
         });
         service = TestBed.inject(SeoService);
         titleService = TestBed.inject(Title);
@@ -63,7 +84,7 @@ describe('SeoService', () => {
         TestBed.resetTestingModule();
         TestBed.configureTestingModule({
             providers: [
-                SeoService, Title, Meta,
+                SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER,
                 { provide: PLATFORM_ID, useValue: 'server' }
             ]
         });

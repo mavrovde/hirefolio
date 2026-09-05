@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Placeholder for next release.
+- **Site configuration layer: identity is env config, not code** (#65) — a forker rebrands a
+  PREBUILT image without rebuilding anything: the backend gains `SITE_NAME`/`SITE_URL`/
+  `OWNER_NAME`/`OWNER_HEADLINE`/`OWNER_DESCRIPTION`/`SOCIAL_LINKS`/`HIREFOLIO_ANALYTICS_ID`
+  settings and a public `GET /api/app/config/site` endpoint; the public app fetches it at runtime
+  (new `SiteConfigService`, shareReplay, neutral fallback when the backend is down) and threads it
+  through `SeoService` (title/description/canonical/OG/JSON-LD author+sameAs), the footer ©, the
+  home-page `Person` JSON-LD, and Google Analytics (id now runtime-config; empty = analytics off,
+  no id baked into the bundle anymore). The API's CORS allowlist now actually honours the
+  `cors_origins` setting (it existed but the middleware hardcoded the list), API title/root message
+  derive from `SITE_NAME`, and the CV-request email copy uses `OWNER_NAME`. Defaults preserve the
+  canonical deployment's current values, so an unchanged `.env` behaves identically; the anonymized
+  demo defaults land with #66, and `sitemap.xml`/`robots.txt` generation from `SITE_URL` is #71's
+  generator. **Operator note:** to override analytics, set `HIREFOLIO_ANALYTICS_ID` (the id no
+  longer lives in the Angular environments).
 
 ## [1.11.1] - 2026-09-05
 

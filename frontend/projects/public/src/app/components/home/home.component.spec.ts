@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import { HomeComponent } from './home.component';
 import { ProfileService } from '../../services/profile.service';
 import { SeoService } from '../../services/seo.service';
+import { SiteConfigService } from '../../services/site-config.service';
 import { LanguageService, provideSharedEnvironment } from '@mavrov/shared';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { of } from 'rxjs';
@@ -52,7 +53,18 @@ describe('HomeComponent', () => {
         provideSharedEnvironment({ production: false, apiUrl: '', apiPrefix: '/api/app', googleAnalyticsId: '' }),
         { provide: ProfileService, useClass: MockProfileService },
         { provide: LanguageService, useClass: MockLanguageService },
-        { provide: ActivatedRoute, useValue: mockActivatedRoute }
+        { provide: ActivatedRoute, useValue: mockActivatedRoute },
+        {
+          provide: SiteConfigService,
+          useValue: {
+            config$: of({
+              siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+              ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+              ownerDescription: 'Desc.', contactEmail: '', socialLinks: [],
+              analyticsId: '',
+            }),
+          },
+        }
       ],
     }).compileComponents();
 

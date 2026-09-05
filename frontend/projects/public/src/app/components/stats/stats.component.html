@@ -12,6 +12,6 @@
         }}</span>
     </span>
     <span>> {{ 'STATS.MODULES' | translate }}: {{ 'STATS.LOADED' | translate }}</span>
-    <span>> &copy; {{ currentYear }} Sergii Mavrov. All rights reserved.</span>
+    <span>> &copy; {{ currentYear }} {{ (site$ | async)?.ownerName }}. All rights reserved.</span>
   </div>
 </div>
