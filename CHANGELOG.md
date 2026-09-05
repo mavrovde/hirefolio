@@ -4,9 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- **The admin restore-timeout message reported a hardcoded `300s`** (#207) whatever the real ceiling
-  was, so an operator debugging a timeout would have been told the wrong number. It now reports the
-  configured value.
+### Changed
 - **Operational timeouts and bulk-import caps are configurable from `.env`** (#207) — the LLM request
   ceiling was the literal `300.0` repeated at five call sites, and the Ollama liveness probe used a
   different budget in each of the three places it appears (10 s at startup, 5 s in multi-chat, 2 s in
@@ -64,6 +62,9 @@ All notable changes to this project will be documented in this file.
   reached the merge gate because nothing in CI would have caught it.
 
 ### Fixed
+- **The admin restore-timeout message reported a hardcoded `300s`** (#207) whatever the real ceiling
+  was, so an operator debugging a timeout would have been told the wrong number. It now reports the
+  configured value.
 - **Dev compose now passes `LINKEDIN_IMPORT_TOKEN` into the backend** (#228) — prod compose forwarded
   it; the dev stack never did, so a token set in `.env` per `.env.example` still produced
   `401 Import requires a valid X-Import-Token` from the local importer (the backend saw an empty
