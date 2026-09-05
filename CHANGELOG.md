@@ -4,8 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- Placeholder for next release.
+### Fixed
+- **Dead CVE-2024-6345 "patch" removed from the backend image build** (#239) — the Dockerfile ran a
+  `sed` over `package_index.py`, but setuptools stopped shipping that module (verified against the
+  83/84 wheels), and `find -exec … +` with zero matches exits 0 — the layer always "succeeded"
+  while patching nothing: a dead security control giving false assurance. The real control is the
+  requirements pin (fixed in 70.0.0; we pin 84). Replaced with a fail-loud guard: the build now
+  ERRORS if `package_index.py` ever reappears (i.e. a downgrade below the fixed version) — verified
+  in both directions locally (absent → passes; present → fails).
 
 ## [1.11.0] - 2026-09-05
 > **⚠ Operator action required before the next rollout:** #141 renamed the Gemini

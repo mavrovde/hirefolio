@@ -65,10 +65,15 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 ENV VIRTUAL_ENV="/opt/venv"
 
-# Patch setuptools vulnerability (CVE-2024-6345 / GHSA-cx63-2mw6-8hw5) in package_index.py
-# The vulnerable line is: name = name.replace('..', '.').replace('\\', '_')
-# We replace it with: name = name.replace('../', '').replace('..\\', '').replace('\\', '_')
-RUN find /opt/venv -name "package_index.py" -exec sed -i "s/name.replace('..', '.').replace('\\\\', '_')/name.replace('..\/', '').replace('..\\\\\\\\', '').replace('\\\\', '_')/g" {} +
+# CVE-2024-6345 (GHSA-cx63-2mw6-8hw5) is closed by the setuptools pin in
+# requirements.txt (fixed in 70.0.0; we pin far past it). The historical sed
+# that patched package_index.py in place was removed in #239: setuptools no
+# longer ships that module (verified against the 83/84 wheels), and
+# `find -exec … +` with zero matches exits 0 — the layer always "succeeded"
+# while patching nothing, i.e. a dead security control giving false assurance.
+# Guard: fail the build if the module ever reappears (a downgrade below the
+# fixed version would resurface the vulnerable file).
+RUN test -z "$(find /opt/venv -name package_index.py)" || { echo "package_index.py is back — setuptools downgraded below the CVE-2024-6345 fix?" >&2; exit 1; }
 
 # Copy application code
 COPY . .
