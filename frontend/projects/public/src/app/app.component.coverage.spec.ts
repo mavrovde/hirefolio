@@ -3,9 +3,10 @@ import { AppComponent } from './app.component';
 import { RouterTestingModule } from '@angular/router/testing';
 import { GoogleAnalyticsService } from './services/google-analytics.service';
 import { SeoService } from './services/seo.service';
+import { SiteConfigService } from './services/site-config.service';
 import { ViewportScroller } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Component } from '@angular/core';
 import { CookieConsentComponent } from './components/cookie-consent/cookie-consent.component';
@@ -26,6 +27,17 @@ describe('AppComponent jsonLd stream', () => {
       providers: [
         { provide: GoogleAnalyticsService, useValue: { initialize: vi.fn() } },
         { provide: ViewportScroller, useValue: { setOffset: vi.fn() } },
+        {
+          provide: SiteConfigService,
+          useValue: {
+            config$: of({
+              siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+              ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+              ownerDescription: 'Desc.', contactEmail: '', socialLinks: [],
+              analyticsId: '',
+            }),
+          },
+        },
       ],
     })
       .overrideComponent(AppComponent, {

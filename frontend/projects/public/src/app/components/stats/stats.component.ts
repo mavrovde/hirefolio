@@ -1,9 +1,11 @@
 import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
+import { Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { TranslatePipe } from '@mavrov/shared';
 import { StatsService } from '@mavrov/shared';
+import { SiteConfigService, SiteConfig } from '../../services/site-config.service';
 
 import packageJson from '../../../../../../package.json';
 
@@ -25,13 +27,17 @@ export class SystemStatsComponent implements OnInit, OnDestroy {
   backendVersion: string = 'Unknown';
   frontendVersion: string = packageJson.version;
   currentYear: number = new Date().getFullYear();
+  site$: Observable<SiteConfig>;
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private statsService: StatsService,
     private router: Router,
-    private cdr: ChangeDetectorRef
-  ) { }
+    private cdr: ChangeDetectorRef,
+    siteConfig: SiteConfigService
+  ) {
+    this.site$ = siteConfig.config$;
+  }
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {

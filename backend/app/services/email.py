@@ -74,14 +74,14 @@ Please review and respond if necessary.
             msg.set_content(f"""
 Hello {name},
 
-This is an automated confirmation that your request for Sergii Mavrov's CV has been received.
+This is an automated confirmation that your request for {settings.owner_name}'s CV has been received.
 
 If you weren't able to download it immediately, you can try again later or respond to this email.
 
 Best regards,
-Sergii Mavrov
+{settings.owner_name}
 """)
-            msg["Subject"] = "CV Request Confirmation - Sergii Mavrov"
+            msg["Subject"] = f"CV Request Confirmation - {settings.owner_name}"
             msg["From"] = settings.smtp_user
             msg["To"] = email
 

@@ -78,6 +78,32 @@ class Settings(BaseSettings):
     )
     cv_version: str = "v1.0"
 
+    # Site identity (#65) — the ONE place owner identity lives. Everything the
+    # public site shows about its owner (title, footer, meta tags, JSON-LD,
+    # email copy, analytics) derives from these at RUNTIME via
+    # GET {api_prefix}/config/site, so a forker rebrands a prebuilt image with
+    # env vars alone — no rebuild, no code edits. The defaults are the
+    # canonical deployment's values; #66 swaps them for an anonymized demo
+    # persona. Rule: no component/service may hardcode identity — it must
+    # consume this config.
+    site_name: str = "mavrov.de"
+    site_url: str = "https://mavrov.de"
+    owner_name: str = "Sergii Mavrov"
+    owner_headline: str = "Principal Software Engineer"
+    owner_description: str = (
+        "Professional portfolio of Sergii Mavrov, a Principal Software Engineer "
+        "specialized in Cloud, AI, and Full-Stack Development."
+    )
+    # Comma-separated public profile URLs (JSON-LD sameAs + contact links).
+    social_links: str = "https://linkedin.com/in/smavrov,https://github.com/mavrovde"
+    # Google Analytics measurement id; empty disables analytics entirely.
+    # Namespaced like the Gemini knobs (#141): an ambient generic name could
+    # silently bind someone else's id. Default is the canonical deployment's id
+    # until #66 anonymizes the defaults.
+    analytics_id: str = Field(
+        default="G-1QSMT6N045", validation_alias="HIREFOLIO_ANALYTICS_ID"
+    )
+
     # LinkedIn
     linkedin_email: str = ""
     linkedin_password: str = ""

@@ -1,8 +1,26 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { of } from 'rxjs';
 import { SeoService } from './seo.service';
+import { SiteConfigService } from './site-config.service';
 import { Title, Meta } from '@angular/platform-browser';
 import { PLATFORM_ID } from '@angular/core';
+
+const MOCK_SITE_CONFIG_PROVIDER = {
+  provide: SiteConfigService,
+  useValue: {
+    config$: of({
+      siteName: 'mavrov.de',
+      siteUrl: 'https://mavrov.de',
+      ownerName: 'Sergii Mavrov',
+      ownerHeadline: 'Principal Software Engineer',
+      ownerDescription: 'Desc.',
+      contactEmail: '',
+      socialLinks: [],
+      analyticsId: '',
+    }),
+  },
+};
 
 describe('SeoService canonical URL handling', () => {
   afterEach(() => {
@@ -11,7 +29,7 @@ describe('SeoService canonical URL handling', () => {
 
   it('creates then reuses the canonical link on browser platform (line 71-77)', () => {
     TestBed.configureTestingModule({
-      providers: [SeoService, Title, Meta, { provide: PLATFORM_ID, useValue: 'browser' }],
+      providers: [SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER, { provide: PLATFORM_ID, useValue: 'browser' }],
     });
     const service = TestBed.inject(SeoService);
 
@@ -30,7 +48,7 @@ describe('SeoService canonical URL handling', () => {
   it('skips canonical update on server platform (line 61 false branch)', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [SeoService, Title, Meta, { provide: PLATFORM_ID, useValue: 'server' }],
+      providers: [SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER, { provide: PLATFORM_ID, useValue: 'server' }],
     });
     const service = TestBed.inject(SeoService);
 

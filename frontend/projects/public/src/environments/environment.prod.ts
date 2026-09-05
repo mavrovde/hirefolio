@@ -2,5 +2,7 @@ export const environment = {
   production: true,
   apiUrl: '',
   apiPrefix: '/api/app',
-  googleAnalyticsId: 'G-1QSMT6N045',
+  // Deprecated (#65): analytics now comes from the runtime site config
+  // (GET /config/site). Kept empty to satisfy the SharedEnvironment shape.
+  googleAnalyticsId: '',
 };

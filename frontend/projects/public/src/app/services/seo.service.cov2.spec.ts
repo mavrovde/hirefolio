@@ -1,7 +1,25 @@
 import { TestBed } from '@angular/core/testing';
 import { Title, Meta } from '@angular/platform-browser';
+import { of } from 'rxjs';
 import { SeoService } from './seo.service';
+import { SiteConfigService } from './site-config.service';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+
+const MOCK_SITE_CONFIG_PROVIDER = {
+  provide: SiteConfigService,
+  useValue: {
+    config$: of({
+      siteName: 'mavrov.de',
+      siteUrl: 'https://mavrov.de',
+      ownerName: 'Sergii Mavrov',
+      ownerHeadline: 'Principal Software Engineer',
+      ownerDescription: 'Desc.',
+      contactEmail: '',
+      socialLinks: [],
+      analyticsId: '',
+    }),
+  },
+};
 
 /**
  * #109 — not-found SEO: a not-found <title> plus a `robots: noindex` meta so an
@@ -13,7 +31,7 @@ describe('SeoService.setNotFound (#109)', () => {
   let metaService: Meta;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [SeoService, Title, Meta] });
+    TestBed.configureTestingModule({ providers: [SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER] });
     service = TestBed.inject(SeoService);
     titleService = TestBed.inject(Title);
     metaService = TestBed.inject(Meta);

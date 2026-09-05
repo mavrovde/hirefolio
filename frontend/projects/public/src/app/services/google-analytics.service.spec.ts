@@ -1,9 +1,23 @@
 import { TestBed } from '@angular/core/testing';
 import { GoogleAnalyticsService } from './google-analytics.service';
+import { SiteConfigService } from './site-config.service';
 import { NavigationEnd, Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { vi } from 'vitest';
 import { PLATFORM_ID } from '@angular/core';
+
+// The measurement id now arrives via the runtime site config (#65).
+const MOCK_SITE_CONFIG_PROVIDER = {
+  provide: SiteConfigService,
+  useValue: {
+    config$: of({
+      siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+      ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+      ownerDescription: 'Desc.', contactEmail: '', socialLinks: [],
+      analyticsId: 'G-1QSMT6N045',
+    }),
+  },
+};
 
 describe('GoogleAnalyticsService', () => {
   let service: GoogleAnalyticsService;
@@ -17,7 +31,7 @@ describe('GoogleAnalyticsService', () => {
     };
 
     TestBed.configureTestingModule({
-      providers: [GoogleAnalyticsService, { provide: Router, useValue: routerMock }],
+      providers: [GoogleAnalyticsService, { provide: Router, useValue: routerMock }, MOCK_SITE_CONFIG_PROVIDER],
     });
     service = TestBed.inject(GoogleAnalyticsService);
     router = TestBed.inject(Router);
@@ -88,7 +102,8 @@ describe('GoogleAnalyticsService', () => {
       providers: [
         GoogleAnalyticsService,
         { provide: Router, useValue: { events: new Subject() } },
-        { provide: PLATFORM_ID, useValue: 'server' }
+        { provide: PLATFORM_ID, useValue: 'server' },
+        MOCK_SITE_CONFIG_PROVIDER
       ]
     });
     const serverService = TestBed.inject(GoogleAnalyticsService);
@@ -101,6 +116,33 @@ describe('GoogleAnalyticsService', () => {
     serverService.initialize();
 
     expect(appendChildSpy).not.toHaveBeenCalled();
+  });
+
+  it('should not initialize when the config carries an empty analytics id (#65 disabled state)', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        GoogleAnalyticsService,
+        { provide: Router, useValue: { events: new Subject() } },
+        {
+          provide: SiteConfigService,
+          useValue: {
+            config$: of({
+              siteName: 's', siteUrl: 'u', ownerName: 'o', ownerHeadline: 'h',
+              ownerDescription: 'd', contactEmail: '', socialLinks: [],
+              analyticsId: '',
+            }),
+          },
+        },
+      ]
+    });
+    const disabledService = TestBed.inject(GoogleAnalyticsService);
+    const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((node: Node) => node);
+
+    disabledService.initialize();
+
+    expect(appendChildSpy).not.toHaveBeenCalled();
+    expect((disabledService as any).isInitialized).toBe(false);
   });
 
   it('should return early if scripts already exist', () => {
