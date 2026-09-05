@@ -57,6 +57,20 @@ own name and domain.
   - Security Scanning (Bandit)
   - Unit Tests (Frontend & Backend)
   - E2E Tests (Playwright with real Ollama integration)
+- **When each gate runs** (#208):
+
+  | stage | pull request | push to `main` |
+  |---|---|---|
+  | Lint · types · security · unit tests · migrations · version consistency | ✅ | ✅ |
+  | Build images · Docker E2E · publish to GHCR · roll out to prod | — | ✅ |
+
+  Every build/publish/deploy job is gated on `github.event_name == 'push'`, so a pull request runs
+  the verification jobs and **cannot** publish an image or touch the prod host. No job that runs on a
+  pull request reads a repository secret, which also keeps fork PRs working. The Docker E2E stays on
+  `main` because it needs the built images; run it locally with `./verify_all.sh` before merging
+  anything that touches SSR, HTTP wiring, or change detection (see
+  `.claude/skills/lessons-learned/SKILL.md`).
+
 - **Optimization**: Playwright-browser caching in CI — deliberately **no** multi-GB caches for Docker base images or AI model weights (measured net-negative; see `.claude/skills/lessons-learned/SKILL.md` §5)
 
 ## 📋 Prerequisites
