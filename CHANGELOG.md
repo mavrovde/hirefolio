@@ -40,6 +40,18 @@ All notable changes to this project will be documented in this file.
   `main`) and the payload pass's remaining per-segment forks are **not** fixed here; they are
   tracked in **#253**.
 
+### Added
+- **Live-freshness gate: "green pipeline" can no longer impersonate "live site"** (#169) — a new
+  scheduled `Live Freshness` workflow (daily + on-demand, no secrets needed) probes the live site
+  and FAILS RED whenever live ≠ released: `backend_version` from `/api/app/stats/public` must equal
+  the repo `VERSION`, and public `/admin/login` must 404 (a 200 proves a pre-workspace-split
+  frontend image, the exact shape of the five-month v1.2.27 staleness). This is the independent
+  alarm for the #112 published≠live gap: the deploy pipeline's own gate only runs when the
+  secrets-gated rollout actually rolls the host, so a skipped rollout previously left NO signal.
+  The deploy-time gate itself also gained a version probe (live `backend_version` == released
+  `VERSION`, with warm-up retries) on top of its existing digest + health + route-shape checks.
+  `CLAUDE.md` no longer describes a host rollout the pipeline doesn't perform.
+
 ## [1.11.1] - 2026-09-05
 
 ### Added

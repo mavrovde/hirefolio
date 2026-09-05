@@ -1,0 +1,78 @@
+# Live-freshness gate (#169): is the LIVE site running what we RELEASED?
+#
+# The deploy pipeline's own "Health + freshness gate" only runs when the
+# secrets-gated rollout actually rolled the host. When the DEPLOY_* secrets are
+# absent the run stays green while prod silently ages — that is exactly how
+# mavrov.de sat on v1.2.27 for five months while every release was announced as
+# shipped. This workflow is the independent check: it runs on a schedule and on
+# demand, needs no secrets, and FAILS RED whenever live ≠ released.
+#
+# Red here does not block deploys (it is a separate workflow, not a deploy.yml
+# job) — it is the standing alarm that "green pipeline" has drifted from "live
+# site". Silence it by rolling the host forward, never by editing the check.
+# The verdict logic itself lives in scripts/check_live_freshness.sh — ONE
+# contract shared with deploy.yml's post-rollout gate, so the two probes can
+# never drift apart.
+#
+# NOTE: GitHub auto-disables scheduled workflows after ~60 days without repo
+# activity — if this repo goes quiet, re-enable it (Actions → Live Freshness)
+# or run it manually; a silent alarm is the failure mode it exists to prevent.
+name: Live Freshness
+
+on:
+  schedule:
+    # Daily, 06:23 UTC — off the full hour to dodge the scheduled-run thundering
+    # herd, at most one day of undetected staleness.
+    - cron: "23 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  live-freshness:
+    name: Live vs Released
+    # Forks: without their own PUBLIC_URL variable this would probe the
+    # canonical deployment against the fork's VERSION — permanently red and
+    # unsolicited traffic. Run only on the canonical repo or when the fork has
+    # configured its own URL.
+    if: github.repository == 'mavrovde/hirefolio' || vars.PUBLIC_URL != ''
+    runs-on: ubuntu-latest
+    env:
+      # A forker points this at their own site via a repository variable; the
+      # canonical repo defaults to the maintainer's deployment.
+      PUBLIC_URL: ${{ vars.PUBLIC_URL || 'https://mavrov.de' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare live version + route shape against the released VERSION
+        run: |
+          set -u
+          released=$(cat VERSION)
+          # GH steps run bash -e: capture rc explicitly or a red verdict would
+          # kill the step before the summary is written.
+          rc=0
+          out=$(bash scripts/check_live_freshness.sh "$PUBLIC_URL" "$released") || rc=$?
+          echo "$out"
+
+          {
+            echo "## Live freshness — $PUBLIC_URL (released: $released)"
+            echo ""
+            echo "| Probe | Observed | Verdict |"
+            echo "|---|---|---|"
+            echo "$out" | while read -r probe observed verdict; do
+              echo "| $probe | \`$observed\` | $verdict |"
+            done
+            case "$rc" in
+              0) echo ""; echo "✅ Live matches the release." ;;
+              1) echo ""; echo "❌ **Live is STALE.** The last green pipeline did not reach the host (rollout skipped or failed — #112/#156). Roll the host forward (docs/DEPLOYMENT.md) or configure the \`DEPLOY_*\` secrets. Do not silence this check any other way." ;;
+              *) echo ""; echo "🚨 **Site unreachable** — this is an OUTAGE signal, not staleness." ;;
+            esac
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$rc" -eq 1 ]; then
+            echo "::error title=Live is STALE::live ≠ released $released — see the step summary."
+          elif [ "$rc" -ne 0 ]; then
+            echo "::error title=Site unreachable::$PUBLIC_URL did not answer — outage, not staleness."
+          fi
+          exit "$rc"

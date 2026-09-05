@@ -974,7 +974,10 @@ jobs:
       - name: Health + freshness gate
         if: steps.gate.outputs.enabled == 'true'
         env:
-          PUBLIC_URL: ${{ secrets.DEPLOY_PUBLIC_URL || 'https://mavrov.de' }}
+          # One URL knob (#254 review): vars.PUBLIC_URL is the canonical
+          # setting (shared with the Live Freshness workflow); the old
+          # DEPLOY_PUBLIC_URL secret stays honoured for back-compat.
+          PUBLIC_URL: ${{ vars.PUBLIC_URL || secrets.DEPLOY_PUBLIC_URL || 'https://mavrov.de' }}
           DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
         run: |
           echo "Waiting for $PUBLIC_URL to become healthy..."
@@ -984,20 +987,23 @@ jobs:
             echo "  health attempt $i/30"; sleep 10
           done
           $ok || { echo "Health gate FAILED"; exit 1; }
-          # Freshness probe (#169) with its own retries: the public host must NOT
-          # serve the admin SPA route — 404 proves a post-workspace-split build.
+          # Freshness verdict (#169): version + route-shape probes live in ONE
+          # shared script (also used by the scheduled Live Freshness workflow,
+          # so the two checks cannot drift apart). Retried because the backend
+          # may still be warming when health first flips.
+          released=$(cat VERSION)
+          fresh=false
           for i in $(seq 1 6); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' -m 10 "$PUBLIC_URL/admin/login" || echo 000)
-            if [ "$code" = "404" ]; then
-              echo "Freshness probe OK."
-              # Deploy succeeded: drop the rollback marker so nothing later can
-              # roll this healthy release backwards.
-              ssh prod "rm -f '${DEPLOY_DIR:-/opt/mavrov.de}/.env.rollback'" || true
-              exit 0
-            fi
-            echo "  freshness attempt $i/6: /admin/login -> $code (want 404)"; sleep 10
+            rc=0
+            bash scripts/check_live_freshness.sh "$PUBLIC_URL" "$released" || rc=$?
+            if [ "$rc" -eq 0 ]; then fresh=true; break; fi
+            echo "  freshness attempt $i/6 (rc=$rc)"; sleep 10
           done
-          echo "Freshness probe FAILED"; exit 1
+          $fresh || { echo "Freshness gate FAILED: live never matched released VERSION=$released with a post-split frontend"; exit 1; }
+          echo "Freshness gate OK."
+          # Deploy succeeded: drop the rollback marker so nothing later can
+          # roll this healthy release backwards.
+          ssh prod "rm -f '${DEPLOY_DIR:-/opt/mavrov.de}/.env.rollback'" || true
 
       - name: Roll back on failure
         if: failure() && steps.rollout.outputs.mutated == 'true'
