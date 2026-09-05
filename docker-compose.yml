@@ -87,6 +87,11 @@ services:
       # survive a backend restart.
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
       - JWT_ALLOW_EPHEMERAL_SECRET=${JWT_ALLOW_EPHEMERAL_SECRET:-true}
+      # Machine token for the LinkedIn importer — prod compose has passed this
+      # since the import endpoints shipped; the dev stack never did, so a token
+      # configured in .env silently 401'd locally (#228). Empty default = token
+      # auth disabled, admin-session imports only (same semantics as prod).
+      - LINKEDIN_IMPORT_TOKEN=${LINKEDIN_IMPORT_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
