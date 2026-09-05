@@ -87,6 +87,11 @@ services:
       # survive a backend restart.
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
       - JWT_ALLOW_EPHEMERAL_SECRET=${JWT_ALLOW_EPHEMERAL_SECRET:-true}
+      # Machine token for the LinkedIn importer — prod compose has passed this
+      # since the import endpoints shipped; the dev stack never did, so a token
+      # configured in .env silently 401'd locally (#228). Empty default = token
+      # auth disabled, admin-session imports only (same semantics as prod).
+      - LINKEDIN_IMPORT_TOKEN=${LINKEDIN_IMPORT_TOKEN:-}
       # Operational tuning knobs (#207) — same pattern as IMPORT_MAX_IMAGE_MB:
       # forwarded explicitly, defaulting to the literals they replaced, so an
       # unchanged .env reproduces the previous behaviour inside the container.
