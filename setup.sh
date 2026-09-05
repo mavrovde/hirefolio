@@ -13,6 +13,11 @@
 #
 # Safe to re-run: existing non-empty values in .env are NEVER overwritten.
 # Works on macOS (bash 3.2, BSD userland) and Linux.
+#
+# SCOPE: this is the LOCAL QUICKSTART — it boots the DEV compose stack
+# (local builds, dev ports, ephemeral-JWT default). For a real server use
+# docs/DEPLOYMENT.md ("First deploy (clean server)"), which walks the PROD
+# compose file, prebuilt images, and hardened settings.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -29,13 +34,33 @@ command -v docker >/dev/null 2>&1 || die "docker is required — install Docker 
 docker compose version >/dev/null 2>&1 || die "the 'docker compose' plugin is required."
 docker info >/dev/null 2>&1 || die "the Docker daemon is not running — start it and re-run."
 command -v openssl >/dev/null 2>&1 || die "openssl is required to generate secrets."
+command -v curl >/dev/null 2>&1 || die "curl is required for the health gate."
+[ -x "$ROOT/manage.sh" ] || die "manage.sh not found/executable — run from the repo root."
 
 # --- helpers ----------------------------------------------------------------
-# get_env KEY -> current uncommented value in .env ('' if absent/empty)
+# get_env KEY -> current uncommented value in .env ('' if absent, empty, or
+# whitespace/CR-only — a "\r" left by a CRLF editor must NOT count as a set
+# secret, or a 1-byte signing key sails through; #256 review finding 4).
+# Accepts optional leading whitespace and an `export ` prefix on the line.
 get_env() {
   [ -f "$ENV_FILE" ] || { echo ""; return; }
   # last uncommented assignment wins, matching docker compose semantics
-  awk -F= -v k="$1" '$0 !~ /^[[:space:]]*#/ && $1 == k { v = substr($0, index($0,"=")+1) } END { print v }' "$ENV_FILE"
+  awk -v k="$1" '
+    /^[[:space:]]*#/ { next }
+    {
+      line = $0
+      sub(/^[[:space:]]*/, "", line)
+      sub(/^export[[:space:]]+/, "", line)
+      eq = index(line, "=")
+      if (eq > 1 && substr(line, 1, eq - 1) == k) {
+        v = substr(line, eq + 1)
+        gsub(/[[:space:]\r]+$/, "", v)
+        gsub(/^[[:space:]]+/, "", v)
+        val = v
+      }
+    }
+    END { print val }
+  ' "$ENV_FILE"
 }
 
 # set_env KEY VALUE — append (never rewrite the file wholesale; preserves
@@ -43,6 +68,11 @@ get_env() {
 set_env() {
   if [ -n "$(get_env "$1")" ]; then
     return 0  # existing value is authoritative; never overwrite
+  fi
+  # A file without a trailing newline would glue the new KEY= onto the last
+  # line, corrupting BOTH values (#256 review blocker 2) — mend it first.
+  if [ -s "$ENV_FILE" ] && [ "$(tail -c 1 "$ENV_FILE" | wc -l | tr -d ' ')" -eq 0 ]; then
+    printf '\n' >> "$ENV_FILE"
   fi
   printf '%s=%s\n' "$1" "$2" >> "$ENV_FILE"
 }
@@ -59,10 +89,11 @@ ask() { # ask PROMPT DEFAULT -> stdout
 if [ ! -f "$ENV_FILE" ]; then
   say "Creating .env from .env.example"
   cp "$ROOT/.env.example" "$ENV_FILE"
-  chmod 600 "$ENV_FILE"
 else
   say ".env exists — keeping it (values already set are never overwritten)"
 fi
+# Always (not only on create): the file holds generated secrets either way.
+chmod 600 "$ENV_FILE"
 
 # --- 2. secrets -------------------------------------------------------------
 if [ -z "$(get_env JWT_SECRET_KEY)" ]; then

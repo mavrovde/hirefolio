@@ -119,7 +119,7 @@ Then open <http://localhost:4200> (public site) and <http://admin.localhost:4200
 ./manage.sh stop
 ```
 
-### 3. Manual Setup (Local Dev)
+### Manual Setup (Local Dev)
 
 #### Backend
 
@@ -172,7 +172,7 @@ npm install
 npm start
 ```
 
-### 5. Access Application
+### Access Application
 
 - **Frontend**: <http://localhost:4200>
 - **Backend API**: <http://localhost:8000>
@@ -298,7 +298,9 @@ hirefolio/
 
 ### Backend Environment Variables
 
-Create `backend/.env`:
+The Docker stack takes everything from the ROOT `.env` (created by
+`./setup.sh`; full samples in `.env.example` and `backend/.env.example`).
+A `backend/.env` is only for running the backend BARE-METAL outside compose:
 
 ```bash
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov

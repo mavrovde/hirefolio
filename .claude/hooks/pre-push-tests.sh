@@ -275,6 +275,14 @@ run_checks() {
       echo "  ✗ test-bump-version.sh failed — run 'bash test-bump-version.sh' to see which case"
       return 1
     }
+    # setup.sh's .env helpers hold the user's secrets file to an idempotency
+    # contract — pinned by its own self-test (#61/#256), same pattern.
+    if [ -f "$ROOT/setup.test.sh" ]; then
+      ( cd "$ROOT" && bash setup.test.sh >/dev/null ) || {
+        echo "  ✗ setup.test.sh failed — run 'bash setup.test.sh' to see which case"
+        return 1
+      }
+    fi
   fi
 
   if [ "$PREPUSH_RUN_GUARDTEST" = "1" ] && [ -f "$ROOT/.claude/hooks/guard-destructive.test.sh" ]; then

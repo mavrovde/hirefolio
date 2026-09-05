@@ -81,7 +81,13 @@ All notable changes to this project will be documented in this file.
   `backend/.env.example` now documents EVERY key `app/config.py` consumes (was 3 lines) with safe
   placeholders; the README quickstart leads with the one-command path plus a config-only
   "make it yours" checklist, and the contact section no longer hardcodes the maintainer's
-  personal details.
+  personal details. Review hardening (#256): the dev compose now forwards `ADMIN_PASSWORD` (the
+  generated password previously never reached the container — the backend refused to seed while
+  the wizard printed unusable credentials); the `.env` helpers mend a missing trailing newline
+  before appending and treat whitespace/CR-only values as unset (no 1-byte secrets); both guards
+  are pinned failing-first by a new `setup.test.sh` (10 cases) wired into the pre-push docs leg;
+  the root `.env.example` gains the #65 identity block; `setup.sh` is explicitly scoped as the
+  LOCAL quickstart (servers use `docs/DEPLOYMENT.md`).
 
 ## [1.11.1] - 2026-09-05
 
