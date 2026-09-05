@@ -56,6 +56,32 @@ async def request_cv(
         await db.commit()
         await db.refresh(cv_request)
 
+        # 1b. Index it in the unified inbox (#69): the CvRequest stays the
+        # domain record; the Interaction is the hub entry linking back via
+        # source_ref. Never blocks the CV flow on failure.
+        try:
+            from app.models.interaction import Interaction
+
+            db.add(
+                Interaction(
+                    source="cv_request",
+                    source_ref=cv_request.id,
+                    status="new",
+                    name=payload.name,
+                    email=payload.email,
+                    company=payload.company,
+                    message=payload.message,
+                    payload={
+                        "position_description": payload.position_description,
+                        "cv_version": active_cv.version,
+                    },
+                )
+            )
+            await db.commit()
+        except Exception as e:
+            logger.error(f"Failed to index CV request in the inbox: {e}")
+            await db.rollback()
+
         # 2. Send emails in background
         background_tasks.add_task(process_email_notifications, cv_request.id, payload)
 
