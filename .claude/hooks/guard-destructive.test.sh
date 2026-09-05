@@ -24,6 +24,28 @@ check_fast() { # desc cmd max_seconds
   fi
 }
 
+# Decision AND wall clock, together. Neither helper above can express the
+# property that actually matters for a destructive payload buried in bulk:
+# `check` accepts a deny that arrives at 40 s (which production, at a 15 s
+# timeout, never sees — the hook is killed and the command runs), and
+# `check_fast` accepts any decision as long as it is quick. A pin that asserts
+# only one half passes against a hook that fails the other (round-5 review of
+# #235: the many-segment destroy-tail case passed against the pre-fix hook at
+# 40 s). Use this for every case whose point is "denies IN TIME".
+check_within() { # desc cmd expect max_seconds
+  local desc="$1" cmd="$2" expect="$3" max="$4" out dec t0 t1 el
+  t0=$(date +%s)
+  out="$(printf '{"tool_input":{"command":%s}}' "$(jq -Rn --arg c "$cmd" '$c')" | bash "$HOOK")"
+  t1=$(date +%s); el=$((t1 - t0))
+  dec="$(printf '%s' "$out" | jq -r '.hookSpecificOutput.permissionDecision')"
+  if [ "$dec" = "$expect" ] && [ "$el" -le "$max" ]; then
+    printf 'PASS  [%s %ss<=%ss]  %s\n' "$dec" "$el" "$max" "$desc"
+  else
+    printf 'FAIL  got=%s want=%s took=%ss max=%ss  %s\n' "$dec" "$expect" "$el" "$max" "$desc"
+    fails=$((fails + 1))
+  fi
+}
+
 check() { # desc cmd expect
   local desc="$1" cmd="$2" expect="$3" out dec
   out="$(printf '{"tool_input":{"command":%s}}' "$(jq -Rn --arg c "$cmd" '$c')" | bash "$HOOK")"
@@ -391,6 +413,11 @@ check "subst: eval rm data"           "eval \"$D \$(pwd)/data\""                
 check "pipe: bash -x"                "echo \"$DV $V\" | bash -x"                   deny
 check "pipe: bash -"                 "echo \"$DV $V\" | bash -"                    deny
 check "pipe: absolute /bin/bash"     "echo \"$DV $V\" | /bin/bash"                 deny
+# Root-level spelling: the old sed strip needed a SECOND '/' to fire, so `/bash`
+# kept its slash and matched no shell name — allowed. The builtin strip (#235)
+# takes the basename of any leading-'/' word, so it denies. Fail-closed and the
+# only decision change this change makes anywhere.
+check "pipe: root-level /bash"       "echo \"$DV $V\" | /bash"                     deny
 check "pipe: sudo -E bash"           "echo \"$D $T\" | sudo -E bash"               deny
 check "pipe: xargs -0 bash -c"       "echo \"$DV $V\" | xargs -0 bash -c"          deny
 check "pipe: zsh"                    "echo \"$D $T\" | zsh"                        deny
@@ -802,6 +829,35 @@ check_fast "cost: 5KB xargs-option run"       "${XOPTS}echo hi"                 
 check      "cost: xargs-opts destroy tail"     "${XOPTS}$DV"                      deny
 # ...and the leading-run bypass check still honors a buried GUARD_DESTRUCTIVE=0.
 check "bypass: mid-run GUARD_DESTRUCTIVE=0"   "FOO=1 GUARD_DESTRUCTIVE=0 $DV $V"  allow
+
+# --- MANY-SEGMENT BULK (#235 — the last #219 residual) ----------------------
+# pipes_into_shell forked ~3× per segment with no budget check: 5,000 ';'
+# segments (10 KB) took 40 s — past the 15 s hook timeout, i.e. an unanalysed
+# allow in production. Fork-free fast paths + a per-segment $SECONDS budget
+# that fails CLOSED now: the shapes answer inside the budget (deny via the
+# deadline is the designed answer for pathological bulk; an ordinary command
+# with a normal segment count stays allowed — BIGOK above pins that side).
+# These two carry no destructive payload, so BOTH decisions are correct for
+# them (allow = analysed and clean; deny = budget, fail-closed) and pinning
+# either would fail on a legitimate speed-up — cost is the only assertable
+# property here, so they stay check_fast. Every case below that DOES carry a
+# payload asserts decision and clock together with check_within.
+MANYSEMI="$(printf 'x;%.0s' $(seq 1 5000))"
+check_fast "cost: 5000 ;-segments in budget"  "$MANYSEMI"                        10
+MANYPIPE="$(printf 'x|%.0s' $(seq 1 11000))"
+check_fast "cost: 11000 |-segments in budget" "$MANYPIPE"                        10
+# ...and a destructive tail behind the bulk must still be denied — IN TIME.
+# As plain `check` this passed against the pre-fix hook at 40 s, i.e. it pinned
+# nothing and asserted a deny production would never deliver (round-5 review).
+check_within "cost: many-segment destroy tail" "${MANYSEMI}$DV $V"        deny 10
+# The single-space shapes above take the fully fork-free path. ONE space more
+# per segment and the whitespace collapse forks again, the budget is spent in
+# pipes_into_shell, and (before the round-5 fix) 3,000 segments were handed to
+# the payload pass — the one pre-inspection loop with no deadline check: 17.6 s
+# measured, past the 15 s hook timeout. Pin the expensive shape too, or the
+# blind spot this change closes survives one space to the right.
+MANYDBL="$(printf 'a  b;%.0s' $(seq 1 3000))"
+check_within "cost: double-space destroy tail" "${MANYDBL}$DV $V"         deny 10
 
 if [ "$fails" -eq 0 ]; then
   echo "All guard-destructive cases passed."
