@@ -139,7 +139,7 @@ inner_script_has_push() {
 # --namespace/--config-env) consumed — to be `push`. Everything else,
 # including `git push` sitting inside a quoted argument, is DATA.
 segment_invokes_git_push() {
-  local seg="$1" first rest tok _peeled
+  local seg="$1" first rest tok
   [ "$SECONDS" -ge "$INSPECT_DEADLINE" ] && return 0   # cannot analyse → gate
   seg="$(printf '%s' "$seg" | tr '\n\t' '  ' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
 
@@ -164,8 +164,9 @@ segment_invokes_git_push() {
       changed=1
     fi
     # Transparent wrappers — sudo/env/nohup/time/… (shared model, #217).
-    if _peeled="$(peel_wrapper "$seg")"; then
-      seg="$_peeled"; changed=1
+    # peel_wrapper returns via the PEEL_RESULT global, not stdout (#235).
+    if peel_wrapper "$seg"; then
+      seg="$PEEL_RESULT"; changed=1
     fi
     # xargs [opts] git push — same one-pass strip as the guard's (#219).
     if printf '%s' "$seg" | grep -Eq '^xargs( |$)'; then
