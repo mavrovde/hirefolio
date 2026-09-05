@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Placeholder for next release.
+- **Onboarding: clone → one command → running site** (#61) — new `./setup.sh` wizard (idempotent;
+  `--defaults` for non-interactive): creates `.env` from the sample, generates strong secrets
+  (JWT signing key, admin password — never overwrites existing values, never committed), prompts
+  for the owner identity consumed by the #65 runtime site config, starts the stack and waits for
+  the backend health gate. An **MIT `LICENSE`** lands at the repo root (the repo previously said
+  "private and proprietary" while being publicly forkable — legally unusable as a template);
+  `backend/.env.example` now documents EVERY key `app/config.py` consumes (was 3 lines) with safe
+  placeholders; the README quickstart leads with the one-command path plus a config-only
+  "make it yours" checklist, and the contact section no longer hardcodes the maintainer's
+  personal details.
 
 ## [1.11.1] - 2026-09-05
 
