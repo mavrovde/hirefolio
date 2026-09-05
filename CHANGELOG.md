@@ -4,13 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- **Dev compose now passes `LINKEDIN_IMPORT_TOKEN` into the backend** (#228) — prod compose forwarded
-  it; the dev stack never did, so a token set in `.env` per `.env.example` still produced
-  `401 Import requires a valid X-Import-Token` from the local importer (the backend saw an empty
-  configured token, which `_import_authorized` rightly never accepts). Verified live: with the fix
-  the container's token matches `.env` (sha-compare) and `python -m importer` imported 7 posts
-  against `http://localhost:8000`; an empty token still 401s token-only requests.
-
 ### Added
 - **`/deploy-status` command** (#120) — one command that reports the TRUE deploy state: latest
   `deploy.yml` run + whether the secrets-gated rollout job ran or silently skipped, repo
@@ -30,6 +23,12 @@ All notable changes to this project will be documented in this file.
   reached the merge gate because nothing in CI would have caught it.
 
 ### Fixed
+- **Dev compose now passes `LINKEDIN_IMPORT_TOKEN` into the backend** (#228) — prod compose forwarded
+  it; the dev stack never did, so a token set in `.env` per `.env.example` still produced
+  `401 Import requires a valid X-Import-Token` from the local importer (the backend saw an empty
+  configured token, which `_import_authorized` rightly never accepts). Verified live: with the fix
+  the container's token matches `.env` (sha-compare) and `python -m importer` imported 7 posts
+  against `http://localhost:8000`; an empty token still 401s token-only requests.
 - **Destruction guard: six standing bypass classes closed** (#212, #213, #217, #218, #219, #220) —
   all pre-existing on `main`, found across the #206/#214 review rounds; every one is the same
   recurring root cause (the guard recognised a textual *framing* while the shell executes an
