@@ -3,6 +3,14 @@ name: Prod Deployment
 on:
   push:
     branches: [main]
+  # Verification-only run for pull requests (#208). The QA jobs below run on both
+  # events; every job that BUILDS, PUBLISHES or DEPLOYS is gated on
+  # `github.event_name == 'push'`, so a pull request can never push an image or
+  # touch the prod host. Before this, a PR was checked by CodeQL alone and the
+  # first CI evaluation of correctness happened on `main` — i.e. on the branch
+  # that deploys to production.
+  pull_request:
+    branches: [main]
 
 # Serialize deploys: two pushes to `main` in quick succession must NOT run
 # overlapping pipelines that race on the shared container-registry tags
@@ -10,7 +18,7 @@ on:
 # running one instead of aborting a half-published deploy, so the newest commit
 # is always published last (#147).
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: deploy-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -387,6 +395,8 @@ jobs:
   # ============================================
   build-backend:
     name: Build Backend Image
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [backend-tests, backend-migrations, version-consistency]
     permissions:
@@ -413,6 +423,8 @@ jobs:
 
   build-frontend:
     name: Build Public Frontend Image
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [frontend-shared-tests, frontend-public-tests, version-consistency]
     permissions:
@@ -444,6 +456,8 @@ jobs:
 
   build-admin-frontend:
     name: Build Admin Frontend Image
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [frontend-shared-tests, frontend-admin-tests, version-consistency]
     permissions:
@@ -475,6 +489,8 @@ jobs:
 
   build-proxy:
     name: Build Proxy Image
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [proxy-config-audit, version-consistency]
     permissions:
@@ -512,6 +528,8 @@ jobs:
   # ============================================
   e2e-tests:
     name: E2E Tests (Docker Stack)
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [build-backend, build-frontend, build-admin-frontend, build-proxy]
     steps:
@@ -671,6 +689,8 @@ jobs:
   # ============================================
   publish-backend:
     name: Publish Backend
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [e2e-tests]
     permissions:
@@ -701,6 +721,8 @@ jobs:
 
   publish-frontend:
     name: Publish Frontend
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [e2e-tests]
     permissions:
@@ -731,6 +753,8 @@ jobs:
 
   publish-admin-frontend:
     name: Publish Admin Frontend
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [e2e-tests]
     permissions:
@@ -761,6 +785,8 @@ jobs:
 
   publish-proxy:
     name: Publish Proxy
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [e2e-tests]
     permissions:
@@ -802,6 +828,8 @@ jobs:
   # the owner adds DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY (docs/DEPLOYMENT.md).
   deploy:
     name: Roll Out To Prod Host
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [publish-backend, publish-frontend, publish-admin-frontend, publish-proxy]
     env:

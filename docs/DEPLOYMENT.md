@@ -9,6 +9,11 @@ with **no registry login**, so those four packages **must be public** — the fo
 post-rename `hirefolio-*` packages were created *private* by GitHub and need a
 one-time visibility change (see "One-time action after the rename" below).
 
+The same workflow also runs on **pull requests**, but in verification-only mode
+(#208): the lint / type / security / unit-test / migration / version gates run,
+while every job that builds, publishes, or rolls out is gated on
+`github.event_name == 'push'` — nothing is ever published or deployed from a PR.
+
 ## First deploy (clean server)
 
 Prerequisites on the host: Docker Engine + the compose plugin, ports 80/443
