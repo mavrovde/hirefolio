@@ -76,6 +76,20 @@ c10_setup() { : > "$ENV_FILE"; set_env K v; }
 c10_assert() { [ "$(get_env K)" = "v" ] && [ "$(head -c1 "$ENV_FILE")" = "K" ]; }
 run_case "empty file gains no spurious leading newline" c10_setup c10_assert
 
+
+c11_setup() { :; }
+c11_assert() {
+  # Reviewer-authored (#256 round 2): a wizard-generated value that the dev
+  # compose does not forward is a credential the user cannot use.
+  local be; be="$(awk '/^  backend:/,/^  frontend:/' "$HERE/docker-compose.yml")"
+  local k rc=0
+  for k in $(grep -oE '^[[:space:]]*set_env[[:space:]]+[A-Z_]+' "$HERE/setup.sh" | awk '{print $2}' | sort -u); do
+    printf '%s\n' "$be" | grep -q -- "- $k=\${$k" || { echo "    $k is not forwarded to the backend container"; rc=1; }
+  done
+  return $rc
+}
+run_case "every key setup.sh writes is forwarded by the dev compose (#256 blocker 1)" c11_setup c11_assert
+
 echo "----"
 echo "setup.sh helper self-test: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

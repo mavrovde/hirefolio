@@ -83,7 +83,14 @@ own name and domain.
 
 ## 🚀 Quick Start
 
-### One command (recommended)
+### One command (recommended — LOCAL quickstart)
+
+> **Scope:** `setup.sh` boots the **dev** compose stack — local builds, dev ports
+> (4200/8000/11434/5433 on all interfaces), default Postgres credentials, and an
+> ephemeral JWT unless you set one. Perfect for trying the product and local
+> development. **For a real server** follow
+> [`docs/DEPLOYMENT.md` → "First deploy (clean server)"](docs/DEPLOYMENT.md) —
+> prod compose, prebuilt images, hardened settings.
 
 ```bash
 git clone https://github.com/mavrovde/hirefolio.git
