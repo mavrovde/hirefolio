@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Placeholder for next release.
+
+## [1.11.0] - 2026-09-05
+
+### Added
 - **`/deploy-status` command** (#120) — one command that reports the TRUE deploy state: latest
   `deploy.yml` run + whether the secrets-gated rollout job ran or silently skipped, repo
   `VERSION`/latest tag, published image tags, and the LIVE prod version from
@@ -376,9 +381,6 @@ All notable changes to this project will be documented in this file.
   (verified: container env empty, stack healthy, the five Gemini-touching admin specs pass in 12.5 s).
   `deploy.yml`'s backend test job also sets it explicitly rather than relying on the runner simply
   not having the variable.
-
-### Added
-- Placeholder for next release.
 
 ## [1.10.0] - 2026-08-30
 
