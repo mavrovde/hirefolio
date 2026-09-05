@@ -86,6 +86,9 @@ run_checks() {
       return 1
     fi
     ( cd "$ROOT/backend" && HIREFOLIO_GEMINI_API_KEY="" ./venv/bin/pytest -q ) || return 1
+    echo "== agent-playbook drift check (#115) =="
+    # Only the sync test: the rest of agents/tests needs the a2a venv. No DB.
+    ( cd "$ROOT" && backend/venv/bin/python -m pytest agents/tests/test_playbook_sync.py -q --no-header -p no:cacheprovider --no-cov ) || return 1
   fi
 
   if [ "$PREPUSH_RUN_LINT" = "1" ]; then

@@ -273,6 +273,21 @@ All notable changes to this project will be documented in this file.
   shifted the worker distribution.
 
 ### Changed
+- **Agent playbook has a single source of truth** (#115) — the shared team discipline that was
+  hand-duplicated across `agents/common/roster.py` (`PROJECT_PLAYBOOK`) and implicitly restated in
+  the 7 `.claude/agents/*.md` charters now lives in ONE committed file, `agents/PLAYBOOK.md`
+  (extracted byte-identically). `roster.py` loads it at import (failing loud if missing), every
+  charter opens with a reference block naming it as authoritative, and a new drift check
+  (`agents/tests/test_playbook_sync.py`) fails when the roster stops consuming the file, the file
+  loses a load-bearing section, or a charter drops the reference — mutation-checked (removing a
+  charter's reference fails exactly that test; appending a probe line to the playbook propagates to
+  `PROJECT_PLAYBOOK` with zero other edits). The round-1 review (rule 11) hardened it further, all
+  fixed here: the drift check compared CONTENT only, so a byte-identical re-inlined duplicate passed
+  undetected — a source-level assertion now fails if `roster.py` carries the playbook text inline;
+  ALL seven charters' verbatim rule-9/rule-10 blocks now carry only a
+  pointer plus their role delta (round 2 finished the remaining four); and the sync test actually RUNS somewhere — wired into both the
+  pre-push hook's backend leg and CI's Backend Tests job (it previously gated nothing — §18,
+  verify-that-gates-actually-gate).
 - **The Gemini environment variables are project-scoped: `HIREFOLIO_GEMINI_API_KEY` and
   `HIREFOLIO_GEMINI_ENCRYPTION_KEY`** (#141) — the generic `GEMINI_API_KEY` is a name developers
   commonly export globally from a shell profile, and a process environment variable **overrides
