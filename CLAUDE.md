@@ -62,7 +62,8 @@ specs/      Feature specs (planned/done)
 
 ## Claude Code tooling in this repo
 
-**AI-config map** (#121) — the complete tooling surface, one glance:
+**AI-config map** (#121) — the tooling surface at one glance (update this table in the same PR
+that adds or removes a tool; the #232 drift-check pattern is the model if it keeps going stale):
 
 | Kind | Name | Purpose |
 |---|---|---|
@@ -77,8 +78,14 @@ specs/      Feature specs (planned/done)
 | command | `/release` | release runbook mirroring `release.sh` |
 | command | `/issue-triage` | sweep the backlog for orphan issues (milestone/priority/area) |
 | command | `/linkedin-sync` | scrape LinkedIn profile+posts → import into the backend |
+| command | `/deploy-status` | true deploy state: pipeline + published + LIVE version + verdict (#120) |
+| command | `/e2e` | the known-good Docker E2E loop (#117) |
+| command | `/prep-pr` | pre-PR hygiene gate: stale-main, CHANGELOG dup, stale assertions (#119) |
 | skill | `issue-workflow` | issue/PR/milestone/label flow with copy-paste `gh` commands |
 | skill | `lessons-learned` | committed do-not-repeat KB — consult before SSR/pytest/CI-cache/release/destructive work |
+| skill | `e2e-validation` | the E2E loop + its traps, for agents (#117) |
+| skill | `env-gotchas` | macOS/BSD/gh platform pitfalls (#119) |
+| skill | `ssr-cd-safety` | zoneless repaint + SSR HTTP contract (#118) |
 | hook | `pre-push-tests.sh` | PreToolUse Bash: docs + backend + frontend gates before every `git push` |
 | hook | `guard-destructive.sh` | PreToolUse Bash: blocks irreversible local/infra destruction (rule 9) |
 | plugin | `frontend-design`, `context7`, `playwright`, `pyright-lsp`, `typescript-lsp`, `security-guidance` | see #122 for the curation rationale |
@@ -86,8 +93,9 @@ specs/      Feature specs (planned/done)
 
 - **MCP servers** (`.mcp.json`): `postgres` (read-only SQL on the pgvector DB), `playwright`
   (browser automation), `github` (PRs/issues). Approve on first use.
-- **Subagents** (`.claude/agents/`): `devops-pipeline` (babysit CI after a merge), `backend-dev`,
-  `frontend-dev` (reproduce → fix → verify a diagnosis, then deliver via a PR — not a direct push).
+- **Subagents** (`.claude/agents/`): all seven — `backend-dev`, `frontend-dev`, `devops-pipeline`,
+  `pr-reviewer`, `release-manager`, `security-triage`, `issue-author` — see the AI-config map above
+  for one-line purposes.
 - **Hooks** (`.claude/hooks/`, via committed `.claude/settings.json`, both `PreToolUse Bash`):
   `pre-push-tests.sh` runs docs + backend pytest + backend lint/type (ruff check + ruff format --check
   + mypy) + frontend tests before every `git push` (env-configurable: `PREPUSH_RUN_LINT`/
