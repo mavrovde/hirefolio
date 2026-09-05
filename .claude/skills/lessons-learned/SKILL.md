@@ -468,6 +468,25 @@ believed the general case had been found and had only found an instance.
    quote. Measured directly: the six escaped-quote cases **pass** at the commit before that fix and
    **fail** at the fix itself. Two halves that are consistently wrong are safer than one half made
    right; when you correct a parsing rule, correct every function that parses.
+13. **Bound the INPUT before the analysis, and measure where the budget actually goes.** #219: the
+   wall-clock deadline (item 10) bounded the *inspection* phase, but the quoting scan ran before any
+   deadline check could fire, so a large enough command still outlived the hook timeout — bulk alone
+   defeated the guard, no cleverness required. The bound has to sit in front of the first unbounded
+   loop, and exceeding it must deny. Bonus measurement: bash's `${s:i:1}` is O(n) *per access* under
+   a UTF-8 locale (it re-counts multibyte characters from the start), turning every character loop
+   quadratic; when every dispatch character is ASCII, `LC_ALL=C` is a one-line ~3.5x speedup that is
+   semantically identical — UTF-8 continuation bytes have the high bit set and cannot alias ASCII.
+14. **A quantifier in an ERE binds to ONE atom.** `-execdir? ` means `-execdi` + optional `r` — it
+   matches `-execdir` and `-execdi` but never `-exec`, the common spelling (#218). Write
+   `-exec(dir)?`. And when you *widen* a match, re-check what segment types it runs on: the widened
+   `find -exec` unwrap had to be gated on the command actually being `find`, or a commit message
+   quoting a `find -exec ...` line would deny (item 7).
+15. **An allowlist of wrappers is a list of the framings someone thought of** (#217). `nice`,
+   `stdbuf`, `timeout`, `busybox`, `doas`... each runs its argv unchanged, and each absence was a
+   bypass. When two code paths peel wrappers, give them ONE shared peel function (item 12), and
+   consume option *values* per-wrapper: consuming a value after a flag that takes none (`env -i`)
+   swallows the real command — a false allow — while not consuming one (`nice -n 10`) hides the
+   command behind the value token.
 
 This is the clearest evidence yet for CLAUDE.md rule 11: an independent reviewer caught a security
 regression in four consecutive rounds that the author, the author's own new tests, and green CI all missed —
