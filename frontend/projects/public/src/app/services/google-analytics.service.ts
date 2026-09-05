@@ -1,8 +1,8 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
+import { filter, take } from 'rxjs/operators';
+import { SiteConfigService } from './site-config.service';
 
 // Declare gtag as a global variable
 declare const gtag: Function;
@@ -11,22 +11,34 @@ declare const gtag: Function;
     providedIn: 'root'
 })
 export class GoogleAnalyticsService {
-    private googleAnalyticsId = environment.googleAnalyticsId;
+    // The measurement id comes from the runtime site config (#65) — empty
+    // disables analytics entirely; no id is ever baked into the bundle.
+    private googleAnalyticsId = '';
 
     constructor(
         @Inject(PLATFORM_ID) private platformId: Object,
-        private router: Router
+        private router: Router,
+        private siteConfig: SiteConfigService
     ) { }
 
     private isInitialized = false;
 
     public initialize() {
-        if (isPlatformBrowser(this.platformId) && this.googleAnalyticsId && !this.isInitialized) {
-            this.loadScript();
-            this.initGtag();
-            this.trackPageViews();
-            this.isInitialized = true;
+        if (!isPlatformBrowser(this.platformId) || this.isInitialized) {
+            return;
         }
+        // config$ is a one-shot shareReplay stream; take(1) both bounds the
+        // subscription and re-checks the guards once the id is known.
+        // cd-safety-ok: assigns a private service field and injects <script> tags — nothing template-bound.
+        this.siteConfig.config$.pipe(take(1)).subscribe((cfg) => {
+            this.googleAnalyticsId = cfg.analyticsId;
+            if (this.googleAnalyticsId) {
+                this.loadScript();
+                this.initGtag();
+                this.trackPageViews();
+                this.isInitialized = true;
+            }
+        });
     }
 
     private loadScript() {

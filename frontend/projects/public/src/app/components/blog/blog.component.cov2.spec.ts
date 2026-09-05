@@ -6,6 +6,7 @@ import { LanguageService } from '@mavrov/shared';
 import { of, throwError } from 'rxjs';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { SiteConfigService } from '../../services/site-config.service';
 
 describe('BlogComponent (cov2 branch coverage)', () => {
   let component: BlogComponent;
@@ -63,6 +64,19 @@ describe('BlogComponent (cov2 branch coverage)', () => {
         { provide: BlogService, useValue: blogServiceSpy },
         { provide: LanguageService, useValue: languageServiceMock },
         provideRouter([]),
+        // SeoService now pulls the runtime site config (#65); stub it so its
+        // HTTP fetch never reaches this suite's global fetch spy.
+        {
+          provide: SiteConfigService,
+          useValue: {
+            config$: of({
+              siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+              ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+              ownerDescription: 'Desc.', contactEmail: '', socialLinks: [],
+              analyticsId: '',
+            }),
+          },
+        },
       ],
     }).compileComponents();
 

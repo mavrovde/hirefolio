@@ -105,6 +105,16 @@ services:
       - DB_RESTORE_TIMEOUT_SECONDS=${DB_RESTORE_TIMEOUT_SECONDS:-300}
       - IMPORT_MAX_POSTS_JSON_MB=${IMPORT_MAX_POSTS_JSON_MB:-10}
       - IMPORT_MAX_POSTS_PER_REQUEST=${IMPORT_MAX_POSTS_PER_REQUEST:-500}
+      # Site identity (#65) — served to the public app via GET /config/site;
+      # defaults live in app/config.py, the root .env overrides them.
+      - SITE_NAME=${SITE_NAME:-}
+      - SITE_URL=${SITE_URL:-}
+      - OWNER_NAME=${OWNER_NAME:-}
+      - OWNER_HEADLINE=${OWNER_HEADLINE:-}
+      - OWNER_DESCRIPTION=${OWNER_DESCRIPTION:-}
+      - SOCIAL_LINKS=${SOCIAL_LINKS:-}
+      - HIREFOLIO_ANALYTICS_ID=${HIREFOLIO_ANALYTICS_ID:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
     depends_on:
       db:
         condition: service_healthy

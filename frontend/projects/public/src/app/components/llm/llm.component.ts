@@ -79,9 +79,9 @@ export class LlmComponent implements OnInit, AfterViewChecked {
     this.isMultiAgentMode = false; // Force default
     if (this.standalone) {
       this.seoService.updateSeo({
-        title: 'Mavrov.de | Intelligent Multi-Agent Debate',
+        title: 'Intelligent Multi-Agent Debate',
         description: 'Watch AI agents with distinct personas debate any topic in real-time.',
-        keywords: 'AI Debate, Multi-Agent, LLM, Mavrov'
+        keywords: 'AI Debate, Multi-Agent, LLM'
       });
     }
     this.loadState();

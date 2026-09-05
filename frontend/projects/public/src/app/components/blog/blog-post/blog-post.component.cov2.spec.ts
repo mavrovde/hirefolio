@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BlogPostComponent } from './blog-post.component';
 import { BlogService } from '@mavrov/shared';
 import { SeoService } from '../../../services/seo.service';
+import { SiteConfigService } from '../../../services/site-config.service';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { of, throwError, BehaviorSubject } from 'rxjs';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
@@ -26,6 +27,18 @@ describe('BlogPostComponent — not-found SEO + SSR 404 status (#109)', () => {
       imports: [BlogPostComponent, MockTranslatePipe],
       providers: [
         provideRouter([]),
+        {
+            provide: SiteConfigService,
+            useValue: {
+                config$: of({
+                    siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+                    ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+                    ownerDescription: 'Desc.', contactEmail: '', socialLinks: [],
+                    analyticsId: '',
+                }),
+            },
+        },
+
         { provide: BlogService, useValue: blogServiceSpy },
         { provide: SeoService, useValue: seoServiceSpy },
         { provide: PLATFORM_ID, useValue: platform },

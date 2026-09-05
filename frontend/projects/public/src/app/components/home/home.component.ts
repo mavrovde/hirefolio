@@ -16,6 +16,7 @@ import { ContactComponent } from '../contact/contact.component';
 
 import { ProfileService, Profile } from '../../services/profile.service';
 import { SeoService } from '../../services/seo.service';
+import { SiteConfigService } from '../../services/site-config.service';
 
 @Component({
   selector: 'app-home',
@@ -61,6 +62,7 @@ export class HomeComponent implements OnInit {
     private route: ActivatedRoute,
     private viewportScroller: ViewportScroller,
     private seoService: SeoService,
+    private siteConfig: SiteConfigService,
     @Inject(PLATFORM_ID) private platformId: Object
   ) { }
 
@@ -86,7 +88,7 @@ export class HomeComponent implements OnInit {
 
           this.seoService.updateSeo({
             title: titleStr,
-            description: profile.about || profile.headline || 'Professional portfolio of Sergii Mavrov, a Principal Software Engineer.',
+            description: profile.about || profile.headline || undefined,
             keywords: `Software Development, ${profile.headline}, Cloud, AI, ${profile.skills.join(', ')}`
           });
         });
@@ -95,18 +97,19 @@ export class HomeComponent implements OnInit {
           this.initScrollLogic();
         }
 
-        this.seoService.setJsonLd({
-          "@context": "https://schema.org",
-          "@type": "Person",
-          "name": profile.name,
-          "jobTitle": profile.headline,
-          "url": "https://mavrov.de",
-          "description": profile.about,
-          "sameAs": [
-            "https://linkedin.com/in/smavrov",
-            "https://github.com/mavrovde"
-          ],
-          "knowsAbout": profile.skills
+        // JSON-LD url/sameAs come from the runtime site config (#65), never
+        // hardcoded; one-shot stream, bounded with take(1).
+        this.siteConfig.config$.pipe(take(1)).subscribe((site) => {
+          this.seoService.setJsonLd({
+            "@context": "https://schema.org",
+            "@type": "Person",
+            "name": profile.name,
+            "jobTitle": profile.headline,
+            "url": site.siteUrl,
+            "description": profile.about,
+            "sameAs": site.socialLinks,
+            "knowsAbout": profile.skills
+          });
         });
       }
     });

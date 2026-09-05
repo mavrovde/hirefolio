@@ -5,6 +5,7 @@ import { BlogService, BlogPost } from '@mavrov/shared';
 import { Observable, switchMap, catchError, of, tap, map, startWith } from 'rxjs';
 import { HeaderComponent } from '../../header/header.component';
 import { SeoService } from '../../../services/seo.service';
+import { SiteConfigService, DEFAULT_SITE_CONFIG, SiteConfig } from '../../../services/site-config.service';
 
 /**
  * View state for the blog-post page. A genuine "not found" (unknown slug → 404,
@@ -126,19 +127,25 @@ export interface BlogPostVm {
 })
 export class BlogPostComponent implements OnInit {
   vm$: Observable<BlogPostVm> | null = null;
+  // Identity for JSON-LD/share URLs comes from the runtime site config (#65).
+  private site: SiteConfig = DEFAULT_SITE_CONFIG;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private blogService: BlogService,
     private seoService: SeoService,
+    siteConfig: SiteConfigService,
     @Inject(PLATFORM_ID) private platformId: Object,
     // On the server this is the mutable `ResponseInit` the @angular/ssr engine
     // uses to build the outgoing Response; on the browser (and in unit tests) the
     // platform factory yields `null`. Mutating `.status` during render lets us
     // turn a soft-404 into a real HTTP 404 for unknown blog slugs (#109).
     @Inject(RESPONSE_INIT) private responseInit: ResponseInit | null
-  ) { }
+  ) {
+    // cd-safety-ok: assigns a private field consumed only inside later callbacks — nothing template-bound.
+    siteConfig.config$.subscribe((cfg) => (this.site = cfg));
+  }
 
   ngOnInit() {
     this.vm$ = this.route.paramMap.pipe(
@@ -204,13 +211,13 @@ export class BlogPostComponent implements OnInit {
       "datePublished": post.created_at,
       "author": {
         "@type": "Person",
-        "name": "Sergii Mavrov",
-        "url": "https://mavrov.de"
+        "name": this.site.ownerName,
+        "url": this.site.siteUrl
       },
       "description": post.summary || post.content.substring(0, 160),
       "mainEntityOfPage": {
         "@type": "WebPage",
-        "@id": `https://mavrov.de/blog/${post.slug}`
+        "@id": `${this.site.siteUrl}/blog/${post.slug}`
       },
       "keywords": post.tags?.join(', ')
     });
@@ -222,7 +229,7 @@ export class BlogPostComponent implements OnInit {
 
   async sharePost() {
     const slug = this.route.snapshot.paramMap.get('slug');
-    const url = `${isPlatformBrowser(this.platformId) ? window.location.origin : 'https://mavrov.de'}/blog/${slug}`;
+    const url = `${isPlatformBrowser(this.platformId) ? window.location.origin : this.site.siteUrl}/blog/${slug}`;
     if (isPlatformBrowser(this.platformId) && navigator.share) {
       try {
         await navigator.share({ title: document.title, url });
