@@ -5,6 +5,7 @@ import { Observable, map } from 'rxjs';
 import { TranslatePipe } from '@mavrov/shared';
 import { Router, RouterModule } from '@angular/router';
 import { SeoService } from '../../services/seo.service';
+import { SiteConfigService, DEFAULT_SITE_CONFIG, SiteConfig } from '../../services/site-config.service';
 
 import { HeaderComponent } from '../header/header.component';
 
@@ -33,21 +34,32 @@ export class BlogComponent implements OnInit {
   currentQuery = '';
   activeTag: string | null = null;
 
+  // Identity for SEO/share URLs comes from the runtime site config (#65).
+  private site: SiteConfig = DEFAULT_SITE_CONFIG;
+
   constructor(
     private blogService: BlogService,
     private seoService: SeoService,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    @Inject(PLATFORM_ID) private platformId: Object
-  ) { }
+    @Inject(PLATFORM_ID) private platformId: Object,
+    siteConfig?: SiteConfigService
+  ) {
+    // Duck-typed: unit tests construct this component manually with positional
+    // junk in the optional slot; only a real config stream is consumed.
+    if (siteConfig && typeof siteConfig.config$?.subscribe === 'function') {
+      // cd-safety-ok: assigns a private field consumed only inside later callbacks — nothing template-bound.
+      siteConfig.config$.subscribe((cfg) => (this.site = cfg));
+    }
+  }
 
   ngOnInit() {
     if (this.standalone) {
       this.seoService.updateSeo({
         title: 'Blog',
-        description: 'Read the latest insights and professional reflections from Sergii Mavrov, covering Cloud Architecture, AI, and Software Engineering.',
+        description: `Read the latest insights and professional reflections from ${this.site.ownerName}, covering Cloud Architecture, AI, and Software Engineering.`,
         url: '/blog',
-        keywords: 'Blog, Technology, Software Engineering, AI, Cloud, Sergii Mavrov'
+        keywords: `Blog, Technology, Software Engineering, AI, Cloud, ${this.site.ownerName}`
       });
     }
     this.loadInitialPosts();
@@ -236,7 +248,7 @@ export class BlogComponent implements OnInit {
   }
 
   async sharePost(post: BlogPost) {
-    const url = `${isPlatformBrowser(this.platformId) ? window.location.origin : 'https://mavrov.de'}/blog/${post.slug}`;
+    const url = `${isPlatformBrowser(this.platformId) ? window.location.origin : this.site.siteUrl}/blog/${post.slug}`;
     if (isPlatformBrowser(this.platformId) && navigator.share) {
       try {
         await navigator.share({ title: post.title, url });
