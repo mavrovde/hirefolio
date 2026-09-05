@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # SECURITY (issue #177): signing-secret values that must never be honoured. The
@@ -103,6 +103,27 @@ class Settings(BaseSettings):
     analytics_id: str = Field(
         default="G-1QSMT6N045", validation_alias="HIREFOLIO_ANALYTICS_ID"
     )
+
+    # Docker compose forwards these as ``SITE_NAME=${SITE_NAME:-}`` — an UNSET
+    # host variable therefore arrives as an EMPTY string, which would silently
+    # override the defaults above. For identity fields an empty value is never
+    # meaningful, so empty means "use the default". (``analytics_id`` is
+    # deliberately excluded: empty there is the documented off switch.)
+    @field_validator(
+        "site_name",
+        "site_url",
+        "owner_name",
+        "owner_headline",
+        "owner_description",
+        "social_links",
+        "cors_origins",
+        mode="before",
+    )
+    @classmethod
+    def _empty_site_field_means_default(cls, v: object, info) -> object:
+        if isinstance(v, str) and v.strip() == "":
+            return cls.model_fields[info.field_name].default
+        return v
 
     # LinkedIn
     linkedin_email: str = ""
