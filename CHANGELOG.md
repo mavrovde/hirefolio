@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`/e2e` command + `e2e-validation` skill** (#117) — the known-good full Docker E2E loop, codified:
+  prod-topology bring-up, a REAL readiness gate (backend health → SSR → `stats/public` 200, which is
+  what prevents the pre-schema `relation "profile_snapshots" does not exist` 500 race), in-container
+  seeding, whole-project Playwright runs, and the recurring traps written down — the open-webui
+  volume/schema crash-loop (bump the image pin forward, NEVER wipe the volume — rule 9), the
+  reproduce-on-clean-main triage rule, and the 10443 HTTPS port. `frontend-dev` and
+  `devops-pipeline` charters now point at the skill instead of re-deriving the steps.
+
 ### Added
 - **`/deploy-status` command** (#120) — one command that reports the TRUE deploy state: latest
   `deploy.yml` run + whether the secrets-gated rollout job ran or silently skipped, repo
