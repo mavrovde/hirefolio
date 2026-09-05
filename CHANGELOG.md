@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Plugin curation is documented, not tribal** (#122) — CLAUDE.md now records a keep-rationale for
+  each of the six enabled plugins (context7, playwright, pyright-lsp, typescript-lsp,
+  security-guidance, frontend-design — the last flagged conditional on #67), a recorded
+  evaluated-and-not-added decision so candidates aren't re-researched, a release-time review
+  cadence, and a deliberate DEFER on packaging the repo's agents/commands/skills as a
+  `mavrovde-toolkit` project plugin — right end-state for the template product, premature while
+  this repo is its only consumer; trigger = the first real fork user (milestone #2).
+
 ### Fixed
 - **Dead CVE-2024-6345 "patch" removed from the backend image build** (#239) — the Dockerfile ran a
   `sed` over `package_index.py`, but setuptools stopped shipping that module (verified against the
@@ -13,7 +22,6 @@ All notable changes to this project will be documented in this file.
   ERRORS if `package_index.py` ever reappears (i.e. a downgrade below the fixed version) — verified
   in both directions locally (absent → passes; present → fails).
 
-### Fixed
 - **Pre-push hook: the self-gate is now command-position aware** (#237) — the hook decided "this is
   a push" by raw substring match on the tool-call text, which was wrong in both directions: quoted
   PROSE mentioning `git push` (e.g. a `gh pr review --body-file` whose review text quoted a push

@@ -104,8 +104,29 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
   local/infra destruction (rule 9) — bypass one command with `GUARD_DESTRUCTIVE=0`. Both hooks are
   **command-position aware** (quoted prose is data, #204/#237) and share ONE parsing model,
   `.claude/hooks/hook-parse-lib.sh`; each has a self-test (`*.test.sh`) beside it.
-- **Plugins** (project scope): frontend-design, context7, playwright, pyright-lsp, typescript-lsp,
-  security-guidance.
+- **Plugins** (project scope; curation rationale + review cadence per #122 — re-review each
+  release alongside the security check):
+  - `context7` — KEEP: live library docs beat training-data recall for Angular 22 / FastAPI /
+    Tailwind 4 API questions; used routinely for upgrade work (rule 6).
+  - `playwright` — KEEP: browser automation for the LinkedIn scraper session and for reproducing
+    E2E findings interactively; complements (not replaces) the `/e2e` Docker loop.
+  - `pyright-lsp` / `typescript-lsp` — KEEP: precise go-to-definition/type errors across
+    backend `app/` and the 3-project Angular workspace; cheaper than grep-navigation at this size.
+  - `security-guidance` — KEEP: inline flags on risky patterns (it fired usefully this cycle on a
+    `shell=True` mention); supports security-triage.
+  - `frontend-design` — KEEP (conditionally): used when shaping new public-site UI; candidate to
+    drop if the portfolio-template work (#67 theming) brings its own design system. Re-evaluate
+    at the next release.
+  - **Evaluated and NOT added** (record per #122 so it isn't re-researched): additional plugins
+    were reviewed against this stack; nothing filled a gap the in-repo toolkit doesn't — the
+    repo's own commands/skills (see AI-config map) cover deploy/E2E/review flows, and adding
+    marketplace plugins duplicates them with less repo context. Revisit only when a concrete
+    gap surfaces in practice.
+  - **Project plugin (`mavrovde-toolkit`) — DEFERRED, deliberately**: packaging the 7 agents +
+    7 commands + 5 skills + 2 hooks as one installable plugin is the right end-state for the
+    template product (#61/#88), but today every consumer of this config is this repo itself —
+    packaging would add a version-sync surface with zero second consumers. Tracked as a follow-up in
+    #122's close-out; trigger = the first real fork/template user (milestone #2).
 - **Skills** (`.claude/skills/`): `issue-workflow` (issue/PR/milestone/label flow) and
   **`lessons-learned`** — the committed "do-not-repeat" knowledge base (zoneless-CD + SSR-HttpBackend
   traps, pytest local-DB isolation, GHA multi-GB-cache net-negative, SemVer-by-content, green-pipeline
