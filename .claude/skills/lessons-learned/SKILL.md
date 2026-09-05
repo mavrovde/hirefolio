@@ -502,6 +502,31 @@ believed the general case had been found and had only found an instance.
    hook — both conservative, but they are different actions, and copying the guard's habits
    verbatim would have inverted one of them.
 
+17. **The cost unit of a shell-parsing hook is a FORK PER DISPATCH, not a byte** (#235). Item 13 said
+   "bound the input", and the obvious reading — long command = slow — is wrong: the 20 KB
+   env-assignment run answered in 1 s while a 10 KB line of 5,000 two-character segments took 36.8 s,
+   because `pipes_into_shell` spent ~3 forks on *every* segment (a `sed` normalise, a `grep` test, a
+   `$(peel_wrapper)` subshell) and a fork costs ~2 ms no matter how little text it handles. Same
+   lesson for return conventions: a helper that prints its result is a subshell at every call site.
+   So **profile which loop forks per item, not which loop sees the most bytes** — then make the
+   per-item path pure-bash (`case`, `${var#…}`, a global instead of `$(…)`) and let it fork only
+   when the input actually needs it. Measured: 36.8 s → 7.9 s and 80.4 s → 7.9 s with no change to
+   any decision. Corollary for the pins: a cost test must reproduce the *shape*, not the size — the
+   fixed single-space shapes are fork-free, and one extra space per segment resurrected the whole
+   cost (17.6 s), so the pin one space to the left proved nothing.
+18. **A budget that "fails closed" by handing control to ANOTHER loop is only closed if that loop is
+   bounded too** (#235 round-5 review). The per-segment budget in `pipes_into_shell` returned "treat
+   this as piping into a shell" on timeout — correct in principle, since the payload pass then
+   inspects and `inspect_segment`'s deadline denies. But the payload pass was the one pre-inspection
+   loop in the file with no deadline check, and it forks ~3× per segment: the fail-closed answer cost
+   *more* than the analysis it replaced, and an 8 KB command with a real destruction payload answered
+   at 15.9 s — past the 15 s timeout, i.e. an allow in production (item 10 again, arrived at through
+   the fix rather than the bug). Two rules: when you route past a budget, follow the control flow to
+   the END and verify **the cost** of the path you handed to, not just its correctness; and prefer
+   the *cheapest* path that reaches the same denial — here `return 1` into the unconditional main
+   pass denies identically at 7.2 s instead of 19.7 s. Reviewing a budget means asking "what runs
+   next, and is *it* bounded?"
+
 This is the clearest evidence yet for CLAUDE.md rule 11: an independent reviewer caught a security
 regression in four consecutive rounds that the author, the author's own new tests, and green CI all missed —
 and CI *could not* have caught it, because nothing in the pipeline runs that suite (#208, #210).

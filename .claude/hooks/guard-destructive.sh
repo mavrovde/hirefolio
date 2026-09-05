@@ -454,14 +454,14 @@ pipes_into_shell() {
   for seg in $1; do
     # BUDGET, checked per segment with a costless builtin (#235): this loop
     # runs once per separator-split segment, and a command made of thousands
-    # of tiny segments used to spend ~3 forks on each — 40 s on a 10 KB
+    # of tiny segments used to spend ~3 forks on each — 36.8 s on a 10 KB
     # command, past the 15 s hook timeout. Past the budget we return 1: NOT
     # "this is safe" but "stop paying for this pass" — the unconditional main
     # pass below runs next and inspect_segment's own deadline check DENIES it.
     # Returning 0 here would be equally fail-closed in principle but routes
     # thousands of segments through the payload pass, which forks ~3× per
-    # segment and can only reach the same deadline deny — 19.7 s vs 7.2 s
-    # measured (round-5 review). Cheapest path to the same denial wins.
+    # segment and can only reach the same deadline deny: measured 17.6 s vs
+    # 7.9 s on the double-space shape. Cheapest path to the same denial wins.
     if [ "$SECONDS" -ge "$INSPECT_DEADLINE" ]; then IFS="$OLD"; return 1; fi
     # Fork-free fast paths (#235). Every dispatch below used to fork
     # (sed normalise, grep xargs-test, $(peel_wrapper)); now a segment pays a

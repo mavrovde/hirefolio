@@ -5,19 +5,33 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
-- **Destruction guard: the many-segment cost hole is closed — #219's last residual** (#235) —
+- **Destruction guard: many-segment cost reduced 4–10× on every measured shape** (#235) —
   `pipes_into_shell()` forked ~3 processes per separator-split segment with no budget check, so
-  bulk alone still defeated the guard: 5,000 `;`-segments (10 KB) took 40 s and 11,000 pipes
-  (22 KB) 119 s against the 15 s hook timeout — an unanalysed allow in production, identical on
-  `main` since the function was added (measured in #225's round-4 review, which validated this
-  exact fix). Now: fork-free fast paths (pure-bash ltrim, blank-segment skip, conditional
-  whitespace collapse, `case`-based xargs test, and `peel_wrapper` returning via a global instead
-  of a subshell) plus a costless per-segment `$SECONDS` budget that FAILS CLOSED — past the budget
-  the payload pass inspects and the main pass's deadline denies. Measured: all four attack shapes
-  (`;`, `&`, `|`, `(`) now answer in ≤8 s; pure-separator noise allows in 0.17 s; a destructive
-  tail behind the bulk still denies. Suite 269 → **272 cases**; the two new wall-clock pins fail
-  against the pre-fix hook (46 s / 119 s) — closing the "every cost pin was heredoc- or
-  token-run-shaped" blind spot, the fifth and final instance of that pattern.
+  bulk alone defeated the guard regardless of parsing correctness: against the 15 s hook timeout
+  (and a hook that times out does not deny), 5,000 `;`-segments took **36.8 s** and 11,000 pipes
+  (22 KB) **80.4 s** — an unanalysed allow in production, identical on `main` since the function
+  was added. Now: fork-free fast paths (pure-bash ltrim, blank-segment skip, whitespace collapse
+  only when a doubled space/tab is present, `case`-based xargs test, `peel_wrapper` returning via
+  the `PEEL_RESULT` global instead of a per-segment command-substitution subshell — ported into
+  the shared `hook-parse-lib.sh` and both call sites, guard and pre-push hook) plus a costless
+  per-segment `$SECONDS` budget. **Measured, same shapes: 7.9 s and 7.9 s**; a bulk command with
+  a real destruction payload 41.0 s → 7.8 s, its double-spaced variant 31.5 s → 7.9 s; an ordinary
+  100-command line still allows (2.9 s → 2.2 s). The budget now fails closed through the **cheap**
+  path: past the deadline `pipes_into_shell` returns 1 and the unconditional main pass denies via
+  `inspect_segment`'s own deadline check, instead of routing thousands of segments into the payload
+  pass — which forks ~3× per segment and could only reach the same denial (17.6 s → 7.9 s on the
+  double-space shape); that pass also gained the deadline `break` the other pre-inspection loops
+  already had. Suite 269 → **274 cases** with a new `check_within` helper that asserts decision
+  **and** wall clock together — the previous helpers each asserted only one half, which is how a
+  destroy-tail pin passed against the unfixed hook at 36 s (a deny production would never see).
+  All four new cost pins fail against the pre-fix hook (37 s / 81 s / 36 s / 24 s); the
+  double-space pin also fails against this change's own earlier draft (19 s), so it pins the
+  budget path specifically. One decision changes anywhere: `… | /bash` allow → **deny** (the
+  basename strip no longer needs a second `/`) — fail-closed, and now pinned by a case. Four
+  pre-existing `pipes_into_shell` bypasses found while measuring this (`| \bash`,
+  `| /usr/bin/env bash`, `| /usr/bin/sudo bash`, `| /usr/bin/timeout 60 bash` — all identical on
+  `main`) and the payload pass's remaining per-segment forks are **not** fixed here; they are
+  tracked in **#253**.
 
 ## [1.11.1] - 2026-09-05
 
