@@ -1,0 +1,79 @@
+# Live-freshness gate (#169): is the LIVE site running what we RELEASED?
+#
+# The deploy pipeline's own "Health + freshness gate" only runs when the
+# secrets-gated rollout actually rolled the host. When the DEPLOY_* secrets are
+# absent the run stays green while prod silently ages — that is exactly how
+# mavrov.de sat on v1.2.27 for five months while every release was announced as
+# shipped. This workflow is the independent check: it runs on a schedule and on
+# demand, needs no secrets, and FAILS RED whenever live ≠ released.
+#
+# Red here does not block deploys (it is a separate workflow, not a deploy.yml
+# job) — it is the standing alarm that "green pipeline" has drifted from "live
+# site". Silence it by rolling the host forward, never by editing the check.
+name: Live Freshness
+
+on:
+  schedule:
+    # Daily, 06:23 UTC — off the full hour to dodge the scheduled-run thundering
+    # herd, at most one day of undetected staleness.
+    - cron: "23 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  live-freshness:
+    name: Live vs Released
+    runs-on: ubuntu-latest
+    env:
+      # A forker points this at their own site via a repository variable; the
+      # canonical repo defaults to the maintainer's deployment.
+      PUBLIC_URL: ${{ vars.PUBLIC_URL || 'https://mavrov.de' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare live version + route shape against the released VERSION
+        run: |
+          set -u
+          released=$(cat VERSION)
+          fail=0
+
+          stats=$(curl -s -m 15 "$PUBLIC_URL/api/app/stats/public" || echo '')
+          live=$(printf '%s' "$stats" | jq -r '.backend_version // empty' 2>/dev/null || echo '')
+
+          if [ -z "$live" ]; then
+            echo "::error title=Live probe failed::$PUBLIC_URL/api/app/stats/public returned no backend_version — site down or endpoint moved."
+            fail=1
+          elif [ "$live" != "$released" ]; then
+            echo "::error title=Live is STALE::live backend_version=$live but released VERSION=$released. The last green pipeline did NOT reach the host (rollout skipped or failed) — see #112/#169."
+            fail=1
+          else
+            echo "OK: live backend_version=$live == released VERSION."
+          fi
+
+          # Post-workspace-split shape probe (#169): the public host must NOT
+          # serve the admin SPA route. 200 here proves a pre-split (pre-2026-07)
+          # frontend image is still running regardless of what any tag claims.
+          code=$(curl -s -o /dev/null -w '%{http_code}' -m 15 "$PUBLIC_URL/admin/login" || echo 000)
+          if [ "$code" != "404" ]; then
+            echo "::error title=Frontend is STALE::$PUBLIC_URL/admin/login returned $code (want 404). The live frontend predates the admin/public workspace split."
+            fail=1
+          else
+            echo "OK: /admin/login -> 404 (post-split frontend)."
+          fi
+
+          {
+            echo "## Live freshness — $PUBLIC_URL"
+            echo ""
+            echo "| Probe | Live | Released | Verdict |"
+            echo "|---|---|---|---|"
+            echo "| backend_version | \`${live:-unreachable}\` | \`$released\` | $([ \"$live\" = \"$released\" ] && echo '✅ fresh' || echo '❌ STALE') |"
+            echo "| /admin/login | \`$code\` | \`404\` | $([ \"$code\" = \"404\" ] && echo '✅ post-split' || echo '❌ pre-split image') |"
+            if [ "$fail" != "0" ]; then
+              echo ""
+              echo "**Live ≠ released.** Roll the host forward (docs/DEPLOYMENT.md) or configure the \`DEPLOY_*\` secrets so the pipeline's rollout job does it (#156). Do not silence this check any other way."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$fail"
