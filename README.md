@@ -396,7 +396,9 @@ export const environment = {
   production: false,
   apiUrl: '',
   apiPrefix: '/api/app',
-  googleAnalyticsId: 'G-XXXXXXXXXX',
+  // Deprecated (#65): analytics is RUNTIME config now — set
+  // HIREFOLIO_ANALYTICS_ID in the host .env; this field is inert.
+  googleAnalyticsId: '',
 };
 ```
 

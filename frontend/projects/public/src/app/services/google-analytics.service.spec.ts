@@ -14,7 +14,7 @@ const MOCK_SITE_CONFIG_PROVIDER = {
       siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
       ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
       ownerDescription: 'Desc.', socialLinks: [],
-      analyticsId: 'G-1QSMT6N045',
+      analyticsId: 'G-TESTID0042',
     }),
   },
 };
@@ -69,7 +69,7 @@ describe('GoogleAnalyticsService', () => {
 
     // Verify script content contains correct ID
     const appendedScript = appendChildSpy.mock.calls[1][0] as HTMLScriptElement;
-    expect(appendedScript.innerHTML).toContain('G-1QSMT6N045');
+    expect(appendedScript.innerHTML).toContain('G-TESTID0042');
     expect(appendedScript.innerHTML).toContain("gtag('js', new Date());");
   });
 
@@ -79,7 +79,7 @@ describe('GoogleAnalyticsService', () => {
     const navigationEnd = new NavigationEnd(1, '/test-url', '/test-url');
     routerEventsSubject.next(navigationEnd);
 
-    expect((window as any).gtag).toHaveBeenCalledWith('config', 'G-1QSMT6N045', {
+    expect((window as any).gtag).toHaveBeenCalledWith('config', 'G-TESTID0042', {
       page_path: '/test-url',
     });
   });

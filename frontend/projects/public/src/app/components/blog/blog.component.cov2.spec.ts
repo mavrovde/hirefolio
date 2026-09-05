@@ -3,10 +3,10 @@ import { provideRouter } from '@angular/router';
 import { BlogComponent } from './blog.component';
 import { BlogService } from '@mavrov/shared';
 import { LanguageService } from '@mavrov/shared';
-import { of, throwError } from 'rxjs';
+import { of, throwError, ReplaySubject } from 'rxjs';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SiteConfigService } from '../../services/site-config.service';
+import { SiteConfigService, SiteConfig } from '../../services/site-config.service';
 
 describe('BlogComponent (cov2 branch coverage)', () => {
   let component: BlogComponent;
@@ -97,6 +97,27 @@ describe('BlogComponent (cov2 branch coverage)', () => {
     c.ngOnInit();
     expect(seoSpy.updateSeo).not.toHaveBeenCalled();
     expect(blogServiceSpy.getPosts).toHaveBeenCalled();
+  });
+
+
+  it('composes SEO off the config stream — nothing is applied before the config arrives (#255 blocker 1)', () => {
+    const late = new ReplaySubject<SiteConfig>(1);
+    const seoSpy = { updateSeo: vi.fn() };
+    const c = new BlogComponent(
+      blogServiceSpy, seoSpy as any, {} as any, {} as any, 'server',
+      { config$: late } as any
+    );
+    c.standalone = true;
+    c.ngOnInit();
+    // The SSR ordering: ngOnInit runs in a microtask, the config HTTP response is a macrotask.
+    expect(seoSpy.updateSeo).not.toHaveBeenCalled();
+
+    late.next({ siteName: 'x', siteUrl: 'https://x.example', ownerName: 'Real Owner',
+                ownerHeadline: 'h', ownerDescription: 'd', socialLinks: [], analyticsId: '' });
+    expect(seoSpy.updateSeo).toHaveBeenCalledWith(expect.objectContaining({
+      description: expect.stringContaining('Real Owner'),
+      keywords: expect.stringContaining('Real Owner'),
+    }));
   });
 
   it('falls back to the neutral default identity when no SiteConfigService is available', () => {
