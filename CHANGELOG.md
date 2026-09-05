@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **`/deploy-status` command** (#120) — one command that reports the TRUE deploy state: latest
+  `deploy.yml` run + whether the secrets-gated rollout job ran or silently skipped, repo
+  `VERSION`/latest tag, published image tags, and the LIVE prod version from
+  `/api/app/stats/public` — ending in an explicit live/behind verdict. Bakes in the
+  published ≠ live doctrine (#112): a green pipeline publishes images; only the rollout job (or the
+  live version itself) proves the host updated. The `devops-pipeline` charter now also names the
+  #147 concurrency queue (deploys serialize, never overlap) and points at `/deploy-status`.
 - **The quality gates now run on pull requests, not only after merge** (#208) — `deploy.yml` was
   `on: push: branches: [main]` only, so a PR was checked by CodeQL alone and the first time CI
   evaluated whether a change was correct was on the branch that deploys to production. A failing test
