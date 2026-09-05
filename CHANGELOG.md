@@ -5,13 +5,17 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- **Plugin curation is documented, not tribal** (#122) — CLAUDE.md now records a keep-rationale for
-  each of the six enabled plugins (context7, playwright, pyright-lsp, typescript-lsp,
-  security-guidance, frontend-design — the last flagged conditional on #67), a recorded
-  evaluated-and-not-added decision so candidates aren't re-researched, a release-time review
-  cadence, and a deliberate DEFER on packaging the repo's agents/commands/skills as a
-  `mavrovde-toolkit` project plugin — right end-state for the template product, premature while
-  this repo is its only consumer; trigger = the first real fork user (milestone #2).
+- **Plugin curation is documented, not tribal** (#122) — CLAUDE.md now records a keep-rationale
+  for each of the five kept plugins (context7, pyright-lsp, typescript-lsp, security-guidance,
+  frontend-design — the last flagged conditional on #67), a recorded evaluated-and-not-added
+  decision (commit-commands, claude-md-management, code-review) so candidates aren't re-researched,
+  a release-time review cadence wired into the `/release` runbook and the `release-manager` agent,
+  and a deliberate DEFER on packaging the repo's agents/commands/skills as a `mavrovde-toolkit`
+  project plugin — right end-state for the template product, premature while this repo is its only
+  consumer; tracked as #244, trigger = the first real fork user (milestone #2). The curation pass
+  also **dropped the `playwright` plugin**: it ships only an MCP server identical to the committed
+  `.mcp.json` entry, so both being enabled loaded every browser tool twice; the `.mcp.json` server
+  stays and browser automation is unchanged.
 
 ### Fixed
 - **Dead CVE-2024-6345 "patch" removed from the backend image build** (#239) — the Dockerfile ran a
