@@ -35,6 +35,8 @@ by fixing the real cause — never by weakening tests or checks.
 - Build (catches template/type errors): `npm run build`
   (per project: `npm run build:shared` | `:public` | `:admin`; build `shared` first)
 - E2E (needs the full stack; two projects): `npx playwright test`
+  — bring the stack up the known-good way: load the `e2e-validation` skill (or `/e2e`) instead of
+  re-deriving the loop; it encodes the readiness gate and the open-webui volume caveat (#117).
   (`--project=public-e2e` on `BASE_URL`, `--project=admin-e2e` on `ADMIN_BASE_URL`=admin.localhost)
 - **Local proxy HTTPS is published on host port 10443** (`https://localhost:10443`; see
   `PROXY_SSL_PORT` in `verify_proxy_routes.py`) — a plain `https://localhost/` curl returns `000`.

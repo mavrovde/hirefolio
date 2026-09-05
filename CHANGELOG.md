@@ -4,7 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
 - **`/prep-pr` command + `env-gotchas` skill** (#119) — the pre-PR hygiene gate: stale-`main`
   detection (the #103/#104 duplicate-CHANGELOG cause), single-`[Unreleased]`-block check, a
   stale-old-behavior-assertion sweep across the WHOLE spec tree (the #108→#110 deploy-red cause),
@@ -13,6 +12,23 @@ All notable changes to this project will be documented in this file.
   zsh-vs-bash differences, `.env`-sourcing noise, the same-identity `gh pr review --approve` block,
   the full-sha `gh release create` requirement, shared test-DB rules, and worktree pre-push-hook
   symlinks — referenced from CLAUDE.md.
+
+- **`/e2e` command + `e2e-validation` skill** (#117) — the known-good full Docker E2E loop, codified:
+  prod-topology bring-up, a REAL readiness gate (backend health → SSR → `stats/public` 200, which is
+  what prevents the pre-schema `relation "profile_snapshots" does not exist` 500 race), in-container
+  seeding, whole-project Playwright runs, and the recurring traps written down — the open-webui
+  volume/schema crash-loop (bump the image pin forward, NEVER wipe the volume — rule 9), the
+  reproduce-on-clean-main triage rule, and the 10443 HTTPS port. `frontend-dev` and
+  `devops-pipeline` charters now point at the skill instead of re-deriving the steps.
+
+### Added
+- **`/deploy-status` command** (#120) — one command that reports the TRUE deploy state: latest
+  `deploy.yml` run + whether the secrets-gated rollout job ran or silently skipped, repo
+  `VERSION`/latest tag, published image tags, and the LIVE prod version from
+  `/api/app/stats/public` — ending in an explicit live/behind verdict. Bakes in the
+  published ≠ live doctrine (#112): a green pipeline publishes images; only the rollout job (or the
+  live version itself) proves the host updated. The `devops-pipeline` charter now also names the
+  #147 concurrency queue (deploys serialize, never overlap) and points at `/deploy-status`.
 - **The quality gates now run on pull requests, not only after merge** (#208) — `deploy.yml` was
   `on: push: branches: [main]` only, so a PR was checked by CodeQL alone and the first time CI
   evaluated whether a change was correct was on the branch that deploys to production. A failing test
@@ -24,6 +40,12 @@ All notable changes to this project will be documented in this file.
   reached the merge gate because nothing in CI would have caught it.
 
 ### Fixed
+- **Dev compose now passes `LINKEDIN_IMPORT_TOKEN` into the backend** (#228) — prod compose forwarded
+  it; the dev stack never did, so a token set in `.env` per `.env.example` still produced
+  `401 Import requires a valid X-Import-Token` from the local importer (the backend saw an empty
+  configured token, which `_import_authorized` rightly never accepts). Verified live: with the fix
+  the container's token matches `.env` (sha-compare) and `python -m importer` imported 7 posts
+  against `http://localhost:8000`; an empty token still 401s token-only requests.
 - **Destruction guard: six standing bypass classes closed** (#212, #213, #217, #218, #219, #220) —
   all pre-existing on `main`, found across the #206/#214 review rounds; every one is the same
   recurring root cause (the guard recognised a textual *framing* while the shell executes an

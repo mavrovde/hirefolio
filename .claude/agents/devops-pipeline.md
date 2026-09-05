@@ -64,6 +64,11 @@ Other: `Proxy Config Audit`, `Build * Image`, and E2E/deploy jobs.
    at which point summarize what was tried and why it's still failing, and ask
    the user how to proceed.
 
+## Reproducing the E2E locally
+When a pipeline E2E job is red and you need a local repro, load the `e2e-validation` skill
+(`/e2e`) — the known-good bring-up + readiness gate + seed + run loop with the recurring traps
+(open-webui volume, pre-schema 500 race) documented (#117). Never re-derive it.
+
 ## Green pipeline ≠ live on the host (#112 / #156)
 **A green `deploy.yml` run always means the images were PUBLISHED to the registry; it means the
 prod host was updated only if the secrets-gated `deploy` job actually ran.** Since #175 the pipeline
@@ -71,8 +76,14 @@ ends with `Roll Out To Prod Host`, which SSHes to the host, deploys the immutabl
 verifies containers by image digest, health-gates `/api/app/health`, freshness-probes `/admin/login`
 (→ 404) and rolls back on failure — but ONLY when `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` are
 configured. Without them it emits a skip notice and the run is still green with nothing rolled out.
-So: read the job's status before reporting. If it was skipped, never say "prod is updated" — verify
-the live site itself (footer `BE: vX.Y.Z`) or state that host rollout is pending.
+So: the job — and even its gate step — conclude `success` whether or not anything rolled out (the
+job is skipped only on pull_request events); the tell is the GATED STEPS (`Roll out validated
+images`, `Health + freshness gate`) being `skipped`. Check those steps (`/deploy-status` does), and
+if they were skipped never say "prod is updated" — verify the live site itself (footer `BE: vX.Y.Z`)
+or state that host rollout is pending.
+Deploys are serialized by the workflow's concurrency guard (#147): a second merge QUEUES behind
+the running deploy rather than cancelling it — expect a wait, and never trigger overlapping deploys
+by hand. The one-command status check for all of this is `/deploy-status` (#120).
 
 ## Issue workflow — close-the-loop after a green deploy
 Once the pipeline is green for a merge that `Closes #NN` / `Fixes #NN` / `Refs #NN` (see `CLAUDE.md`
