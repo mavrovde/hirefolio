@@ -8,6 +8,7 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { HomeComponent } from './home.component';
 import { ProfileService } from '../../services/profile.service';
 import { SeoService } from '../../services/seo.service';
+import { SiteConfigService } from '../../services/site-config.service';
 import { LanguageService, provideSharedEnvironment } from '@mavrov/shared';
 import { MockLanguageService } from '@mavrov/shared/testing';
 
@@ -51,6 +52,18 @@ async function configure(opts: {
       { provide: LanguageService, useClass: MockLanguageService },
       { provide: ActivatedRoute, useValue: mockActivatedRoute },
       { provide: PLATFORM_ID, useValue: opts.platformId ?? 'browser' },
+      {
+        provide: SiteConfigService,
+        useValue: {
+          config$: of({
+            siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+            ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+            ownerDescription: 'Desc.',
+            socialLinks: ['https://linkedin.com/in/smavrov', 'https://github.com/mavrovde'],
+            analyticsId: '',
+          }),
+        },
+      },
     ],
   }).compileComponents();
 
@@ -116,10 +129,9 @@ describe('HomeComponent coverage (branches)', () => {
     });
     fixture.detectChanges();
     expect(seoService.updateSeo).toHaveBeenCalledWith(
-      expect.objectContaining({
-        description:
-          'Professional portfolio of Sergii Mavrov, a Principal Software Engineer.',
-      })
+      // With #65 the component no longer hardcodes a fallback description —
+      // undefined lets SeoService apply the config-driven default.
+      expect.objectContaining({ description: undefined })
     );
   });
 

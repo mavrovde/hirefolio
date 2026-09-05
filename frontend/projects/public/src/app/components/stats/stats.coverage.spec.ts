@@ -3,7 +3,20 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SystemStatsComponent } from './stats.component';
 import { StatsService } from '@mavrov/shared';
 import { Router, NavigationEnd } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
+import { SiteConfigService } from '../../services/site-config.service';
+
+const MOCK_SITE_CONFIG_PROVIDER = {
+  provide: SiteConfigService,
+  useValue: {
+    config$: of({
+      siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+      ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+      ownerDescription: 'Desc.', socialLinks: [],
+      analyticsId: '',
+    }),
+  },
+};
 import { PLATFORM_ID } from '@angular/core';
 import { TranslatePipe } from '@mavrov/shared';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
@@ -19,6 +32,7 @@ describe('SystemStatsComponent visibility + uptime-fallback branches', () => {
     await TestBed.configureTestingModule({
       imports: [SystemStatsComponent],
       providers: [
+        MOCK_SITE_CONFIG_PROVIDER,
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: Router, useValue: { url: '/', events: routerEvents.asObservable() } },
         {
@@ -89,6 +103,7 @@ describe('SystemStatsComponent uptime counter (start_time path + days format)', 
     await TestBed.configureTestingModule({
       imports: [SystemStatsComponent],
       providers: [
+        MOCK_SITE_CONFIG_PROVIDER,
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: Router, useValue: { url: '/', events: new Subject().asObservable() } },
         {

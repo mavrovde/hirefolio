@@ -3,9 +3,10 @@ import { provideRouter } from '@angular/router';
 import { BlogComponent } from './blog.component';
 import { BlogService } from '@mavrov/shared';
 import { LanguageService } from '@mavrov/shared';
-import { of, throwError } from 'rxjs';
+import { of, throwError, ReplaySubject } from 'rxjs';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { SiteConfigService, SiteConfig } from '../../services/site-config.service';
 
 describe('BlogComponent (cov2 branch coverage)', () => {
   let component: BlogComponent;
@@ -63,6 +64,19 @@ describe('BlogComponent (cov2 branch coverage)', () => {
         { provide: BlogService, useValue: blogServiceSpy },
         { provide: LanguageService, useValue: languageServiceMock },
         provideRouter([]),
+        // SeoService now pulls the runtime site config (#65); stub it so its
+        // HTTP fetch never reaches this suite's global fetch spy.
+        {
+          provide: SiteConfigService,
+          useValue: {
+            config$: of({
+              siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+              ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+              ownerDescription: 'Desc.', socialLinks: [],
+              analyticsId: '',
+            }),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -77,12 +91,47 @@ describe('BlogComponent (cov2 branch coverage)', () => {
   it('should skip SEO update when not standalone', () => {
     const seoSpy = { updateSeo: vi.fn() };
     const c = new BlogComponent(
-      blogServiceSpy, seoSpy as any, {} as any, {} as any, {} as any, 'server'
+      blogServiceSpy, seoSpy as any, {} as any, {} as any, 'server', undefined
     );
     c.standalone = false;
     c.ngOnInit();
     expect(seoSpy.updateSeo).not.toHaveBeenCalled();
     expect(blogServiceSpy.getPosts).toHaveBeenCalled();
+  });
+
+
+  it('composes SEO off the config stream — nothing is applied before the config arrives (#255 blocker 1)', () => {
+    const late = new ReplaySubject<SiteConfig>(1);
+    const seoSpy = { updateSeo: vi.fn() };
+    const c = new BlogComponent(
+      blogServiceSpy, seoSpy as any, {} as any, {} as any, 'server',
+      { config$: late } as any
+    );
+    c.standalone = true;
+    c.ngOnInit();
+    // The SSR ordering: ngOnInit runs in a microtask, the config HTTP response is a macrotask.
+    expect(seoSpy.updateSeo).not.toHaveBeenCalled();
+
+    late.next({ siteName: 'x', siteUrl: 'https://x.example', ownerName: 'Real Owner',
+                ownerHeadline: 'h', ownerDescription: 'd', socialLinks: [], analyticsId: '' });
+    expect(seoSpy.updateSeo).toHaveBeenCalledWith(expect.objectContaining({
+      description: expect.stringContaining('Real Owner'),
+      keywords: expect.stringContaining('Real Owner'),
+    }));
+  });
+
+  it('falls back to the neutral default identity when no SiteConfigService is available', () => {
+    const seoSpy = { updateSeo: vi.fn() };
+    const c = new BlogComponent(
+      blogServiceSpy, seoSpy as any, {} as any, {} as any, 'server', undefined
+    );
+    c.standalone = true;
+    c.ngOnInit();
+    expect(seoSpy.updateSeo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining('Portfolio Owner'),
+      })
+    );
   });
 
   // Lines 65: early return when already loading
@@ -130,7 +179,7 @@ describe('BlogComponent (cov2 branch coverage)', () => {
   // Line 92-95 branch: dedupe existing ids in SSR getPosts path (non-browser)
   it('should dedupe posts by id in SSR getPosts path', () => {
     const serverComponent = new BlogComponent(
-      blogServiceSpy, {} as any, {} as any, {} as any, {} as any, 'server'
+      blogServiceSpy, {} as any, {} as any, {} as any, 'server', undefined
     );
     serverComponent.posts = [{ ...mockPosts[0] }] as any;
     blogServiceSpy.getPosts.mockReturnValueOnce(
@@ -176,7 +225,7 @@ describe('BlogComponent (cov2 branch coverage)', () => {
   // Line 229 + 234: sharePost non-browser branch uses https://mavrov.de and skips both browser branches
   it('should build https://mavrov.de url and skip browser actions on SSR sharePost', async () => {
     const serverComponent = new BlogComponent(
-      blogServiceSpy, {} as any, {} as any, {} as any, {} as any, 'server'
+      blogServiceSpy, {} as any, {} as any, {} as any, 'server', undefined
     );
     const post = { ...mockPosts[0], slug: 'test-post', title: 'Test Post' } as any;
     // Should not throw even though navigator is not used on SSR

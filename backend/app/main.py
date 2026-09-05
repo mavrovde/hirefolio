@@ -18,6 +18,7 @@ from app.api.cv import router as cv_router
 from app.api.linkedin import router as linkedin_router
 from app.api.posts import router as posts_router
 from app.api.profile import router as profile_router
+from app.api.site_config import router as site_config_router
 from app.api.stats import router as stats_router
 from app.api.tags import router as tags_router
 from app.api.years import router as years_router
@@ -231,21 +232,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Mavrov.de API",
-    description="Backend API for mavrov.de",
+    title=f"{settings.site_name} API",
+    description=f"Backend API for {settings.site_name}",
     version="1.11.1",
     lifespan=lifespan,
 )
 
+# CORS allowlist comes from config (#65): ``cors_origins`` already existed in
+# Settings but this list was hardcoded — the setting silently did nothing.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:4200",  # Angular dev server
-        "https://mavrov.de",
-        "https://www.mavrov.de",
-        "http://mavrov.de",
-        "http://www.mavrov.de",
-    ],
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -263,11 +260,12 @@ app.include_router(linkedin_router, prefix=settings.api_prefix)
 app.include_router(years_router, prefix=settings.api_prefix)
 app.include_router(profile_router, prefix=settings.api_prefix)
 app.include_router(admin_profile_router, prefix=settings.api_prefix)
+app.include_router(site_config_router, prefix=settings.api_prefix)
 
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Mavrov.de API", "version": app.version}
+    return {"message": f"Welcome to {settings.site_name} API", "version": app.version}
 
 
 @app.get(f"{settings.api_prefix}/health")

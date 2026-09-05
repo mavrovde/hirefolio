@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # SECURITY (issue #177): signing-secret values that must never be honoured. The
@@ -77,6 +77,56 @@ class Settings(BaseSettings):
         validation_alias="HIREFOLIO_GEMINI_MODEL_FALLBACK",
     )
     cv_version: str = "v1.0"
+
+    # Site identity (#65) — the ONE place owner identity lives. Everything the
+    # public site shows about its owner (title, footer, meta tags, JSON-LD,
+    # email copy, analytics) derives from these at RUNTIME via
+    # GET {api_prefix}/config/site, so a forker rebrands a prebuilt image with
+    # env vars alone — no rebuild, no code edits. The defaults are the
+    # canonical deployment's values; #66 swaps them for an anonymized demo
+    # persona. Rule: no component/service may hardcode identity — it must
+    # consume this config.
+    site_name: str = "mavrov.de"
+    site_url: str = "https://mavrov.de"
+    owner_name: str = "Sergii Mavrov"
+    owner_headline: str = "Principal Software Engineer"
+    owner_description: str = (
+        "Professional portfolio of Sergii Mavrov, a Principal Software Engineer "
+        "specialized in Cloud, AI, and Full-Stack Development."
+    )
+    # Comma-separated public profile URLs (JSON-LD sameAs + contact links).
+    social_links: str = "https://linkedin.com/in/smavrov,https://github.com/mavrovde"
+    # Google Analytics measurement id; empty disables analytics entirely — and
+    # empty IS the default: analytics is opt-in for a general-portfolio
+    # template, and a non-empty default was unreachable anyway in the only
+    # supported topology (compose forwards ``${HIREFOLIO_ANALYTICS_ID:-}``, so
+    # an unset host var arrives as "" and — deliberately, see the validator
+    # below — stays "": empty is this field's documented off switch, #255
+    # review round 1). The canonical deployment sets its id in the host .env.
+    # Namespaced like the Gemini knobs (#141): an ambient generic name could
+    # silently bind someone else's id.
+    analytics_id: str = Field(default="", validation_alias="HIREFOLIO_ANALYTICS_ID")
+
+    # Docker compose forwards these as ``SITE_NAME=${SITE_NAME:-}`` — an UNSET
+    # host variable therefore arrives as an EMPTY string, which would silently
+    # override the defaults above. For identity fields an empty value is never
+    # meaningful, so empty means "use the default". (``analytics_id`` is
+    # deliberately excluded: empty there is the documented off switch.)
+    @field_validator(
+        "site_name",
+        "site_url",
+        "owner_name",
+        "owner_headline",
+        "owner_description",
+        "social_links",
+        "cors_origins",
+        mode="before",
+    )
+    @classmethod
+    def _empty_site_field_means_default(cls, v: object, info) -> object:
+        if isinstance(v, str) and v.strip() == "":
+            return cls.model_fields[info.field_name].default
+        return v
 
     # LinkedIn
     linkedin_email: str = ""

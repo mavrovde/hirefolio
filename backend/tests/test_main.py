@@ -13,7 +13,7 @@ async def test_root_endpoint(client: AsyncClient):
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
-    assert "Mavrov.de API" in data["message"]
+    assert f"{settings.site_name} API" in data["message"]
 
 
 @pytest.mark.asyncio

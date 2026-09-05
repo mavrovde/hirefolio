@@ -2,6 +2,7 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject } from 'rxjs';
+import { SiteConfigService, SiteConfig, DEFAULT_SITE_CONFIG } from './site-config.service';
 
 export interface SeoData {
     title?: string;
@@ -17,21 +18,58 @@ export interface SeoData {
     providedIn: 'root'
 })
 export class SeoService {
-    private baseTitle = 'Sergii Mavrov | Principal Software Engineer';
-    private defaultDescription = 'Professional portfolio of Sergii Mavrov, a Principal Software Engineer specialized in Cloud, AI, and Full-Stack Development.';
-    private defaultImage = 'https://mavrov.de/assets/og-image.png';
-    private baseUrl = 'https://mavrov.de';
+    // Identity comes from the runtime site config (#65); these derived fields
+    // start at the neutral defaults and update when the config arrives, at
+    // which point the last-applied SEO data is re-applied so no page keeps
+    // placeholder branding.
+    private site: SiteConfig = DEFAULT_SITE_CONFIG;
+    private lastSeoData: SeoData | null = null;
+    // The not-found state must survive a config arrival: naively re-applying
+    // lastSeoData would overwrite the #109 not-found title with the page
+    // branding (#255 review round 1).
+    private notFound = false;
 
     public jsonLdSchema$ = new BehaviorSubject<any>(null);
 
     constructor(
         private titleService: Title,
         private metaService: Meta,
-        @Inject(PLATFORM_ID) private platformId: Object
-    ) { }
+        @Inject(PLATFORM_ID) private platformId: Object,
+        siteConfig: SiteConfigService
+    ) {
+        // cd-safety-ok: writes go to the Title/Meta DOM services, never to a template-bound property — no repaint needed.
+        siteConfig.config$.subscribe((cfg) => {
+            this.site = cfg;
+            // Re-brand whatever the current page already applied. Title/Meta
+            // are DOM-level services, not change-detection consumers, so this
+            // is zoneless-safe by construction. A not-found page re-applies
+            // its not-found title (with the fresh owner name), never the
+            // regular branding.
+            if (this.notFound) {
+                this.setNotFound();
+            } else {
+                this.updateSeo(this.lastSeoData ?? {});
+            }
+        });
+    }
+
+    private get baseTitle(): string {
+        return `${this.site.ownerName} | ${this.site.ownerHeadline}`;
+    }
+    private get defaultDescription(): string {
+        return this.site.ownerDescription;
+    }
+    private get baseUrl(): string {
+        return this.site.siteUrl;
+    }
+    private get defaultImage(): string {
+        return `${this.site.siteUrl}/assets/og-image.png`;
+    }
 
     updateSeo(data: SeoData): void {
-        const fullTitle = data.title ? `${data.title} | Sergii Mavrov` : this.baseTitle;
+        this.lastSeoData = data;
+        this.notFound = false;
+        const fullTitle = data.title ? `${data.title} | ${this.site.ownerName}` : this.baseTitle;
         const description = data.description || this.defaultDescription;
         const image = data.image ? `${this.baseUrl}${data.image}` : this.defaultImage;
         const url = data.url ? `${this.baseUrl}${data.url}` : this.baseUrl;
@@ -74,7 +112,8 @@ export class SeoService {
      * hydration (#109).
      */
     setNotFound(): void {
-        this.titleService.setTitle('Post not found | Sergii Mavrov');
+        this.notFound = true;
+        this.titleService.setTitle(`Post not found | ${this.site.ownerName}`);
         this.metaService.updateTag({ name: 'robots', content: 'noindex' });
     }
 

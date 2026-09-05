@@ -1,9 +1,23 @@
 import { TestBed } from '@angular/core/testing';
 import { GoogleAnalyticsService } from './google-analytics.service';
+import { SiteConfigService } from './site-config.service';
 import { NavigationEnd, Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { vi } from 'vitest';
 import { PLATFORM_ID } from '@angular/core';
+
+// The measurement id now arrives via the runtime site config (#65).
+const MOCK_SITE_CONFIG_PROVIDER = {
+  provide: SiteConfigService,
+  useValue: {
+    config$: of({
+      siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+      ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+      ownerDescription: 'Desc.', socialLinks: [],
+      analyticsId: 'G-TESTID0042',
+    }),
+  },
+};
 
 describe('GoogleAnalyticsService', () => {
   let service: GoogleAnalyticsService;
@@ -17,7 +31,7 @@ describe('GoogleAnalyticsService', () => {
     };
 
     TestBed.configureTestingModule({
-      providers: [GoogleAnalyticsService, { provide: Router, useValue: routerMock }],
+      providers: [GoogleAnalyticsService, { provide: Router, useValue: routerMock }, MOCK_SITE_CONFIG_PROVIDER],
     });
     service = TestBed.inject(GoogleAnalyticsService);
     router = TestBed.inject(Router);
@@ -55,7 +69,7 @@ describe('GoogleAnalyticsService', () => {
 
     // Verify script content contains correct ID
     const appendedScript = appendChildSpy.mock.calls[1][0] as HTMLScriptElement;
-    expect(appendedScript.innerHTML).toContain('G-1QSMT6N045');
+    expect(appendedScript.innerHTML).toContain('G-TESTID0042');
     expect(appendedScript.innerHTML).toContain("gtag('js', new Date());");
   });
 
@@ -65,7 +79,7 @@ describe('GoogleAnalyticsService', () => {
     const navigationEnd = new NavigationEnd(1, '/test-url', '/test-url');
     routerEventsSubject.next(navigationEnd);
 
-    expect((window as any).gtag).toHaveBeenCalledWith('config', 'G-1QSMT6N045', {
+    expect((window as any).gtag).toHaveBeenCalledWith('config', 'G-TESTID0042', {
       page_path: '/test-url',
     });
   });
@@ -88,7 +102,8 @@ describe('GoogleAnalyticsService', () => {
       providers: [
         GoogleAnalyticsService,
         { provide: Router, useValue: { events: new Subject() } },
-        { provide: PLATFORM_ID, useValue: 'server' }
+        { provide: PLATFORM_ID, useValue: 'server' },
+        MOCK_SITE_CONFIG_PROVIDER
       ]
     });
     const serverService = TestBed.inject(GoogleAnalyticsService);
@@ -101,6 +116,60 @@ describe('GoogleAnalyticsService', () => {
     serverService.initialize();
 
     expect(appendChildSpy).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed analytics id — nothing may smuggle markup into the inline script', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        GoogleAnalyticsService,
+        { provide: Router, useValue: { events: new Subject() } },
+        {
+          provide: SiteConfigService,
+          useValue: {
+            config$: of({
+              siteName: 's', siteUrl: 'u', ownerName: 'o', ownerHeadline: 'h',
+              ownerDescription: 'd', socialLinks: [],
+              analyticsId: 'G-1\'});alert(1);//',
+            }),
+          },
+        },
+      ]
+    });
+    const svc = TestBed.inject(GoogleAnalyticsService);
+    const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((node: Node) => node);
+
+    svc.initialize();
+
+    expect(appendChildSpy).not.toHaveBeenCalled();
+    expect((svc as any).googleAnalyticsId).toBe('');
+  });
+
+  it('should not initialize when the config carries an empty analytics id (#65 disabled state)', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        GoogleAnalyticsService,
+        { provide: Router, useValue: { events: new Subject() } },
+        {
+          provide: SiteConfigService,
+          useValue: {
+            config$: of({
+              siteName: 's', siteUrl: 'u', ownerName: 'o', ownerHeadline: 'h',
+              ownerDescription: 'd', socialLinks: [],
+              analyticsId: '',
+            }),
+          },
+        },
+      ]
+    });
+    const disabledService = TestBed.inject(GoogleAnalyticsService);
+    const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((node: Node) => node);
+
+    disabledService.initialize();
+
+    expect(appendChildSpy).not.toHaveBeenCalled();
+    expect((disabledService as any).isInitialized).toBe(false);
   });
 
   it('should return early if scripts already exist', () => {

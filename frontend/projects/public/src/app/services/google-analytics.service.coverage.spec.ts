@@ -1,8 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GoogleAnalyticsService } from './google-analytics.service';
+import { SiteConfigService } from './site-config.service';
 import { NavigationEnd, Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
 
 describe('GoogleAnalyticsService gtag-undefined branch (line 67 false)', () => {
   let service: GoogleAnalyticsService;
@@ -14,6 +15,16 @@ describe('GoogleAnalyticsService gtag-undefined branch (line 67 false)', () => {
       providers: [
         GoogleAnalyticsService,
         { provide: Router, useValue: { events: routerEvents.asObservable() } },
+        {
+          provide: SiteConfigService,
+          useValue: {
+            config$: of({
+              siteName: 's', siteUrl: 'u', ownerName: 'o', ownerHeadline: 'h',
+              ownerDescription: 'd', socialLinks: [],
+              analyticsId: 'G-TESTID0001',
+            }),
+          },
+        },
       ],
     });
     service = TestBed.inject(GoogleAnalyticsService);

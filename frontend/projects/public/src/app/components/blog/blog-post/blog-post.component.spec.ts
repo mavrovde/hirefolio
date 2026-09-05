@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { BlogPostComponent, BlogPostVm } from './blog-post.component';
 import { BlogService } from '@mavrov/shared';
 import { SeoService } from '../../../services/seo.service';
+import { SiteConfigService } from '../../../services/site-config.service';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { of, throwError, BehaviorSubject } from 'rxjs';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
@@ -45,6 +46,18 @@ describe('BlogPostComponent', () => {
             imports: [BlogPostComponent, MockTranslatePipe],
             providers: [
                 provideRouter([]),
+        {
+            provide: SiteConfigService,
+            useValue: {
+                config$: of({
+                    siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+                    ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+                    ownerDescription: 'Desc.', socialLinks: [],
+                    analyticsId: '',
+                }),
+            },
+        },
+
                 { provide: BlogService, useValue: blogServiceSpy },
                 { provide: SeoService, useValue: seoServiceSpy },
                 { provide: PLATFORM_ID, useValue: 'browser' },
@@ -195,6 +208,18 @@ describe('BlogPostComponent Server Rendering', () => {
             imports: [BlogPostComponent, MockTranslatePipe],
             providers: [
                 provideRouter([]),
+        {
+            provide: SiteConfigService,
+            useValue: {
+                config$: of({
+                    siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+                    ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+                    ownerDescription: 'Desc.', socialLinks: [],
+                    analyticsId: '',
+                }),
+            },
+        },
+
                 { provide: BlogService, useValue: blogServiceSpy },
                 { provide: PLATFORM_ID, useValue: 'server' }, // Set platform server
                 { provide: SeoService, useValue: { updateSeo: vi.fn(), setJsonLd: vi.fn(), setNotFound: vi.fn() } },

@@ -5,8 +5,22 @@ import { TranslatePipe } from '@mavrov/shared';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { SiteConfigService } from '../../services/site-config.service';
+
+// Footer identity comes from the runtime site config (#65).
+const MOCK_SITE_CONFIG_PROVIDER = {
+  provide: SiteConfigService,
+  useValue: {
+    config$: of({
+      siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+      ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+      ownerDescription: 'Desc.', socialLinks: [],
+      analyticsId: '',
+    }),
+  },
+};
 
 describe('SystemStatsComponent - Browser', () => {
   let component: SystemStatsComponent;
@@ -19,6 +33,7 @@ describe('SystemStatsComponent - Browser', () => {
     await TestBed.configureTestingModule({
       imports: [SystemStatsComponent],
       providers: [
+        MOCK_SITE_CONFIG_PROVIDER,
         { provide: PLATFORM_ID, useValue: 'browser' },
         {
           provide: Router,
@@ -178,6 +193,7 @@ describe('SystemStatsComponent - Error Handling', () => {
     await TestBed.configureTestingModule({
       imports: [SystemStatsComponent],
       providers: [
+        MOCK_SITE_CONFIG_PROVIDER,
         { provide: PLATFORM_ID, useValue: 'browser' },
         {
           provide: StatsService,
@@ -219,6 +235,7 @@ describe('SystemStatsComponent - Non-Browser', () => {
     await TestBed.configureTestingModule({
       imports: [SystemStatsComponent],
       providers: [
+        MOCK_SITE_CONFIG_PROVIDER,
         { provide: PLATFORM_ID, useValue: 'server' },
         { provide: StatsService, useValue: { getPublicStats: vi.fn() } }
       ],

@@ -52,6 +52,26 @@ All notable changes to this project will be documented in this file.
   `VERSION`, with warm-up retries) on top of its existing digest + health + route-shape checks.
   `CLAUDE.md` no longer describes a host rollout the pipeline doesn't perform.
 
+- **Site configuration layer: identity is env config, not code** (#65) — a forker rebrands a
+  PREBUILT image without rebuilding anything: the backend gains `SITE_NAME`/`SITE_URL`/
+  `OWNER_NAME`/`OWNER_HEADLINE`/`OWNER_DESCRIPTION`/`SOCIAL_LINKS`/`HIREFOLIO_ANALYTICS_ID`
+  settings and a public `GET /api/app/config/site` endpoint; the public app fetches it at runtime
+  (new `SiteConfigService`, shareReplay, neutral fallback when the backend is down) and threads it
+  through `SeoService` (title/description/canonical/OG/JSON-LD author+sameAs), the footer ©, the
+  home-page `Person` JSON-LD, and Google Analytics (id now runtime-config, allow-list sanitized
+  before touching the inline script; empty = analytics off, no id baked into the bundle anymore).
+  The API's CORS allowlist now actually honours the `cors_origins` setting (it existed but the
+  middleware hardcoded the list), API title/root message derive from `SITE_NAME`, and the
+  CV-request email copy uses `OWNER_NAME`. The payload deliberately does NOT include the admin
+  email — it doubles as the admin login username (review finding). SEO strings compose off the
+  config stream so SSR meta never bakes the placeholder in, and a not-found page keeps its
+  not-found title (#109) across the config arrival. Identity defaults preserve the canonical
+  deployment's values; the anonymized demo defaults land with #66, and `sitemap.xml`/`robots.txt`
+  generation is #71's generator. **⚠ Operator action:** analytics now defaults to **OFF**
+  (opt-in for a general-portfolio template — and a non-empty default was unreachable through
+  compose anyway): set `HIREFOLIO_ANALYTICS_ID=<your G-… id>` in the host `.env` **to keep GA**;
+  the id no longer lives in the Angular environments or anywhere in source.
+
 ## [1.11.1] - 2026-09-05
 
 ### Added
