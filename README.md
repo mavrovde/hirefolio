@@ -325,6 +325,7 @@ LLM_STREAM_TIMEOUT_SECONDS=30              # default: 30  — streamed chat POST
 EMBEDDING_REQUEST_TIMEOUT_SECONDS=30       # default: 30
 OLLAMA_HEALTHCHECK_TIMEOUT_SECONDS=2       # default: 2   — drives the AI-status probe
 OLLAMA_STARTUP_CHECK_TIMEOUT_SECONDS=10    # default: 10  — one-shot startup check
+OLLAMA_PREFLIGHT_TIMEOUT_SECONDS=5         # default: 5   — multi-agent conversation pre-flight
 PROFILE_DATA_TIMEOUT_SECONDS=5             # default: 5
 DB_RESTORE_TIMEOUT_SECONDS=300             # default: 300 — psql restore ceiling
 IMPORT_MAX_POSTS_JSON_MB=10                # default: 10 MB
