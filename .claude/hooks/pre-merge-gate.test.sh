@@ -246,6 +246,48 @@ GH_STUB_PR_JSON_284="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_J
 # An unknowable operand on ONE merge must not poison an unrelated later merge.
 GH_STUB_PR_JSON_284="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=284 \
   run "xargs on an unrelated command, then a legitimate merge" deny "echo 1 | xargs gh pr merge && gh pr merge 284"
+# ROUND-7 BLOCKER: a quoted flag value containing a NEWLINE, before the
+# operand. The main loop reads line-at-a-time, so argv_split saw a fragment
+# with an open quote, lost the operand, and fell back to the CURRENT branch's
+# PR (approved) while merging a REQUEST-CHANGES one -> ALLOW. Unterminated
+# quote now marks the target unknowable and denies.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "newline inside a quoted flag value before the operand" deny "gh pr merge --squash -b \"line one
+line two\" 284"
+# ...operand BEFORE the flag: the operand is read before the cut, verify 284.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "newline in a quoted flag value after the operand" deny "gh pr merge 284 --squash -b \"one
+two\""
+# The reviewer's exact poisoning shape: an xargs that is NOT a merge must not
+# taint a later legitimate merge (round 6 claimed this; the case tested the
+# wrong shape).
+GH_STUB_PR_JSON_284="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=284 \
+  run "non-merge xargs then a legitimate merge" allow "ls /tmp | xargs echo && gh pr merge 284"
+# COST: a monster command must fail CLOSED inside the deadline, because a
+# timed-out PreToolUse hook does not deny (#219). 3000 segments measured 39s
+# against a 30s cap before this round.
+# Over the 24KB bound WITH a merge word -> instant deny, never a timeout-allow.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" \
+  run "oversized command containing a merge fails closed in O(1)" deny "$(python3 -c "print(' ; '.join(['echo merge x']*3000))")"
+# ...and that deny must be O(1), not a deadline crawl: without the size bound
+# the same command parses for ~39s — past the 30s PreToolUse cap, where a
+# timeout is an ALLOW. The decision alone cannot pin this (the deadline denies
+# eventually either way), so the LATENCY is asserted — which is also what kills
+# the size-bound mutation.
+COST_T0=$SECONDS
+decide "$(payload "$(python3 -c "print(' ; '.join(['echo merge x']*3000))")")" >/dev/null
+if [ $((SECONDS - COST_T0)) -gt 10 ]; then
+  FAIL=$((FAIL+1)); printf '  ✗ oversized-merge deny took %ss (must be O(1), <=10s)\n' "$((SECONDS - COST_T0))"
+else
+  PASS=$((PASS+1))
+fi
+# Over the bound with NO merge word anywhere -> not this gate's business.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+  run "oversized command with no merge word stays allowed" allow "$(python3 -c "print(' ; '.join(['true x']*4000))")"
+# Under the bound, thousands of segments parse INSIDE the deadline (cheap
+# per-segment reject) and the verdict still gates the real merge at the end.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+  run "3000 cheap segments then a real merge still denies" deny "$(python3 -c "print(' ; '.join(['true']*600) + ' && gh pr merge 284')")"
 # ...but a genuinely absent operand still resolves the current branch's PR.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=284 \
   run "no operand still resolves the current branch" allow "gh pr merge --squash"
@@ -416,6 +458,10 @@ PY
     "replace::UNQUOTED=\"\$MERGE_OPERAND\"=>UNQUOTED=\"\""
   mutate die "deadline denies removed" \
     "replace::past_deadline && deny=>false && deny"
+  mutate die "unterminated-quote signal ignored (newline in a flag value)" \
+    'replace::[ "${ARGV_SPLIT_UNTERMINATED:-0}" = "1" ] && MERGE_OPERAND_UNKNOWABLE=1=>false && MERGE_OPERAND_UNKNOWABLE=1'
+  mutate die "size bound removed (oversized merge would timeout-allow)" \
+    'replace::[ "${#CMD}" -gt 24576 ]=>[ "${#CMD}" -gt 99999999 ]'
   mutate die "the command-prefix bypass stops being recognised" \
     "replace::PR_MERGE_GATE=0( |\$)'=>PR_MERGE_GATE=0_NEVER( |\$)'"
   mutate die "value-taking gh flags dropped from the operand walk" \

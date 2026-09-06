@@ -29,10 +29,11 @@ Update this when you add a retro. These are the numbers worth watching; everythi
 
 | Release | PRs merged | Verdicts | Mean rounds | Approved r1 | Rework share of review tokens | Blocker-level "claim not measured" | Tokens | Agent-time |
 |---|---|---|---|---|---|---|---|---|
-| [v1.12.0](v1.12.0.md) | 10 | 24 | **2.4** | 10% (1/10) | **75%** | **9** | 9.07M | 28.1h |
+| [v1.12.0](v1.12.0.md) | 10 | 24 | **2.4** | 20% (2/10) | **75%** | **9** | 9.07M | 28.1h |
 
 **Standing prediction (set by v1.12.0, checked at v1.13):** mean rounds below **2.0**, ≥40%
-approved on round 1 — both restated against the CORRECTED baseline (2.4 rounds, 10% r1; the
+approved on round 1 — both restated against the CORRECTED baseline (2.4 rounds, 20% r1 — #275 and #281 both
+opened with an APPROVE; the
 original 2.5/17% came from the wrong corpus), zero blocker-level "claim asserted rather than measured", zero "the fix has no
 failing-first test" blockers.
 
@@ -47,7 +48,7 @@ So the series stays comparable, count the same way every time:
 - **Verdicts** = posted review bodies containing the UPPERCASE marker `APPROVE` or
   `REQUEST CHANGES`, counted over the release's **merged** PRs. Count these, **not** the Project 3
   `Review rounds` field — v1.12.0 found that field disagreeing with the thread (5 recorded vs 3
-  posted on #240). **Run this, do not count by hand** — three different hand counts (30, 32, 34)
+  posted on #240). **Run this, do not count by hand** — four different hand counts (30, 32, 34, and a 29 from a mis-drawn corpus)
   were reported for v1.12.0 and none reproduced:
 
   ```bash

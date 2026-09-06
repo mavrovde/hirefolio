@@ -257,6 +257,14 @@ argv_split() {
     esac
   done
   [ "$started" = "1" ] && ARGV_SPLIT_RESULT+=("$tok")
+  # An OPEN quote at end-of-input means the caller handed us a fragment — the
+  # main loops read commands line-at-a-time, so a quoted value containing a
+  # NEWLINE arrives here cut in half and the tokens after the cut are missing.
+  # Callers that read a target positionally must treat this as "target unknown"
+  # and fail closed: the merge gate lost its operand exactly this way and fell
+  # back to verifying the current branch's PR (#291 review round 7).
+  ARGV_SPLIT_UNTERMINATED=0
+  [ -n "$q" ] && ARGV_SPLIT_UNTERMINATED=1
   return 0
 }
 

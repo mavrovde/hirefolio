@@ -11,8 +11,17 @@
 #     fate automatically at merge, so an unmet criterion closes silently.
 #
 # Merging is the sanctioned prod-deploy trigger (rule 8) — the irreversible
-# moment this repo already guards elsewhere. Therefore this hook FAILS CLOSED:
-# anything it cannot analyse or verify is a deny, never an allow.
+# moment this repo already guards elsewhere. Within its boundary this hook
+# FAILS CLOSED: anything it cannot analyse or verify is a deny, never an allow.
+#
+# THE BOUNDARY, stated honestly (#291 review rounds 5-7): this is a
+# COMMAND-TEXT gate. It analyses the Bash tool's command string and nothing
+# else, so a merge that arrives as FILE CONTENTS or through an opaque transport
+# is invisible to it — measured open shapes: `cat script.sh | bash`,
+# `bash script.sh`, and `ssh -o "ProxyCommand=..."`. Guarding file execution
+# is the destruction guard's territory and a different analysis; pretending
+# this hook covers it would be the same false comfort the heredoc comment gave
+# (round 2). The gate's promise is: no merge TYPED AS A COMMAND slips through.
 #
 # Bypass ONE authorized merge with:  PR_MERGE_GATE=0 gh pr merge <N> ...
 set -u
@@ -37,6 +46,17 @@ deny() {
 # over-captured on multi-line payloads and was the root of several bypasses.
 INPUT="$(cat)"
 CMD="$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)"
+
+# SIZE BOUND before any parsing — the sibling guard's #219/#225 lesson, which
+# this gate skipped and re-learned: quote_split is a character loop, so a large
+# enough command outlives the 30s hook cap (3000 segments measured 39s), and a
+# timed-out PreToolUse hook does not deny. O(1) fail-closed beats O(n²) timeout.
+if [ "${#CMD}" -gt 24576 ]; then
+  case "$CMD" in
+    *merge*) deny "command too large to analyse (${#CMD} bytes > 24576) — run the merge alone" ;;
+    *) : ;;  # no merge can be hiding where the WORD never appears; stay out of big non-merge commands' way
+  esac
+fi
 if [ -z "$CMD" ]; then
   # Degraded path: the command text is invisible, so merge-absence cannot be
   # proven. A merge-looking payload GATES (the sibling hooks' polarity).
@@ -85,13 +105,19 @@ inner_script_invokes_pr_merge() {
 
 segment_invokes_pr_merge() {
   local seg="$1"
-  [ "$SECONDS" -ge "$INSPECT_DEADLINE" ] && return 0   # cannot analyse → gate
+  # DENY, not "treat as merge" — see the twin comment in the peel loop.
+  [ "$SECONDS" -ge "$INSPECT_DEADLINE" ] \
+    && deny "command too large to analyse within budget — run the merge alone"
   seg="$(printf '%s' "$seg" | tr '\n\t' '  ' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+/ /g')"
 
   local changed=1 loops=0
   while [ "$changed" = "1" ] && [ "$loops" -lt 8 ]; do
     changed=0; loops=$((loops + 1))
-    [ "$SECONDS" -ge "$INSPECT_DEADLINE" ] && return 0
+    # DENY outright, not "treat as merge": returning 0 here sent an empty
+    # operand into verification, which falls back to the CURRENT branch's PR —
+    # a timeout could have allowed a merge by verifying the wrong PR (#291 r7).
+    [ "$SECONDS" -ge "$INSPECT_DEADLINE" ] \
+      && deny "command too large to analyse within budget — run the merge alone"
     [ "${seg:0:1}" = '\' ] && { seg="${seg#\\}"; changed=1; }
     case "$seg" in
       "do "*|"then "*|"else "*|"elif "*|"{ "*|"( "*) seg="${seg#* }"; changed=1 ;;
@@ -170,6 +196,11 @@ segment_invokes_pr_merge() {
   # security property here (#219), and most segments are not merges.
   case "$seg" in *merge*) ;; *) return 1 ;; esac
   argv_split "$seg"
+  # A quoted value with a NEWLINE arrives here cut at the line boundary, so the
+  # operand after it is missing from this argv. Mark the target unknowable —
+  # the deny below — instead of walking a truncated argv and falling back to
+  # the current branch's PR (round 5's wrong-PR-allow, one line later).
+  [ "${ARGV_SPLIT_UNTERMINATED:-0}" = "1" ] && MERGE_OPERAND_UNKNOWABLE=1
   [ "${#ARGV_SPLIT_RESULT[@]}" -eq 0 ] && return 1
   set -- "${ARGV_SPLIT_RESULT[@]}"
   [ "${1:-}" = "gh" ] || return 1
@@ -230,11 +261,20 @@ while IFS= read -r line; do
   if [ -n "$delim" ] && line_is_all_text_tools "$line"; then
     IN_HEREDOC_DELIM="$delim"
   fi
+  [ "$SECONDS" -ge "$INSPECT_DEADLINE" ] \
+    && deny "command too large to analyse within budget — run the merge alone"
   IFS=$'\n'
   for seg in $(quote_split "$line"); do
     # EVERY merge, not just the last. `gh pr merge 284 && gh pr merge 999`
     # previously kept only the second and let the first through unverified,
     # which contradicted this file's own "never an allow" promise (#291 r5).
+    # Per-SEGMENT deadline too: one line can carry thousands of segments
+    # (measured: 3000 took 39s, past the 30s hook cap — and a timed-out
+    # PreToolUse hook does not deny, #219). Better a false deny on a monster
+    # command than a silent timeout-allow.
+    [ "$SECONDS" -ge "$INSPECT_DEADLINE" ] \
+      && deny "command too large to analyse within budget — run the merge alone"
+    MERGE_OPERAND_UNKNOWABLE=0   # per-segment: `ls | xargs rm` must not taint a later merge
     if segment_invokes_pr_merge "$seg"; then
       MERGE_SEG="$seg"
       MERGE_OPERANDS+=("$MERGE_OPERAND")
@@ -264,7 +304,7 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 for MERGE_IDX in "${!MERGE_OPERANDS[@]}"; do
 MERGE_OPERAND="${MERGE_OPERANDS[$MERGE_IDX]}"
 MERGE_OPERAND_UNKNOWABLE="${MERGE_UNKNOWABLE[$MERGE_IDX]}"
-[ "${MERGE_OPERAND_UNKNOWABLE:-0}" = "1" ] && deny "this merges a PR whose number comes from stdin (xargs), so the verdict cannot be checked — run the merge with an explicit PR number"
+[ "${MERGE_OPERAND_UNKNOWABLE:-0}" = "1" ] && deny "the PR this merges cannot be determined from the command (stdin operand, or a quoted value spanning lines) — run the merge alone with an explicit PR number"
 
 # ONE normalisation path for the operand. Two overlapping blocks lived here
 # briefly and the second silently rescued what the first dropped, which made the

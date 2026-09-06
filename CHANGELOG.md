@@ -23,7 +23,7 @@ All notable changes to this project will be documented in this file.
   two suites doing `drop_all`/`create_all` on one database produce dozens of spurious ERRORs that
   read exactly like real failures. It blocked four pushes in one session and each failure invited a
   blind retry rather than a diagnosis. Isolation beats arbitration (lessons §31).
-- **Merge gate hook** (`.claude/hooks/pre-merge-gate.sh`, 70-case self-test plus a 15-mutation contract with an identity control, both run inside the pre-push gate) — refuses
+- **Merge gate hook** (`.claude/hooks/pre-merge-gate.sh`, 77-case self-test plus a 17-mutation contract with an identity control, both run inside the pre-push gate) — refuses
   `gh pr merge` when the latest posted verdict is not an APPROVE (rule 13 was restated across **eleven files**
   as prose with zero mechanical enforcement), and when the PR body says `Closes #NN` against
   an issue with unticked acceptance criteria (a blocker in **four** v1.12.0 PRs, caught every time
@@ -39,7 +39,7 @@ All notable changes to this project will be documented in this file.
   instruction it never had (all 10 merged PRs closed with that evidence missing) plus the rule to
   mutation-check the fix that closed the *previous* round's blocker (itself a blocker five times);
   `pr-reviewer`'s charter said "engineering rules 1–8" while the repo has 13 — omitting rule 12 and
-  rule 13, its own mandate; `/prep-pr` gains re-measure-every-number (all 14 PRs carried a claim
+  rule 13, its own mandate; `/prep-pr` gains re-measure-every-number (all 10 merged PRs carried a claim
   that did not reproduce, nine at blocker level) and layer-evidence steps; **lessons §30** records
   the assert-the-guarantee-where-it-can-be-enforced class and the shared-session fixture that hides
   races. Two duplicated rule restatements deleted from the playbook and a drifted second copy of

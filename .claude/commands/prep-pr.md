@@ -35,7 +35,7 @@ E2E assertion). Consult the `env-gotchas` skill for platform pitfalls while runn
 7. **Re-measure every number.** List every count or claim in the PR body, the commit message and the
    `[Unreleased]` CHANGELOG block — "N tests", "N cases", "N passed", "grep returns nothing", "X is
    fixed" — then RUN the thing that produces each one, AT THIS HEAD, and correct it. This is the
-   single most frequent review finding in the repo's history: **all 14 v1.12.0 PRs carried at least
+   single most frequent review finding in the repo's history: **all 10 merged v1.12.0 PRs carried at least
    one claim that did not reproduce, nine at blocker level** (15→18, 43/320→44/332, 13→12, "0 stale
    hits"→2, "2280 samples / 0 errors"→2160 with 20 real failures, and a "grep returns nothing" that
    returned 41 hits). Numbers quoted from an earlier head are the commonest form.
