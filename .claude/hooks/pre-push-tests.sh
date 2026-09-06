@@ -299,6 +299,13 @@ run_checks() {
       echo "== pre-push self-gate self-test (#237) =="
       bash "$ROOT/.claude/hooks/pre-push-tests.test.sh" || return 1
     fi
+    if [ -f "$ROOT/.claude/hooks/pre-merge-gate.test.sh" ]; then
+      # --mutations is the point: the FIRST version of that self-test passed
+      # 14/14 against a gate whose blocking had been removed. Running the cases
+      # without the mutation contract would repeat exactly that.
+      echo "== merge-gate self-test + mutation contract =="
+      bash "$ROOT/.claude/hooks/pre-merge-gate.test.sh" --mutations || return 1
+    fi
   fi
 
   if [ "$PREPUSH_RUN_BACKEND" = "1" ]; then
@@ -310,10 +317,13 @@ run_checks() {
     # one database produces dozens of spurious ERRORs that read like real failures,
     # and it cost several blind retries before anyone read the log.
     #
-    # Make the collision IMPOSSIBLE instead of detecting it:
+    # Remove the common collision instead of merely detecting it:
     #   * this gate gets a database of its own (`test_mavrov_prepush`), so parallel
-    #     agents on `test_mavrov` / `test_mavrov_gwN` cannot touch it — conftest
-    #     creates it on demand and only ever drops TABLES, so nothing accumulates;
+    #     agents on `test_mavrov` cannot touch it — conftest creates it on demand;
+    #     note it drops TABLES per test and, under xdist, DROPS the per-worker
+    #     `_gwN` databases at teardown. Two concurrent pre-push runs would still
+    #     share this name, which is acceptable because only one push runs at a
+    #     time; parallel AGENTS were the real collision and they are now separated;
     #   * `-n auto` is how CI actually runs the suite (lessons: run the suite as CI
     #     runs it) and additionally gives every xdist worker its own `_gwN` database.
     #

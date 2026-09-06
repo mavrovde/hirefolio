@@ -99,7 +99,8 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 | skill | `ssr-cd-safety` | zoneless repaint + SSR HTTP contract (#118) |
 | hook | `pre-push-tests.sh` | PreToolUse Bash: docs + backend + frontend gates before every real `git push` (command-position aware, #237) |
 | hook | `guard-destructive.sh` | PreToolUse Bash: blocks irreversible local/infra destruction (rule 9) |
-| hook | `hook-parse-lib.sh` | the ONE quote-aware command-parsing model, sourced by both hooks (#237) |
+| hook | `pre-merge-gate.sh` | PreToolUse Bash: refuses `gh pr merge` without an APPROVE verdict, or with `Closes #NN` against unticked criteria (rule 13 enforced, not asked) |
+| hook | `hook-parse-lib.sh` | the ONE quote-aware command-parsing model, sourced by all three hooks (#237) |
 | plugin | `frontend-design`, `context7`, `pyright-lsp`, `typescript-lsp`, `security-guidance` | per-plugin keep-rationale in "Plugins" below (#122) |
 | MCP | `postgres`, `playwright`, `github` | read-only SQL / browser automation / PRs+issues |
 
@@ -110,13 +111,14 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
   AI-config map above for one-line purposes. **`ai-integration` is the improvement loop**: run it
   after a release or a painful incident to turn measured agent behavior (review rounds, effort
   telemetry, incidents) into edits to the charters/skills/hooks themselves.
-- **Hooks** (`.claude/hooks/`, via committed `.claude/settings.json`, both `PreToolUse Bash`):
+- **Hooks** (`.claude/hooks/`, via committed `.claude/settings.json`, all `PreToolUse Bash`):
   `pre-push-tests.sh` runs docs + backend pytest + backend lint/type (ruff check + ruff format --check
   + mypy) + frontend tests before every `git push` (env-configurable: `PREPUSH_RUN_LINT`/
   `PREPUSH_RUN_RUFF`/`PREPUSH_RUN_MYPY` …, self-gating); `guard-destructive.sh` blocks irreversible
-  local/infra destruction (rule 9) — bypass one command with `GUARD_DESTRUCTIVE=0`. Both hooks are
+  local/infra destruction (rule 9) — bypass one command with `GUARD_DESTRUCTIVE=0`. All three hooks are
   **command-position aware** (quoted prose is data, #204/#237) and share ONE parsing model,
-  `.claude/hooks/hook-parse-lib.sh`; each has a self-test (`*.test.sh`) beside it.
+  `.claude/hooks/hook-parse-lib.sh`; each has a self-test (`*.test.sh`) beside it, and all three self-tests run inside the pre-push gate — `pre-merge-gate.test.sh` with its `--mutations` contract, because its first version passed every case against a gate whose blocking had been removed.
+  `pre-merge-gate.sh` blocks `gh pr merge` unless the newest posted verdict states APPROVE and every `Closes #NN` points at an issue with all acceptance criteria ticked; bypass one authorized command with `PR_MERGE_GATE=0`.
 - **Plugins** (project scope; curation rationale + review cadence per #122 — re-review each
   release alongside the security check):
   - `context7` — KEEP: live library docs beat training-data recall for Angular 22 / FastAPI /

@@ -686,8 +686,9 @@ temptation was to retry rather than read the log.
 **The rule:** when two workers contend for a resource, give each its own instead of taking turns.
 The gate now uses `test_mavrov_prepush` (conftest creates databases on demand and only drops
 TABLES, so nothing accumulates) and runs `-n auto`, which is how CI runs it and additionally gives
-every xdist worker its own `_gwN` database. A detector that samples at a point in time cannot
-prevent a race; separate namespaces can.
+every xdist worker its own `_gwN` database. A detector that samples at a point in time cannot prevent a race;
+separate namespaces can. (Two concurrent pre-push runs would still share the gate's own name —
+acceptable, because only one push runs at a time. The real collision was parallel AGENTS.)
 
 **The meta-lesson, which cost more than the bug:** a gate failing repeatedly is data. Retrying it
 unchanged is not a fix, and "it's the shared DB again" was an assumption — the log said mass

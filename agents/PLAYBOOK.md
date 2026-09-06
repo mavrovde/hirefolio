@@ -186,9 +186,21 @@ explicit owner authorization, rule 9 in spirit).
 
 ## Review findings are FIXED IN THE PR (CLAUDE.md rule 11)
 
+Resolve a reviewer's finding in the next round of the SAME PR. A follow-up issue is for genuinely
+out-of-scope work only — a different subsystem, or work already scheduled into a later release —
+and the PR must say so. Anything the reviewer could not confirm, anything the PR introduced, and
+anything cheap belongs in the PR. A growing backlog is not progress.
+
 ## A merged PR is validated on EVERY applicable layer (CLAUDE.md rule 12)
 
-Both are stated in full in `CLAUDE.md` — read them there. They appear here only so a subagent that
-loads just the playbook knows they exist, and so the rule NUMBERS are greppable when someone
-renumbers (a v1.12.0 renumber left stale pointers in four places and took three review passes to
-clear). One idea, one place: duplication is how configs drift.
+Before asking for a merge, exercise the change wherever its failure mode can appear: backend unit
+(pytest at 100%), frontend unit (Vitest, three projects at 100%), **E2E in a real browser** for any
+user-facing surface, the **WireMock integration tier** for any composed API/AI path, plus mocks for
+what nothing else reaches. CI runs E2E and the integration tier on PUSH only, so run them LOCALLY
+and state the measured result — that is what satisfies the rule. Green units are not validation:
+v1.12.0 shipped three screens at 100% unit coverage that had never rendered in a browser. If a
+layer does not apply, name it and say why.
+
+*(Stated in full here, not merely referenced: `agents/common/roster.py` loads this file as the ONLY
+prompt the A2A team sees — a pointer to CLAUDE.md would leave those agents without the rule. Rules
+9, 10 and 13 are spelled out here for the same reason.)*

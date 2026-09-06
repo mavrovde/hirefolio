@@ -23,9 +23,9 @@ All notable changes to this project will be documented in this file.
   two suites doing `drop_all`/`create_all` on one database produce dozens of spurious ERRORs that
   read exactly like real failures. It blocked four pushes in one session and each failure invited a
   blind retry rather than a diagnosis. Isolation beats arbitration (lessons §31).
-- **Merge gate hook** (`.claude/hooks/pre-merge-gate.sh`, 14-case self-test) — refuses
-  `gh pr merge` when the latest posted verdict is not an APPROVE (rule 13 was restated in **six**
-  places as prose with zero mechanical enforcement), and when the PR body says `Closes #NN` against
+- **Merge gate hook** (`.claude/hooks/pre-merge-gate.sh`, 29-case self-test plus a 10-mutation contract, both run inside the pre-push gate) — refuses
+  `gh pr merge` when the latest posted verdict is not an APPROVE (rule 13 was restated across **eleven files**
+  as prose with zero mechanical enforcement), and when the PR body says `Closes #NN` against
   an issue with unticked acceptance criteria (a blocker in **four** v1.12.0 PRs, caught every time
   only because a review read the issue by hand). Command-position aware via the shared parsing
   model, fails closed on a deadline or an unreadable verdict, bypass with `PR_MERGE_GATE=0`.
@@ -53,7 +53,6 @@ All notable changes to this project will be documented in this file.
   repo (`Co-authored-by:` attribution stays). All 17 affected PR bodies were scrubbed; the
   repo-wide search now returns zero editable occurrences.
 
-### Changed
 - **Two engineering rules added, one renumbered** (owner directives 2026-09-06) — **rule 11: fix
   review findings IN the PR** rather than converting them into issues (a follow-up issue is for
   genuinely out-of-scope work only; backlog growth is not progress), and **rule 12: a merged PR
@@ -124,7 +123,6 @@ All notable changes to this project will be documented in this file.
   verification block for the new surfaces: confirm the identity is yours and not the demo
   persona, POST a probe to the contact form, and find it in the admin Inbox.
 
-### Added
 - **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose
   only browser validation was "the suite didn't break". 18 tests, suite **97 → 115**: the public
   **contact form** (`e2e/public/contact-form.spec.ts` — server-rendered then hydrated, trimmed
