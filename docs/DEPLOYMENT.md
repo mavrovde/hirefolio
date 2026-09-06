@@ -4,7 +4,7 @@ Two paths: a **first deploy** onto a clean host (manual, one-time) and the
 **automated rollout** that keeps the host current on every green `main` pipeline
 once the owner adds three secrets. CI publishes multi-tagged amd64 images to
 `ghcr.io/mavrovde/hirefolio-{backend,frontend,admin-frontend,proxy}` —
-`sha-<gitsha>`, the release version (e.g. `1.9.0`), and `latest`. The host pulls
+`sha-<gitsha>`, the release version (e.g. `1.12.0`), and `latest`. The host pulls
 with **no registry login**, so those four packages **must be public** — the four
 post-rename `hirefolio-*` packages were created *private* by GitHub and need a
 one-time visibility change (see "One-time action after the rename" below).
@@ -42,7 +42,7 @@ cp .env.example .env
 #    renders the demo identity and SSR advertises example.com og:url/canonical.
 #    Then upload the real Profile Data JSON + CV via the admin panel.
 #    Image coordinates: IMAGE_REPO defaults to ghcr.io/mavrovde/hirefolio;
-#    set IMAGE_TAG to the release you are deploying (e.g. 1.9.0).
+#    set IMAGE_TAG to the release you are deploying (e.g. 1.12.0).
 
 # 3. Pull the validated images and start (never use `down -v` — volumes hold
 #    the database and models)
@@ -73,6 +73,32 @@ cd .. && MAVROV_API_URL=https://<public-host> \
 
 `IMPORT_PUBLISH=true` publishes newly created posts immediately; re-imports
 update content but never flip an existing post's published state.
+
+## After the first deploy — verify the job-search surfaces (v1.12.0)
+
+Beyond `backend_version`, check the features this release added, because a misconfigured
+identity or a missing admin allowlist fails silently:
+
+```bash
+# 1. Identity really came from YOUR .env (not the shipped demo persona)
+curl -s https://<public-host>/api/app/config/site | jq '{site_name, owner_name, site_url}'
+#    owner_name must NOT be "Jane Doe" and site_url must NOT be example.com
+#    (the API serializes snake_case — camelCase keys return null and the check
+#     would "pass" while telling you nothing)
+
+# 2. The public contact form accepts a message (creates an inbox interaction)
+curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+  https://<public-host>/api/app/interactions/contact \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Deploy Check","email":"you@example.com","message":"post-deploy probe"}'
+#    expect 201; a 429 means the per-IP rate limit is working, also fine
+
+# 3. It arrived: log into the admin console -> Inbox -> the probe is listed
+#    (admin is loopback-only until ADMIN_ALLOWED_CIDRS names your operator IP)
+```
+
+If SMTP is configured, the owner also receives a notification for step 2; without SMTP the
+interaction is still stored and the send is skipped, by design.
 
 ## Automated rollout (the `deploy` job)
 
