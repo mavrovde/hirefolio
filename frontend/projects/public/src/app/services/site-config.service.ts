@@ -9,6 +9,8 @@ import { environment } from '../../environments/environment';
  * Fetched at runtime from the backend so a prebuilt image is rebranded by
  * env vars alone; components never hardcode identity.
  */
+export const AVAILABILITY_STATES = ['open', 'listening', 'not_looking'] as const;
+
 export interface SiteConfig {
     siteName: string;
     siteUrl: string;
@@ -75,7 +77,16 @@ export class SiteConfigService {
                 // WHOLE availability stream errored — the indicator silently
                 // vanished while the rest of the hero rendered (measured against
                 // the running v1.12 container).
-                availability: dto.availability ?? DEFAULT_SITE_CONFIG.availability,
+                // Absent OR unknown both normalize (#295 review nit 8): a
+                // hand-edited DB row with a state outside the vocabulary
+                // would otherwise render a raw AVAILABILITY.<X> key with no
+                // dot colour. The write path validates; the read path
+                // degrades.
+                availability:
+                    dto.availability &&
+                    (AVAILABILITY_STATES as readonly string[]).includes(dto.availability)
+                        ? dto.availability
+                        : DEFAULT_SITE_CONFIG.availability,
             })),
             catchError(() => of(DEFAULT_SITE_CONFIG)),
             shareReplay(1)

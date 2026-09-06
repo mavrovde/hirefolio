@@ -40,9 +40,41 @@ async def test_unknown_state_is_422_and_changes_nothing(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_write_requires_admin_auth(normal_client: AsyncClient):
     """The read side is public BY WAY OF /config/site; the write side is not.
-    normal_client carries a non-admin user, which must be rejected."""
+    normal_client carries an AUTHENTICATED NON-ADMIN token, so the expected
+    answer is exactly 403 (not the 401-or-403 shrug this asserted before —
+    #295 review)."""
     r = await normal_client.put(ADMIN, json={"value": "open"})
-    assert r.status_code in (401, 403)
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_router_gate_rejects_anonymous_reads_and_writes(
+    clean_client: AsyncClient,
+):
+    """The dependency is ROUTER-level: GET must be gated exactly like PUT —
+    previously untested (#295 review)."""
+    assert (await clean_client.get(ADMIN)).status_code == 401
+    assert (
+        await clean_client.put(ADMIN, json={"value": "open"})
+    ).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_public_config_survives_a_db_failure_on_the_availability_read(
+    client: AsyncClient, monkeypatch
+):
+    """/config/site was DB-free before availability; a DB outage must degrade
+    the field to the default, never 500 the public site's bootstrap
+    (#295 review). The failure is injected at the exact seam."""
+    from app.api import site_config
+
+    async def boom(db):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(site_config, "read_availability", boom)
+    r = await client.get(PUBLIC)
+    assert r.status_code == 200
+    assert r.json()["availability"] == "listening"
 
 
 @pytest.mark.asyncio
@@ -72,3 +104,20 @@ async def test_states_vocabulary_matches_the_frontend_translations(
             assert key in table.get("AVAILABILITY", {}), (
                 f"{lang}.json is missing AVAILABILITY.{key}"
             )
+
+    # The admin service duplicates the vocabulary (a frontend file cannot
+    # import Python); this pin keeps the copies from drifting (#295 review).
+    admin_svc = (
+        Path(__file__).resolve().parents[2]
+        / "frontend"
+        / "projects"
+        / "admin"
+        / "src"
+        / "app"
+        / "services"
+        / "site-settings.service.ts"
+    ).read_text()
+    for state in AVAILABILITY_STATES:
+        assert f"'{state}'" in admin_svc, (
+            f"site-settings.service.ts is missing state '{state}'"
+        )

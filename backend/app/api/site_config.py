@@ -35,6 +35,13 @@ class SiteConfig(BaseModel):
     availability: str
 
 
+async def _availability_or_default(db: AsyncSession) -> str:
+    try:
+        return await read_availability(db)
+    except Exception:  # noqa: BLE001 — any DB failure degrades, never breaks
+        return "listening"
+
+
 @router.get("/site", response_model=SiteConfig)
 async def get_site_config(db: AsyncSession = Depends(get_db)) -> SiteConfig:
     """Return the site's public identity configuration."""
@@ -46,5 +53,9 @@ async def get_site_config(db: AsyncSession = Depends(get_db)) -> SiteConfig:
         owner_description=settings.owner_description,
         social_links=[s.strip() for s in settings.social_links.split(",") if s.strip()],
         analytics_id=settings.analytics_id,
-        availability=await read_availability(db),
+        # The one DB read on this endpoint. Identity must survive a DB outage
+        # exactly as it survives an unreachable backend on the client side —
+        # degrade to the default, never 500 the public site's bootstrap
+        # (#295 review: this endpoint was DB-free before availability).
+        availability=await _availability_or_default(db),
     )
