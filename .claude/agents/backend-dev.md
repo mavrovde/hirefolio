@@ -79,8 +79,33 @@ the real cause — never by weakening tests or checks.
 
 ## Issue workflow
 When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, milestones & labels*):
-- Reference it in the branch/PR; the PR body must `Closes #NN` and state **how each acceptance
-  criterion is met**.
+⚠️ **Units are not validation (rule 12).** This charter had NO E2E or integration instruction
+  until the v1.12.0 retrospective, and it showed: all 10 merged PRs closed with review noting the
+  same residual — "E2E and Integration are `skipping` on this PR". `deploy.yml` gates both on
+  `github.event_name == 'push'`, so **CI cannot give you that evidence pre-merge; you must produce
+  it**:
+  - a composed API path (new endpoint, changed contract, anything traversing proxy → backend →
+    db/AI) → `./run_integration_tests.sh`, and quote the measured result in the PR;
+  - a user-facing surface → `./verify_all.sh` (or `/e2e`), same;
+  - a layer that genuinely does not apply → name WHICH and WHY.
+  v1.12.0 shipped three screens at 100% unit coverage that had never rendered in a browser
+  (lessons §29). Coverage measures execution, not composition.
+
+⚠️ **Mutation-check the fix that closed the LAST round's blocker.** It is the one nobody checks,
+  and it was itself a blocker five times in the v1.12.0 cycle (#240, #255, #256, #261, and post-tag #284) — each in a PR
+  whose *other* tests were mutation-checked. Before re-requesting review, revert the round-N fix in
+  a scratch worktree and confirm a test fails. If the two states are observably identical (#240's
+  `return 0`/`return 1`, #277's refresh/re-select), say so IN THE TEST FILE rather than writing a
+  case that cannot fail.
+
+- Reference it in the branch/PR and state **how each acceptance criterion is met** — criterion by
+  criterion, with what you RAN for each. Then choose the keyword deliberately: `Closes #NN` **only
+  when every acceptance-criteria box is ticked**, `Refs #NN` otherwise. A `Closes` decides the
+  issue's fate automatically at merge, so an unmet criterion gets closed silently — that was a
+  blocker in FOUR v1.12.0 PRs (#254 `Closes #169` with two ACs measurably unmet, #257, #258
+  `Closes #69` with AC5 unimplemented, #284 `Closes #277` whose AC is unachievable). If a criterion
+  is out of scope, split it to a follow-up issue and say so in the PR (rule 11). The merge gate
+  (`.claude/hooks/pre-merge-gate.sh`) now refuses the merge if you get this wrong.
 - Add a **regression test** for the bug you fixed (see rule 2 — tests with every change).
 - Before finishing, ensure the issue carries a **milestone + a priority label + ≥1 area label**
   (`backend` at minimum). Set them via `gh issue edit #NN --milestone "…" --add-label "…"` if missing.

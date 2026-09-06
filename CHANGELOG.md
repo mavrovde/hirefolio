@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Interview reminder emails (#247 criterion 3, reminder clause — closes the deferral from #289)**:
+  scheduling (or genuinely RE-scheduling) an interview now emails the owner via the existing SMTP
+  service with the event's `.ics` attached — the same VEVENT the export route serves, from one
+  shared builder, stable UID included, so importing both updates rather than duplicates. Sent in a
+  FastAPI background task after commit: a mail failure can never fail the scheduling (pinned by a
+  test whose fake service raises), and the service skips itself gracefully when SMTP is
+  unconfigured — the criterion's own words, pinned with `smtplib` asserted NOT called. An
+  outcome-only PATCH and a same-instant "reschedule" send nothing (mutation-checked: forcing the
+  reschedule guard to always-fire fails the suite). This ships the reminder at booking time with
+  the invite carrying the calendar alarm; a scheduler-driven "N hours before" push would need a
+  process this repo deliberately does not run. 6 new tests (suite 940 → 946, coverage 100.00%).
+- **Release retrospectives are now part of the release process** (owner directive) — a release is
+  finished when what it taught is written down, not when the tag is pushed. New `release-retro`
+  **skill** (the method: five questions, finding→action classification, and the rule that a retro
+  producing no config change must say why), new **`/retro` command** (the runbook, including
+  checking the PREVIOUS retro's prediction), `release-manager` gains step 12 and **may not report a
+  release complete until the retro PR is open**, and `ai-integration` owns it as a scheduled duty.
+  Every retrospective is archived as `docs/retrospectives/vX.Y.Z.md` with a **trend table** in that
+  directory's README, so the numbers can be compared release over release rather than read once in
+  an issue comment — with documented counting conventions, because v1.12.0 found the Project
+  `Review rounds` field disagreeing with the actual thread and one issue filed under the wrong
+  release (understating the release by ~11%).
+- **The pre-push gate no longer contends for the shared test database** — it runs against its own
+  `test_mavrov_prepush` with `-n auto`, which is also how CI invokes the suite. It previously ran
+  SERIALLY on the shared `test_mavrov` and merely *detected* concurrent runs with `pgrep`, which
+  samples only at start: an agent beginning a suite a second later still clobbered the gate, and
+  two suites doing `drop_all`/`create_all` on one database produce dozens of spurious ERRORs that
+  read exactly like real failures. It blocked four pushes in one session and each failure invited a
+  blind retry rather than a diagnosis. Isolation beats arbitration (lessons §31).
+- **Merge gate hook** (`.claude/hooks/pre-merge-gate.sh`, 77-case self-test plus a 17-mutation contract with an identity control, both run inside the pre-push gate) — refuses
+  `gh pr merge` when the latest posted verdict is not an APPROVE (rule 13 was restated across **eleven files**
+  as prose with zero mechanical enforcement), and when the PR body says `Closes #NN` against
+  an issue with unticked acceptance criteria (a blocker in **four** v1.12.0 PRs, caught every time
+  only because a review read the issue by hand). Command-position aware via the shared parsing
+  model, fails closed on a deadline or an unreadable verdict, bypass with `PR_MERGE_GATE=0`.
+
+### Changed
+- **The v1.12.0 retrospective's findings applied to the toolkit** — measured over 24 review
+  verdicts: `issue-author` learns four rules for writing an acceptance criterion that can actually
+  be met (one AC last release was unachievable as written; six of eight feature PRs shipped with a
+  silently-unmet criterion); both dev charters replace an unconditional "the PR body must
+  `Closes #NN`" with a deliberate Closes/Refs decision; `backend-dev` gains the E2E/integration
+  instruction it never had (all 10 merged PRs closed with that evidence missing) plus the rule to
+  mutation-check the fix that closed the *previous* round's blocker (itself a blocker five times);
+  `pr-reviewer`'s charter said "engineering rules 1–8" while the repo has 13 — omitting rule 12 and
+  rule 13, its own mandate; `/prep-pr` gains re-measure-every-number (all 10 merged PRs carried a claim
+  that did not reproduce, nine at blocker level) and layer-evidence steps; **lessons §30** records
+  the assert-the-guarantee-where-it-can-be-enforced class and the shared-session fixture that hides
+  races. Two duplicated rule restatements deleted from the playbook and a drifted second copy of
+  the config map deleted from lessons-learned — duplication is how the renumber drift happened.
+
 ### Security
 - **Internal AI-tooling session identifiers must never reach public surfaces** (owner directive)
   — CLAUDE.md's issue-flow rule 8 (no secrets in public issues/PRs) and `agents/PLAYBOOK.md` now
@@ -12,7 +64,6 @@ All notable changes to this project will be documented in this file.
   repo (`Co-authored-by:` attribution stays). All 17 affected PR bodies were scrubbed; the
   repo-wide search now returns zero editable occurrences.
 
-### Changed
 - **Two engineering rules added, one renumbered** (owner directives 2026-09-06) — **rule 11: fix
   review findings IN the PR** rather than converting them into issues (a follow-up issue is for
   genuinely out-of-scope work only; backlog growth is not progress), and **rule 12: a merged PR
@@ -107,18 +158,6 @@ All notable changes to this project will be documented in this file.
   verification block for the new surfaces: confirm the identity is yours and not the demo
   persona, POST a probe to the contact form, and find it in the admin Inbox.
 
-### Added
-- **Interview reminder emails (#247 criterion 3, reminder clause — closes the deferral from #289)**:
-  scheduling (or genuinely RE-scheduling) an interview now emails the owner via the existing SMTP
-  service with the event's `.ics` attached — the same VEVENT the export route serves, from one
-  shared builder, stable UID included, so importing both updates rather than duplicates. Sent in a
-  FastAPI background task after commit: a mail failure can never fail the scheduling (pinned by a
-  test whose fake service raises), and the service skips itself gracefully when SMTP is
-  unconfigured — the criterion's own words, pinned with `smtplib` asserted NOT called. An
-  outcome-only PATCH and a same-instant "reschedule" send nothing (mutation-checked: forcing the
-  reschedule guard to always-fire fails the suite). This ships the reminder at booking time with
-  the invite carrying the calendar alarm; a scheduler-driven "N hours before" push would need a
-  process this repo deliberately does not run. 6 new tests (suite 940 → 946, coverage 100.00%).
 - **Interview calendar — backend (#247 phase 2 / #70)**: an `Interview` record on every
   opportunity (`interviews` table, migration `interview0006`, `ON DELETE CASCADE`) with
   admin-only endpoints to schedule (`POST /admin/opportunities/{id}/interviews`), list, fetch,

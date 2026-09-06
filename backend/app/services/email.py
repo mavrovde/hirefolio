@@ -161,6 +161,10 @@ The invite is attached — import it into your calendar for a timed reminder.
                 maintype="text",
                 subtype="calendar",
                 filename="interview.ics",
+                # RFC 2046 defaults text/* to us-ascii; the payload is UTF-8
+                # (company names, interviewer names), and the export route
+                # already declares charset=utf-8 — the attachment must match.
+                params={"charset": "utf-8"},
             )
 
             with smtplib.SMTP(

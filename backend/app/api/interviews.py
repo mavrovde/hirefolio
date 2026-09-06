@@ -453,7 +453,7 @@ def _send_reminder(
             ics_payload=ics_payload,
             rescheduled=rescheduled,
         )
-    except Exception as e:  # pragma: no cover - smtplib paths are unit-tested
+    except Exception as e:
         logger.error(f"Interview reminder failed in background: {e}")
 
 

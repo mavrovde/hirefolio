@@ -533,7 +533,10 @@ offset is accepted on input and normalized (a value without an offset is read as
 - `POST /api/app/admin/opportunities/{id}/interviews` - Schedule a slot (`scheduled_at`,
   `duration_minutes` 5–1440, `kind` ∈ `phone|video|onsite|other`, `location_or_link`,
   `interviewer`, `notes`). Advances the opportunity to `interviewing` **forward only** — a card
-  already at `offer`/`closed_*` keeps its stage — and writes the change to the notes timeline.
+  already at `offer`/`closed_*` keeps its stage — writes the change to the notes timeline, and
+  emails the owner a **reminder with the `.ics` invite attached** (same VEVENT as the export
+  route, stable UID) via the configured SMTP; skipped silently when SMTP is unconfigured, and a
+  mail failure never fails the scheduling.
 - `GET /api/app/admin/opportunities/{id}/interviews` - Every interview on one opportunity, soonest first
 - `GET /api/app/admin/interviews/upcoming?days=14` - Scheduled interviews across **all**
   opportunities inside the window (1–365 days), soonest first, cancelled slots excluded; each row
@@ -545,7 +548,9 @@ offset is accepted on input and normalized (a value without an offset is read as
   `text/calendar` with a download `Content-Disposition`
 - `PATCH /api/app/admin/interviews/{id}` - Reschedule and/or record the outcome
   (`pending|passed|failed|cancelled`); only the keys sent are applied, and reschedules/outcome
-  changes are appended to the opportunity's notes timeline
+  changes are appended to the opportunity's notes timeline. A **genuine move** (new instant) also
+  re-sends the owner reminder with the updated invite; outcome-only edits and same-instant
+  "reschedules" send nothing
 - `DELETE /api/app/admin/interviews/{id}` - Remove a mis-created slot (204). The removal is
   written to the notes timeline first, so the history survives the row; to keep an interview that
   simply did not happen, PATCH its outcome to `cancelled` instead
