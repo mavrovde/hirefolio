@@ -127,6 +127,7 @@
     "SUBMIT": "send",
     "SUBMITTING": "sending...",
     "SUCCESS": "Message received — I will get back to you soon.",
-    "ERROR": "Sending failed. Please try again or use the email above."
+    "ERROR": "Sending failed. Please try again or use the email above.",
+    "PRIVACY_NOTE": "Your name, email and message are stored so the site owner can reply, and are never shared with third parties."
   }
 }

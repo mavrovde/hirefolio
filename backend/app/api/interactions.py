@@ -10,14 +10,17 @@ records (e.g. ``CvRequest``) keep their own tables and link via
 and — like the CV path — is a background task that never blocks intake.
 """
 
+import re
 import uuid
 from math import ceil
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.logger import logger
 from app.models.interaction import (
@@ -28,16 +31,45 @@ from app.models.interaction import (
 from app.models.user import User
 from app.services.auth import get_current_admin_user
 from app.services.email import EmailService
+from app.services.rate_limit import SlidingWindowRateLimiter, rate_limit_dependency
 
 router = APIRouter(prefix="/interactions", tags=["interactions"])
 admin_router = APIRouter(prefix="/admin/interactions", tags=["admin-interactions"])
 
+# The contact form is a public, unauthenticated WRITE: every request costs a DB
+# row and an outbound owner email, so it gets the same per-client-IP limiter the
+# public profile GETs use, with a much tighter budget (see `app.services.rate_limit`).
+contact_rate_limiter = SlidingWindowRateLimiter(
+    max_requests=settings.contact_rate_limit_requests,
+    window_seconds=settings.contact_rate_limit_window_seconds,
+)
+_enforce_contact_rate_limit = rate_limit_dependency(contact_rate_limiter)
+
+_LINE_BREAKS = re.compile(r"[\r\n\x0b\x0c\u2028\u2029]+")
+
 
 class ContactRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=200)
+    # Length bounds mirror the frontend form validators (contact-form.component.ts)
+    # and are checked AFTER normalization, so whitespace-only padding can't satisfy them.
+    name: str = Field(min_length=2, max_length=200)
     email: EmailStr
     company: str | None = Field(default=None, max_length=200)
-    message: str = Field(min_length=1, max_length=10_000)
+    message: str = Field(min_length=5, max_length=10_000)
+
+    @field_validator("name", "company", mode="before")
+    @classmethod
+    def _single_line(cls, v: object) -> object:
+        # Header-bound fields: a line break in `name` reaches the notification's
+        # Subject and makes the stdlib refuse the whole email — fold to spaces.
+        if isinstance(v, str):
+            v = _LINE_BREAKS.sub(" ", v).strip()
+            return v or None
+        return v
+
+    @field_validator("message", mode="before")
+    @classmethod
+    def _strip_message(cls, v: object) -> object:
+        return v.strip() if isinstance(v, str) else v
 
 
 class InteractionOut(BaseModel):
@@ -48,7 +80,7 @@ class InteractionOut(BaseModel):
     email: str
     company: str | None
     message: str
-    payload: dict | None
+    payload: dict[str, Any] | None
     created_at: str
     updated_at: str
 
@@ -92,7 +124,12 @@ def _notify(name: str, email: str, company: str | None, message: str) -> None:
         logger.error(f"Interaction notification failed: {e}")
 
 
-@router.post("/contact", status_code=201, response_model=InteractionOut)
+@router.post(
+    "/contact",
+    status_code=201,
+    response_model=InteractionOut,
+    dependencies=[Depends(_enforce_contact_rate_limit)],
+)
 async def submit_contact(
     body: ContactRequest,
     background_tasks: BackgroundTasks,

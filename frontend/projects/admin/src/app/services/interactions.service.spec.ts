@@ -5,7 +5,7 @@ import {
     provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { InteractionsService } from './interactions.service';
+import { InteractionsService, Interaction } from './interactions.service';
 import { environment } from '../../environments/environment';
 
 describe('InteractionsService', () => {
@@ -44,12 +44,12 @@ describe('InteractionsService', () => {
     });
 
     it('PATCHes a status update', () => {
-        let result: any;
+        let result: Interaction | undefined;
         service.updateStatus('abc', 'closed').subscribe((r) => (result = r));
         const req = httpMock.expectOne(`${base}/abc`);
         expect(req.request.method).toBe('PATCH');
         expect(req.request.body).toEqual({ status: 'closed' });
         req.flush({ id: 'abc', status: 'closed' });
-        expect(result.status).toBe('closed');
+        expect(result!.status).toBe('closed');
     });
 });

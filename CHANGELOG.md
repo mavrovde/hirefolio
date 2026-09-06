@@ -98,8 +98,14 @@ All notable changes to this project will be documented in this file.
   (`source=cv_request`, linked to the domain record); the owner gets an email per interaction via a
   new generic `EmailService.send_interaction_notification` (background task, skips gracefully
   without SMTP, can never block intake). The admin panel gains an **Inbox** view — filter by
-  status/source, expandable messages, inline status control, pagination. 17 backend + 20 frontend
-  tests; all three projects stay at 100% coverage.
+  status/source, expandable messages, inline status control, pagination. Review hardening (round
+  1): the public endpoint is **rate-limited per client IP** (`CONTACT_RATE_LIMIT_*`, tight
+  write-budget defaults — it costs a DB row + an owner email per request), outbound SMTP gained a
+  `SMTP_TIMEOUT_SECONDS` bound (a hung peer no longer pins a worker thread), and input is
+  normalized server-side (whitespace-only rejected, line breaks in header-bound fields folded so
+  a newline in `name` can't kill the owner's notification, lengths mirror the form's validators);
+  the form states its privacy contract (EN/DE). 33 backend + 24 frontend tests around the
+  feature; all three projects stay at 100% coverage.
 
 ### Changed
 - **The repo ships an anonymized demo persona — no more real résumé, photo, CV, or third-party

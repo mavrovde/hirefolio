@@ -42,7 +42,22 @@ export class ContactFormComponent {
         this.successMessage = null;
         this.errorMessage = null;
 
-        this.interactionService.submitContact(this.contactForm.value).subscribe({
+        // The invalid-guard above guarantees the required controls are non-null.
+        // Mirror the backend normalization (interactions.py): trimmed fields,
+        // empty optional company sent as null.
+        const raw = this.contactForm.value as {
+            name: string;
+            email: string;
+            company: string | null;
+            message: string;
+        };
+        const payload = {
+            name: raw.name.trim(),
+            email: raw.email.trim(),
+            company: raw.company?.trim() || null,
+            message: raw.message.trim(),
+        };
+        this.interactionService.submitContact(payload).subscribe({
             next: () => {
                 this.isLoading = false;
                 this.successMessage = 'CONTACT.SUCCESS';

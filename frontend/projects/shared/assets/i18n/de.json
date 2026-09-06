@@ -127,6 +127,7 @@
     "SUBMIT": "senden",
     "SUBMITTING": "wird gesendet...",
     "SUCCESS": "Nachricht erhalten — ich melde mich in Kürze.",
-    "ERROR": "Senden fehlgeschlagen. Bitte erneut versuchen oder die E-Mail oben nutzen."
+    "ERROR": "Senden fehlgeschlagen. Bitte erneut versuchen oder die E-Mail oben nutzen.",
+    "PRIVACY_NOTE": "Ihr Name, Ihre E-Mail und Ihre Nachricht werden gespeichert, damit der Seiteninhaber antworten kann, und niemals an Dritte weitergegeben."
   }
 }

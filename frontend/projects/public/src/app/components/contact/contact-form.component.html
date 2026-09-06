@@ -45,6 +45,8 @@
       </p>
     </div>
 
+    <p class="text-secondary/70 text-xs">{{ 'CONTACT.PRIVACY_NOTE' | translate }}</p>
+
     <button type="submit" [disabled]="contactForm.invalid || isLoading"
       class="border border-primary text-primary px-6 py-2 font-mono hover:bg-primary hover:text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
       <span *ngIf="!isLoading">{{ 'CONTACT.SUBMIT' | translate }}</span>

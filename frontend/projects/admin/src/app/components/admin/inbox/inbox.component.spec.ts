@@ -112,4 +112,16 @@ describe('InboxComponent', () => {
         expect(component.error).toBe('Failed to update the status');
         expect(component.items[0].status).toBe('new');
     });
+
+    it('renders the empty state on a first visit (no interactions, no error)', () => {
+        serviceSpy.list.mockReturnValue(of({ items: [], total: 0, page: 1, pages: 1 }));
+        fixture = TestBed.createComponent(InboxComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+
+        expect(component.items).toEqual([]);
+        expect(component.error).toBeNull();
+        const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+        expect(text).toContain('No interactions yet');
+    });
 });

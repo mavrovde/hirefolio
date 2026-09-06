@@ -437,6 +437,12 @@ export const environment = {
 - `GET /api/posts/{slug}/similar` - Find similar posts
 - `GET /api/posts/search/semantic?q=query` - Semantic search
 
+### Recruiter interactions (#69)
+
+- `POST /api/app/interactions/contact` - Public contact form (rate-limited per client IP; validated + normalized input)
+- `GET /api/app/admin/interactions` - Admin inbox: filter by `status`/`source`, paginated (auth required)
+- `PATCH /api/app/admin/interactions/{id}` - Move an interaction through the status workflow (auth required)
+
 #### Post model — LinkedIn provenance fields (nullable)
 
 | Column | Type | Constraint | Purpose |
@@ -455,6 +461,7 @@ All three columns are `NULL` for posts not imported from LinkedIn. Two posts may
 |---|---|
 | `baseline0001` | Baseline schema — all current tables (`users`, `cv_documents`, `cv_requests`, `posts` incl. `image_url`/`image_blob`/`image_type` and LinkedIn provenance columns, `profile_snapshots`). Consolidates what used to be several disjoint/incomplete revisions (see #46). |
 | `encrypt0002` | Encrypts stored per-user Gemini API keys at rest (Fernet via `HIREFOLIO_GEMINI_ENCRYPTION_KEY`); one-time backfill of existing plaintext keys — a no-op if the key env var is empty when it runs (see #143 and the note in the backend env section above). |
+| `inbox0003` | Recruiter communication hub (#69): the `interactions` table (unified inbox — source, status workflow, JSON payload, indexes on status/source/created_at). Self-adopting: a no-op if `create_all` already made the table (pre-Alembic installs). |
 
 New changes get their own revision on top of this baseline — see
 [How to write a migration](#how-to-write-a-migration) above.

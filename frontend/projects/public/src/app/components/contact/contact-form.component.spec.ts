@@ -67,6 +67,39 @@ describe('ContactFormComponent', () => {
         expect(component.contactForm.get('name')?.value).toBeNull();
     });
 
+    it('trims fields and sends empty company as null (mirrors the backend contract)', () => {
+        serviceSpy.submitContact.mockReturnValue(of({ id: 'x', status: 'new' }));
+        component.contactForm.setValue({
+            name: '  Rita Recruiter  ',
+            email: 'rita@agency.example',
+            company: '   ',
+            message: '  We have a role.  ',
+        });
+        component.onSubmit();
+
+        expect(serviceSpy.submitContact).toHaveBeenCalledWith({
+            name: 'Rita Recruiter',
+            email: 'rita@agency.example',
+            company: null,
+            message: 'We have a role.',
+        });
+    });
+
+    it('sends a never-touched (null) company as null', () => {
+        serviceSpy.submitContact.mockReturnValue(of({ id: 'x', status: 'new' }));
+        component.contactForm.setValue({
+            name: 'Rita Recruiter',
+            email: 'rita@agency.example',
+            company: null,
+            message: 'We have a role.',
+        });
+        component.onSubmit();
+
+        expect(serviceSpy.submitContact).toHaveBeenCalledWith(
+            expect.objectContaining({ company: null })
+        );
+    });
+
     it('shows the error message on failure and keeps the form values', () => {
         serviceSpy.submitContact.mockReturnValue(throwError(() => ({ status: 500 })));
         fillValid();

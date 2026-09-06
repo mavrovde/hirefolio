@@ -72,11 +72,75 @@ async def test_contact_notification_failure_never_breaks_intake(client: AsyncCli
         {"message": ""},
         {"name": "x" * 201},
         {"message": "x" * 10_001},
+        {"name": "   "},
+        {"name": "A"},
+        {"name": " A \n "},
+        {"message": " \n\t  "},
+        {"message": "hi  "},
+        {"company": "x" * 201},
     ],
 )
 async def test_contact_validation_errors(client: AsyncClient, overrides):
     resp = await _post_contact(client, **overrides)
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_contact_accepts_unicode_identity(client: AsyncClient):
+    resp = await _post_contact(
+        client,
+        name="Zo\u00eb M\u00fcller \u6d4b\u8bd5",
+        company="M\u00fcller & S\u00f6hne",
+    )
+    assert resp.status_code == 201
+    assert resp.json()["name"] == "Zo\u00eb M\u00fcller \u6d4b\u8bd5"
+
+
+@pytest.mark.asyncio
+async def test_contact_folds_line_breaks_in_header_bound_fields(client: AsyncClient):
+    """A line break in `name` reaches the notification's Subject header, where the
+    stdlib refuses the whole email — the API folds it to spaces BEFORE storage and
+    notification, so the owner still gets notified (review finding, #69 round 1)."""
+    with patch(
+        "app.api.interactions.EmailService.send_interaction_notification"
+    ) as send:
+        resp = await _post_contact(
+            client,
+            name="Eve\r\nBcc: spam@x",
+            company="A\nB",
+            message="A perfectly fine message.",
+        )
+        assert resp.status_code == 201
+    assert resp.json()["name"] == "Eve Bcc: spam@x"
+    assert resp.json()["company"] == "A B"
+    sent_name = send.call_args.kwargs["name"]
+    assert "\n" not in sent_name and "\r" not in sent_name
+
+
+@pytest.mark.asyncio
+async def test_contact_rate_limited_after_limit(client: AsyncClient, monkeypatch):
+    """The public contact form is a WRITE (DB row + owner email) — the Nth request
+    inside the window gets 429 and creates neither (review blocker, #69 round 1)."""
+    from app.api import interactions as interactions_module
+
+    monkeypatch.setattr(interactions_module.contact_rate_limiter, "max_requests", 3)
+    with patch(
+        "app.api.interactions.EmailService.send_interaction_notification"
+    ) as send:
+        for _ in range(3):
+            assert (await _post_contact(client)).status_code == 201
+        resp = await _post_contact(client)
+        assert resp.status_code == 429
+    assert send.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_admin_inbox_empty_first_visit(client: AsyncClient):
+    """A brand-new deployment's inbox: no rows, sane pagination, no errors."""
+    resp = await client.get(ADMIN_URL)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data == {"items": [], "total": 0, "page": 1, "pages": 1}
 
 
 # --- CV request indexing (#69 wiring) ---------------------------------------
@@ -158,7 +222,7 @@ async def test_admin_list_requires_auth(clean_client: AsyncClient):
 @pytest.mark.asyncio
 async def test_admin_list_filters_and_pagination(client: AsyncClient, db_session):
     for i in range(3):
-        await _post_contact(client, name=f"P{i}", message=f"m{i}")
+        await _post_contact(client, name=f"Person {i}", message=f"message {i}")
     # one closed row to filter against
     row = (await db_session.execute(select(Interaction))).scalars().first()
     row.status = "closed"
@@ -167,7 +231,7 @@ async def test_admin_list_filters_and_pagination(client: AsyncClient, db_session
     all_resp = (await client.get(ADMIN_URL)).json()
     assert all_resp["total"] == 3
     # newest first
-    assert all_resp["items"][0]["name"] == "P2"
+    assert all_resp["items"][0]["name"] == "Person 2"
 
     closed = (await client.get(f"{ADMIN_URL}?status=closed")).json()
     assert closed["total"] == 1
@@ -240,7 +304,9 @@ def test_interaction_notification_sends_via_smtp(monkeypatch):
             source="cv_request", name="n", email="e@x", company="C", message="m"
         )
     assert ok is True
-    smtp.assert_called_once_with("smtp.test", settings.smtp_port)
+    smtp.assert_called_once_with(
+        "smtp.test", settings.smtp_port, timeout=settings.smtp_timeout_seconds
+    )
 
 
 def test_interaction_notification_smtp_error_returns_false(monkeypatch):
