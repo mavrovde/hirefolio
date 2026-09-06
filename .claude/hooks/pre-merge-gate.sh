@@ -166,9 +166,12 @@ segment_invokes_pr_merge() {
   # on spaces and the whole segment would arrive as one positional parameter —
   # every wrapper and compound case then reads as "not a merge" and the gate
   # allows. Restore word splitting locally.
-  local IFS=' '
-  # shellcheck disable=SC2086
-  set -- $seg
+  # Cheap reject before the O(n) split: the deadline exists because cost is a
+  # security property here (#219), and most segments are not merges.
+  case "$seg" in *merge*) ;; *) return 1 ;; esac
+  argv_split "$seg"
+  [ "${#ARGV_SPLIT_RESULT[@]}" -eq 0 ] && return 1
+  set -- "${ARGV_SPLIT_RESULT[@]}"
   [ "${1:-}" = "gh" ] || return 1
   shift || return 1
   while [ $# -gt 0 ]; do
@@ -200,6 +203,8 @@ segment_invokes_pr_merge() {
 MERGE_SEG=""
 MERGE_OPERAND=""
 MERGE_OPERAND_UNKNOWABLE=0
+MERGE_OPERANDS=()
+MERGE_UNKNOWABLE=()
 OLD_IFS="$IFS"
 IN_HEREDOC_DELIM=""
 while IFS= read -r line; do
@@ -227,7 +232,15 @@ while IFS= read -r line; do
   fi
   IFS=$'\n'
   for seg in $(quote_split "$line"); do
-    if segment_invokes_pr_merge "$seg"; then MERGE_SEG="$seg"; fi
+    # EVERY merge, not just the last. `gh pr merge 284 && gh pr merge 999`
+    # previously kept only the second and let the first through unverified,
+    # which contradicted this file's own "never an allow" promise (#291 r5).
+    if segment_invokes_pr_merge "$seg"; then
+      MERGE_SEG="$seg"
+      MERGE_OPERANDS+=("$MERGE_OPERAND")
+      MERGE_UNKNOWABLE+=("$MERGE_OPERAND_UNKNOWABLE")
+      MERGE_OPERAND=""; MERGE_OPERAND_UNKNOWABLE=0
+    fi
   done
   IFS="$OLD_IFS"
 done <<< "$CMD"
@@ -248,6 +261,9 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 # (`gh pr merge --squash 291` previously fell through and checked the CURRENT
 # branch's PR — a live bypass found in review round 2). A URL operand is
 # normalised to its number.
+for MERGE_IDX in "${!MERGE_OPERANDS[@]}"; do
+MERGE_OPERAND="${MERGE_OPERANDS[$MERGE_IDX]}"
+MERGE_OPERAND_UNKNOWABLE="${MERGE_UNKNOWABLE[$MERGE_IDX]}"
 [ "${MERGE_OPERAND_UNKNOWABLE:-0}" = "1" ] && deny "this merges a PR whose number comes from stdin (xargs), so the verdict cannot be checked — run the merge with an explicit PR number"
 
 # ONE normalisation path for the operand. Two overlapping blocks lived here
@@ -257,7 +273,9 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 # then: a number, a pull URL, or a branch gh can resolve.
 PR_NUM=""
 if [ -n "${MERGE_OPERAND:-}" ]; then
-  UNQUOTED="$(printf '%s' "$MERGE_OPERAND" | sed -E "s/^[\"']//; s/[\"']$//")"
+  # No quote-stripping here: argv_split already removed them AT THE SPLIT,
+  # which is the only place it is safe (a strip afterwards forged PR numbers).
+  UNQUOTED="$MERGE_OPERAND"
   PR_NUM="$(printf '%s' "$UNQUOTED" \
     | sed -E 's#^https?://[^ ]*/pull/([0-9]+)/?$#\1#' \
     | grep -oE '^[0-9]+$' || true)"
@@ -350,5 +368,7 @@ for issue in $CLOSES; do
     deny "PR #$PR_NUM says it closes #$issue, but #$issue has $UNCHECKED unticked acceptance criteria — use 'Refs #$issue' and name the unmet criterion, or tick them with what you ran"
   fi
 done
+
+done   # every merge in this command has now been verified
 
 exit 0

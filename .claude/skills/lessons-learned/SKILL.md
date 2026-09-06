@@ -784,6 +784,40 @@ reset, run `git status --short` and ask what ELSE is uncommitted in that file. T
 edit, re-edit it — reach for the file-level revert only when you intend to lose everything since the
 last commit. Commit working increments during a long round so a revert costs minutes, not the round.
 
+## 37. Model quoting AT THE SPLIT — a strip afterwards forges values
+
+`set -- $seg` is IFS word-splitting, not argv splitting, and no amount of cleanup afterwards makes
+it one. The merge gate split `gh pr merge -b "squash 999" 284` into `-b` `"squash` `999"` `284`,
+read `999"` as the operand, and a `sed` added to "fix the quotes" turned it into a valid PR number.
+The gate then verified PR **999** (approved) while merging PR **284** (request changes) — and
+reported success. The same patch also *denied* every legitimate `-b "multi word" 284`.
+
+The fix is `argv_split` in `hook-parse-lib.sh`: one character loop with the same three quoting
+models the other parsers use, quotes consumed where they are, tokens preserved whole.
+
+**The rule:** when a value's meaning depends on quoting, parse the quoting where the split happens.
+A post-hoc strip cannot distinguish "a quote that closed a token" from "a quote character inside
+data", so it will eventually manufacture a value that looks legitimate. That is worse than failing,
+because the wrong answer is indistinguishable from the right one. And when a guard reads a target
+positionally, ask what a quoted argument *ending in the target's shape* does to it.
+
+## 38. Counting conventions go wrong on the CORPUS, not the matcher
+
+Four different verdict counts were published for the same release — 30, 32, 29, 24. Every one used
+essentially the same matcher (a review body containing APPROVE or REQUEST CHANGES). All the
+disagreement was in *which pull requests are in the release*:
+
+- `git log <prev-tag>..<tag> | grep -oE '\(#[0-9]+\)'` cites **issue** numbers as well as PR
+  numbers — #65, #66, #69, #237, #239, #260 are issues, and `gh pr view` cannot resolve them.
+- It also sweeps in PRs that merged **before** the previous tag (#245 *is* the v1.11.1 release PR).
+- A hand-assembled list drifted the other way and included PRs merged **after** the tag.
+
+**How to apply.** Define the corpus as a query, never a list: PRs whose `mergedAt` falls between the
+two tags' dates. Put the runnable command in the doc, and when two people disagree about a number,
+compare corpora first — the matcher is almost never the problem. A metric nobody can re-derive is
+not a baseline, and a prediction stated against it (here: "below 2.5 rounds", when the real figure
+was 2.4) is unfalsifiable.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,

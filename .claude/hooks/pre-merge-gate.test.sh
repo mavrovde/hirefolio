@@ -219,6 +219,33 @@ GH_STUB_CURRENT_PR=999 GH_STUB_BRANCH_PR=284 \
 # An operand this hook cannot evaluate still fails closed.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
   run "an unresolvable operand fails closed" deny "gh pr merge \$PR --squash"
+# ROUND-5 REGRESSION, and the worst kind: the gate ALLOWED while verifying the
+# wrong PR. `set -- $seg` split `-b "squash 999" 284` into `-b` `"squash` `999"`
+# `284`, and the quote-strip sed turned `999"` into a valid PR number — so the
+# gate read 999 (APPROVED) and merged 284 (REQUEST CHANGES). argv_split models
+# the quoting AT THE SPLIT, which is the only place it is safe.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "quoted flag value ENDING IN DIGITS cannot forge the operand" deny "gh pr merge -b \"squash 999\" 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "quoted subject ending in digits" deny "gh pr merge -t \"release v1.13.0\" 284"
+# ...and the same quoting must not deny a LEGITIMATE merge of an approved PR.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "quoted body with spaces, approved PR" allow "gh pr merge -b \"squash msg\" 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "single-quoted multi-word body" allow "gh pr merge -b 'multi word body' 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "quoted subject, approved PR" allow "gh pr merge -t \"release v1.13.0\" 284"
+# TWO merges in one command: the first was kept unverified because only the LAST
+# segment survived. Every merge is checked now.
+GH_STUB_PR_JSON_284="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "two merges, the FIRST one unapproved" deny "gh pr merge 284 && gh pr merge 999"
+GH_STUB_PR_JSON_284="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=284 \
+  run "two merges, the SECOND one unapproved" deny "gh pr merge 284 && gh pr merge 999"
+GH_STUB_PR_JSON_284="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=284 \
+  run "two merges, both approved" allow "gh pr merge 284 && gh pr merge 999"
+# An unknowable operand on ONE merge must not poison an unrelated later merge.
+GH_STUB_PR_JSON_284="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=284 \
+  run "xargs on an unrelated command, then a legitimate merge" deny "echo 1 | xargs gh pr merge && gh pr merge 284"
 # ...but a genuinely absent operand still resolves the current branch's PR.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=284 \
   run "no operand still resolves the current branch" allow "gh pr merge --squash"
@@ -386,7 +413,7 @@ PY
   mutate die "heredoc bodies always treated as data" \
     'replace::[ -n "$delim" ] && line_is_all_text_tools "$line"=>[ -n "$delim" ]'
   mutate die "operand-after-flags ignored (falls back to current branch)" \
-    "replace::UNQUOTED=\"\$(printf '%s' \"\$MERGE_OPERAND\"=>UNQUOTED=\"\$(printf '%s' \"\""
+    "replace::UNQUOTED=\"\$MERGE_OPERAND\"=>UNQUOTED=\"\""
   mutate die "deadline denies removed" \
     "replace::past_deadline && deny=>false && deny"
   mutate die "the command-prefix bypass stops being recognised" \
@@ -395,6 +422,10 @@ PY
     'replace::-b|--body|-t|--subject|-F|--body-file|-A|--author-email|-R|--repo|--match-head-commit=>-b|--body|-t|--subject|--match-head-commit'
   mutate die "branch operands no longer resolved (valid input fails closed)" \
     "replace::PR_NUM=\"\$(gh pr view \"\$UNQUOTED\" --json number=>PR_NUM=\"\$(true \"\$UNQUOTED\" --json number"
+  mutate die "argv_split replaced by IFS word-splitting (the round-5 regression)" \
+    "replace::set -- \"\${ARGV_SPLIT_RESULT[@]}\"=>local IFS=' '; set -- \$seg"
+  mutate die "only the LAST merge in a command is verified" \
+    'replace::MERGE_OPERANDS+=("$MERGE_OPERAND")=>MERGE_OPERANDS=("$MERGE_OPERAND")'
   mutate die "indirection (bash -c / eval / ssh) no longer inspected" \
     'replace::inner_script_invokes_pr_merge "$seg" && return 0=>false && return 0'
 

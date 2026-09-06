@@ -29,10 +29,11 @@ Update this when you add a retro. These are the numbers worth watching; everythi
 
 | Release | PRs merged | Verdicts | Mean rounds | Approved r1 | Rework share of review tokens | Blocker-level "claim not measured" | Tokens | Agent-time |
 |---|---|---|---|---|---|---|---|---|
-| [v1.12.0](v1.12.0.md) | 12 | 30 | **2.5** | 17% (2/12) | **75%** | **9** | 9.07M | 28.1h |
+| [v1.12.0](v1.12.0.md) | 10 | 24 | **2.4** | 10% (1/10) | **75%** | **9** | 9.07M | 28.1h |
 
 **Standing prediction (set by v1.12.0, checked at v1.13):** mean rounds below **2.0**, ≥40%
-approved on round 1, zero blocker-level "claim asserted rather than measured", zero "the fix has no
+approved on round 1 — both restated against the CORRECTED baseline (2.4 rounds, 10% r1; the
+original 2.5/17% came from the wrong corpus), zero blocker-level "claim asserted rather than measured", zero "the fix has no
 failing-first test" blockers.
 
 **Falsification stated up front:** if rounds stay near 2.5 while claim-discipline blockers go to
@@ -50,13 +51,16 @@ So the series stays comparable, count the same way every time:
   were reported for v1.12.0 and none reproduced:
 
   ```bash
-  # PR numbers for the release: git log --oneline <prev-tag>..<tag> cites ISSUES too,
-  # so resolve each and keep only real merged PRs.
-  for n in $(git log --oneline <prev-tag>..<tag> | grep -oE '\(#[0-9]+\)' | tr -d '(#)'); do
-    [ "$(gh pr view "$n" --json state --jq .state 2>/dev/null)" = MERGED ] || continue
-    gh pr view "$n" --json reviews,comments \
-      --jq '[(.reviews[]?.body),(.comments[]?.body)]|map(select(test("APPROVE|REQUEST CHANGES")))|length'
-  done | paste -sd+ - | bc
+  # The corpus is every PR MERGED BETWEEN THE TAGS — not `git log <prev>..<tag>`,
+  # which cites issue numbers as well as PRs and sweeps in PRs that merged before
+  # the previous tag. Both published counts for v1.12.0 (29/14 and 32/12) came
+  # from getting the CORPUS wrong, not the matcher.
+  PREV=$(git log -1 --format=%aI <prev-tag>); CUR=$(git log -1 --format=%aI <tag>)
+  gh pr list --state merged --limit 100 --json number,mergedAt,reviews,comments \
+    --jq "[.[] | select(.mergedAt > \"$PREV\" and .mergedAt <= \"$CUR\")]
+          | map([(.reviews[]?.body),(.comments[]?.body)]
+                | map(select(test(\"APPROVE|REQUEST CHANGES\"))) | length)
+          | add"
   ```
 
   Case matters: a lowercase "approve" in prose is not a verdict, and matching case-insensitively

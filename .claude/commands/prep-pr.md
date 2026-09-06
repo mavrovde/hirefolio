@@ -44,7 +44,7 @@ E2E assertion). Consult the `env-gotchas` skill for platform pitfalls while runn
    you ran and what it printed: backend `pytest -n auto --cov-fail-under=100`; the three Vitest
    projects; `./verify_all.sh` or `/e2e` for a user-facing surface; `./run_integration_tests.sh` for
    a composed API/AI path. `deploy.yml` gates E2E and the integration tier on `push`, so PR CI shows
-   them `skipping` — a LOCAL run is the only pre-merge evidence, and all 14 merged v1.12.0 PRs
+   them `skipping` — a LOCAL run is the only pre-merge evidence, and all 10 merged v1.12.0 PRs
    closed with the reviewer noting its absence. Name any layer that does not apply, and why.
 
 

@@ -218,6 +218,48 @@ mask_quotes() {
 # shell expands the body, so `$(…)` and backticks in it EXECUTE. Such a body is
 # code wearing a document's clothes and must stay inspected — reporting a
 # delimiter here would exempt it.
+# Split a command segment into ARGV the way the shell does: on UNQUOTED
+# whitespace, with a quoted run kept as ONE token and its quotes removed.
+# Result lands in the ARGV_SPLIT_RESULT array — an array, not a string list,
+# because a token can legitimately contain a newline.
+#
+# This exists because `set -- $seg` (IFS word-splitting) is NOT argv splitting
+# and cannot be made into it. `gh pr merge -b "squash 999" 284` splits into
+# `-b` `"squash` `999"` `284`, so a merge gate reading the operand positionally
+# saw `999"` — and a `sed` that stripped the stray quote turned it into a valid
+# PR number, verifying PR 999 while merging 284 (#291 review round 5). Quoting
+# must be modelled where the split happens, never patched afterwards.
+#
+# Same three quoting models as mask_quotes/quote_split — plain single, double,
+# and ANSI-C `$'…'` — plus backslash escapes outside single quotes. The three
+# functions must agree; #213 and #237 both came from them drifting apart.
+argv_split() {
+  local s="$1" n=${#1} i c q="" tok="" started=0
+  ARGV_SPLIT_RESULT=()
+  for (( i=0; i<n; i++ )); do
+    c="${s:i:1}"
+    if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
+      tok+="${s:i+1:1}"; started=1; i=$((i + 1)); continue
+    fi
+    if [ -n "$q" ]; then
+      if [ "$c" = "$q" ] || { [ "$q" = "$ANSI_Q" ] && [ "$c" = "'" ]; }; then q=""
+      else tok+="$c"; fi
+      continue
+    fi
+    if [ "$c" = '$' ] && [ $((i + 1)) -lt "$n" ] && [ "${s:i+1:1}" = "'" ]; then
+      q="$ANSI_Q"; started=1; i=$((i + 1)); continue
+    fi
+    case "$c" in
+      \'|\") q="$c"; started=1 ;;
+      ' '|$'\t'|$'\n')
+        if [ "$started" = "1" ]; then ARGV_SPLIT_RESULT+=("$tok"); tok=""; started=0; fi ;;
+      *) tok+="$c"; started=1 ;;
+    esac
+  done
+  [ "$started" = "1" ] && ARGV_SPLIT_RESULT+=("$tok")
+  return 0
+}
+
 heredoc_delim() {
   local line="$1" masked head rest
   # Cheap reject FIRST. mask_quotes is an O(n) character loop and this runs per

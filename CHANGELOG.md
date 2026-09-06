@@ -23,7 +23,7 @@ All notable changes to this project will be documented in this file.
   two suites doing `drop_all`/`create_all` on one database produce dozens of spurious ERRORs that
   read exactly like real failures. It blocked four pushes in one session and each failure invited a
   blind retry rather than a diagnosis. Isolation beats arbitration (lessons §31).
-- **Merge gate hook** (`.claude/hooks/pre-merge-gate.sh`, 61-case self-test plus a 13-mutation contract with an identity control, both run inside the pre-push gate) — refuses
+- **Merge gate hook** (`.claude/hooks/pre-merge-gate.sh`, 70-case self-test plus a 15-mutation contract with an identity control, both run inside the pre-push gate) — refuses
   `gh pr merge` when the latest posted verdict is not an APPROVE (rule 13 was restated across **eleven files**
   as prose with zero mechanical enforcement), and when the PR body says `Closes #NN` against
   an issue with unticked acceptance criteria (a blocker in **four** v1.12.0 PRs, caught every time
@@ -31,12 +31,12 @@ All notable changes to this project will be documented in this file.
   model, fails closed on a deadline or an unreadable verdict, bypass with `PR_MERGE_GATE=0`.
 
 ### Changed
-- **The v1.12.0 retrospective's findings applied to the toolkit** — measured over 29 review
+- **The v1.12.0 retrospective's findings applied to the toolkit** — measured over 24 review
   verdicts: `issue-author` learns four rules for writing an acceptance criterion that can actually
   be met (one AC last release was unachievable as written; six of eight feature PRs shipped with a
   silently-unmet criterion); both dev charters replace an unconditional "the PR body must
   `Closes #NN`" with a deliberate Closes/Refs decision; `backend-dev` gains the E2E/integration
-  instruction it never had (all 14 merged PRs closed with that evidence missing) plus the rule to
+  instruction it never had (all 10 merged PRs closed with that evidence missing) plus the rule to
   mutation-check the fix that closed the *previous* round's blocker (itself a blocker five times);
   `pr-reviewer`'s charter said "engineering rules 1–8" while the repo has 13 — omitting rule 12 and
   rule 13, its own mandate; `/prep-pr` gains re-measure-every-number (all 14 PRs carried a claim
