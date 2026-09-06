@@ -108,6 +108,34 @@ All notable changes to this project will be documented in this file.
   persona, POST a probe to the contact form, and find it in the admin Inbox.
 
 ### Added
+- **Interview calendar — backend (#247 phase 2 / #70)**: an `Interview` record on every
+  opportunity (`interviews` table, migration `interview0006`, `ON DELETE CASCADE`) with
+  admin-only endpoints to schedule (`POST /admin/opportunities/{id}/interviews`), list, fetch,
+  reschedule/record an outcome (`PATCH /admin/interviews/{id}`) and remove a mis-created slot
+  (`DELETE`, which writes the removal to the opportunity's notes timeline first, so no history is
+  lost). Two surfaces make it useful on day one: **`GET /admin/interviews/upcoming?days=14`** —
+  every scheduled round across all opportunities inside the window, soonest first, cancelled
+  excluded, each row carrying its company/role/stage — and **`GET /admin/interviews/{id}.ics`**, a
+  minimal RFC 5545 VEVENT (UTC `DTSTART`/`DTEND`, escaped TEXT values, 75-**octet** line folding
+  that never splits a multi-byte character, `STATUS:CANCELLED`, stable `UID`) that imports into
+  any calendar app. Timestamps are stored in UTC and any ISO-8601 offset is normalized on input;
+  scheduling advances the opportunity to `interviewing` **forward only** (a card at `offer` or
+  `closed_*` keeps its stage — the promote handler's never-regress rule), and every
+  schedule/reschedule/outcome/removal lands on the notes timeline. An instant near
+  `datetime.max` is rejected with 422 rather than accepted: `astimezone` and the `DTEND`
+  arithmetic raise **`OverflowError`, not `ValueError`**, so one shape 500'd on input and — worse
+  — another was accepted with 201 and then raised on *every* `.ics` export, forever. The parser
+  now bounds `scheduled_at` so DTEND stays representable at the **maximum** duration the schema
+  allows, because a later PATCH can raise the duration. `upcoming` keeps an interview that has
+  **started but not ended** (per-row end time, not a blanket lookback), an opportunity whose stage
+  is not in the known set is left untouched instead of raising, and the `UID` is escaped like
+  every other TEXT value. 57 backend tests
+  (suite 883 → 940 passing, coverage 100.00%), mutation-checked 8/8 — including the one that
+  found `astimezone(UTC)` pinned by nothing, because `timestamptz` normalizes on the way back out
+  (lessons §16 addendum) — plus 3 integration-tier tests that run the composed
+  create → upcoming → .ics path over real HTTP. The
+  `.ics` renderer lives in `app/services/ics.py`, deliberately free of DB imports, because #70's
+  recruiter self-booking flow shares it. Admin UI follows in a separate PR.
 - **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose
   only browser validation was "the suite didn't break". 18 tests, suite **97 → 115**: the public
   **contact form** (`e2e/public/contact-form.spec.ts` — server-rendered then hydrated, trimmed
