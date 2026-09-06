@@ -36,13 +36,20 @@ from app.services.rate_limit import SlidingWindowRateLimiter, rate_limit_depende
 router = APIRouter(prefix="/interactions", tags=["interactions"])
 admin_router = APIRouter(prefix="/admin/interactions", tags=["admin-interactions"])
 
+
 # The contact form is a public, unauthenticated WRITE: every request costs a DB
 # row and an outbound owner email, so it gets the same per-client-IP limiter the
 # public profile GETs use, with a much tighter budget (see `app.services.rate_limit`).
-contact_rate_limiter = SlidingWindowRateLimiter(
-    max_requests=settings.contact_rate_limit_requests,
-    window_seconds=settings.contact_rate_limit_window_seconds,
-)
+def _build_contact_limiter() -> SlidingWindowRateLimiter:
+    # Factory so tests can pin the settings wiring with SENTINEL values —
+    # asserting equality against unmodified defaults pins nothing (§25).
+    return SlidingWindowRateLimiter(
+        max_requests=settings.contact_rate_limit_requests,
+        window_seconds=settings.contact_rate_limit_window_seconds,
+    )
+
+
+contact_rate_limiter = _build_contact_limiter()
 _enforce_contact_rate_limit = rate_limit_dependency(contact_rate_limiter)
 
 _LINE_BREAKS = re.compile(r"[\r\n\x0b\x0c\u2028\u2029]+")

@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
   collided with the EN/DE switcher buttons in strict mode and failed the post-merge Docker E2E
   (run 34009222801). `exact: true` pins the switcher; regression class: any German copy
   containing "en"/"de" — i.e. most of it.
+- **The pre-push backend gate now enforces `--cov-fail-under=100` exactly like CI** (#69 review) —
+  previously it printed the coverage number and passed regardless, so a push could be locally
+  green while CI's Backend Tests failed the coverage gate ("verify that gates actually gate").
 - **Destruction guard: many-segment cost reduced 4–10× on every measured shape** (#235) —
   `pipes_into_shell()` forked ~3 processes per separator-split segment with no budget check, so
   bulk alone defeated the guard regardless of parsing correctness: against the 15 s hook timeout
@@ -115,6 +118,17 @@ All notable changes to this project will be documented in this file.
   `backend/conftest.py` now REFUSES any non-`test_*` database (lesson §4, enforced in code after
   it recurred in practice).
 
+- **Job-search pipeline: run the search from your own admin panel** (#247, phase 1) — new
+  `Opportunity` + `OpportunityNote` models and `pipeline0004` migration (with the pre-Alembic
+  self-adopt guard): one company/role thread per opportunity, moved through explicit stages
+  (lead → contacted → screening → interviewing → offer → closed won/lost) with every stage move
+  recorded on a notes **timeline**; free-form remarks attach to the thread. The admin panel gains a
+  **Pipeline board** (cards by stage, quick-create, detail panel with timeline + stage control +
+  next-action), and the Inbox gains **↗ Promote to pipeline** — one click turns a recruiter
+  interaction into an opportunity, carrying the message as the first note and the recruiter's
+  contact onto the record (the interaction advances new → in_progress, never regressed). 17 backend
+  + 17 frontend tests; backend 100%, all three frontend projects 100%. Interviews/calendar and CV
+  variants are #247's later phases.
 - **Recruiter communication hub: a unified inbox — no recruiter contact is ever missed** (#69) —
   the first piece of the Job-search CRM milestone. New `Interaction` model + `inbox0003` migration:
   every inbound touch is ONE indexable record with `source`, a status workflow
@@ -130,7 +144,7 @@ All notable changes to this project will be documented in this file.
   `SMTP_TIMEOUT_SECONDS` bound (a hung peer no longer pins a worker thread), and input is
   normalized server-side (whitespace-only rejected, line breaks in header-bound fields folded so
   a newline in `name` can't kill the owner's notification, lengths mirror the form's validators);
-  the form states its privacy contract (EN/DE). 33 backend + 24 frontend tests around the
+  the form states its privacy contract (EN/DE). 30 backend + 24 frontend tests around the
   feature; all three projects stay at 100% coverage.
 
 ### Changed
