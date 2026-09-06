@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Placeholder for next release.
+- **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three new screens
+  whose only browser validation was "the suite didn't break": the public **contact form**
+  (`e2e/public/contact-form.spec.ts` — renders in the SSR'd page, trimmed-validation gating, the
+  zoneless repaint after submit, and the API-failure path that keeps the visitor's text), the
+  admin **Inbox** (`e2e/admin/inbox.spec.ts` — empty state, list + expand-to-read, status filter
+  round trip, inline status PATCH, promote hand-off), and the admin **Pipeline board**
+  (`e2e/admin/pipeline.spec.ts` — stage columns, card placement, detail panel, stage move, note
+  added and repainted). 13 tests, 96 → 109 in the suite. All twelve were **executed against a
+  real prod-topology stack** (published `dd18d8a` images) before commit — which caught a defect
+  in the specs themselves: a Playwright glob `*` does not cross `/`, so the status-PATCH route
+  escaped the mock to the live backend and the assertion silently observed nothing. The stage
+  assertion is mutation-checked (wrong stage → the spec fails).
 
 ## [1.12.0] - 2026-09-06
 
