@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
   collided with the EN/DE switcher buttons in strict mode and failed the post-merge Docker E2E
   (run 34009222801). `exact: true` pins the switcher; regression class: any German copy
   containing "en"/"de" — i.e. most of it.
+- **The pre-push backend gate now enforces `--cov-fail-under=100` exactly like CI** (#69 review) —
+  previously it printed the coverage number and passed regardless, so a push could be locally
+  green while CI's Backend Tests failed the coverage gate ("verify that gates actually gate").
 - **Destruction guard: many-segment cost reduced 4–10× on every measured shape** (#235) —
   `pipes_into_shell()` forked ~3 processes per separator-split segment with no budget check, so
   bulk alone defeated the guard regardless of parsing correctness: against the 15 s hook timeout
@@ -141,7 +144,7 @@ All notable changes to this project will be documented in this file.
   `SMTP_TIMEOUT_SECONDS` bound (a hung peer no longer pins a worker thread), and input is
   normalized server-side (whitespace-only rejected, line breaks in header-bound fields folded so
   a newline in `name` can't kill the owner's notification, lengths mirror the form's validators);
-  the form states its privacy contract (EN/DE). 33 backend + 24 frontend tests around the
+  the form states its privacy contract (EN/DE). 30 backend + 24 frontend tests around the
   feature; all three projects stay at 100% coverage.
 
 ### Changed

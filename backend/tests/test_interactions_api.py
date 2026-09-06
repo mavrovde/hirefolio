@@ -95,21 +95,18 @@ async def test_contact_accepts_explicit_null_company(client: AsyncClient):
     assert resp.json()["company"] is None
 
 
-@pytest.mark.asyncio
-async def test_contact_rate_limiter_is_wired_to_settings(client: AsyncClient):
-    """Pins the configured budget path, not just the mechanism: the limiter must be
-    constructed from the CONTACT_RATE_LIMIT_* settings (review round 2, minor)."""
-    from app.api import interactions as interactions_module
+def test_contact_limiter_builds_from_settings(monkeypatch):
+    """Pins the SETTINGS WIRING with sentinel values (#258 round-3 follow-up): the
+    round-3 version compared limiter fields to unmodified defaults, which passes even
+    if the code hardcodes 5/60 and ignores CONTACT_RATE_LIMIT_* entirely (§25)."""
+    from app.api.interactions import _build_contact_limiter
     from app.config import settings as app_settings
 
-    assert (
-        interactions_module.contact_rate_limiter.max_requests
-        == app_settings.contact_rate_limit_requests
-    )
-    assert (
-        interactions_module.contact_rate_limiter.window_seconds
-        == app_settings.contact_rate_limit_window_seconds
-    )
+    monkeypatch.setattr(app_settings, "contact_rate_limit_requests", 7)
+    monkeypatch.setattr(app_settings, "contact_rate_limit_window_seconds", 123)
+    limiter = _build_contact_limiter()
+    assert limiter.max_requests == 7
+    assert limiter.window_seconds == 123
 
 
 @pytest.mark.asyncio
