@@ -73,9 +73,10 @@ Full stack: `./manage.sh start|stop|logs` · `./verify_all.sh` (full suite incl.
   (git worktree of `main`, same gate). If `main` fails too, it's a latent gate bug.
 - **Local proxy HTTPS is on host port 10443** (`https://localhost:10443`); `https://localhost/`
   returns `000`.
-- **The public app is zoneless** (no zone.js at runtime): async property mutations in
-  `subscribe`/`setInterval` don't repaint — use the `async` pipe, signals, or `markForCheck()`.
-  Unit tests hide this; only the Docker E2E catches it.
+- **Both browser apps are zoneless** (no zone.js at runtime) — public explicitly, admin by default
+  (#276): async property mutations in `subscribe`/`setInterval` don't repaint — use the `async`
+  pipe, signals, or `markForCheck()`. `npm run lint:cd-safety` scans both roots; unit tests hide
+  this unless the TestBed opts into `provideZonelessChangeDetection()`.
 - **SSR URL rewrite lives in `SsrHttpBackend` delegating to `HttpXhrBackend`** — never an
   interceptor, never `FetchBackend`. Any SSR/HTTP/transfer-cache change must pass the full Docker
   E2E before merge (PR CI runs CodeQL only).

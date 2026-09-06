@@ -30,6 +30,30 @@ All notable changes to this project will be documented in this file.
   (`fable-5`/`opus-5`/`sonnet-5`/`haiku-4.5`/`mixed`), so cost, review rounds and defects caught
   can be compared per model rather than only per agent.
 ### Fixed
+- **The zoneless change-detection lint now guards the ADMIN app too — and it immediately found
+  five frozen-UI bugs** (#276). `frontend/scripts/check-cd-safety.mjs` scoped itself to
+  `projects/public` on the written premise that "the admin app is zone-based CSR". That premise
+  was false: `angular.json` gives the admin project no `polyfills` entry (no zone.js is bundled —
+  `grep -rl __zone_symbol__ dist/admin/` returns nothing) and its `app.config.ts` provides no
+  `provideZoneChangeDetection()`, so `@angular/core`'s `ZONELESS_ENABLED` default (`() => true`)
+  applies. The lint now scans both roots (`CD_SAFETY_SCAN_ROOT` accepts several roots), the scope
+  comment states the real, falsifiable reason, and the self-test pins the default scope
+  (`--print-scope`) plus a violation planted only under an admin root. The five real defects it
+  exposed, all fixed: the **LinkedIn sync status bar** never cleared after its 5 s timer; the
+  **post editor** stayed stuck on "[ Saving… ]" with the error banner invisible when a save
+  failed; the **profile** success banner never disappeared; the **admin sidebar username** never
+  tracked login/logout (now rendered with `currentUser$ | async`); and the profile key-status
+  badge gained an explicit `markForCheck()` so it no longer depends silently on an async pipe
+  elsewhere in the template. Each fix carries a `*.zoneless.spec.ts` regression pin that opts its
+  TestBed into `provideZonelessChangeDetection()` — a technique that lets unit tests see this
+  class at all, now documented in the `ssr-cd-safety` skill along with the admin app's real
+  zoneless status. **A sixth bug of the same class, which the lint cannot see**, was found by the
+  review and fixed here too: `checkLoginStatus()` in `admin-linkedin.component.ts` assigns after an
+  `await`, and the checker does not follow `await` (the documented #234 gap), so a connected
+  operator kept reading "🔴 Not Connected" with the login form still up. Three layers were blind —
+  the lint by that gap, the unit specs because they bundle zone.js, and the e2e spec because it
+  always mocked the initial status as logged-out. **The widened lint is a floor, not a guarantee:**
+  it covers `subscribe`/`.then()`/`setTimeout`/`setInterval` assignments, not `async`/`await` ones.
 - **Integration/E2E verification stacks no longer evict the developer's test database** — the
   `docker-compose.inttest.yml` overlay publishes Postgres on **5533** instead of 5433. Prod
   compose published the same port the local pytest DB uses, so every verification stack silently

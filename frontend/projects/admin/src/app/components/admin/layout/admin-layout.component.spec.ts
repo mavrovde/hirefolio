@@ -48,15 +48,13 @@ describe('AdminLayoutComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(component.currentUser).toEqual(mockUser);
-
     fixture.detectChanges();
     const nativeElement = fixture.nativeElement as HTMLElement;
+    // Rendered via `currentUser$ | async` (#276) — assert the DOM, which is
+    // what the operator actually sees, rather than an internal property.
     const userInfo = nativeElement.querySelector('.user-info');
-    // Depending on implementation, checking existence or content
-    if (userInfo) {
-      expect(userInfo.textContent).toContain(mockUser.username);
-    }
+    expect(userInfo).not.toBeNull();
+    expect(userInfo?.textContent).toContain(mockUser.username);
   });
 
   it('should call logout and navigate to login on logout', () => {

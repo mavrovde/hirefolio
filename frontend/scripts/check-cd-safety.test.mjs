@@ -9,7 +9,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const CHECKER = join(
@@ -73,6 +73,80 @@ for (const [desc, expectFlag, snippet] of CASES) {
     console.error(`FAIL  got=${flagged ? "flag" : "ok"} want=${expectFlag ? "flag" : "ok"}  ${desc}`);
     fails++;
   }
+}
+
+// --- Scope pins (#276) -----------------------------------------------------
+// The checker used to scan projects/public only, on the false premise that the
+// admin app was "zone-based CSR". These two cases keep the admin app inside the
+// gate: (1) admin/src must be part of the DEFAULT scope, and (2) a violation
+// that lives ONLY under an admin root must actually be reported.
+
+function check(desc, ok) {
+  if (ok) console.log(`PASS  [scope]  ${desc}`);
+  else {
+    console.error(`FAIL  [scope]  ${desc}`);
+    fails++;
+  }
+}
+
+// Guarded like every other invocation here: an unhandled throw aborts the whole
+// suite with a stack trace and no results, which reads as "the tests vanished"
+// rather than "one check failed".
+let scope = "";
+try {
+  scope = execFileSync(process.execPath, [CHECKER, "--print-scope"], {
+    stdio: "pipe",
+  }).toString();
+} catch (err) {
+  check(`--print-scope runs (${err.message})`, false);
+}
+check(
+  "default scope includes projects/public/src",
+  scope.includes(join("projects", "public", "src")),
+);
+check(
+  "default scope includes projects/admin/src (the #276 regression)",
+  scope.includes(join("projects", "admin", "src")),
+);
+
+{
+  // Two roots, shaped like the real workspace: public is clean, admin is not.
+  const dir = mkdtempSync(join(tmpdir(), "cdsafety-multiroot-"));
+  const publicRoot = join(dir, "projects", "public", "src");
+  const adminRoot = join(dir, "projects", "admin", "src");
+  mkdirSync(publicRoot, { recursive: true });
+  mkdirSync(adminRoot, { recursive: true });
+  writeFileSync(
+    join(publicRoot, "clean.component.ts"),
+    `export class Clean {\n  run() {\n    this.svc.data$.subscribe((v) => { this.value.set(v); });\n  }\n}\n`,
+  );
+  writeFileSync(
+    join(adminRoot, "admin-fixture.component.ts"),
+    `export class AdminFixture {\n  run() {\n    this.svc.data$.subscribe((v) => { this.value = v; });\n  }\n}\n`,
+  );
+  let stderr = "";
+  let flagged = false;
+  try {
+    execFileSync(process.execPath, [CHECKER], {
+      env: {
+        ...process.env,
+        CD_SAFETY_SCAN_ROOT: [publicRoot, adminRoot].join(delimiter),
+      },
+      stdio: "pipe",
+    });
+  } catch (e) {
+    flagged = true;
+    stderr = (e.stderr ?? "").toString();
+  }
+  rmSync(dir, { recursive: true, force: true });
+  check(
+    "multi-root scan flags a violation that exists only under the admin root",
+    flagged && stderr.includes("admin-fixture.component.ts"),
+  );
+  check(
+    "multi-root scan reports exactly that one violation (clean public root untouched)",
+    flagged && stderr.includes("1 violation(s)") && !stderr.includes("clean.component.ts"),
+  );
 }
 
 if (fails) {

@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
+import { Observable } from 'rxjs';
 import { AuthService, User } from '../../../services/auth.service';
 
 @Component({
@@ -11,15 +12,16 @@ import { AuthService, User } from '../../../services/auth.service';
   styleUrls: ['./admin-layout.component.css'],
 })
 export class AdminLayoutComponent {
-  currentUser: User | null = null;
+  // Rendered with the async pipe: the admin app is zoneless (#276), so a
+  // subscribe-and-assign into a plain property would render the first emission
+  // and then never repaint on login/logout/refresh.
+  readonly currentUser$: Observable<User | null>;
 
   constructor(
     private authService: AuthService,
     private router: Router,
   ) {
-    this.authService.currentUser$.subscribe((user) => {
-      this.currentUser = user;
-    });
+    this.currentUser$ = this.authService.currentUser$;
   }
 
   logout(): void {

@@ -30,10 +30,13 @@ PR CI (which runs only CodeQL) — they only surface in the full Docker E2E or i
 
 ---
 
-## 1. The public app is effectively ZONELESS — async property mutations don't repaint
+## 1. BOTH apps are zoneless — async property mutations don't repaint
 
-**Trap.** `frontend/projects/public` bundles **no `zone.js`** at runtime (`angular.json` has no
-`polyfills` entry; zone.js is only in `test-setup.ts` for unit tests). A component that mutates a
+**Trap.** **Neither** `frontend/projects/public` **nor** `frontend/projects/admin` bundles
+`zone.js` at runtime — `angular.json` has no `polyfills` entry for either, and zone.js is only in
+`test-setup.ts` for unit tests. (This entry said "the public app" until #276: the admin app was
+excluded from the cd-safety lint on that false premise, and the widened lint immediately found
+**five** frozen-UI bugs in admin, plus a sixth the lint cannot see — see below.) A component that mutates a
 **plain property** inside a `subscribe` / `setInterval` / `setTimeout` / `async`-`fetch` callback will
 **silently never repaint**. This froze the footer at `BE: vUnknown` / `UPTIME 00:00:00` (#94) even
 though the `/stats/public` fetch returned 200.
@@ -45,8 +48,16 @@ the freeze only appears in the browser / Docker E2E.
 explicitly: inject `ChangeDetectorRef` and call `markForCheck()` after each async mutation, **or** use
 signals, **or** render an `Observable` via the `async` pipe. The app is committed to zoneless via
 `provideZonelessChangeDetection()` in `app.config.ts` (#105) — the async-mutation rule still holds.
-Grep pattern to audit: `subscribe(` / `setInterval(` / `setTimeout(` in `projects/public` that assign
+Grep pattern to audit: `subscribe(` / `setInterval(` / `setTimeout(` in **either** app that assign
 `this.<prop> =` without a following `markForCheck()`.
+
+**The lint does NOT follow `await`** (its documented #234 gap), so an `async` method that assigns
+after an await is invisible to it. #290's review found exactly that live in
+`admin-linkedin.component.ts`: `checkLoginStatus()` set `isLoggedIn = true` and the banner kept
+reading "🔴 Not Connected" with the login form still up. Three layers missed it — the lint by that
+gap, the unit specs because they bundle zone.js, and the e2e spec because it always mocked the
+initial status as logged-out. When you audit, read the `async` methods by hand; a green lint is not
+a clean bill of health here.
 
 ## 2. SSR relative→absolute URL rewrite belongs in an `HttpBackend`, delegating to `HttpXhrBackend`
 
@@ -650,6 +661,32 @@ box could not detect page overflow (the form is clamped well inside the viewport
 `document.documentElement.scrollWidth - clientWidth` instead). A third was circular: mocking an
 idempotent server to "prove" the client prevents double submits passes no matter what the client
 does — mock the NAIVE server, then the assertion means something.
+
+## 32. A guard's SCOPE is a claim, and claims rot — check the premise, not the wiring (#276)
+
+`frontend/scripts/check-cd-safety.mjs` shipped in #233 scoped to `projects/public` with the
+comment *"The admin app is zone-based CSR … neither has the zoneless footgun."* That sentence was
+false on the day it was written: `frontend/angular.json` gives the admin project **no `polyfills`
+entry** (so no zone.js is bundled — `grep -rl __zone_symbol__ dist/admin/` returns nothing) and its
+`app.config.ts` provides no `provideZoneChangeDetection()`, so `@angular/core`'s `ZONELESS_ENABLED`
+default `factory: () => true` applies. The admin app was zoneless and completely unguarded for a
+release cycle. Cost: **four** independent reviews raised it (#274 r1, #282 r1, #284 r2, plus issue
+#276) before it was fixed, and when the gate was finally pointed at admin it flagged **five real
+frozen-UI bugs** on the first run — a stale status bar, a stuck "Saving…" with an invisible error
+banner, a permanent success banner, and a sidebar username that never tracked login/logout.
+
+**The rule:** when you narrow a gate, the narrowing needs the same evidence standard as a
+suppression — state *why* the excluded scope is safe, in falsifiable terms, and verify it against
+the artifact (the built bundle, the config file), not against your memory of the architecture. A
+green gate that is green because it is not looking is worse than no gate: it buys false confidence.
+Same defect class as §21's `cd-safety-ok` suppression whose justification a later commit made
+untrue — one level up, at the scope instead of the line.
+
+**Corollary — the exclusion needs a test too.** The self-test now pins the *default scope*
+(`--print-scope` must name both roots) and flags a violation planted only under an admin root, so
+the scope cannot silently shrink again. And unit tests **can** see this bug class after all: a
+TestBed that opts into `provideZonelessChangeDetection()` and never calls `detectChanges()` after
+the action reproduces the frozen UI — see the `ssr-cd-safety` skill.
 
 ## Where the rules live (AI-config map)
 
