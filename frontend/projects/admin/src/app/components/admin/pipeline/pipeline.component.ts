@@ -93,6 +93,10 @@ export class PipelineComponent implements OnInit {
   }
 
   open(opportunity: Opportunity) {
+    // A stale selection from the PREVIOUS panel must never carry over: with it,
+    // one click records the wrong variant against the wrong company — the one
+    // datum this feature exists to record (#294 review round 1, reproduced).
+    this.cvChoice = '';
     this.loadCvVersions();
     this.opportunitiesService.get(opportunity.id).subscribe({
       next: (full) => {
@@ -149,6 +153,9 @@ export class PipelineComponent implements OnInit {
   }
 
   loadCvVersions() {
+    // 100 is the backend's le=100 page bound (admin_cv.py): variants beyond
+    // the 100th are unpickable here until the control grows pagination —
+    // an accepted limit, recorded rather than hidden (#294 review nit 10).
     this.adminCvService.getVersions(1, 100).subscribe({
       next: (page) => {
         this.cvVersions = page.items;
@@ -184,6 +191,7 @@ export class PipelineComponent implements OnInit {
         this.all = this.all.map((o) => (o.id === full.id ? full : o));
         this.cvChoice = '';
         this.sendingCv = false;
+        this.error = null; // a stale failure banner must not outlive a success
         this.cdr.detectChanges();
       },
       error: (err) => {

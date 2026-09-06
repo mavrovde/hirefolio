@@ -528,6 +528,9 @@ All admin-only (auth required):
   (`open|listening|not_looking`), shown on the public hero beside the Hire-me CTA; editable at
   runtime with no redeploy, served publicly via `/config/site` (an older backend without the field
   degrades to `listening` client-side)
+- `POST /api/app/admin/cv/upload` now takes **`activate`** (form field, default `true`):
+  `false` uploads a **variant** — listed in `/versions`, attachable to opportunities — while the
+  public `/cv/download` keeps serving the current default untouched
 - `POST /api/app/admin/opportunities/{id}/cv-sent` - Record which **CV variant** went to this
   company (`cv_document_id`): sets the current pointer + timestamp and appends the durable
   `CV sent: version (filename)` note to the timeline. Never touches which CV the public flow

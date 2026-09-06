@@ -28,6 +28,10 @@ All notable changes to this project will be documented in this file.
   deleted. **The invariant that matters is pinned by a dedicated test: recording a send NEVER
   touches `is_active`** — what the public site serves and what went to one company are independent
   facts. Admin UI: a variant picker in the detail panel (loaded lazily, public default flagged),
+  facts. `POST /admin/cv/upload` gains **`activate`** (default true = the historical
+  make-it-the-default behavior; `false` uploads a variant WITHOUT touching what the public site
+  serves — before this flag, uploading a tailored variant unavoidably repointed the public CV,
+  reproduced in review). Admin UI: a variant picker in the detail panel (loaded lazily, public default flagged),
   the current sent-variant with its timestamp, a since-deleted fallback label, and in-flight/
   error states — every callback repainting explicitly (zoneless). 5 backend tests
   (suite 946 → 951, 100.00%), 7 admin unit specs (suite 381 → 388, 100% on all four metrics),

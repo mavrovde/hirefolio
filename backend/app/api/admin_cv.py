@@ -28,21 +28,28 @@ class PaginatedResponse(BaseModel):
 async def upload_cv(
     file: UploadFile = File(...),
     version: str = Form(...),
+    activate: bool = Form(True),
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
+    """Upload a CV. `activate=True` (the historical behavior, kept as the
+    default) makes it the public download; `activate=False` uploads a VARIANT
+    — #247 criterion 4's middle clause, "the default still serves the public
+    flow unchanged". Before this flag existed, uploading a tailored variant
+    unavoidably repointed the public site (#294 review round 1, reproduced:
+    two uploads, the public download followed the second)."""
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
     try:
         content = await file.read()
 
-        # Deactivate all existing active documents
-        await db.execute(update(CvDocument).values(is_active=False))
+        if activate:
+            # Deactivate all existing active documents — one default at a time.
+            await db.execute(update(CvDocument).values(is_active=False))
 
-        # Create new document
         new_cv = CvDocument(
-            filename=file.filename, data=content, version=version, is_active=True
+            filename=file.filename, data=content, version=version, is_active=activate
         )
         db.add(new_cv)
         await db.commit()

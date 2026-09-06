@@ -207,9 +207,28 @@ describe('PipelineComponent — CV variants (#247 criterion 4)', () => {
     });
 
     it('loads the version list when the detail panel opens', () => {
+        cvSpy['getVersions'].mockReturnValue(
+            of({ items: [makeCv(), makeCv({ id: 'cv2', version: 'general', is_active: true })], total: 2, page: 1, pages: 1 }),
+        );
         component.open(makeOpp());
         expect(cvSpy['getVersions']).toHaveBeenCalledWith(1, 100);
-        expect(component.cvVersions.length).toBe(1);
+        expect(component.cvVersions.length).toBe(2);
+        // The public default is flagged in the picker (#294 review minor 7:
+        // the advertised suffix was never exercised by any fixture).
+        fixture.detectChanges();
+        const options = (fixture.nativeElement as HTMLElement).querySelectorAll('option');
+        const labels = Array.from(options).map((o) => o.textContent?.trim());
+        expect(labels.some((l) => l?.includes('general (cv-backend.pdf) — public default'))).toBe(true);
+    });
+
+    it('clears a stale selection when another panel opens', () => {
+        // Without the reset, one click recorded the wrong variant against the
+        // wrong company (#294 review blocker 2, reproduced).
+        component.open(makeOpp());
+        component.cvChoice = 'cv1';
+        component.close();
+        component.open(makeOpp({ id: 'o2' }));
+        expect(component.cvChoice).toBe('');
     });
 
     it('keeps the panel usable when the version list fails to load', () => {
@@ -260,6 +279,16 @@ describe('PipelineComponent — CV variants (#247 criterion 4)', () => {
         component.sendingCv = true;
         component.recordCvSent();
         expect(serviceSpy['recordCvSent']).not.toHaveBeenCalled();
+    });
+
+    it('a success clears a stale failure banner (nit 8)', () => {
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        serviceSpy['recordCvSent'].mockReturnValue(of(makeOpp({ sent_cv_id: 'cv1' })));
+        component.open(makeOpp());
+        component.error = 'Failed to record the sent CV';
+        component.cvChoice = 'cv1';
+        component.recordCvSent();
+        expect(component.error).toBeNull();
     });
 
     it('surfaces a failed record without losing the panel', () => {

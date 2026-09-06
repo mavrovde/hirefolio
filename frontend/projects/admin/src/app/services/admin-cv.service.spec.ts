@@ -99,4 +99,21 @@ describe('AdminCvService', () => {
         expect(req.request.method).toBe('GET');
         req.flush({ items: [], total: 0, page: 1, page_size: 10, total_pages: 0 });
     });
+
+    it('sends the activate flag verbatim — false must reach the wire as "false"', () => {
+        // Mutating String(activate) to a hardcoded 'true' left the whole suite
+        // green (#294 round-2 note): the FormData field itself was unpinned,
+        // and a silent 'true' would repoint the public CV on every "variant"
+        // upload. Both literals asserted.
+        const file = new File(['x'], 'cv.pdf', { type: 'application/pdf' });
+        service.uploadCv(file, 'v1', false).subscribe();
+        let req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/admin/cv/upload`);
+        expect((req.request.body as FormData).get('activate')).toBe('false');
+        req.flush({ success: true });
+
+        service.uploadCv(file, 'v2').subscribe();
+        req = httpMock.expectOne(`${environment.apiUrl}${environment.apiPrefix}/admin/cv/upload`);
+        expect((req.request.body as FormData).get('activate')).toBe('true');
+        req.flush({ success: true });
+    });
 });
