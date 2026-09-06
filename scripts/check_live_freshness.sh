@@ -39,7 +39,10 @@ case "$code" in
     [ "$fail" -eq 0 ] && fail=2 ;;
   *)
     echo "admin_route $code STALE(want=404,pre-split-frontend)"
-    [ "$fail" -eq 0 ] && fail=1 ;;
+    # Staleness EVIDENCE beats an outage verdict: in the mixed state (stats
+    # endpoint down but a pre-split frontend answering here) the site is
+    # provably stale, not merely unreachable (#254 review ride-along).
+    fail=1 ;;
 esac
 
 exit "$fail"

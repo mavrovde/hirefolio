@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Placeholder for next release.
+
+## [1.12.0] - 2026-09-06
+
 ### Fixed
 - **Public E2E: language-switcher locators are exact-match** — `getByRole` name matching is
   case-insensitive substring, so the #69 German submit button "senden" (contains "en"/"de")
@@ -51,8 +56,11 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **Live-freshness gate: "green pipeline" can no longer impersonate "live site"** (#169) — a new
   scheduled `Live Freshness` workflow (daily + on-demand, no secrets needed) probes the live site
-  and FAILS RED whenever live ≠ released: `backend_version` from `/api/app/stats/public` must equal
-  the repo `VERSION`, and public `/admin/login` must 404 (a 200 proves a pre-workspace-split
+  and FAILS RED whenever live ≠ released, via the shared `scripts/check_live_freshness.sh`
+  (also used by `/deploy-status`): `backend_version` from `/api/app/stats/public` must equal
+  the repo `VERSION`, and public `/admin/login` must 404; verdicts are distinct — 0 fresh /
+  1 stale / 2 unreachable (an outage is not a pre-split frontend), and staleness evidence
+  beats an outage headline in mixed states (a 200 proves a pre-workspace-split
   frontend image, the exact shape of the five-month v1.2.27 staleness). This is the independent
   alarm for the #112 published≠live gap: the deploy pipeline's own gate only runs when the
   secrets-gated rollout actually rolls the host, so a skipped rollout previously left NO signal.
@@ -93,7 +101,8 @@ All notable changes to this project will be documented in this file.
   generated password previously never reached the container — the backend refused to seed while
   the wizard printed unusable credentials); the `.env` helpers mend a missing trailing newline
   before appending and treat whitespace/CR-only values as unset (no 1-byte secrets); both guards
-  are pinned failing-first by a new `setup.test.sh` (10 cases) wired into the pre-push docs leg;
+  are pinned failing-first by a new `setup.test.sh` (11 cases) wired into the pre-push docs leg
+  AND the CI Version Consistency job;
   the root `.env.example` gains the #65 identity block; `setup.sh` is explicitly scoped as the
   LOCAL quickstart (servers use `docs/DEPLOYMENT.md`).
 - **A serious integration & performance test tier — WireMock + JMeter** (#260) — the testing
