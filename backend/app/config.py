@@ -164,6 +164,15 @@ class Settings(BaseSettings):
     profile_rate_limit_requests: int = 100
     profile_rate_limit_window_seconds: int = 60
 
+    # The public contact form is a WRITE (DB row + owner email per request), so
+    # its limit is far tighter than the read-side profile limit above (#69).
+    contact_rate_limit_requests: int = 5
+    contact_rate_limit_window_seconds: int = 60
+
+    # Outbound SMTP: without a timeout a hung peer pins the worker thread that
+    # the notification background task runs on (#69 review finding).
+    smtp_timeout_seconds: int = 10
+
     # Operational timeouts (issue #207).
     #
     # These are host-dependent by nature, which is why they are settings rather

@@ -49,7 +49,11 @@ Please review and respond if necessary.
             msg["From"] = settings.smtp_user
             msg["To"] = settings.admin_email
 
-            with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+            with smtplib.SMTP(
+                settings.smtp_host,
+                settings.smtp_port,
+                timeout=settings.smtp_timeout_seconds,
+            ) as server:
                 server.starttls()
                 server.login(settings.smtp_user, settings.smtp_password)
                 server.send_message(msg)
@@ -85,7 +89,11 @@ Best regards,
             msg["From"] = settings.smtp_user
             msg["To"] = email
 
-            with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+            with smtplib.SMTP(
+                settings.smtp_host,
+                settings.smtp_port,
+                timeout=settings.smtp_timeout_seconds,
+            ) as server:
                 server.starttls()
                 server.login(settings.smtp_user, settings.smtp_password)
                 server.send_message(msg)
@@ -94,6 +102,60 @@ Best regards,
             return True
         except Exception as e:
             logger.error(f"Failed to send confirmation email to {email}: {e}")
+            return False
+
+    def send_interaction_notification(
+        self,
+        source: str,
+        name: str,
+        email: str,
+        company: str,
+        message: str,
+    ) -> bool:
+        """Generic new-interaction alert to the owner (#69) — one method for
+        every inbox source, same skip-gracefully-when-unconfigured contract as
+        the CV-specific notifications above."""
+        if (
+            not settings.smtp_host
+            or not settings.smtp_user
+            or not settings.smtp_password
+        ):
+            logger.warning("Email configuration missing. Skipping email sending.")
+            return False
+
+        try:
+            msg = EmailMessage()
+            msg.set_content(f"""
+New interaction in your inbox!
+
+Source: {source}
+--------------------------------
+Name: {name}
+Email: {email}
+Company: {company or "N/A"}
+Message:
+{message}
+--------------------------------
+
+Review and update its status in the admin panel.
+""")
+            msg["Subject"] = f"[{source}] New interaction from {name}"
+            msg["From"] = settings.smtp_user
+            msg["To"] = settings.admin_email
+
+            with smtplib.SMTP(
+                settings.smtp_host,
+                settings.smtp_port,
+                timeout=settings.smtp_timeout_seconds,
+            ) as server:
+                server.starttls()
+                server.login(settings.smtp_user, settings.smtp_password)
+                server.send_message(msg)
+
+            logger.info(f"Interaction notification sent to {settings.admin_email}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send interaction notification: {e}")
             return False
 
 

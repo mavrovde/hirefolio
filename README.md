@@ -171,6 +171,18 @@ A non-additive change (column type change, `NOT NULL` backfill, rename, new cons
 through the same `alembic revision --autogenerate` + hand-edit workflow — Alembic (unlike
 `create_all`) can express and apply these safely.
 
+**If your migration CREATES a table or index, start it with the self-adopt guard:**
+
+```python
+if sa.inspect(op.get_bind()).has_table("your_table"):
+    return  # pre-Alembic install already has it (create_all) — adopt, don't crash
+```
+
+Long-lived deployments got their schema from `create_all` before Alembic existed (the entrypoint
+stamps `baseline0001` over whatever is there), so a plain `op.create_table` explodes with
+`DuplicateTable` on them. `inbox0003` is the reference example; the lessons-learned skill has the
+full story. Test both directions: clean DB → creates; `create_all` DB → no-ops.
+
 #### Frontend
 
 ```bash
@@ -437,6 +449,12 @@ export const environment = {
 - `GET /api/posts/{slug}/similar` - Find similar posts
 - `GET /api/posts/search/semantic?q=query` - Semantic search
 
+### Recruiter interactions (#69)
+
+- `POST /api/app/interactions/contact` - Public contact form (rate-limited per client IP; validated + normalized input)
+- `GET /api/app/admin/interactions` - Admin inbox: filter by `status`/`source`, paginated (auth required)
+- `PATCH /api/app/admin/interactions/{id}` - Move an interaction through the status workflow (auth required)
+
 #### Post model — LinkedIn provenance fields (nullable)
 
 | Column | Type | Constraint | Purpose |
@@ -455,9 +473,14 @@ All three columns are `NULL` for posts not imported from LinkedIn. Two posts may
 |---|---|
 | `baseline0001` | Baseline schema — all current tables (`users`, `cv_documents`, `cv_requests`, `posts` incl. `image_url`/`image_blob`/`image_type` and LinkedIn provenance columns, `profile_snapshots`). Consolidates what used to be several disjoint/incomplete revisions (see #46). |
 | `encrypt0002` | Encrypts stored per-user Gemini API keys at rest (Fernet via `HIREFOLIO_GEMINI_ENCRYPTION_KEY`); one-time backfill of existing plaintext keys — a no-op if the key env var is empty when it runs (see #143 and the note in the backend env section above). |
+| `inbox0003` | Recruiter communication hub (#69): the `interactions` table (unified inbox — source, status workflow, JSON payload, indexes on status/source/created_at). Self-adopting: a no-op if `create_all` already made the table (pre-Alembic installs). |
 
 New changes get their own revision on top of this baseline — see
 [How to write a migration](#how-to-write-a-migration) above.
+**Every post-baseline `create_table`/`create_index` migration MUST start with the
+self-adopt guard** (`if sa.inspect(op.get_bind()).has_table("..."): return`) — pre-Alembic
+installs got their schema from `create_all` and already have an unpredictable subset of
+tables (see `inbox0003` and the lessons-learned entry).
 
 ### Health Check
 

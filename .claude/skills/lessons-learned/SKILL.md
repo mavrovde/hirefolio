@@ -531,6 +531,28 @@ This is the clearest evidence yet for CLAUDE.md rule 11: an independent reviewer
 regression in four consecutive rounds that the author, the author's own new tests, and green CI all missed —
 and CI *could not* have caught it, because nothing in the pipeline runs that suite (#208, #210).
 
+## Alembic on a create_all legacy: every post-baseline CREATE TABLE needs the self-adopt guard (#69)
+
+A long-lived deployment may have gotten its schema from SQLAlchemy `create_all` BEFORE Alembic
+was introduced (the entrypoint stamps `baseline0001` over the existing tables). On such a host a
+later migration's `op.create_table(...)` explodes with `DuplicateTable` — the table already
+exists, Alembic just never made it. `inbox0003` (the `interactions` table, PR #258) was the FIRST
+post-baseline `create_table` and went CI-red on exactly this; `encrypt0002` never hit it because
+it only ALTERs.
+
+**The rule:** every migration that creates a table (or index) must start with the self-adopt
+guard —
+
+```python
+if sa.inspect(op.get_bind()).has_table("interactions"):
+    return  # pre-Alembic install already has it; adopt, don't crash
+```
+
+and the downgrade must be symmetric. This applies to EVERY future `create_table` in this repo,
+not just the first one: any pre-Alembic install that ever ran a newer `create_all` image has an
+unpredictable subset of tables. Test it both ways — migration on a clean DB creates; migration on
+a create_all DB no-ops (the drift-guard CI job catches the clean direction only).
+
 ---
 
 ## Where the rules live (AI-config map)

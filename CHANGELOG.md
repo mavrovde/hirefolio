@@ -89,6 +89,24 @@ All notable changes to this project will be documented in this file.
   the root `.env.example` gains the #65 identity block; `setup.sh` is explicitly scoped as the
   LOCAL quickstart (servers use `docs/DEPLOYMENT.md`).
 
+- **Recruiter communication hub: a unified inbox — no recruiter contact is ever missed** (#69) —
+  the first piece of the Job-search CRM milestone. New `Interaction` model + `inbox0003` migration:
+  every inbound touch is ONE indexable record with `source`, a status workflow
+  (new → contacted → in_progress → closed), and a JSON payload for source-specific extras. The
+  public site gains a real **contact form** (terminal-styled, EN/DE, validated) posting to
+  `POST /interactions/contact`; **CV requests are now indexed into the same inbox**
+  (`source=cv_request`, linked to the domain record); the owner gets an email per interaction via a
+  new generic `EmailService.send_interaction_notification` (background task, skips gracefully
+  without SMTP, can never block intake). The admin panel gains an **Inbox** view — filter by
+  status/source, expandable messages, inline status control, pagination. Review hardening (round
+  1): the public endpoint is **rate-limited per client IP** (`CONTACT_RATE_LIMIT_*`, tight
+  write-budget defaults — it costs a DB row + an owner email per request), outbound SMTP gained a
+  `SMTP_TIMEOUT_SECONDS` bound (a hung peer no longer pins a worker thread), and input is
+  normalized server-side (whitespace-only rejected, line breaks in header-bound fields folded so
+  a newline in `name` can't kill the owner's notification, lengths mirror the form's validators);
+  the form states its privacy contract (EN/DE). 33 backend + 24 frontend tests around the
+  feature; all three projects stay at 100% coverage.
+
 ### Changed
 - **The repo ships an anonymized demo persona — no more real résumé, photo, CV, or third-party
   recommendations in source control** (#66) — `profile_data_en.json`/`_de.json` are now the

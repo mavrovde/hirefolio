@@ -310,7 +310,10 @@ run_checks() {
       echo "Another pytest run is already active (pgrep -f pytest). The shared test_mavrov DB cannot host two suites at once — wait for it to finish, then push again."
       return 1
     fi
-    ( cd "$ROOT/backend" && HIREFOLIO_GEMINI_API_KEY="" ./venv/bin/pytest -q ) || return 1
+    # --cov-fail-under=100 matches deploy.yml's Backend Tests job exactly — without it
+    # this gate prints a coverage number and passes regardless, letting a red-CI push
+    # through green locally (#69 review round 2: "verify that gates actually gate").
+    ( cd "$ROOT/backend" && HIREFOLIO_GEMINI_API_KEY="" ./venv/bin/pytest -q --cov-fail-under=100 ) || return 1
     echo "== agent-playbook drift check (#115) =="
     # Only the sync test: the rest of agents/tests needs the a2a venv. No DB.
     ( cd "$ROOT" && backend/venv/bin/python -m pytest agents/tests/test_playbook_sync.py -q --no-header -p no:cacheprovider --no-cov ) || return 1
