@@ -53,7 +53,7 @@ All notable changes to this project will be documented in this file.
   operator kept reading "🔴 Not Connected" with the login form still up. Three layers were blind —
   the lint by that gap, the unit specs because they bundle zone.js, and the e2e spec because it
   always mocked the initial status as logged-out. **The widened lint is a floor, not a guarantee:**
-  it covers `subscribe`/`setTimeout`/`setInterval` assignments, not `async`/`await` ones.
+  it covers `subscribe`/`.then()`/`setTimeout`/`setInterval` assignments, not `async`/`await` ones.
 - **Integration/E2E verification stacks no longer evict the developer's test database** — the
   `docker-compose.inttest.yml` overlay publishes Postgres on **5533** instead of 5433. Prod
   compose published the same port the local pytest DB uses, so every verification stack silently
