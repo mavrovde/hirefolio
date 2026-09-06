@@ -674,6 +674,25 @@ concurrent-looking calls in a test serialise. "883 passed" says nothing about co
 property is "at most one of X", ask *what physically prevents the second one* — and if the answer is
 an `if` in Python, write the constraint.
 
+## 31. Isolate the resource; do not arbitrate access to it (2026-09-06)
+
+The pre-push gate ran pytest SERIALLY against the shared `test_mavrov` and refused to start
+whenever `pgrep -f pytest` saw another suite. That guard samples only at start, so an agent
+beginning a suite one second later still clobbered the run — two suites doing `drop_all` /
+`create_all` on one database produce dozens of spurious ERRORs that look exactly like real
+failures. With agents working in parallel it blocked four pushes in one session, and each time the
+temptation was to retry rather than read the log.
+
+**The rule:** when two workers contend for a resource, give each its own instead of taking turns.
+The gate now uses `test_mavrov_prepush` (conftest creates databases on demand and only drops
+TABLES, so nothing accumulates) and runs `-n auto`, which is how CI runs it and additionally gives
+every xdist worker its own `_gwN` database. A detector that samples at a point in time cannot
+prevent a race; separate namespaces can.
+
+**The meta-lesson, which cost more than the bug:** a gate failing repeatedly is data. Retrying it
+unchanged is not a fix, and "it's the shared DB again" was an assumption — the log said mass
+ERRORs, not the guard's refusal message, and that difference was the whole diagnosis.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,

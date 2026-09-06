@@ -16,6 +16,13 @@ All notable changes to this project will be documented in this file.
   an issue comment — with documented counting conventions, because v1.12.0 found the Project
   `Review rounds` field disagreeing with the actual thread and one issue filed under the wrong
   release (understating the release by ~11%).
+- **The pre-push gate no longer contends for the shared test database** — it runs against its own
+  `test_mavrov_prepush` with `-n auto`, which is also how CI invokes the suite. It previously ran
+  SERIALLY on the shared `test_mavrov` and merely *detected* concurrent runs with `pgrep`, which
+  samples only at start: an agent beginning a suite a second later still clobbered the gate, and
+  two suites doing `drop_all`/`create_all` on one database produce dozens of spurious ERRORs that
+  read exactly like real failures. It blocked four pushes in one session and each failure invited a
+  blind retry rather than a diagnosis. Isolation beats arbitration (lessons §31).
 - **Merge gate hook** (`.claude/hooks/pre-merge-gate.sh`, 14-case self-test) — refuses
   `gh pr merge` when the latest posted verdict is not an APPROVE (rule 13 was restated in **six**
   places as prose with zero mechanical enforcement), and when the PR body says `Closes #NN` against

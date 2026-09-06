@@ -303,17 +303,26 @@ run_checks() {
 
   if [ "$PREPUSH_RUN_BACKEND" = "1" ]; then
     echo "== backend pytest =="
-    # Never run two pytest suites at once: both use the shared test_mavrov DB and
-    # do drop_all/create_all per test, clobbering each other into dozens of
-    # spurious failures (lessons-learned §4). Fail fast instead of running dirty.
-    if pgrep -f pytest >/dev/null 2>&1; then
-      echo "Another pytest run is already active (pgrep -f pytest). The shared test_mavrov DB cannot host two suites at once — wait for it to finish, then push again."
-      return 1
-    fi
+    # ISOLATION, not arbitration (2026-09-06). This gate used to run SERIALLY against
+    # the shared `test_mavrov` and refuse to start whenever any other pytest was
+    # alive. That guard only sampled at start, so an agent beginning a suite one
+    # second later still clobbered the run: drop_all/create_all from two suites on
+    # one database produces dozens of spurious ERRORs that read like real failures,
+    # and it cost several blind retries before anyone read the log.
+    #
+    # Make the collision IMPOSSIBLE instead of detecting it:
+    #   * this gate gets a database of its own (`test_mavrov_prepush`), so parallel
+    #     agents on `test_mavrov` / `test_mavrov_gwN` cannot touch it — conftest
+    #     creates it on demand and only ever drops TABLES, so nothing accumulates;
+    #   * `-n auto` is how CI actually runs the suite (lessons: run the suite as CI
+    #     runs it) and additionally gives every xdist worker its own `_gwN` database.
+    #
     # --cov-fail-under=100 matches deploy.yml's Backend Tests job exactly — without it
     # this gate prints a coverage number and passes regardless, letting a red-CI push
     # through green locally (#69 review round 2: "verify that gates actually gate").
-    ( cd "$ROOT/backend" && HIREFOLIO_GEMINI_API_KEY="" ./venv/bin/pytest -q --cov-fail-under=100 ) || return 1
+    PREPUSH_DB="${PREPUSH_TEST_DATABASE_URL:-postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov_prepush}"
+    ( cd "$ROOT/backend" && HIREFOLIO_GEMINI_API_KEY="" TEST_DATABASE_URL="$PREPUSH_DB" \
+        ./venv/bin/pytest -q -n auto --cov-fail-under=100 ) || return 1
     echo "== agent-playbook drift check (#115) =="
     # Only the sync test: the rest of agents/tests needs the a2a venv. No DB.
     ( cd "$ROOT" && backend/venv/bin/python -m pytest agents/tests/test_playbook_sync.py -q --no-header -p no:cacheprovider --no-cov ) || return 1
