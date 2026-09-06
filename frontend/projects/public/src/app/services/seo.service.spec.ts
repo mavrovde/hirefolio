@@ -14,10 +14,10 @@ const MOCK_SITE_CONFIG_PROVIDER = {
         config$: of({
             siteName: 'mavrov.de',
             siteUrl: 'https://mavrov.de',
-            ownerName: 'Sergii Mavrov',
+            ownerName: 'Mock Owner',
             ownerHeadline: 'Principal Software Engineer',
             ownerDescription:
-                'Professional portfolio of Sergii Mavrov, a Principal Software Engineer specialized in Cloud, AI, and Full-Stack Development.',
+                'Professional portfolio of Mock Owner, a Principal Software Engineer specialized in Cloud, AI, and Full-Stack Development.',
            
             socialLinks: [],
             analyticsId: '',
@@ -56,7 +56,7 @@ describe('SeoService', () => {
             type: 'article'
         });
 
-        expect(titleSpy).toHaveBeenCalledWith('Page Title | Sergii Mavrov');
+        expect(titleSpy).toHaveBeenCalledWith('Page Title | Mock Owner');
         expect(spy).toHaveBeenCalledWith({ name: 'description', content: 'Page Desc' });
         expect(spy).toHaveBeenCalledWith({ name: 'keywords', content: 'k1, k2' });
         expect(spy).toHaveBeenCalledWith({ property: 'og:type', content: 'article' });
@@ -67,7 +67,7 @@ describe('SeoService', () => {
         const titleSpy = vi.spyOn(titleService, 'setTitle');
         service.updateSeo({});
 
-        expect(titleSpy).toHaveBeenCalledWith('Sergii Mavrov | Principal Software Engineer');
+        expect(titleSpy).toHaveBeenCalledWith('Mock Owner | Principal Software Engineer');
     });
 
     it('should set JSON-LD schema', () => {

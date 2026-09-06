@@ -51,7 +51,7 @@ describe('BlogPostComponent', () => {
             useValue: {
                 config$: of({
                     siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
-                    ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+                    ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
                     ownerDescription: 'Desc.', socialLinks: [],
                     analyticsId: '',
                 }),
@@ -213,7 +213,7 @@ describe('BlogPostComponent Server Rendering', () => {
             useValue: {
                 config$: of({
                     siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
-                    ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+                    ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
                     ownerDescription: 'Desc.', socialLinks: [],
                     analyticsId: '',
                 }),

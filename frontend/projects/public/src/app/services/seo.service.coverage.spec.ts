@@ -12,7 +12,7 @@ const MOCK_SITE_CONFIG_PROVIDER = {
     config$: of({
       siteName: 'mavrov.de',
       siteUrl: 'https://mavrov.de',
-      ownerName: 'Sergii Mavrov',
+      ownerName: 'Mock Owner',
       ownerHeadline: 'Principal Software Engineer',
       ownerDescription: 'Desc.',
      

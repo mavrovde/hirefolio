@@ -12,7 +12,12 @@ const USER_DATA_DIR = join(__dirname, '.chrome-profile');
 
 const LINKEDIN_EMAIL = process.env.LINKEDIN_EMAIL;
 const LINKEDIN_PASSWORD = process.env.LINKEDIN_PASSWORD;
-const PROFILE_URL = process.env.PROFILE_URL || 'https://www.linkedin.com/in/smavrov/';
+// No personal default (#66): the scraper targets YOUR profile — set PROFILE_URL.
+const PROFILE_URL = process.env.PROFILE_URL;
+if (!PROFILE_URL) {
+    console.error('PROFILE_URL is required, e.g. PROFILE_URL=https://www.linkedin.com/in/<your-handle>/');
+    process.exit(1);
+}
 const PUBLIC_ID = PROFILE_URL.replace(/\/+$/, '').split('/in/')[1];
 
 // Realistic UA — LinkedIn serves a degraded page to truncated user agents.

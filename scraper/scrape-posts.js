@@ -15,7 +15,12 @@ const USER_DATA_DIR = join(__dirname, '.chrome-profile');
 
 const LINKEDIN_EMAIL = process.env.LINKEDIN_EMAIL;
 const LINKEDIN_PASSWORD = process.env.LINKEDIN_PASSWORD;
-const PROFILE_URL = process.env.PROFILE_URL || 'https://www.linkedin.com/in/smavrov/';
+// No personal default (#66): the scraper targets YOUR profile — set PROFILE_URL.
+const PROFILE_URL = process.env.PROFILE_URL;
+if (!PROFILE_URL) {
+    console.error('PROFILE_URL is required, e.g. PROFILE_URL=https://www.linkedin.com/in/<your-handle>/');
+    process.exit(1);
+}
 // Be gentle with LinkedIn (avoid anti-bot / account risk): cap posts per run and
 // use small randomized scroll delays. Session is reused (never re-login per run).
 const MAX_POSTS = parseInt(process.env.SCRAPE_MAX_POSTS || '50', 10);

@@ -82,20 +82,20 @@ class Settings(BaseSettings):
     # public site shows about its owner (title, footer, meta tags, JSON-LD,
     # email copy, analytics) derives from these at RUNTIME via
     # GET {api_prefix}/config/site, so a forker rebrands a prebuilt image with
-    # env vars alone — no rebuild, no code edits. The defaults are the
-    # canonical deployment's values; #66 swaps them for an anonymized demo
-    # persona. Rule: no component/service may hardcode identity — it must
+    # env vars alone — no rebuild, no code edits. The defaults ARE the
+    # anonymized demo persona (#66) — the canonical deployment sets its real
+    # identity in the host .env, same as any forker. Rule: no component/service may hardcode identity — it must
     # consume this config.
-    site_name: str = "mavrov.de"
-    site_url: str = "https://mavrov.de"
-    owner_name: str = "Sergii Mavrov"
-    owner_headline: str = "Principal Software Engineer"
+    site_name: str = "My Portfolio"
+    site_url: str = "https://example.com"
+    owner_name: str = "Jane Doe"
+    owner_headline: str = "Senior Software Engineer"
     owner_description: str = (
-        "Professional portfolio of Sergii Mavrov, a Principal Software Engineer "
-        "specialized in Cloud, AI, and Full-Stack Development."
+        "Professional portfolio of Jane Doe, a Senior Software Engineer — "
+        "the Hirefolio demo persona. Set the OWNER_*/SITE_* env vars to yours."
     )
     # Comma-separated public profile URLs (JSON-LD sameAs + contact links).
-    social_links: str = "https://linkedin.com/in/smavrov,https://github.com/mavrovde"
+    social_links: str = ""
     # Google Analytics measurement id; empty disables analytics entirely — and
     # empty IS the default: analytics is opt-in for a general-portfolio
     # template, and a non-empty default was unreachable anyway in the only

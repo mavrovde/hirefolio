@@ -37,6 +37,10 @@ export class BlogComponent implements OnInit {
   // Identity for SEO/share URLs comes from the runtime site config (#65).
   private site: SiteConfig = DEFAULT_SITE_CONFIG;
 
+  /** Terminal-style username for the template (#66) — async pipe (rule 5),
+   *  so the row repaints when the runtime identity arrives. */
+  readonly unixUser$: Observable<string>;
+
   constructor(
     private blogService: BlogService,
     private seoService: SeoService,
@@ -47,6 +51,9 @@ export class BlogComponent implements OnInit {
   ) {
     // cd-safety-ok: assigns a private field consumed only inside later callbacks — nothing template-bound.
     this.siteConfig?.config$?.subscribe((cfg) => (this.site = cfg));
+    this.unixUser$ = (this.siteConfig?.config$ ?? of(DEFAULT_SITE_CONFIG)).pipe(
+      map((c) => (c.ownerName.split(' ')[0] || 'owner').toLowerCase())
+    );
   }
 
   ngOnInit() {

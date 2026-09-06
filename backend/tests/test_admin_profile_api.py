@@ -40,7 +40,7 @@ async def _rows(db: AsyncSession, language=None):
 async def test_upload_success_makes_active(client: AsyncClient, db_session):
     r = await client.post(
         UPLOAD,
-        files=_file({"name": "Sergii", "experience": []}),
+        files=_file({"name": "Testa", "experience": []}),
         data={"version": "v1", "language": "en"},
     )
     assert r.status_code == 200
@@ -50,7 +50,7 @@ async def test_upload_success_makes_active(client: AsyncClient, db_session):
     rows = await _rows(db_session, "en")
     assert len(rows) == 1
     assert rows[0].is_active is True
-    assert rows[0].data["name"] == "Sergii"
+    assert rows[0].data["name"] == "Testa"
 
 
 async def test_upload_second_version_switches_active(client: AsyncClient, db_session):

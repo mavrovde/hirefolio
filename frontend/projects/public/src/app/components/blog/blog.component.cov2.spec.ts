@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { BlogComponent } from './blog.component';
 import { BlogService } from '@mavrov/shared';
 import { LanguageService } from '@mavrov/shared';
-import { of, throwError, ReplaySubject } from 'rxjs';
+import { of, throwError, ReplaySubject, firstValueFrom } from 'rxjs';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SiteConfigService, SiteConfig } from '../../services/site-config.service';
@@ -71,7 +71,7 @@ describe('BlogComponent (cov2 branch coverage)', () => {
           useValue: {
             config$: of({
               siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
-              ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+              ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
               ownerDescription: 'Desc.', socialLinks: [],
               analyticsId: '',
             }),
@@ -132,6 +132,22 @@ describe('BlogComponent (cov2 branch coverage)', () => {
         description: expect.stringContaining('Portfolio Owner'),
       })
     );
+  });
+
+  it('unixUser$ derives from the runtime identity, with fallbacks (#66)', async () => {
+    // TestBed component: mock config emits 'Mock Owner' -> 'mock'
+    expect(await firstValueFrom(component.unixUser$)).toBe('mock');
+    // no service at all -> the FRONTEND neutral fallback (DEFAULT_SITE_CONFIG)
+    const bare = new BlogComponent(
+      blogServiceSpy, {} as any, {} as any, {} as any, 'server', undefined
+    );
+    expect(await firstValueFrom(bare.unixUser$)).toBe('portfolio');
+    // empty owner name -> 'owner'
+    const emptyCfg = new BlogComponent(
+      blogServiceSpy, {} as any, {} as any, {} as any, 'server',
+      { config$: of({ ownerName: '' }) } as any
+    );
+    expect(await firstValueFrom(emptyCfg.unixUser$)).toBe('owner');
   });
 
   // Lines 65: early return when already loading

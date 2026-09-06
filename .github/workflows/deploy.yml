@@ -380,6 +380,8 @@ jobs:
         run: bash test-bump-version.sh
       - name: Self-test the setup wizard's .env helpers
         run: bash setup.test.sh
+      - name: PII guard (demo persona stays anonymous)
+        run: bash scripts/check_no_pii.sh
 
   # ============================================
   # PROXY QA

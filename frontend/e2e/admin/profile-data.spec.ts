@@ -67,7 +67,7 @@ test.describe('Admin Profile Data Management', () => {
     await fileChooser.setFiles({
       name: 'profile_data.json',
       mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify({ name: 'Sergii', experience: [] })),
+      buffer: Buffer.from(JSON.stringify({ name: 'Testa Uploadsson', experience: [] })),
     });
 
     uploaded = true;

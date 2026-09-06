@@ -11,7 +11,7 @@ const MOCK_SITE_CONFIG_PROVIDER = {
     config$: of({
       siteName: 'mavrov.de',
       siteUrl: 'https://mavrov.de',
-      ownerName: 'Sergii Mavrov',
+      ownerName: 'Mock Owner',
       ownerHeadline: 'Principal Software Engineer',
       ownerDescription: 'Desc.',
      
@@ -43,7 +43,7 @@ describe('SeoService.setNotFound (#109)', () => {
 
     service.setNotFound();
 
-    expect(titleSpy).toHaveBeenCalledWith('Post not found | Sergii Mavrov');
+    expect(titleSpy).toHaveBeenCalledWith('Post not found | Mock Owner');
     expect(metaSpy).toHaveBeenCalledWith({ name: 'robots', content: 'noindex' });
   });
 });

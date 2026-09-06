@@ -25,12 +25,12 @@ async def test_get_active_profile_returns_data(client: AsyncClient, db_session):
         db_session,
         version="v1",
         language="en",
-        data={"name": "Sergii", "headline": "Engineer"},
+        data={"name": "Testa", "headline": "Engineer"},
         is_active=True,
     )
     r = await client.get(URL, params={"lang": "en"})
     assert r.status_code == 200
-    assert r.json() == {"name": "Sergii", "headline": "Engineer"}
+    assert r.json() == {"name": "Testa", "headline": "Engineer"}
 
 
 async def test_get_defaults_to_english(client: AsyncClient, db_session):
@@ -90,7 +90,7 @@ async def test_get_strips_non_public_pii(client: AsyncClient, db_session):
         version="v1",
         language="en",
         data={
-            "name": "Sergii",
+            "name": "Testa",
             "headline": "Engineer",
             "experience": [{"title": "Dev"}],
             # Non-public fields a LinkedIn export may carry:
@@ -103,7 +103,7 @@ async def test_get_strips_non_public_pii(client: AsyncClient, db_session):
         is_active=True,
     )
     body = (await client.get(URL, params={"lang": "en"})).json()
-    assert body["name"] == "Sergii"
+    assert body["name"] == "Testa"
     assert body["experience"] == [{"title": "Dev"}]
     for leaked in ("phone", "birthday", "address", "connections", "contactInfo"):
         assert leaked not in body
