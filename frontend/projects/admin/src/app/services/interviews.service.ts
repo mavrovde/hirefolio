@@ -15,6 +15,8 @@ export interface Interview {
     interviewer: string | null;
     notes: string | null;
     outcome: string;
+    created_at: string;
+    updated_at: string;
 }
 
 /** `/upcoming` returns the interview plus the company context the dashboard

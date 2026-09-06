@@ -124,8 +124,8 @@ All notable changes to this project will be documented in this file.
   had: both specs had hard-coded the fiction, so 371 green tests never sent one real PATCH). Day
   grouping is timezone-explicit (`Intl.DateTimeFormat` with an injectable IANA zone), a rejected
   outcome PATCH snaps the select back to the model, and a 4-test Playwright spec runs the screen in
-  a real browser — including asserting the `Authorization` header on the download. 22 new admin
-  tests (suite 359 → 381, coverage 100%).
+  a real browser — including asserting the `Authorization` header on the download. 19 new admin
+  tests (suite 362 → 381 against the rebased base, coverage 100%).
 - **Interview calendar — backend (#247 phase 2 / #70)**: an `Interview` record on every
   opportunity (`interviews` table, migration `interview0006`, `ON DELETE CASCADE`) with
   admin-only endpoints to schedule (`POST /admin/opportunities/{id}/interviews`), list, fetch,
