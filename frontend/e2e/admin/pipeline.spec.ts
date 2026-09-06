@@ -123,4 +123,46 @@ test.describe('Admin Pipeline board', () => {
         // Zoneless admin app: the note must appear without a manual reload.
         await expect(page.getByText('Call scheduled for Tuesday.')).toBeVisible();
     });
+
+    test('creates an opportunity from the quick-create form', async ({ page }) => {
+        let created: Record<string, unknown> | null = null;
+        await page.route(`**${API_PREFIX}/admin/opportunities*`, (route) => {
+            if (route.request().method() === 'POST') {
+                created = route.request().postDataJSON();
+                return route.fulfill({
+                    status: 201,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ ...OPP, id: 'op-new', company: 'Northwind', role_title: 'Platform Engineer' }),
+                });
+            }
+            return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(page1([])) });
+        });
+
+        await page.goto('/pipeline');
+        await page.getByRole('button', { name: '+ Opportunity' }).click();
+
+        // The form refuses to submit until BOTH required fields carry real text.
+        const submit = page.getByRole('button', { name: 'Create', exact: true });
+        await expect(submit).toBeDisabled();
+        await page.fill('input[name="company"]', '   ');
+        await expect(submit).toBeDisabled();
+
+        await page.fill('input[name="company"]', 'Northwind');
+        await page.fill('input[name="role_title"]', 'Platform Engineer');
+        await expect(submit).toBeEnabled();
+        await submit.click();
+
+        await expect.poll(() => created).toMatchObject({
+            company: 'Northwind',
+            role_title: 'Platform Engineer',
+        });
+    });
+
+    test('surfaces a board load failure rather than an empty board', async ({ page }) => {
+        await page.route(`**${API_PREFIX}/admin/opportunities*`, (route) =>
+            route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"boom"}' })
+        );
+        await page.goto('/pipeline');
+        await expect(page.locator('[role="alert"]')).toBeVisible();
+    });
 });

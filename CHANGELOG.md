@@ -22,7 +22,13 @@ All notable changes to this project will be documented in this file.
   success-path test does NOT pin the zoneless repaint, because `reset()` notifies the scheduler
   on its own — the ERROR-path test is the repaint pin, proven by mutating the served bundle),
   asserted the card actually relocating after a stage move, covered all seven stages, and made
-  the SSR assertion real by checking the server's HTML rather than the hydrated DOM.
+  the SSR assertion real by checking the server's HTML rather than the hydrated DOM. Round 3 widened
+  the batch on request: inbox **pagination** (Prev disabled on page 1, Next re-queries, and back
+  again — the control is not one-way) and a **load-failure** state that must not read as an empty
+  inbox; pipeline **quick-create** (whitespace-only required fields keep submit disabled) and its
+  own load-failure state; and on the public form a **phone-viewport** case (fits 390px, no
+  horizontal overflow) plus an **accessibility** case (every control has a real `<label for>`).
+  18 tests in the batch, suite 97 → 115.
 
 ## [1.12.0] - 2026-09-06
 

@@ -107,4 +107,49 @@ test.describe('Admin Inbox', () => {
         await page.getByLabel('promote Rita Recruiter to pipeline').click();
         await expect.poll(() => promoted).toMatchObject({ interaction_id: 'ix-1' });
     });
+
+    test('paginates when the inbox holds more than one page', async ({ page }) => {
+        const seen: string[] = [];
+        const rows = (page_: number) => ({
+            items: [{ ...INTERACTION, id: `ix-p${page_}`, name: `Rita Page ${page_}` }],
+            total: 3,
+            page: page_,
+            pages: 3,
+        });
+        await page.route(`**${API_PREFIX}/admin/interactions*`, (route) => {
+            const url = new URL(route.request().url());
+            seen.push(url.search);
+            const p = Number(url.searchParams.get('page') ?? '1');
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(rows(p)),
+            });
+        });
+
+        await page.goto('/inbox');
+        await expect(page.getByTestId('row-ix-p1')).toBeVisible();
+        // Prev is disabled on page 1 — you cannot walk off the front.
+        await expect(page.getByRole('button', { name: 'Prev' })).toBeDisabled();
+
+        await page.getByRole('button', { name: 'Next' }).click();
+        await expect(page.getByTestId('row-ix-p2')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Prev' })).toBeEnabled();
+        expect(seen.some((q) => q.includes('page=2'))).toBe(true);
+
+        // ...and back, so the control is not one-way.
+        await page.getByRole('button', { name: 'Prev' }).click();
+        await expect(page.getByTestId('row-ix-p1')).toBeVisible();
+    });
+
+    test('surfaces a load failure instead of showing a misleading empty inbox', async ({ page }) => {
+        await page.route(`**${API_PREFIX}/admin/interactions*`, (route) =>
+            route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"boom"}' })
+        );
+        await page.goto('/inbox');
+        await expect(page.locator('[role="alert"]')).toBeVisible();
+        // The empty-state copy must NOT appear on an error — "no messages" and
+        // "we could not load your messages" mean very different things.
+        await expect(page.getByText(/No interactions yet/)).toHaveCount(0);
+    });
 });

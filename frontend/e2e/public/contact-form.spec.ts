@@ -113,4 +113,34 @@ test.describe('Public contact form', () => {
         // Values survive a failure so the visitor can retry without retyping.
         await expect(page.locator('#contact-name')).toHaveValue('Rita Recruiter');
     });
+
+    test('is reachable and usable on a phone viewport', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/');
+        await page.waitForLoadState('networkidle');
+
+        // The form must be usable on the device most recruiters read mail on —
+        // not merely present in the DOM at desktop width.
+        const form = page.locator('form[aria-label="contact form"]');
+        await form.scrollIntoViewIfNeeded();
+        await expect(form).toBeVisible();
+        await expect(page.locator('#contact-name')).toBeVisible();
+
+        const box = await form.boundingBox();
+        expect(box).not.toBeNull();
+        // No horizontal overflow: the form fits the viewport it renders in.
+        expect(box!.width).toBeLessThanOrEqual(390);
+    });
+
+    test('labels every field for assistive technology', async ({ page }) => {
+        await page.goto('/');
+        await page.waitForLoadState('networkidle');
+        // Every control is reachable by a real <label for>, which is what a
+        // screen reader announces — a form nobody can fill is a lost lead.
+        for (const id of ['contact-name', 'contact-email', 'contact-message']) {
+            await expect(page.locator(`label[for="${id}"]`)).toHaveCount(1);
+            await expect(page.locator(`#${id}`)).toBeVisible();
+        }
+        await expect(page.locator('form[aria-label="contact form"]')).toHaveCount(1);
+    });
 });
