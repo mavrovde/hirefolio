@@ -10,6 +10,7 @@ from math import ceil
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -144,6 +145,30 @@ class PromoteIn(BaseModel):
     role_title: str | None = Field(default=None, max_length=200)
 
     _strip = field_validator("company", "role_title", mode="before")(_strip_str)
+
+
+async def _find_promoted(
+    db: AsyncSession, interaction_id: uuid.UUID
+) -> Opportunity | None:
+    """The card already promoted from this interaction, with its notes loaded.
+
+    Keyed on the opportunity's OWN column, not on a note: notes are
+    admin-writable (``add_note`` accepts an ``interaction_id``), so deriving the
+    key from them would let a caller forge it and make promote return an
+    unrelated card.
+    """
+    opp = (
+        (
+            await db.execute(
+                select(Opportunity)
+                .options(selectinload(Opportunity.notes))
+                .where(Opportunity.promoted_from_interaction_id == interaction_id)
+            )
+        )
+        .scalars()
+        .first()
+    )
+    return opp
 
 
 def _validate_stage(stage: str) -> None:
@@ -316,27 +341,19 @@ async def promote_interaction(
     if interaction is None:
         raise HTTPException(status_code=404, detail="Interaction not found")
 
-    # #279: promoting is IDEMPOTENT per interaction. A double-click (or a
-    # retried request) previously minted a second card, and phase 1 ships no
-    # DELETE to undo one. The first promotion's timeline note carries the link,
-    # so it is also the lookup key.
-    existing = (
-        (
-            await db.execute(
-                select(Opportunity)
-                .join(OpportunityNote)
-                .where(OpportunityNote.interaction_id == interaction.id)
-                .limit(1)
-            )
-        )
-        .scalars()
-        .first()
-    )
+    # #279: promoting is IDEMPOTENT per interaction — a double-click or a retry
+    # must not mint a second card, because the router ships no DELETE and a
+    # duplicate would be permanent. The fast path is this lookup; the GUARANTEE
+    # is the UNIQUE constraint on promoted_from_interaction_id (promote0005),
+    # because `get_db` yields a fresh session per request, so two concurrent
+    # requests both pass a check-then-insert — a review reproduced exactly that
+    # with two sessions and a barrier, producing two permanent cards.
+    existing = await _find_promoted(db, interaction.id)
     if existing is not None:
-        await db.refresh(existing, attribute_names=["notes"])
         return OpportunityOut.from_model(existing, with_notes=True)
 
     opp = Opportunity(
+        promoted_from_interaction_id=interaction.id,
         company=body.company or interaction.company or "Unknown company",
         role_title=body.role_title or "Unknown role",
         stage="lead",
@@ -347,20 +364,33 @@ async def promote_interaction(
         recruiter_email=interaction.email,
     )
     db.add(opp)
-    await db.flush()
-    db.add(
-        OpportunityNote(
-            opportunity_id=opp.id,
-            interaction_id=interaction.id,
-            body=f"Promoted from inbox ({interaction.source}):\n{interaction.message}",
+    try:
+        # The UNIQUE rejects at FLUSH, not at commit — the whole write has to be
+        # inside the guard, or the loser of a race 500s instead of recovering.
+        await db.flush()
+        db.add(
+            OpportunityNote(
+                opportunity_id=opp.id,
+                interaction_id=interaction.id,
+                body=f"Promoted from inbox ({interaction.source}):\n{interaction.message}",
+            )
         )
-    )
-    if interaction.status == "new":
-        interaction.status = "in_progress"
-    await db.commit()
-    # #277: refresh the loaded object instead of re-selecting — a post-commit
-    # re-select returns the SAME identity-mapped instance with its stale
-    # collection (lessons §22); it only "worked" here because notes was never
-    # loaded before the commit.
+        if interaction.status == "new":
+            interaction.status = "in_progress"
+        await db.commit()
+    except IntegrityError:
+        # Lost the race: a concurrent request created the card between our
+        # lookup and this write. The UNIQUE constraint is what makes that
+        # outcome SAFE — roll back and return the winner's card, so both callers
+        # see the same one and the board never gains a permanent duplicate.
+        await db.rollback()
+        winner = await _find_promoted(db, body.interaction_id)
+        if winner is None:  # pragma: no cover - nothing else violates this key
+            raise
+        return OpportunityOut.from_model(winner, with_notes=True)
+    # Refresh the loaded object rather than re-selecting: this file's other
+    # handlers already use the idiom, and a post-commit re-select returns the
+    # SAME identity-mapped instance with a stale collection when one was loaded
+    # (lessons §22). Here both are observably equivalent — see #277.
     await db.refresh(opp, attribute_names=["notes"])
     return OpportunityOut.from_model(opp, with_notes=True)

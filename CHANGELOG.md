@@ -37,12 +37,19 @@ All notable changes to this project will be documented in this file.
   user "postgres"` — a symptom that looks nothing like a port conflict and cost real time three
   times in one session. Nothing inside the stack uses the host port; `POSTGRES_HOST_PORT`
   overrides the new default.
-- **Promoting an inbox interaction is idempotent, keeps its origin, and refreshes correctly**
+- **Promoting an inbox interaction is idempotent UNDER CONCURRENCY, keeps its origin, and shows it**
   (#279/#278/#277) — three #274 review findings fixed together because they live in one handler.
   **Idempotency:** a repeated promote (double-click, retry) returns the FIRST card instead of
   minting a second permanent one — phase 1 ships no DELETE, so a duplicate was forever; the
-  existing card is found through the timeline note that links it to the interaction, so no schema
-  change. Documented consequence, pinned by a test: overrides passed to a repeat promote are
+  guarantee is a DB-level UNIQUE on a new `opportunities.promoted_from_interaction_id`
+  (migration `promote0005`, self-adopting, with a backfill from each card's promotion note so
+  cards created before it keep their idempotency). An application-level check alone was NOT
+  enough and a review proved it: `get_db` yields a fresh session per request, so two concurrent
+  promotes both passed the check and created two permanent cards. The loser of a race now rolls
+  back and returns the winner's card. The key lives on the opportunity rather than being derived
+  from a note, because notes are admin-writable — a derived key could be forged to make promote
+  return an unrelated card (both properties are pinned by tests, the race one through two
+  sessions and a barrier). Documented consequence, pinned by a test: overrides passed to a repeat promote are
   ignored — changing a card is an edit, not a re-promote. **Origin:** the card's `source` now
   derives from the interaction through an explicit map (contact_form → recruiter_outreach,
   cv_request/booking → discovery, unknown → the default) instead of a hardcoded literal that
@@ -52,7 +59,11 @@ All notable changes to this project will be documented in this file.
   `db.refresh(attribute_names=["notes"])` replaces the post-commit re-select that returns the
   same identity-mapped instance with a stale collection (lessons §22) — it only appeared to work
   because `notes` had never been loaded.
-  Validated on three layers per rule 12: backend unit (880 passed, 100%), the WireMock
+  The admin **Inbox button now latches while its request is in flight** and — because the admin
+  app is zoneless — explicitly repaints, so the operator sees "Promoting…" instead of a button
+  that still looks idle; and the **pipeline card displays its source**, making the funnel
+  dimension visible rather than merely stored.
+  Validated on three layers per rule 12: backend unit (883 passed, 100%), the WireMock
   integration tier (idempotency and cv_request-origin over real HTTP through the proxy), and a
   new browser journey spec — inbox → promote → pipeline with the original message surviving as
   the first timeline note, plus double-click-yields-one-card and cv_request-keeps-its-origin.

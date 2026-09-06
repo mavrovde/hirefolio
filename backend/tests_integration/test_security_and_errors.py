@@ -145,12 +145,13 @@ def test_promoted_cv_request_keeps_its_origin(client: httpx.Client, admin_token:
                 "message": "Please share your CV.",
             },
         )
-        if req.status_code not in (200, 201):
-            import pytest
-
-            pytest.skip(
-                f"CV request endpoint unavailable in this stack: {req.status_code}"
-            )
+        # Deliberately an ASSERT, not a skip: the stack's seed creates an active
+        # CV document, so this endpoint is always available here — a skip would
+        # silently mask the regression this test exists to catch (review finding).
+        assert req.status_code in (200, 201), (
+            f"CV request failed ({req.status_code}); the seeded stack should "
+            f"accept it: {req.text}"
+        )
         inbox = client.get(
             f"{API}/admin/interactions", params={"source": "cv_request"}, headers=auth
         )

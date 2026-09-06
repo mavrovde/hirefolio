@@ -100,36 +100,56 @@ test.describe('Recruiter journey: inbox → promote → pipeline', () => {
         await expect(page.getByText(/Staff Engineer role/)).toBeVisible();
     });
 
-    test('a double-click on promote does not mint a second card (#279)', async ({ page }) => {
-        const promoted: unknown[] = [];
+    test('the client asks to promote only ONCE however often it is clicked (#279)', async ({ page }) => {
+        // The server here is deliberately NAIVE: every call mints a NEW card.
+        // Mocking an idempotent server would make this test circular — it would
+        // pass no matter what the client did (review finding). With this mock, a
+        // second request WOULD produce a second card, so the assertion below can
+        // only hold if the client's in-flight latch actually works.
+        const promoteBodies: unknown[] = [];
+        const board: unknown[] = [];
+        let resolvePromote: ((v: unknown) => void) | null = null;
+
         await page.route(`**${API_PREFIX}/admin/interactions*`, (route) =>
             route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(page1([CONTACT])) })
         );
-        // The server is idempotent per interaction: both calls return the SAME card.
-        await page.route(`**${API_PREFIX}/admin/opportunities/promote`, (route) => {
-            promoted.push(route.request().postDataJSON());
-            return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(CARD) });
+        await page.route(`**${API_PREFIX}/admin/opportunities/promote`, async (route) => {
+            promoteBodies.push(route.request().postDataJSON());
+            const card = { ...CARD, id: `jop-${promoteBodies.length}` };
+            board.push(card);
+            // Hold the FIRST request open so the second click lands while it is
+            // in flight — the exact window the latch guards.
+            if (promoteBodies.length === 1) {
+                await new Promise((r) => {
+                    resolvePromote = r;
+                    setTimeout(r, 1500);
+                });
+            }
+            await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(card) });
         });
-        await page.route(`**${API_PREFIX}/admin/opportunities/jop-1`, (route) =>
-            route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CARD) })
-        );
         await page.route(`**${API_PREFIX}/admin/opportunities*`, (route) =>
-            route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(page1([CARD])) })
+            route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(page1(board)) })
         );
 
         await page.goto('/inbox');
         await page.getByTestId('row-jx-1').click();
         const promote = page.getByLabel('promote Rita Recruiter to pipeline');
         await promote.click();
-        await promote.click({ force: true }).catch(() => undefined);
 
-        // However many times the button was pressed, the board holds ONE card —
-        // phase 1 ships no DELETE, so a duplicate would be permanent.
+        // While the request is open the control is visibly latched...
+        await expect(promote).toBeDisabled();
+        await expect(promote).toContainText(/Promoting/);
+        // ...and further clicks cannot reach the server.
+        await promote.click({ force: true }).catch(() => undefined);
+        await promote.click({ force: true }).catch(() => undefined);
+        resolvePromote?.(undefined);
+
+        await expect.poll(() => promoteBodies.length, { timeout: 5000 }).toBe(1);
+        expect(promoteBodies[0]).toMatchObject({ interaction_id: 'jx-1' });
+        // The naive server would have minted one card per request; it got one.
         await page.goto('/pipeline');
         await expect(page.getByTestId('card-jop-1')).toHaveCount(1);
-        for (const body of promoted) {
-            expect(body).toMatchObject({ interaction_id: 'jx-1' });
-        }
+        await expect(page.getByTestId('card-jop-2')).toHaveCount(0);
     });
 
     test('a promoted CV request keeps its origin instead of recruiter outreach (#278)', async ({ page }) => {
@@ -154,6 +174,13 @@ test.describe('Recruiter journey: inbox → promote → pipeline', () => {
         await page.getByLabel('promote Cara Candidate-Hunter to pipeline').click();
 
         await page.goto('/pipeline');
-        await expect(page.getByTestId('card-jop-2')).toBeVisible();
+        const card = page.getByTestId('card-jop-2');
+        await expect(card).toBeVisible();
+        // The origin must be VISIBLE, not merely stored — previously this test
+        // asserted only that a mocked card rendered, which proved nothing about
+        // #278 (review finding). `discovery` is what a promoted CV request must
+        // read as; `recruiter_outreach` would be the old mislabelling.
+        await expect(card.locator('[data-source]')).toHaveAttribute('data-source', 'discovery');
+        await expect(card).toContainText('discovery');
     });
 });

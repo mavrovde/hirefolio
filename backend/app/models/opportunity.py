@@ -45,6 +45,17 @@ class Opportunity(Base):
     link: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     salary_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # The idempotency key for promote-from-inbox (#279). A DB-level UNIQUE is
+    # the only thing that survives two concurrent requests: promote runs
+    # check-then-insert across SEPARATE sessions (get_db yields one per
+    # request), so an application-level lookup races and a review reproduced
+    # exactly that — two permanent cards for one interaction, with no DELETE to
+    # undo them. Deliberately NOT derived from a note's interaction_id: notes
+    # are admin-writable, which would make the key forgeable.
+    promoted_from_interaction_id: Mapped[uuid.UUID | None] = mapped_column(
+        nullable=True, unique=True
+    )
+
     next_action: Mapped[str | None] = mapped_column(String(500), nullable=True)
     next_action_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
@@ -87,4 +98,8 @@ class OpportunityNote(Base):
 
     opportunity: Mapped[Opportunity] = relationship(back_populates="notes")
 
-    __table_args__ = (Index("ix_opportunity_notes_opportunity", "opportunity_id"),)
+    __table_args__ = (
+        Index("ix_opportunity_notes_opportunity", "opportunity_id"),
+        # The promote path filters notes by their source interaction.
+        Index("ix_opportunity_notes_interaction_id", "interaction_id"),
+    )

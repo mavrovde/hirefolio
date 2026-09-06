@@ -40,6 +40,9 @@
             [attr.data-testid]="'card-' + o.id">
             <span class="font-medium block">{{ o.company }}</span>
             <span class="text-sm text-gray-600 block">{{ o.role_title }}</span>
+            <!-- Where this opportunity came from (#278): the funnel dimension
+                 #249 measures, previously invisible to the operator. -->
+            <span class="text-xs text-gray-500 block mt-1" [attr.data-source]="o.source">{{ o.source }}</span>
             <span *ngIf="o.next_action_date" class="text-xs text-amber-700 block mt-1">
               → {{ o.next_action || 'next step' }} · {{ o.next_action_date }}
             </span>

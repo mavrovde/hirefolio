@@ -105,6 +105,164 @@ async def _seed_interaction(client: AsyncClient, source: str = "contact_form"):
 
 
 @pytest.mark.asyncio
+async def test_promote_survives_two_concurrent_requests(
+    client: AsyncClient, db_session
+):
+    """#279 under CONCURRENCY — the property the sequential test cannot reach.
+
+    `get_db` yields a FRESH session per request, so two clicks arriving together
+    both pass an application-level "does a card exist?" check and both insert;
+    a review reproduced that with two sessions and a barrier and got two
+    permanent cards (the router has no DELETE). This test drives the same race
+    through two independent sessions and asserts the DB-level UNIQUE on
+    `promoted_from_interaction_id` collapses it to one card.
+
+    It fails against the pre-promote0005 code: without the constraint both
+    inserts commit.
+    """
+    import asyncio
+
+    from sqlalchemy.exc import IntegrityError
+
+    from app.models.opportunity import Opportunity
+    from conftest import get_test_async_session
+
+    interaction = await _seed_interaction(client)
+    interaction_id = uuid.UUID(interaction["id"])
+    sessionmaker = get_test_async_session()
+    barrier = asyncio.Barrier(2)
+
+    async def racing_promote() -> str:
+        async with sessionmaker() as session:
+            # Both racers read "no existing card"...
+            found = (
+                (
+                    await session.execute(
+                        select(Opportunity).where(
+                            Opportunity.promoted_from_interaction_id == interaction_id
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            await barrier.wait()  # ...then both try to insert.
+            if found is not None:
+                return "existing"
+            session.add(
+                Opportunity(
+                    company="Race GmbH",
+                    role_title="Race Engineer",
+                    stage="lead",
+                    source="recruiter_outreach",
+                    promoted_from_interaction_id=interaction_id,
+                )
+            )
+            try:
+                await session.commit()
+                return "created"
+            except IntegrityError:
+                await session.rollback()
+                return "collapsed"
+
+    outcomes = await asyncio.gather(racing_promote(), racing_promote())
+
+    rows = (
+        (
+            await db_session.execute(
+                select(Opportunity).where(
+                    Opportunity.promoted_from_interaction_id == interaction_id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(rows) == 1, f"the race created {len(rows)} cards; outcomes={outcomes}"
+    assert "created" in outcomes
+    # The loser must have been rejected by the constraint, not silently duplicated.
+    assert "collapsed" in outcomes or outcomes.count("created") == 1
+
+
+@pytest.mark.asyncio
+async def test_promote_recovers_when_it_loses_the_race(
+    client: AsyncClient, db_session, monkeypatch
+):
+    """The API's own recovery path: the pre-insert lookup misses (as it does
+    for the loser of a real race), the UNIQUE rejects the insert, and the
+    handler must return the WINNER's card instead of 500-ing.
+
+    Simulated by blinding the first lookup — the same state the loser sees
+    between its check and its commit.
+    """
+    from app.api import opportunities as module
+
+    interaction = await _seed_interaction(client)
+    winner = await client.post(
+        f"{URL}/promote", json={"interaction_id": interaction["id"]}
+    )
+    assert winner.status_code == 201
+
+    real_find = module._find_promoted
+    calls = {"n": 0}
+
+    async def blind_once(db, interaction_id):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return None  # the loser's stale read
+        return await real_find(db, interaction_id)
+
+    monkeypatch.setattr(module, "_find_promoted", blind_once)
+
+    loser = await client.post(
+        f"{URL}/promote", json={"interaction_id": interaction["id"]}
+    )
+    assert loser.status_code == 201, loser.text
+    assert loser.json()["id"] == winner.json()["id"]
+    assert calls["n"] == 2  # blinded lookup, then the recovery lookup
+
+    from app.models.opportunity import Opportunity
+
+    rows = (
+        (
+            await db_session.execute(
+                select(Opportunity).where(
+                    Opportunity.promoted_from_interaction_id
+                    == uuid.UUID(interaction["id"])
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(rows) == 1
+
+
+@pytest.mark.asyncio
+async def test_promote_ignores_a_forged_note_link(client: AsyncClient):
+    """The idempotency key is the opportunity's OWN column, not a note's
+    interaction_id — notes are admin-writable, so a key derived from them could
+    be forged to make promote return an unrelated card (review finding)."""
+    unrelated = (await _create(client, company="Unrelated GmbH")).json()
+    interaction = await _seed_interaction(client)
+
+    # An admin links a note on the unrelated card to this interaction.
+    linked = await client.post(
+        f"{URL}/{unrelated['id']}/notes",
+        json={"body": "linking note", "interaction_id": interaction["id"]},
+    )
+    assert linked.status_code == 201
+
+    promoted = await client.post(
+        f"{URL}/promote", json={"interaction_id": interaction["id"]}
+    )
+    assert promoted.status_code == 201
+    # A NEW card, not the forged one.
+    assert promoted.json()["id"] != unrelated["id"]
+    assert promoted.json()["company"] == "Agency GmbH"
+
+
+@pytest.mark.asyncio
 async def test_promote_is_idempotent_per_interaction(client: AsyncClient, db_session):
     """#279: a double-click (or a retry) must not mint a second permanent card —
     phase 1 has no DELETE to undo one. The second promote returns the SAME card."""
