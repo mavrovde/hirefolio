@@ -17,8 +17,8 @@ function makeOpp(overrides: Partial<Opportunity> = {}): Opportunity {
         salary_note: null,
         next_action: null,
         next_action_date: null,
-        created_at: 'now',
-        updated_at: 'now',
+        created_at: '2026-09-05T10:00:00Z',
+        updated_at: '2026-09-05T10:30:00Z',
         notes: [],
         ...overrides,
     };
@@ -85,7 +85,7 @@ describe('PipelineComponent', () => {
     });
 
     it('opens the detail panel with the full record', () => {
-        serviceSpy.get.mockReturnValue(of(makeOpp({ notes: [{ id: 'n1', interaction_id: null, body: 'note', created_at: 'now' }] })));
+        serviceSpy.get.mockReturnValue(of(makeOpp({ notes: [{ id: 'n1', interaction_id: null, body: 'note', created_at: '2026-09-05T10:00:00Z' }] })));
         component.open(component.all[0]);
         expect(component.selected?.notes.length).toBe(1);
         component.close();
@@ -129,7 +129,7 @@ describe('PipelineComponent', () => {
         component.selected = makeOpp();
         component.noteDraft = 'Call notes';
         serviceSpy.addNote.mockReturnValue(
-            of(makeOpp({ notes: [{ id: 'n1', interaction_id: null, body: 'Call notes', created_at: 'now' }] }))
+            of(makeOpp({ notes: [{ id: 'n1', interaction_id: null, body: 'Call notes', created_at: '2026-09-05T10:00:00Z' }] }))
         );
         component.addNote();
         expect(component.selected?.notes.length).toBe(1);

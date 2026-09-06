@@ -169,10 +169,10 @@ async def test_promote_keeps_non_new_interaction_status(client: AsyncClient):
         await client.post(
             f"{settings.api_prefix}/interactions/contact",
             json={
-                "name": "R",
+                "name": "Rita R.",
                 "email": "r@x.example",
                 "company": "C",
-                "message": "hello",
+                "message": "hello there",
             },
         )
     ).json()
