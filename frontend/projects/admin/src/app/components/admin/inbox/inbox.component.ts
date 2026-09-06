@@ -88,18 +88,35 @@ export class InboxComponent implements OnInit {
     this.load();
   }
 
+  /** id of the interaction whose promote request is in flight, or null. */
+  promotingId: string | null = null;
+
   toggleExpand(id: string) {
     this.expandedId = this.expandedId === id ? null : id;
   }
 
-  /** One click: this inbox item becomes a pipeline opportunity (#247). */
+  /** One click: this inbox item becomes a pipeline opportunity (#247).
+   *  In-flight latch (#279): the server is idempotent, but a second click
+   *  should never leave the operator waiting on a request that can only return
+   *  the same card — and on a slow link the un-latched button fired twice. */
   promote(interaction: Interaction) {
+    if (this.promotingId) {
+      return;
+    }
+    this.promotingId = interaction.id;
+    // Zoneless admin app (#276): setting the flag does NOT repaint on its own —
+    // without this the operator keeps seeing an enabled "Promote" button while
+    // the request is in flight, which is exactly the confusion the latch exists
+    // to prevent. (The second click is blocked either way by the guard above;
+    // this is what makes the state VISIBLE.)
+    this.cdr.detectChanges();
     this.opportunitiesService.promote(interaction.id).subscribe({
       next: () => {
         this.router.navigate(['/pipeline']);
       },
       error: (err) => {
         console.error('Error promoting interaction:', err);
+        this.promotingId = null;
         this.error = 'Failed to promote to the pipeline';
         this.cdr.detectChanges();
       },

@@ -523,7 +523,7 @@ All admin-only (auth required):
 - `GET /api/app/admin/opportunities/{id}` - Detail incl. the notes timeline
 - `PATCH /api/app/admin/opportunities/{id}/stage` - Move a card through the stage workflow
 - `POST /api/app/admin/opportunities/{id}/notes` - Append a timeline note (optionally linked to an inbox interaction)
-- `POST /api/app/admin/opportunities/promote` - Promote an inbox interaction into an opportunity (advances the interaction new → in_progress)
+- `POST /api/app/admin/opportunities/promote` - Promote an inbox interaction into an opportunity (advances the interaction new → in_progress). **Idempotent per interaction**: a repeat call returns the card created by the first one — enforced by a UNIQUE constraint, so concurrent requests collapse to one card rather than racing. Overrides (`company`, `role_title`) therefore apply only to the FIRST promotion; changing a card afterwards is an edit, not a re-promote. The card's `source` is derived from the interaction's origin (contact_form → recruiter_outreach, cv_request/booking → discovery)
 
 #### Post model — LinkedIn provenance fields (nullable)
 

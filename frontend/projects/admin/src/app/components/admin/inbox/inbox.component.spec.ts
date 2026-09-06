@@ -1,6 +1,6 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 import { InboxComponent } from './inbox.component';
 import { InteractionsService, Interaction } from '../../../services/interactions.service';
@@ -121,6 +121,41 @@ describe('InboxComponent', () => {
         component.promote(component.items[0]);
         expect(opportunitiesSpy.promote).toHaveBeenCalledWith('i1');
         expect(routerSpy.navigate).toHaveBeenCalledWith(['/pipeline']);
+    });
+
+    it('ignores a second promote click while the first is in flight (#279)', () => {
+        // Never completes: the request is still open when the second click lands.
+        opportunitiesSpy.promote.mockReturnValue(new Subject());
+        component.promote(component.items[0]);
+        component.promote(component.items[0]);
+        expect(opportunitiesSpy.promote).toHaveBeenCalledTimes(1);
+    });
+
+    it('releases the latch when promote fails, so the operator can retry', () => {
+        opportunitiesSpy.promote.mockReturnValue(throwError(() => new Error('x')));
+        component.promote(component.items[0]);
+        expect(component.promotingId).toBeNull();
+
+        opportunitiesSpy.promote.mockReturnValue(of({ id: 'o1' }));
+        component.promote(component.items[0]);
+        expect(opportunitiesSpy.promote).toHaveBeenCalledTimes(2);
+    });
+
+    it('disables the button while its own promote is in flight', () => {
+        opportunitiesSpy.promote.mockReturnValue(new Subject());
+        component.expandedId = 'i1';
+        fixture.detectChanges();
+        const query = () =>
+            (fixture.nativeElement as HTMLElement).querySelector(
+                'button[aria-label="promote Rita to pipeline"]'
+            ) as HTMLButtonElement;
+        expect(query().disabled).toBe(false);
+
+        component.promote(component.items[0]);
+        fixture.detectChanges();
+        // Re-query: the row re-renders, so a captured node can be stale.
+        expect(query().disabled).toBe(true);
+        expect(query().textContent).toContain('Promoting');
     });
 
     it('surfaces promote failures', () => {

@@ -36,6 +36,17 @@ services:
       timeout: 3s
       retries: 12
 
+  db:
+    # Verification stacks must NOT evict the developer's test database. Prod
+    # compose publishes 5433 — the same port the local pytest DB uses — so every
+    # integration/E2E stack booted from this overlay stole it and the next
+    # `pytest`/pre-push run died with "password authentication failed" against
+    # the wrong Postgres. Nothing inside the stack uses the host port (services
+    # reach `db:5433` over the compose network), so remapping the HOST side is
+    # free. Override POSTGRES_HOST_PORT if 5533 is taken too.
+    ports: !override
+      - "${POSTGRES_HOST_PORT:-5533}:${POSTGRES_PORT:-5433}"
+
   backend:
     # The black-box tier needs the backend ORIGIN directly (root banner, API
     # semantics) as well as the proxy path — prod compose publishes only :80,
