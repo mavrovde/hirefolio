@@ -5,7 +5,27 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Placeholder for next release.
+- **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose
+  only browser validation was "the suite didn't break". 18 tests, suite **97 → 115**: the public
+  **contact form** (`e2e/public/contact-form.spec.ts` — server-rendered then hydrated, trimmed
+  validators gating submit, the success contract, the API-failure path that keeps the visitor's
+  text, a 390px phone viewport that fails on real horizontal overflow, and an accessibility pass),
+  the admin **Inbox** (`e2e/admin/inbox.spec.ts` — empty state, list + expand-to-read, status
+  filter round trip, inline status PATCH, promote hand-off, two-way pagination, and a load-failure
+  state that must not read as an empty inbox), and the admin **Pipeline board**
+  (`e2e/admin/pipeline.spec.ts` — all seven stage columns, card placement, detail panel, a stage
+  move that asserts the card RELOCATING, a note added and repainted, quick-create rejecting
+  whitespace-only fields, and a load failure that keeps the board frame visible).
+  Every test was executed against a real prod-topology stack before commit, and the four review
+  rounds mutation-checked the pins rather than trusting them: the zoneless repaint is pinned by
+  the ERROR path (the success path passes with `markForCheck()` deleted, because `reset()`
+  notifies the scheduler on its own), the relocation assertion fails when only the client-side
+  move is removed, the viewport assertion fails on an injected 534px overflow, and the alert-copy
+  assertions fail when the component's message changes. Review also caught two defects in the
+  specs themselves: a Playwright glob `*` does not cross `/` (so a mocked PATCH escaped to the
+  live backend and asserted nothing), and a fill racing hydration let Angular's `writeValue` wipe
+  the typed values — both fixed, the latter with the `networkidle` barrier the other public specs
+  already use.
 
 ## [1.12.0] - 2026-09-06
 
