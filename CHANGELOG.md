@@ -18,8 +18,9 @@ All notable changes to this project will be documented in this file.
   means validated on every applicable layer** — backend unit, frontend unit, E2E in a real
   browser for user-facing surfaces, the WireMock integration tier for composed API/AI paths, and
   mocks for what nothing else reaches; if a layer doesn't apply, the PR must name it and say why.
-  The independent-review gate moves from rule 11 to **rule 13** (all references across CLAUDE.md,
-  the seven agent charters, the skills and the shared playbook renumbered in this commit).
+  The independent-review gate moves from rule 11 to **rule 13** (every stale reference renumbered across CLAUDE.md,
+  the affected charters, the skills and the shared playbook — verified by grep after a review
+  caught one survivor in `env-gotchas`).
 - **Pull requests must carry labels too** — the "no orphan issues" invariant (type + area +
   priority) now explicitly covers PRs, with the `gh pr create --label` recipe in the
   `issue-workflow` skill; several v1.12.0-era PRs shipped unlabelled because the rule only named

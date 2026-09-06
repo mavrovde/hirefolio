@@ -628,6 +628,29 @@ Playwright `getByRole` name matching is case-insensitive SUBSTRING — German co
 "en"/"de" collides with the EN/DE switcher buttons in strict mode (the "senden" incident, PR
 #275); use `exact: true` for short exact-text locators.
 
+## 29. 100% unit coverage says nothing about whether the feature works (v1.12.0)
+
+v1.12.0 shipped three user-facing screens — the public contact form, the admin Inbox, the admin
+Pipeline board — at 100% statements/branches/functions/lines on every project, and **not one of
+them had ever rendered in a browser under CI**. Two independent reviews closed with exactly that
+residual before anyone wrote a browser test. Coverage measures whether the units were executed,
+not whether the product composes: routing, SSR, hydration, the zoneless repaint, and the contract
+between client and server all live above it. (Closed by #282, which took the E2E suite 97 → 115.)
+
+**The rule:** a new user-facing surface is not done until it has a test at the layer where its
+failure mode lives — E2E for a screen, the integration tier for a composed API path (rule 12).
+When you finish a feature, ask "what breaks that every unit test would still pass through?" and
+write that test.
+
+**Corollary — run the specs before trusting them.** Writing those tests produced two fake-green
+specs that only execution revealed: a Playwright glob `*` does not cross `/`, so
+`**/admin/interactions*` never matched `/admin/interactions/{id}` and a mocked PATCH escaped to
+the live backend while the assertion observed nothing; and an assertion on a form's own bounding
+box could not detect page overflow (the form is clamped well inside the viewport — measure
+`document.documentElement.scrollWidth - clientWidth` instead). A third was circular: mocking an
+idempotent server to "prove" the client prevents double submits passes no matter what the client
+does — mock the NAIVE server, then the assertion means something.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–11, issue-tracking flow,

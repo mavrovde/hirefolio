@@ -10,7 +10,7 @@ description: >-
   Claude can do today. Use it after a release or a painful incident, when an agent
   keeps repeating a mistake, when adopting a new Claude capability, or when the
   AI config has drifted from how the work is really done. Delivers via PR.
-tools: Bash, Read, Edit, Write, Grep, Glob, WebFetch, WebSearch
+tools: Bash, Read, Edit, Write, Grep, Glob, WebFetch, WebSearch, Task
 model: opus
 ---
 
@@ -66,14 +66,18 @@ Rules for the writing itself:
 - **One idea per place.** Do not restate the same rule in five charters — put it in the
   playbook or a skill and point at it. Duplication is how configs drift.
 - **Never weaken a gate to make agents pass it.** If agents keep failing a gate, fix their
-  instructions (or the ergonomics), not the gate. Rules 2, 3, 10 and 11 are floors.
+  instructions (or the ergonomics), not the gate. Rules 2, 3, 10, 12 and 13 are floors.
 
 ## Owning the AI product surface
 
 Beyond the toolkit, you own how the *product* uses AI and keep it current:
 
 - Model selection and prompts in `backend/app/services/` (chat, embeddings, suggestions),
-  the Ollama/Gemini fallback contract, and the timeout/budget behavior (#207).
+  the Ollama/Gemini fallback contract, and the timeout/budget behavior (#207). This is
+  APPLICATION code, so it carries the application gates: `pytest` at 100% (with a regression
+  test for anything you fix), `ruff check`/`ruff format --check`, `mypy`, and — per rule 12 —
+  the integration tier when you touch a composed AI path. Prompt wording is not exempt: if a
+  test asserts on model output shape, changing the prompt is a behavior change.
 - **Rule 10 is absolute**: no test or CI path may reach a paid API with a real credential.
   Every AI test path is mocked, WireMock-virtualized (#260), or routed to the local
   fallback with an empty key. Verify this whenever you touch an AI path.

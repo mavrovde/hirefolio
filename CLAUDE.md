@@ -233,8 +233,11 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
     browser** for any user-facing surface, the **WireMock integration tier** for any composed
     API/AI path, and plain mocks/stubs for boundaries the others cannot reach. "The units are
     green" is not validation — v1.12.0 shipped three screens at 100% unit coverage that had never
-    rendered in a browser (lessons §29). If a layer genuinely does not apply, say WHICH and WHY in
-    the PR; if it applies and is missing, the PR is not ready.
+    rendered in a browser (lessons §29). **CI runs E2E and the integration tier on PUSH only**
+    (`deploy.yml`), so a PR cannot carry CI-run evidence for them: run them LOCALLY against a real
+    stack and state the measured result in the PR — that is what satisfies this rule. If a layer
+    genuinely does not apply, say WHICH and WHY; if it applies and is missing, the PR is not
+    ready.
 
 13. **Independent review gate — EVERY PR requires a `pr-reviewer` verdict before merge. NO
     EXCEPTIONS.** No pull request is merged until an **independent** `pr-reviewer` review (an APPROVE
@@ -293,9 +296,15 @@ for issue-driven work — humans and AI agents both follow it.
    wrong until checked: "the release deploys correctly" (the images were private), "a regression
    fails the suite" (it passed both ways), "15 cases" (there were 18), "dependency-free" (it needed
    npm). If you assert a number or an outcome, run the thing that produces it first.
-8. **No secrets in public issues/PRs.** Never paste credentials, tokens, private keys, or
-   step-by-step live-exploit instructions. Reference config locations (`path:line`) instead of the
-   secret values.
+8. **No secrets — and no internal service identifiers — in public issues/PRs/commits.** Never
+   paste credentials, tokens, private keys, or step-by-step live-exploit instructions. Reference
+   config locations (`path:line`) instead of the secret values. **This includes AI-tooling session
+   identifiers: never write a `Claude-Session:` trailer, a `claude.ai/code/session_…` URL, or any
+   other internal tool/session id into a commit message, PR body, issue, or changelog** (owner
+   directive 2026-09-06 — they are internal service information and this repo is PUBLIC).
+   `Co-authored-by:` attribution is fine; the session link is not. If one is published, scrub
+   every editable surface (PR/issue bodies and comments) immediately and report what remains in
+   immutable commit history rather than rewriting public history unilaterally.
 9. **Tooling.** The `github` MCP server + `gh` CLI manage issues/PRs/milestones/labels; the
    `security-guidance` plugin supports security triage. The **`issue-workflow` skill**
    (`.claude/skills/issue-workflow/`) captures this end-to-end flow with copy-paste `gh` commands;
