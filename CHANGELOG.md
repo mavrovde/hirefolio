@@ -29,6 +29,21 @@ All notable changes to this project will be documented in this file.
 - **Effort reports now record the MODEL per step** and Project 3 gains a `Model` field
   (`fable-5`/`opus-5`/`sonnet-5`/`haiku-4.5`/`mixed`), so cost, review rounds and defects caught
   can be compared per model rather than only per agent.
+### Documentation
+- **Docs re-synced with what v1.12.0 actually ships** — README's feature list now names the
+  job-search half of the product (recruiter inbox, opportunity pipeline with idempotent promote)
+  and the make-it-yours half (runtime configuration, guided setup, demo-persona default with the
+  operator's must-set identity), instead of describing a portfolio-only site. The Testing section
+  documents the real **four-layer** pyramid — backend unit, frontend unit, black-box integration
+  (WireMock), E2E — with the rule that a merged PR is validated on every layer that applies, and
+  states plainly that coverage percentage is not quality. The E2E inventory lists the suites that
+  exist (115 tests) rather than a bare command, the WireMock tier gets its own section with the
+  5533 port contract, and the tooling self-test list is corrected: `setup.test.sh`,
+  `pre-push-tests.test.sh` and `check_no_pii.sh` were missing — **every documented command in
+  that block was executed to confirm it runs** (11, all-cases, all-cases, generator, guard: all
+  pass). `docs/DEPLOYMENT.md` drops the stale `1.9.0` examples and gains a post-deploy
+  verification block for the new surfaces: confirm the identity is yours and not the demo
+  persona, POST a probe to the contact form, and find it in the admin Inbox.
 
 ### Added
 - **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose

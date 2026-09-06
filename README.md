@@ -18,12 +18,33 @@ own name and domain.
 
 ## 🚀 Features
 
+**Portfolio**
 - **Modern Portfolio**: Showcase experience, skills, education, and recommendations
 - **Multilingual**: Full support for English and German with real-time switching
 - **Blog with Semantic Search**: AI-powered content discovery using `nomic-embed-text` embeddings
 - **AI Tag Generation**: Auto-suggest tags for posts using a local `llama3.2:1b` model
 - **Responsive Design**: Works seamlessly on desktop and mobile
 - **Admin Dashboard**: Secure interface for managing posts (rich editor, drafting, publishing)
+
+**Job search** (v1.12.0)
+- **Recruiter inbox** (#69): every inbound touch — public contact form, CV requests — lands as one
+  indexable interaction with a status workflow (new → contacted → in_progress → closed) and an
+  email alert to the owner. The public write is rate-limited per client IP and normalized
+  server-side.
+- **Opportunity pipeline** (#247 phase 1): a stage board (lead → … → closed), a notes timeline per
+  opportunity, and one-click **promote** turning an inbox message into a pipeline card that keeps
+  the original text as its first note. Promoting is idempotent and preserves where the touch came
+  from.
+
+**Make it yours**
+- **Runtime configuration** (#65): identity — site name/URL, owner name/headline/description,
+  social links, analytics id — comes from `.env` and the admin panel at runtime, so a fork runs
+  the prebuilt images without rebuilding.
+- **Guided setup** (#61): `./setup.sh` generates secrets, writes `.env`, boots the stack and seeds
+  the admin user.
+- **Demo persona by default** (#66): the repo ships fictional content, never a real résumé; a PII
+  guard fails the pipeline if personal identifiers reappear. **Set your identity in the host
+  `.env` before deploying** — see `docs/DEPLOYMENT.md`.
 - **Type-Safe**: Full TypeScript/Python type coverage
 
 ## 🏗️ Architecture
@@ -231,7 +252,19 @@ Secrets are supplied only via environment variables — `.mcp.json` contains no 
 
 ## 🧪 Testing
 
-We verify the application at multiple levels:
+We verify the application at four levels, and a merged PR must be validated on every one that
+applies to it (CLAUDE.md rule 12):
+
+| Layer | Where | What it proves |
+|---|---|---|
+| Unit — backend | `backend/tests/` | handler/service logic, error paths; **100% required** |
+| Unit — frontend | `projects/*/src/**/*.spec.ts` | component/service logic; **100% required** on all three projects |
+| Black-box integration | `backend/tests_integration/` | the composed stack over real HTTP, with **WireMock standing in for the model server** (credential-free by construction) |
+| End-to-end | `frontend/e2e/` | the product in a real browser — SSR, hydration, zoneless repaints, and the flows a visitor or operator actually walks |
+
+Coverage percentage is not quality: v1.12.0 shipped three screens at 100% unit coverage that had
+never rendered in a browser. Ask what breaks that every unit test would still pass through, and
+write *that* test.
 
 ### 1. Unit & Integration
 
@@ -251,12 +284,30 @@ cd frontend && npm test
 
 ```bash
 cd frontend
-npx playwright test                        # both suites
+npx playwright test                        # both suites (115 tests)
 npx playwright test --project=public-e2e   # public app only
 npx playwright test --project=admin-e2e    # admin app only
+npx playwright test e2e/admin/recruiter-journey.spec.ts   # one flow
 ```
 
-### 3. Verification Script
+The suite covers the public site (SSR + hydration, blog, CV, i18n switching, the contact form
+incl. a phone viewport and an accessibility pass) and the admin console (auth, posts, tags, SQL,
+profile, **Inbox** with pagination and failure states, **Pipeline board** with stage moves and
+quick-create, and the **recruiter journey** — inbox → promote → pipeline in one session).
+
+### 3. Black-box integration tier (WireMock)
+
+```bash
+./run_integration_tests.sh          # boots the stack with ollama replaced by WireMock
+./backend/perf/run_jmeter.sh        # JMeter smoke with executable latency budgets
+```
+
+Real HTTP against a running stack, with deterministic AI stubs and fault injection
+(`__wiremock_slow__` / `__wiremock_error__`). It gates publishing in CI. Details and the port
+contract (the stack's Postgres publishes **5533**, so it never evicts your local test DB) are in
+`README_TESTING.md`.
+
+### 4. Verification Script
 
 Run the entire test suite (Lint, Type Check, Unit, E2E) in one go:
 
@@ -264,16 +315,23 @@ Run the entire test suite (Lint, Type Check, Unit, E2E) in one go:
 ./verify_all.sh
 ```
 
-### 4. Tooling self-tests
+### 5. Tooling self-tests
 
 The scripts that *guard* the repo are themselves tested — they run on throwaway
 fixtures and never touch your working tree:
 
 ```bash
 bash test-bump-version.sh                      # version carriers + CHANGELOG rotation (#186/#193)
+bash setup.test.sh                             # the onboarding wizard's guards (11 cases, #61)
 bash .claude/hooks/guard-destructive.test.sh   # destructive-command guard (#116/#188)
+bash .claude/hooks/pre-push-tests.test.sh      # the pre-push gate's own parsing (#237)
 sh proxy/test-generate-admin-config.sh         # admin allowlist / real_ip generator (#86)
+bash scripts/check_no_pii.sh                   # no personal identifiers in tracked sources (#66)
 ```
+
+`scripts/check_live_freshness.sh <url> <version>` is the same family — it powers the daily
+Live Freshness workflow and answers `0 fresh / 1 stale / 2 unreachable`, so a green pipeline can
+never be mistaken for a live site (#169). A self-test for it is tracked in #280.
 
 `test-bump-version.sh` also runs in CI: the `version-consistency` job executes it
 plus `./bump_version.sh --check`, and every image-build job depends on that job, so
