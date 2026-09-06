@@ -861,6 +861,26 @@ compare corpora first — the matcher is almost never the problem. A metric nobo
 not a baseline, and a prediction stated against it (here: "below 2.5 rounds", when the real figure
 was 2.4) is unfalsifiable.
 
+## 39. `git push` rides ALONE — a PreToolUse hook vets the whole command BEFORE any of it runs
+
+Three denied pushes in one evening, same shape each time: `fix-something && git commit && git push`
+(or `ruff --fix; git push`). The pre-push hook is a PreToolUse hook — it evaluates the ENTIRE Bash
+command **before the first character of it executes**. So in a chain:
+
+- the fix ahead of the push **has not happened yet** when the gates run — the gate fails on the
+  very thing the chain was about to fix;
+- worse, on deny **nothing in the chain runs**: the commit silently never happened, and a later
+  `git checkout`/`stash` can destroy the "committed" work (§36 was this exact cascade).
+
+**The rule:** `git push` is always a SINGLE-command Bash invocation. Fix → separate command.
+Commit → separate command. Verify the commit exists (`git log --oneline -1`) → then push, alone.
+The same applies to any command a PreToolUse hook gates (`gh pr merge`): never chain state-changing
+steps ahead of it, because "before the push" in your plan is "never" in a denied chain.
+
+**Worktree corollary:** the hook gates from CLAUDE_PROJECT_DIR, so a push FROM A WORKTREE is
+blocked by dirt in the MAIN checkout. Before pushing from a worktree, the main checkout must be
+lint-clean too (or the in-progress work there stashed).
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,

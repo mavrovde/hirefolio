@@ -24,6 +24,7 @@ from app.api.opportunities import router as opportunities_router
 from app.api.posts import router as posts_router
 from app.api.profile import router as profile_router
 from app.api.site_config import router as site_config_router
+from app.api.site_settings import router as site_settings_router
 from app.api.stats import router as stats_router
 from app.api.tags import router as tags_router
 from app.api.years import router as years_router
@@ -271,6 +272,7 @@ app.include_router(interviews_router, prefix=settings.api_prefix)
 app.include_router(profile_router, prefix=settings.api_prefix)
 app.include_router(admin_profile_router, prefix=settings.api_prefix)
 app.include_router(site_config_router, prefix=settings.api_prefix)
+app.include_router(site_settings_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

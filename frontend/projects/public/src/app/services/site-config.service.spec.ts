@@ -48,6 +48,7 @@ describe('SiteConfigService', () => {
             ownerDescription: 'Desc.',
             
             socialLinks: ['https://linkedin.example/x'],
+            availability: 'listening',
             analyticsId: 'G-TEST0001',
         });
     });
@@ -71,5 +72,21 @@ describe('SiteConfigService', () => {
         // No second request may be issued:
         httpMock.expectNone(url);
         expect(second).toEqual(first);
+    });
+
+    it('normalizes a missing availability from an OLDER backend to the default', () => {
+        // Deploy-window skew: the new frontend can meet the previous backend
+        // image. Without normalization the field reached toUpperCase() as
+        // undefined and the availability stream errored — measured live.
+        let got: string | undefined;
+        service.config$.subscribe((c) => (got = c.availability));
+        const req = httpMock.expectOne((r) => r.url.includes('/config/site'));
+        req.flush({
+            site_name: 'S', site_url: 'https://s', owner_name: 'O',
+            owner_headline: 'H', owner_description: 'D',
+            social_links: [], analytics_id: '',
+            // deliberately NO availability key
+        });
+        expect(got).toBe('listening');
     });
 });

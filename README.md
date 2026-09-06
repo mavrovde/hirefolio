@@ -524,6 +524,10 @@ All admin-only (auth required):
 - `POST /api/app/admin/opportunities` - Create an opportunity (strip-then-validate input contract)
 - `GET /api/app/admin/opportunities/{id}` - Detail incl. the notes timeline
 - `PATCH /api/app/admin/opportunities/{id}/stage` - Move a card through the stage workflow
+- `GET/PUT /api/app/admin/site-settings/availability` - The owner's **job-search state**
+  (`open|listening|not_looking`), shown on the public hero beside the Hire-me CTA; editable at
+  runtime with no redeploy, served publicly via `/config/site` (an older backend without the field
+  degrades to `listening` client-side)
 - `POST /api/app/admin/opportunities/{id}/cv-sent` - Record which **CV variant** went to this
   company (`cv_document_id`): sets the current pointer + timestamp and appends the durable
   `CV sent: version (filename)` note to the timeline. Never touches which CV the public flow

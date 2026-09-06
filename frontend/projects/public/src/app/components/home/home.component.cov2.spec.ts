@@ -61,7 +61,7 @@ async function configure(opts: {
             ownerDescription: 'Desc.',
             socialLinks: ['https://social.example/mock', 'https://github.com/mavrovde'],
             analyticsId: '',
-          }),
+           availability: 'listening',}),
         },
       },
     ],

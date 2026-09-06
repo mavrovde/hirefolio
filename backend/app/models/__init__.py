@@ -18,3 +18,4 @@ __all__ = [
     "ProfileSnapshot",
     "User",
 ]
+from app.models.site_setting import SiteSetting  # noqa: F401

@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { HeroComponent } from './hero.component';
+import { SiteConfigService } from '../../services/site-config.service';
 import { Profile } from '../../services/profile.service';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
@@ -100,7 +102,10 @@ describe('HeroComponent', () => {
   });
 
   it('scrollTo should return early if not in browser environment', () => {
-    const serverComponent = new HeroComponent('server'); // Any non-browser string or object works since angular checks it strictly under the hood
+    const serverComponent = new HeroComponent(
+      'server', // Any non-browser string works; Angular checks it strictly under the hood
+      { config$: of({ availability: 'listening' }) } as unknown as SiteConfigService,
+    );
     
     const event = new Event('click');
     const preventDefaultSpy = vi.spyOn(event, 'preventDefault');

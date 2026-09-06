@@ -48,7 +48,8 @@
     "CERTIFICATIONS_SUB": "> Certifications",
     "RECOMMENDATIONS": "> Recommendations",
     "BLOG": "> Blog_Posts",
-    "CONTACT": "> Contact_Info"
+    "CONTACT": "> Contact_Info",
+    "HIRE_ME": "Hire me"
   },
   "COMMON": {
     "VIEW_CREDENTIAL": "[ View Credential ]",
@@ -129,5 +130,10 @@
     "SUCCESS": "Message received — I will get back to you soon.",
     "ERROR": "Sending failed. Please try again or use the email above.",
     "PRIVACY_NOTE": "Your name, email and message are stored so the site owner can reply, and are never shared with third parties."
+  },
+  "AVAILABILITY": {
+    "OPEN": "Open to offers",
+    "LISTENING": "Listening to offers",
+    "NOT_LOOKING": "Not looking right now"
   }
 }
