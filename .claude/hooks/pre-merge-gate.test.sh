@@ -7,7 +7,7 @@
 # Only 4 of 10 mutations bit. That is the exact fake-green class the retrospective
 # this hook came from is about, so every case here now asserts the DECISION
 # (parsed out of the JSON) and the mutation list below is part of the contract:
-# `bash pre-merge-gate.test.sh --mutations` re-runs them and must report 10/10.
+# `bash pre-merge-gate.test.sh --mutations` re-runs them and must report 17 killed.
 set -u
 
 HOOK="${HOOK:-$(cd "$(dirname "$0")" && pwd)/pre-merge-gate.sh}"
@@ -254,7 +254,11 @@ GH_STUB_PR_JSON_284="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_J
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
   run "newline inside a quoted flag value before the operand" deny "gh pr merge --squash -b \"line one
 line two\" 284"
-# ...operand BEFORE the flag: the operand is read before the cut, verify 284.
+# ...operand BEFORE the flag: ALSO a deny, via the unknowable-target path — the
+# cut still truncates the argv, and the gate refuses rather than trusting an
+# operand read from a fragment. (This case also denied at `8142166`, by a
+# different path, so it pins the fail-closed OUTCOME, not a round-7 regression —
+# stated so nobody later cites it as one. The regression pin is the case above.)
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
   run "newline in a quoted flag value after the operand" deny "gh pr merge 284 --squash -b \"one
 two\""
@@ -287,7 +291,7 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
 # Under the bound, thousands of segments parse INSIDE the deadline (cheap
 # per-segment reject) and the verdict still gates the real merge at the end.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
-  run "3000 cheap segments then a real merge still denies" deny "$(python3 -c "print(' ; '.join(['true']*600) + ' && gh pr merge 284')")"
+  run "600 cheap segments then a real merge still denies" deny "$(python3 -c "print(' ; '.join(['true']*600) + ' && gh pr merge 284')")"
 # ...but a genuinely absent operand still resolves the current branch's PR.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=284 \
   run "no operand still resolves the current branch" allow "gh pr merge --squash"

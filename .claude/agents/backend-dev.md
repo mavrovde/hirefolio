@@ -80,7 +80,7 @@ the real cause — never by weakening tests or checks.
 ## Issue workflow
 When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, milestones & labels*):
 ⚠️ **Units are not validation (rule 12).** This charter had NO E2E or integration instruction
-  until the v1.12.0 retrospective, and it showed: all 12 merged PRs closed with review noting the
+  until the v1.12.0 retrospective, and it showed: all 10 merged PRs closed with review noting the
   same residual — "E2E and Integration are `skipping` on this PR". `deploy.yml` gates both on
   `github.event_name == 'push'`, so **CI cannot give you that evidence pre-merge; you must produce
   it**:

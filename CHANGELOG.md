@@ -70,6 +70,30 @@ All notable changes to this project will be documented in this file.
   (`fable-5`/`opus-5`/`sonnet-5`/`haiku-4.5`/`mixed`), so cost, review rounds and defects caught
   can be compared per model rather than only per agent.
 ### Fixed
+- **The zoneless change-detection lint now guards the ADMIN app too — and it immediately found
+  five frozen-UI bugs** (#276). `frontend/scripts/check-cd-safety.mjs` scoped itself to
+  `projects/public` on the written premise that "the admin app is zone-based CSR". That premise
+  was false: `angular.json` gives the admin project no `polyfills` entry (no zone.js is bundled —
+  `grep -rl __zone_symbol__ dist/admin/` returns nothing) and its `app.config.ts` provides no
+  `provideZoneChangeDetection()`, so `@angular/core`'s `ZONELESS_ENABLED` default (`() => true`)
+  applies. The lint now scans both roots (`CD_SAFETY_SCAN_ROOT` accepts several roots), the scope
+  comment states the real, falsifiable reason, and the self-test pins the default scope
+  (`--print-scope`) plus a violation planted only under an admin root. The five real defects it
+  exposed, all fixed: the **LinkedIn sync status bar** never cleared after its 5 s timer; the
+  **post editor** stayed stuck on "[ Saving… ]" with the error banner invisible when a save
+  failed; the **profile** success banner never disappeared; the **admin sidebar username** never
+  tracked login/logout (now rendered with `currentUser$ | async`); and the profile key-status
+  badge gained an explicit `markForCheck()` so it no longer depends silently on an async pipe
+  elsewhere in the template. Each fix carries a `*.zoneless.spec.ts` regression pin that opts its
+  TestBed into `provideZonelessChangeDetection()` — a technique that lets unit tests see this
+  class at all, now documented in the `ssr-cd-safety` skill along with the admin app's real
+  zoneless status. **A sixth bug of the same class, which the lint cannot see**, was found by the
+  review and fixed here too: `checkLoginStatus()` in `admin-linkedin.component.ts` assigns after an
+  `await`, and the checker does not follow `await` (the documented #234 gap), so a connected
+  operator kept reading "🔴 Not Connected" with the login form still up. Three layers were blind —
+  the lint by that gap, the unit specs because they bundle zone.js, and the e2e spec because it
+  always mocked the initial status as logged-out. **The widened lint is a floor, not a guarantee:**
+  it covers `subscribe`/`.then()`/`setTimeout`/`setInterval` assignments, not `async`/`await` ones.
 - **Integration/E2E verification stacks no longer evict the developer's test database** — the
   `docker-compose.inttest.yml` overlay publishes Postgres on **5533** instead of 5433. Prod
   compose published the same port the local pytest DB uses, so every verification stack silently
@@ -123,6 +147,35 @@ All notable changes to this project will be documented in this file.
   verification block for the new surfaces: confirm the identity is yours and not the demo
   persona, POST a probe to the contact form, and find it in the admin Inbox.
 
+### Added
+- **Interview calendar — backend (#247 phase 2 / #70)**: an `Interview` record on every
+  opportunity (`interviews` table, migration `interview0006`, `ON DELETE CASCADE`) with
+  admin-only endpoints to schedule (`POST /admin/opportunities/{id}/interviews`), list, fetch,
+  reschedule/record an outcome (`PATCH /admin/interviews/{id}`) and remove a mis-created slot
+  (`DELETE`, which writes the removal to the opportunity's notes timeline first, so no history is
+  lost). Two surfaces make it useful on day one: **`GET /admin/interviews/upcoming?days=14`** —
+  every scheduled round across all opportunities inside the window, soonest first, cancelled
+  excluded, each row carrying its company/role/stage — and **`GET /admin/interviews/{id}.ics`**, a
+  minimal RFC 5545 VEVENT (UTC `DTSTART`/`DTEND`, escaped TEXT values, 75-**octet** line folding
+  that never splits a multi-byte character, `STATUS:CANCELLED`, stable `UID`) that imports into
+  any calendar app. Timestamps are stored in UTC and any ISO-8601 offset is normalized on input;
+  scheduling advances the opportunity to `interviewing` **forward only** (a card at `offer` or
+  `closed_*` keeps its stage — the promote handler's never-regress rule), and every
+  schedule/reschedule/outcome/removal lands on the notes timeline. An instant near
+  `datetime.max` is rejected with 422 rather than accepted: `astimezone` and the `DTEND`
+  arithmetic raise **`OverflowError`, not `ValueError`**, so one shape 500'd on input and — worse
+  — another was accepted with 201 and then raised on *every* `.ics` export, forever. The parser
+  now bounds `scheduled_at` so DTEND stays representable at the **maximum** duration the schema
+  allows, because a later PATCH can raise the duration. `upcoming` keeps an interview that has
+  **started but not ended** (per-row end time, not a blanket lookback), an opportunity whose stage
+  is not in the known set is left untouched instead of raising, and the `UID` is escaped like
+  every other TEXT value. 57 backend tests
+  (suite 883 → 940 passing, coverage 100.00%), mutation-checked 8/8 — including the one that
+  found `astimezone(UTC)` pinned by nothing, because `timestamptz` normalizes on the way back out
+  (lessons §16 addendum) — plus 3 integration-tier tests that run the composed
+  create → upcoming → .ics path over real HTTP. The
+  `.ics` renderer lives in `app/services/ics.py`, deliberately free of DB imports, because #70's
+  recruiter self-booking flow shares it. Admin UI follows in a separate PR.
 - **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose
   only browser validation was "the suite didn't break". 18 tests, suite **97 → 115**: the public
   **contact form** (`e2e/public/contact-form.spec.ts` — server-rendered then hydrated, trimmed

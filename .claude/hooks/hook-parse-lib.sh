@@ -209,15 +209,6 @@ mask_quotes() {
   printf '%s' "$out"
 }
 
-# Heredoc delimiter opened by this line, or empty. Reported ONLY for a heredoc
-# whose body the shell will NOT expand — i.e. a QUOTED (or backslash-escaped)
-# delimiter, `<<'EOF'` / `<<"EOF"` / `<<\EOF`, and outside quotes, and not a
-# here-string (`<<<`).
-#
-# The quoting matters and is not a formality: with an UNQUOTED delimiter the
-# shell expands the body, so `$(…)` and backticks in it EXECUTE. Such a body is
-# code wearing a document's clothes and must stay inspected — reporting a
-# delimiter here would exempt it.
 # Split a command segment into ARGV the way the shell does: on UNQUOTED
 # whitespace, with a quoted run kept as ONE token and its quotes removed.
 # Result lands in the ARGV_SPLIT_RESULT array — an array, not a string list,
@@ -268,6 +259,15 @@ argv_split() {
   return 0
 }
 
+# Heredoc delimiter opened by this line, or empty. Reported ONLY for a heredoc
+# whose body the shell will NOT expand — i.e. a QUOTED (or backslash-escaped)
+# delimiter, `<<'EOF'` / `<<"EOF"` / `<<\EOF`, and outside quotes, and not a
+# here-string (`<<<`).
+#
+# The quoting matters and is not a formality: with an UNQUOTED delimiter the
+# shell expands the body, so `$(…)` and backticks in it EXECUTE. Such a body is
+# code wearing a document's clothes and must stay inspected — reporting a
+# delimiter here would exempt it.
 heredoc_delim() {
   local line="$1" masked head rest
   # Cheap reject FIRST. mask_quotes is an O(n) character loop and this runs per

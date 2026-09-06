@@ -21,7 +21,12 @@
 # `bash script.sh`, and `ssh -o "ProxyCommand=..."`. Guarding file execution
 # is the destruction guard's territory and a different analysis; pretending
 # this hook covers it would be the same false comfort the heredoc comment gave
-# (round 2). The gate's promise is: no merge TYPED AS A COMMAND slips through.
+# (round 2). A further NAMED residual inside the command-text boundary: a
+# quote-split command WORD — `gh pr me"rge" N` — reassembles only in the shell,
+# and this gate does not model word-level concatenation (measured ALLOW; the
+# accepted guard-destructive.sh carries the same residual, #291 round 8). The
+# honest promise is therefore: no merge typed as a PLAINLY-SPELLED command
+# slips through; an author quoting mid-word is evading, not typing.
 #
 # Bypass ONE authorized merge with:  PR_MERGE_GATE=0 gh pr merge <N> ...
 set -u

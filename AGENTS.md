@@ -38,8 +38,9 @@ Full stack: `./manage.sh start|stop|logs` · full verification incl. Docker E2E:
 2. Tests with every change; coverage stays 100%; regression test for every bug fixed.
 3. Deliver via branch → PR → merge. Never push to `main` directly — merging to `main` deploys prod.
 4. Typing is law: Pydantic models backend-side, explicit TS interfaces (no `any`) frontend-side.
-5. Frontend state = RxJS Observables + `async` pipe (signals only for local state). The public app
-   is zoneless: async property mutations don't repaint — use `async` pipe/signals/`markForCheck()`.
+5. Frontend state = RxJS Observables + `async` pipe (signals only for local state). **Both browser
+   apps (public AND admin) are zoneless** (#276): async property mutations don't repaint — use
+   `async` pipe/signals/`markForCheck()`.
    Guard DOM access with `isPlatformBrowser()`.
 6. Dependency policy: upgrade within current majors by default; breaking majors are separate,
    deliberate efforts. Update `requirements.txt` and `requirements-dev.txt` together.

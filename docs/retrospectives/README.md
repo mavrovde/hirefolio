@@ -48,7 +48,7 @@ So the series stays comparable, count the same way every time:
 - **Verdicts** = posted review bodies containing the UPPERCASE marker `APPROVE` or
   `REQUEST CHANGES`, counted over the release's **merged** PRs. Count these, **not** the Project 3
   `Review rounds` field — v1.12.0 found that field disagreeing with the thread (5 recorded vs 3
-  posted on #240). **Run this, do not count by hand** — four different hand counts (30, 32, 34, and a 29 from a mis-drawn corpus)
+  posted on #240). **Run this, do not count by hand** — four hand counts (30, 32, 34, 29)
   were reported for v1.12.0 and none reproduced:
 
   ```bash

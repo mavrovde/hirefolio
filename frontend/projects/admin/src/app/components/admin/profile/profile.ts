@@ -38,6 +38,15 @@ export class ProfileComponent {
     this.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(user => {
       if (user) {
         this.hasGeminiKey = !!user.has_gemini_key;
+        // Zoneless admin app (#276). MEASURED: today this repaint is redundant
+        // — profile.html renders `currentUser$ | async`, and that async-pipe
+        // subscription markForCheck()s on every emission of this same stream,
+        // so the badge repaints either way (profile.zoneless.spec.ts documents
+        // the equivalence). It is here so the component does not silently
+        // depend on a template detail elsewhere in the file; delete the async
+        // pipe and this assignment would otherwise go dark. markForCheck rather
+        // than detectChanges because this also fires during ngOnInit.
+        this.cdr.markForCheck();
       }
     });
   }
@@ -65,7 +74,12 @@ export class ProfileComponent {
         // Never keep the secret in memory / the DOM after a successful write.
         this.geminiApiKey = '';
         this.cdr.detectChanges();
-        setTimeout(() => this.message = '', 3000);
+        setTimeout(() => {
+          this.message = '';
+          // Zoneless admin app (#276): without this the success banner never
+          // disappears.
+          this.cdr.detectChanges();
+        }, 3000);
       },
       error: (err) => {
         this.error = 'Failed to save API Key';
