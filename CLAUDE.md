@@ -82,6 +82,7 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 | agent | `release-manager` | assemble + ship a release end-to-end (SemVer by content, green pipeline, tag) |
 | agent | `security-triage` | CodeQL/Dependabot/secret-scanning triage every release |
 | agent | `issue-author` | turn a rough idea into a grounded, criteria-complete GitHub issue |
+| agent | `ai-integration` | Claude expert: mines agent-run evidence, teaches the other agents, keeps the AI config + AI product surface current |
 | command | `/verify` | full local gates the way CI runs them (backend + frontend + Docker E2E) |
 | command | `/release` | release runbook mirroring `release.sh` |
 | command | `/issue-triage` | sweep the backlog for orphan issues (milestone/priority/area) |
@@ -102,9 +103,11 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 
 - **MCP servers** (`.mcp.json`): `postgres` (read-only SQL on the pgvector DB), `playwright`
   (browser automation), `github` (PRs/issues). Approve on first use.
-- **Subagents** (`.claude/agents/`): all seven — `backend-dev`, `frontend-dev`, `devops-pipeline`,
-  `pr-reviewer`, `release-manager`, `security-triage`, `issue-author` — see the AI-config map above
-  for one-line purposes.
+- **Subagents** (`.claude/agents/`): all eight — `backend-dev`, `frontend-dev`, `devops-pipeline`,
+  `pr-reviewer`, `release-manager`, `security-triage`, `issue-author`, `ai-integration` — see the
+  AI-config map above for one-line purposes. **`ai-integration` is the improvement loop**: run it
+  after a release or a painful incident to turn measured agent behavior (review rounds, effort
+  telemetry, incidents) into edits to the charters/skills/hooks themselves.
 - **Hooks** (`.claude/hooks/`, via committed `.claude/settings.json`, both `PreToolUse Bash`):
   `pre-push-tests.sh` runs docs + backend pytest + backend lint/type (ruff check + ruff format --check
   + mypy) + frontend tests before every `git push` (env-configurable: `PREPUSH_RUN_LINT`/
