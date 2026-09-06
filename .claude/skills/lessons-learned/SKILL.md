@@ -651,14 +651,40 @@ box could not detect page overflow (the form is clamped well inside the viewport
 idempotent server to "prove" the client prevents double submits passes no matter what the client
 does — mock the NAIVE server, then the assertion means something.
 
+## 30. Assert the guarantee at the layer that can ENFORCE it (v1.12.0)
+
+Three v1.12.0 blockers were one mistake: a guarantee stated at a layer that cannot hold it.
+
+- **Check-then-insert is not idempotency.** `POST /admin/opportunities/promote` did SELECT → `if
+  existing is None` → INSERT with no unique constraint behind it. `get_db` yields a FRESH session
+  per request, so review reproduced it directly: two sessions lined up on an `asyncio.Barrier` at
+  the decision point produced **two permanent cards** (the router ships no DELETE). Fixed by a DB
+  `UNIQUE` plus an `IntegrityError` recovery path, mutation-proven (drop `unique=True` → the race
+  test reports 2 cards).
+- **A rate limiter keyed on an attacker-controlled header limits nothing.** The bucket keyed on
+  `xff.split(",")[0]`, but nginx APPENDS the real peer to whatever the client sent — hop 0 is the
+  attacker's. `X-Real-IP` is authoritative here (#273).
+- **A budget that "fails closed" by returning into an unbounded loop is not closed** (#235): the
+  deadline check handed control to the one pre-inspection loop with no clock check, and a bulk
+  command carrying a real destruction payload answered PAST the hook timeout — an allow in prod.
+
+**The trap that makes this invisible:** the unit tier structurally CANNOT see a race.
+`backend/conftest.py` overrides `get_db` to yield ONE shared session to every request, so
+concurrent-looking calls in a test serialise. "883 passed" says nothing about concurrency. When the
+property is "at most one of X", ask *what physically prevents the second one* — and if the answer is
+an `if` in Python, write the constraint.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,
-  execution protocol). This skill is the *why + reproduction* companion.
+  execution protocol) **and the AI-config map**: the single table of every agent, command, skill,
+  hook, plugin and MCP server. This file deliberately does NOT repeat that table — the copy that
+  used to live here drifted every time the surface changed (it listed four of eight commands and
+  said "rules 1–11" after a renumber), and one stale map is worse than none. This skill is the
+  *why + reproduction* companion to the rules.
 - **`.claude/agents/*.md`** + **`agents/common/roster.py`** (`PROJECT_PLAYBOOK`) — the agent charters;
   keep the two in sync (they restate overlapping lessons).
 - **`.claude/skills/issue-workflow/`** — the issue/PR/milestone/label operational flow.
 - **`.claude/hooks/`** — `pre-push-tests.sh` (test gate), `guard-destructive.sh` (destruction guard),
   `hook-parse-lib.sh` (the ONE parsing model both source, #237), plus a `*.test.sh` self-test beside
   each hook.
-- **`.claude/commands/`** — `/verify`, `/release`, `/issue-triage`, `/linkedin-sync`.

@@ -23,6 +23,13 @@
             "timeout": 900,
             "statusMessage": "Pre-push: docs + backend + frontend test round...",
             "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/pre-push-tests.sh\""
+          },
+          {
+            "type": "command",
+            "if": "Bash(gh pr merge*)",
+            "timeout": 30,
+            "statusMessage": "Merge gate: review verdict + Closes-vs-acceptance-criteria...",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/pre-merge-gate.sh\""
           }
         ]
       }

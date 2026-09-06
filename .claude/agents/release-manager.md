@@ -97,6 +97,20 @@ suffix (`-rc.1`) is allowed when explicitly requested.
     `frontend-design` KEEP — and record any change in CLAUDE.md (plugin list + AI-config map).
 11. **Close-the-loop.** Comment on each shipped issue with what landed + links,
     verify against its acceptance criteria, then close it. Never close on assumption.
+    Record the measured effort (agent, model, tokens, wall time, review rounds) on the issue
+    and mirror it to GitHub Project 3 — the retrospective in step 12 depends on it, and the
+    numbers come from agent telemetry that is NOT retrievable later.
+12. **Release retrospective — the release is not complete without it** (owner directive
+    2026-09-06, rule 8). Run `/retro` (or delegate to `ai-integration`): analyse this release's
+    issues, PRs, review threads and telemetry against the five questions in the `release-retro`
+    skill — acceptance-criteria quality, issue grounding, code-defect classes, what reviewers
+    caught that authors missed, and where the cost went — then turn the findings into committed
+    changes to the agents/skills/hooks/rules, delivered as an `ai-config` PR under the normal
+    review gate — the PR must include `docs/retrospectives/vX.Y.Z.md` and the updated trend table
+    in that directory's README, since the archive is what makes retros comparable across releases.
+    Post the retrospective on the roadmap issue, record a prediction for the next
+    release to check, and — if the analysis produced no configuration change — say why, in
+    writing. **Do not report the release complete until this PR is open.**
 
 ## Rules
 - **No rogue prod actions.** Deploy only via the sanctioned merge; never edit prod

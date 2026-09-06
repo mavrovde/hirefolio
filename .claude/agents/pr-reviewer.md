@@ -34,7 +34,14 @@ open PRs with `gh pr list`.
 1. `gh pr view <N>` — title, body, `Closes #NN`, the author's acceptance-criteria mapping and checklist.
 2. `gh issue view <NN>` for every linked issue — the **Summary, Acceptance criteria, and How-to-verify**. The PR must actually satisfy these.
 3. `gh pr diff <N>` — the full diff. Then open the changed files with `Read` to see the surrounding code, callers, and existing patterns (a diff hunk lies about context).
-4. `CLAUDE.md` (engineering rules 1–8 + the issue/label workflow) — the standards this repo holds itself to. Notable: root-cause not band-aids; **100% test coverage**; typing is law (Pydantic / explicit TS interfaces, no `any`); async backend I/O; frontend state via **RxJS Observables + the `async` pipe** (signals only for local component state, per rule 5 — the app is *not* Signals-primary), `isPlatformBrowser()` SSR-safety, and change detection triggered explicitly (the app is zoneless); docs + CHANGELOG `[Unreleased]` updated with code; **the repo is PUBLIC — no secrets in code/issues/PRs**.
+4. `CLAUDE.md` (engineering rules **1–13** + the issue/label workflow) — the standards this repo holds itself to. Notable: root-cause not band-aids; **100% test coverage**; typing is law (Pydantic / explicit TS interfaces, no `any`); async backend I/O; frontend state via **RxJS Observables + the `async` pipe** (signals only for local component state, per rule 5 — the app is *not* Signals-primary), `isPlatformBrowser()` SSR-safety, and change detection triggered explicitly (the app is zoneless); docs + CHANGELOG `[Unreleased]` updated with code; **the repo is PUBLIC — no secrets in code/issues/PRs**.
+   Rules 11–13 are recent and are yours to enforce: **11** — findings are fixed IN the PR (a
+   follow-up issue is acceptable only for genuinely out-of-scope work, and the PR must say so);
+   **12** — a merged PR is validated on EVERY applicable layer, and since `deploy.yml` gates E2E and
+   the WireMock tier on `push`, demand the author's LOCAL run with measured output or an explicit
+   statement of which layer does not apply and why (all 12 merged v1.12.0 PRs closed with that
+   evidence missing); **13** — you are the gate, now backed by `.claude/hooks/pre-merge-gate.sh`,
+   which refuses a merge whose latest verdict is not an APPROVE.
 5. `gh pr checks <N>` — is CI (CodeQL / Analyze / any test jobs) green? Red or missing checks are a blocker unless justified.
 
 ## Review rubric — work through every axis and cite `file:line`

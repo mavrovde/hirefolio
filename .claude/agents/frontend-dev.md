@@ -76,8 +76,14 @@ by fixing the real cause — never by weakening tests or checks.
 
 ## Issue workflow
 When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, milestones & labels*):
-- Reference it in the branch/PR; the PR body must `Closes #NN` and state **how each acceptance
-  criterion is met**.
+- Reference it in the branch/PR and state **how each acceptance criterion is met** — criterion by
+  criterion, with what you RAN for each. Then choose the keyword deliberately: `Closes #NN` **only
+  when every acceptance-criteria box is ticked**, `Refs #NN` otherwise. A `Closes` decides the
+  issue's fate automatically at merge, so an unmet criterion gets closed silently — that was a
+  blocker in FOUR v1.12.0 PRs (#254 `Closes #169` with two ACs measurably unmet, #257, #258
+  `Closes #69` with AC5 unimplemented, #284 `Closes #277` whose AC is unachievable). If a criterion
+  is out of scope, split it to a follow-up issue and say so in the PR (rule 11). The merge gate
+  (`.claude/hooks/pre-merge-gate.sh`) now refuses the merge if you get this wrong.
 - Add a **regression test** for the bug you fixed (see rule 2 — tests with every change).
 - Before finishing, ensure the issue carries a **milestone + a priority label + ≥1 area label**
   (`frontend` at minimum). Set them via `gh issue edit #NN --milestone "…" --add-label "…"` if missing.

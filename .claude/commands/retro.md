@@ -1,0 +1,78 @@
+---
+description: Release retrospective — analyse the shipped release's issues, PRs, reviews and telemetry, then turn what happened into committed config changes
+---
+
+Run the release retrospective. Argument = the release tag just shipped (e.g. `v1.12.0`); with no
+argument, use the newest tag. $ARGUMENTS
+
+**Load the `release-retro` skill first** — it holds the method (the five questions, how to classify
+a finding into an action, the enforcement order). This command is the runbook; the skill is the how.
+
+This is a **mandatory step of the release process** (owner directive 2026-09-06, CLAUDE.md rule 8):
+`release-manager` does not report a release complete until this has run and its PR is open.
+
+## 1. Delimit the window
+
+```bash
+PREV=$(git tag --sort=-v:refname | sed -n '2p')     # the tag before this one
+git log --oneline "$PREV..$TAG" | cat                # what shipped
+gh pr list --repo mavrovde/hirefolio --state merged --limit 50 \
+  --json number,title,labels,mergedAt,url
+```
+
+Keep only PRs merged inside the window. Note which issues they closed.
+
+## 2. Gather the evidence (do NOT skip to conclusions)
+
+For every PR in the window:
+
+```bash
+gh pr view <n> --repo mavrovde/hirefolio --json title,body,reviews,labels \
+  --jq '{title, body, labels:[.labels[].name], reviews:[.reviews[].body]}'
+```
+
+For every closed issue: its body (acceptance criteria) and its close-the-loop comment.
+From **GitHub Project 3**: `Tokens (k)`, `Time of processing (min)`, `Review rounds`, `Agent`,
+`Model` per item.
+
+The review bodies are the richest signal in the repository. Read them, not their summaries.
+
+## 3. Answer the five questions (see the skill)
+
+1. **Acceptance criteria** — unachievable ones, silently-skipped ones, `Closes` with an unmet AC.
+2. **Issue quality** — was the grounding real and still accurate; did the implementer re-research?
+3. **Code quality** — cluster review blockers by CLASS; a class appearing 3× is a charter bug.
+4. **Review actions** — what did reviewers catch that authors missed, and what repeated?
+5. **Cost** — tokens, wall time, rounds; the share spent on rework; model mix.
+
+Report numbers and quotes. "Report what you measured, not what you expect" (rule 7) applies to the
+retrospective itself.
+
+## 4. Decide the changes
+
+Enforcement order: **hook > skill > charter > CLAUDE.md > command**. For each finding, name the
+single cheapest change that prevents recurrence, and say which evidence motivated it. Prune as
+readily as you add. If a gap has no owner, propose a **new role** — with the recurrence evidence,
+not a hunch.
+
+## 5. Deliver
+
+- **Write `docs/retrospectives/vX.Y.Z.md`** — the permanent record, five sections in the standard
+  order, committed with the config changes. Update the trend table in
+  `docs/retrospectives/README.md` (PRs merged, verdicts, mean rounds, round-1 approvals, rework
+  share, blocker counts, tokens, agent-time) and check the counting conventions documented there.
+- Post the retrospective on the roadmap issue (#265) as the announcement, linking to that file.
+- Open a PR with the config changes, labelled `ai-config` + a priority, reviewed under rule 13.
+- Record a **prediction**: the observable you expect to move, so the next retro can check it.
+- Update the CLAUDE.md AI-config map in the same PR if the tooling surface changed.
+
+## 6. Close the loop on the previous prediction
+
+Before finishing, check the PREVIOUS retro's prediction against this release's numbers and say
+whether it held. A prediction nobody checks is decoration.
+
+## Delegation
+
+`ai-integration` owns this work — it can be run directly with the Agent tool for the analysis and
+the config edits. Keep the review independent: `pr-reviewer` reviews the resulting PR, never the
+agent that wrote it.

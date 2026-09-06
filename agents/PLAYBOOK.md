@@ -10,6 +10,10 @@ WORKING DISCIPLINE (learned the hard way — see .claude/skills/lessons-learned/
   test FAILS. A test that passes both ways pins nothing. (`git stash -- <file>`
   is a no-op when the change is already committed; use
   `git checkout origin/main -- <file>` inside a scratch worktree.)
+  **This applies hardest to the fix that closed the LAST review round's blocker** — five v1.12.0
+  blockers were exactly that (#240, #255, #256, #261, #284), each in a PR whose other tests WERE
+  mutation-checked. And when the two states are observably identical, the correct output is a
+  documented equivalence in the test file, not a decorative case.
 - After a signature/behaviour change run the FULL suite AS CI RUNS IT
   (`pytest -n auto ... --cov-fail-under=100`), never `-k`: stale mocks and
   patches of deleted symbols live in other files, and a serial-only run once
@@ -180,20 +184,11 @@ then report honestly what survives in immutable history rather than rewriting pu
 your own initiative (that is a destructive, fork-breaking, tag-invalidating action — it needs
 explicit owner authorization, rule 9 in spirit).
 
-## Review findings are FIXED IN THE PR, not filed as issues (owner directive, 2026-09-06)
+## Review findings are FIXED IN THE PR (CLAUDE.md rule 11)
 
-When a reviewer raises something, resolve it in the next round of the same PR. File a follow-up
-issue ONLY when the work is genuinely out of scope (another subsystem, or a release the owner has
-already scheduled it into) — and say so in the PR. Anything the reviewer could not confirm,
-anything the PR introduced, and anything cheap belongs in the PR. A growing backlog is not
-progress; a merged, fully-fixed PR is.
+## A merged PR is validated on EVERY applicable layer (CLAUDE.md rule 12)
 
-## A merged PR is validated on EVERY applicable layer (owner directive, 2026-09-06)
-
-Before you ask for a merge, the change must be exercised wherever its failure mode can appear:
-backend unit (pytest at 100%), frontend unit (Vitest, three projects at 100%), **E2E in a real
-browser** for any user-facing surface, the **WireMock integration tier** for any composed API/AI
-path, plus plain mocks for boundaries nothing else reaches. Green units are not validation —
-v1.12.0 shipped three screens at 100% unit coverage that had never rendered in a browser. If a
-layer does not apply, name it and say why in the PR; if it applies and is missing, the PR is not
-ready.
+Both are stated in full in `CLAUDE.md` — read them there. They appear here only so a subagent that
+loads just the playbook knows they exist, and so the rule NUMBERS are greppable when someone
+renumbers (a v1.12.0 renumber left stale pointers in four places and took three review passes to
+clear). One idea, one place: duplication is how configs drift.
