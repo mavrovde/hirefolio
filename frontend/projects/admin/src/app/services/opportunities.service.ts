@@ -23,6 +23,8 @@ export interface Opportunity {
     salary_note: string | null;
     next_action: string | null;
     next_action_date: string | null;
+    sent_cv_id: string | null;
+    sent_cv_at: string | null;
     created_at: string;
     updated_at: string;
     notes: OpportunityNote[];
@@ -93,6 +95,15 @@ export class OpportunitiesService {
 
     moveStage(id: string, stage: string): Observable<Opportunity> {
         return this.http.patch<Opportunity>(`${this.apiUrl}/${id}/stage`, { stage });
+    }
+
+    /** Record which CV variant went to this company (#247 criterion 4).
+     *  The backend sets the timestamp, updates the pointer, and appends the
+     *  durable "CV sent: version (filename)" note to the timeline. */
+    recordCvSent(opportunityId: string, cvDocumentId: string): Observable<Opportunity> {
+        return this.http.post<Opportunity>(`${this.apiUrl}/${opportunityId}/cv-sent`, {
+            cv_document_id: cvDocumentId,
+        });
     }
 
     addNote(id: string, body: string): Observable<Opportunity> {

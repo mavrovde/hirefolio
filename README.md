@@ -524,6 +524,13 @@ All admin-only (auth required):
 - `POST /api/app/admin/opportunities` - Create an opportunity (strip-then-validate input contract)
 - `GET /api/app/admin/opportunities/{id}` - Detail incl. the notes timeline
 - `PATCH /api/app/admin/opportunities/{id}/stage` - Move a card through the stage workflow
+- `POST /api/app/admin/cv/upload` now takes **`activate`** (form field, default `true`):
+  `false` uploads a **variant** — listed in `/versions`, attachable to opportunities — while the
+  public `/cv/download` keeps serving the current default untouched
+- `POST /api/app/admin/opportunities/{id}/cv-sent` - Record which **CV variant** went to this
+  company (`cv_document_id`): sets the current pointer + timestamp and appends the durable
+  `CV sent: version (filename)` note to the timeline. Never touches which CV the public flow
+  serves (`is_active`) — independent facts, pinned by test
 - `POST /api/app/admin/opportunities/{id}/notes` - Append a timeline note (optionally linked to an inbox interaction)
 - `POST /api/app/admin/opportunities/promote` - Promote an inbox interaction into an opportunity (advances the interaction new → in_progress). **Idempotent per interaction**: a repeat call returns the card created by the first one — enforced by a UNIQUE constraint, so concurrent requests collapse to one card rather than racing. Overrides (`company`, `role_title`) therefore apply only to the FIRST promotion; changing a card afterwards is an edit, not a re-promote. The card's `source` is derived from the interaction's origin (contact_form → recruiter_outreach, cv_request/booking → discovery)
 

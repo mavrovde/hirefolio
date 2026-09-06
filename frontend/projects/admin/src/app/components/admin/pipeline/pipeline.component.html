@@ -79,6 +79,28 @@
         {{ selected.next_action }} <span *ngIf="selected.next_action_date">({{ selected.next_action_date }})</span></p>
     </div>
 
+    <h3 class="font-semibold mb-2">CV variant</h3>
+    <div class="mb-4">
+      <p class="text-sm mb-2" *ngIf="sentCvLabel() as label">
+        <span class="text-gray-500">Sent:</span> {{ label }}
+        <span class="text-gray-500" *ngIf="selected.sent_cv_at">on {{ selected.sent_cv_at | date: 'medium' }}</span>
+      </p>
+      <p class="text-sm mb-2 text-gray-500" *ngIf="!selected.sent_cv_id">No CV recorded for this opportunity yet.</p>
+      <div class="flex gap-2">
+        <select [(ngModel)]="cvChoice" name="cv-choice" aria-label="CV variant"
+          class="border rounded px-3 py-2 flex-1 bg-white">
+          <option value="" disabled>Pick a variant…</option>
+          <option *ngFor="let v of cvVersions" [value]="v.id">
+            {{ v.version }} ({{ v.filename }}){{ v.is_active ? ' — public default' : '' }}
+          </option>
+        </select>
+        <button type="button" (click)="recordCvSent()" [disabled]="!cvChoice || sendingCv"
+          class="border rounded px-4 py-2 bg-white disabled:opacity-40">
+          {{ sendingCv ? 'Recording…' : 'Record as sent' }}
+        </button>
+      </div>
+    </div>
+
     <h3 class="font-semibold mb-2">Timeline</h3>
     <form (ngSubmit)="addNote()" class="flex gap-2 mb-4">
       <input name="note" [(ngModel)]="noteDraft" placeholder="Add a remark…"
