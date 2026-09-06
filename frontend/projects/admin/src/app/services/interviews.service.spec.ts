@@ -57,10 +57,15 @@ describe('InterviewsService', () => {
         del.flush(null);
     });
 
-    it('builds the .ics URL without fetching it', () => {
-        // The browser downloads this directly; the service must NOT issue a
-        // request for it, which httpMock.verify() in afterEach enforces.
-        expect(service.icsUrl('i1')).toBe(`${base}/interviews/i1.ics`);
+    it('fetches the .ics through HttpClient so the auth interceptor signs it', () => {
+        // A plain <a href> carries no Bearer token and the endpoint 401s —
+        // the first version shipped that dead link (#292 round 1).
+        let got: Blob | undefined;
+        service.downloadIcs('i1').subscribe((b) => (got = b));
+        const req = httpMock.expectOne(`${base}/interviews/i1.ics`);
+        expect(req.request.responseType).toBe('blob');
+        req.flush(new Blob(['BEGIN:VCALENDAR'], { type: 'text/calendar' }));
+        expect(got).toBeInstanceOf(Blob);
     });
 
     it('surfaces a server error to the caller instead of swallowing it', () => {

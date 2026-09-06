@@ -30,7 +30,7 @@ const ROW: UpcomingInterview = {
     location_or_link: null,
     interviewer: null,
     notes: null,
-    outcome: 'scheduled',
+    outcome: 'pending',
     company: 'Acme GmbH',
     role_title: 'Staff Engineer',
     stage: 'interviewing',
@@ -85,7 +85,7 @@ describe('CalendarComponent (zoneless repaint)', () => {
         httpMock.expectOne((r) => r.url === UPCOMING).flush([ROW]);
 
         const select = host.querySelector('select.outcome') as HTMLSelectElement;
-        expect(select.value).toBe('scheduled');
+        expect(select.value).toBe('pending');
 
         fixture.componentInstance.setOutcome(
             fixture.componentInstance.days[0].interviews[0],

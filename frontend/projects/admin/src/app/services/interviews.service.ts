@@ -34,10 +34,13 @@ export interface InterviewInput {
     notes?: string | null;
 }
 
-export const INTERVIEW_KINDS = ['video', 'phone', 'onsite', 'other'] as const;
-
+// Mirrors OUTCOMES in backend/app/models/interview.py — rows are created
+// 'pending', and PATCH 422s on anything outside this set. The first version
+// of this list said 'scheduled', a value the backend has never had; both specs
+// hard-coded the fiction, so 371 green tests never sent one real PATCH (#292
+// review round 1 — the §34 fake-green, in a fixture this time).
 export const INTERVIEW_OUTCOMES = [
-    'scheduled',
+    'pending',
     'passed',
     'failed',
     'cancelled',
@@ -77,10 +80,14 @@ export class InterviewsService {
         return this.http.delete<void>(`${this.base}/interviews/${id}`);
     }
 
-    /** The `.ics` URL for a round. Returned rather than fetched: the browser
-     *  downloads it directly, and building it in one place keeps the route
-     *  shape out of the template. */
-    icsUrl(id: string): string {
-        return `${this.base}/interviews/${id}.ics`;
+    /** The `.ics` for a round, fetched WITH auth. A plain `<a href>` carries
+     *  no Bearer token, so the admin-gated endpoint answers 401 for every
+     *  user — the first version of this screen shipped exactly that dead link
+     *  (#292 review round 1). Fetching through HttpClient lets the auth
+     *  interceptor sign the request; the caller turns the blob into a save. */
+    downloadIcs(id: string): Observable<Blob> {
+        return this.http.get(`${this.base}/interviews/${id}.ics`, {
+            responseType: 'blob',
+        });
     }
 }

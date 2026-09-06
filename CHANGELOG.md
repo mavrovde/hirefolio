@@ -118,7 +118,14 @@ All notable changes to this project will be documented in this file.
   `InterviewsService` mirrors the backend schemas with explicit interfaces (no `any`), and the
   screen carries a **zoneless repaint pin** alongside its normal spec — the zone.js-bundling spec
   cannot see a missing `detectChanges()`, which is how five frozen-UI bugs reached this app (#276)
-  and a sixth survived the lint (#290). 12 new admin tests (suite 359 → 371, coverage 100%).
+  and a sixth survived the lint (#290). The `.ics` control is a **button driving an authenticated blob download** — a plain `<a href>`
+  carries no Bearer token and the admin-gated endpoint answers 401, which is exactly what the first
+  version shipped (caught in review round 1, together with an outcome vocabulary the backend never
+  had: both specs had hard-coded the fiction, so 371 green tests never sent one real PATCH). Day
+  grouping is timezone-explicit (`Intl.DateTimeFormat` with an injectable IANA zone), a rejected
+  outcome PATCH snaps the select back to the model, and a 4-test Playwright spec runs the screen in
+  a real browser — including asserting the `Authorization` header on the download. 22 new admin
+  tests (suite 359 → 381, coverage 100%).
 - **Interview calendar — backend (#247 phase 2 / #70)**: an `Interview` record on every
   opportunity (`interviews` table, migration `interview0006`, `ON DELETE CASCADE`) with
   admin-only endpoints to schedule (`POST /admin/opportunities/{id}/interviews`), list, fetch,
@@ -146,7 +153,7 @@ All notable changes to this project will be documented in this file.
   (lessons §16 addendum) — plus 3 integration-tier tests that run the composed
   create → upcoming → .ics path over real HTTP. The
   `.ics` renderer lives in `app/services/ics.py`, deliberately free of DB imports, because #70's
-  recruiter self-booking flow shares it. Admin UI follows in a separate PR.
+  recruiter self-booking flow shares it. Admin UI ships in #292.
 - **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose
   only browser validation was "the suite didn't break". 18 tests, suite **97 → 115**: the public
   **contact form** (`e2e/public/contact-form.spec.ts` — server-rendered then hydrated, trimmed

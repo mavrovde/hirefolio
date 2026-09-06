@@ -63,9 +63,14 @@
           <option *ngFor="let outcome of outcomes" [value]="outcome">{{ outcome }}</option>
         </select>
 
-        <a class="ics" [href]="icsUrl(interview)" [download]="'interview-' + interview.id + '.ics'">
-          Add to calendar (.ics)
-        </a>
+        <button
+          type="button"
+          class="ics"
+          (click)="downloadIcs(interview)"
+          [disabled]="downloadingId === interview.id"
+        >
+          {{ downloadingId === interview.id ? 'Downloading…' : 'Add to calendar (.ics)' }}
+        </button>
       </div>
     </article>
   </section>

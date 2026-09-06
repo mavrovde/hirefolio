@@ -1,6 +1,8 @@
 import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { isPlatformBrowser } from '@angular/common';
+import { PLATFORM_ID } from '@angular/core';
 import {
   InterviewsService,
   UpcomingInterview,
@@ -33,6 +35,7 @@ export interface CalendarDay {
 export class CalendarComponent implements OnInit {
   private interviewsService = inject(InterviewsService);
   private cdr = inject(ChangeDetectorRef);
+  private platformId = inject(PLATFORM_ID);
 
   readonly outcomes = INTERVIEW_OUTCOMES;
   readonly windows = [7, 14, 30, 90];
@@ -90,10 +93,20 @@ export class CalendarComponent implements OnInit {
     return [...byDate.entries()].map(([date, interviews]) => ({ date, interviews }));
   }
 
-  private localDateKey(iso: string): string {
-    const d = new Date(iso);
-    const pad = (n: number) => `${n}`.padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  /** Viewer timezone; tests may set an explicit IANA zone so assertions do
+   *  not depend on the runner's TZ (CI is UTC, where a broken UTC-slice
+   *  implementation is indistinguishable from the correct local grouping). */
+  timeZone: string | undefined = undefined;
+
+  localDateKey(iso: string): string {
+    // en-CA formats as YYYY-MM-DD; the timeZone option is the load-bearing
+    // part — with it undefined the viewer's own zone applies.
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: this.timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(iso));
   }
 
   /** End time, so a row can show its span without the template doing math. */
@@ -113,6 +126,7 @@ export class CalendarComponent implements OnInit {
     this.interviewsService.update(interview.id, { outcome }).subscribe({
       next: (updated) => {
         interview.outcome = updated.outcome;
+        this.error = null;
         // A cancelled round leaves the window (the backend excludes it), so
         // reload rather than leave a row the next refresh would drop anyway.
         if (updated.outcome === 'cancelled') {
@@ -124,13 +138,48 @@ export class CalendarComponent implements OnInit {
       error: (err) => {
         console.error('Error updating the interview outcome:', err);
         this.error = 'Failed to update the outcome';
+        // Snap the <select> back to the model value: ngModel writes the DOM
+        // only when the bound value CHANGES, and a rejected PATCH left the
+        // user's rejected choice on screen. Fresh row identities force the
+        // re-render (no trackBy, so the rows rebuild).
+        // New ROW objects, not just new arrays: ngFor without trackBy keys on
+        // object identity, so `[...d.interviews]` (same objects) rebuilt
+        // nothing — measured by this component's own spec.
+        this.days = this.days.map((d) => ({
+          ...d,
+          interviews: d.interviews.map((i) => ({ ...i })),
+        }));
         this.cdr.detectChanges();
       },
     });
   }
 
-  icsUrl(interview: UpcomingInterview): string {
-    return this.interviewsService.icsUrl(interview.id);
+  downloadingId: string | null = null;
+
+  downloadIcs(interview: UpcomingInterview): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    this.downloadingId = interview.id;
+    this.interviewsService.downloadIcs(interview.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `interview-${interview.id}.ics`;
+        link.click();
+        URL.revokeObjectURL(url);
+        this.downloadingId = null;
+        this.error = null;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error downloading the .ics:', err);
+        this.error = 'Failed to download the calendar file';
+        this.downloadingId = null;
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   get total(): number {
