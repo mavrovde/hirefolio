@@ -525,6 +525,31 @@ All admin-only (auth required):
 - `POST /api/app/admin/opportunities/{id}/notes` - Append a timeline note (optionally linked to an inbox interaction)
 - `POST /api/app/admin/opportunities/promote` - Promote an inbox interaction into an opportunity (advances the interaction new → in_progress). **Idempotent per interaction**: a repeat call returns the card created by the first one — enforced by a UNIQUE constraint, so concurrent requests collapse to one card rather than racing. Overrides (`company`, `role_title`) therefore apply only to the FIRST promotion; changing a card afterwards is an edit, not a re-promote. The card's `source` is derived from the interaction's origin (contact_form → recruiter_outreach, cv_request/booking → discovery)
 
+### Interview calendar (#247 phase 2 / #70)
+
+All admin-only (auth required). Timestamps are stored and returned in **UTC**; any ISO-8601
+offset is accepted on input and normalized (a value without an offset is read as UTC).
+
+- `POST /api/app/admin/opportunities/{id}/interviews` - Schedule a slot (`scheduled_at`,
+  `duration_minutes` 5–1440, `kind` ∈ `phone|video|onsite|other`, `location_or_link`,
+  `interviewer`, `notes`). Advances the opportunity to `interviewing` **forward only** — a card
+  already at `offer`/`closed_*` keeps its stage — and writes the change to the notes timeline.
+- `GET /api/app/admin/opportunities/{id}/interviews` - Every interview on one opportunity, soonest first
+- `GET /api/app/admin/interviews/upcoming?days=14` - Scheduled interviews across **all**
+  opportunities inside the window (1–365 days), soonest first, cancelled slots excluded; each row
+  carries its `company`/`role_title`/`stage` so a dashboard needs no second request
+- `GET /api/app/admin/interviews/{id}` - One interview
+- `GET /api/app/admin/interviews/{id}.ics` - **Calendar export**: a minimal RFC 5545 VEVENT
+  (UTC `DTSTART`/`DTEND`, escaped TEXT values, 75-octet line folding, `STATUS:CANCELLED` for a
+  cancelled slot, stable `UID` derived from the row id + `SITE_URL` host) served as
+  `text/calendar` with a download `Content-Disposition`
+- `PATCH /api/app/admin/interviews/{id}` - Reschedule and/or record the outcome
+  (`pending|passed|failed|cancelled`); only the keys sent are applied, and reschedules/outcome
+  changes are appended to the opportunity's notes timeline
+- `DELETE /api/app/admin/interviews/{id}` - Remove a mis-created slot (204). The removal is
+  written to the notes timeline first, so the history survives the row; to keep an interview that
+  simply did not happen, PATCH its outcome to `cancelled` instead
+
 #### Post model — LinkedIn provenance fields (nullable)
 
 | Column | Type | Constraint | Purpose |
@@ -545,13 +570,19 @@ All three columns are `NULL` for posts not imported from LinkedIn. Two posts may
 | `encrypt0002` | Encrypts stored per-user Gemini API keys at rest (Fernet via `HIREFOLIO_GEMINI_ENCRYPTION_KEY`); one-time backfill of existing plaintext keys — a no-op if the key env var is empty when it runs (see #143 and the note in the backend env section above). |
 | `inbox0003` | Recruiter communication hub (#69): the `interactions` table (unified inbox — source, status workflow, JSON payload, indexes on status/source/created_at). Self-adopting: a no-op if `create_all` already made the table (pre-Alembic installs). |
 | `pipeline0004` | Job-search pipeline phase 1 (#247): `opportunities` + `opportunity_notes` tables (stage workflow, recruiter fields, notes timeline linked to inbox interactions). Self-adopting per the guard above. |
+| `promote0005` | Promote-from-inbox idempotency (#279): unique `opportunities.promoted_from_interaction_id` + an index on `opportunity_notes.interaction_id`, backfilled from the promotion note. |
+| `interview0006` | Interview calendar, pipeline phase 2 (#247/#70): the `interviews` table (UTC `scheduled_at`, duration, kind, location/link, interviewer, outcome) with `ON DELETE CASCADE` to `opportunities` and indexes for per-opportunity listing + the "next N days" range scan. Self-adopting: when the table already exists it adds only the missing indexes, comparing **column sets, not names** (a name check adds duplicates — see the guard note below). |
 
 New changes get their own revision on top of this baseline — see
 [How to write a migration](#how-to-write-a-migration) above.
 **Every post-baseline `create_table`/`create_index` migration MUST start with the
 self-adopt guard** (`if sa.inspect(op.get_bind()).has_table("..."): return`) — pre-Alembic
 installs got their schema from `create_all` and already have an unpredictable subset of
-tables (see `inbox0003` and the lessons-learned entry).
+tables (see `inbox0003` and the lessons-learned entry). When the guard has to decide whether an
+**index or constraint** is already there, compare **column sets**, never names
+(`{tuple(i["column_names"]) for i in inspector.get_indexes(table)}`): `create_all` names objects
+differently from the migration, so a name check believes they are missing and creates duplicates
+— which `alembic check` cannot see, because it compares column sets too (see `interview0006`).
 
 ### Health Check
 

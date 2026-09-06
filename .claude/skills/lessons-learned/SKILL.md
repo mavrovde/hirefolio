@@ -345,6 +345,18 @@ green run — is the evidence the test is load-bearing. Two corollaries learned 
 nested literal *after* the target line while the real file has it *before*, so the read-side anchor
 was never exercised until the ordering was fixed (4 mutation failures → 6).
 
+**2026-09-06 addendum — the DATABASE can hide your normalization.** Mutation-checking the interview
+calendar (#247 phase 2) showed `_parse_scheduled_at`'s `.astimezone(UTC)` was **unpinned**: every
+assertion read the value back through a `timestamptz` column, and Postgres returns UTC no matter
+what offset went in, so the API-layer conversion could be deleted and the tests stayed green. The
+pin has to be an artifact produced **before** the round trip — here the timeline note, whose text
+is rendered from the parsed value (`Interview scheduled: video on 2026-09-10T14:30:00+00:00`).
+Generalize: whenever a store normalizes (timestamptz→UTC, `citext`, a DB default, a trigger), an
+end-to-end assertion cannot tell your code from the store's; assert on something the store never
+touched. Corollary for the harness itself: a mutant that makes the code **hang** (ours turned a
+trial-decode fold loop into an infinite one) looks like a slow test run and leaves zombie pytest
+processes on the shared test DB — bound every mutation run and check `pgrep -f pytest` afterwards.
+
 ## 17. After a signature change, run the FULL suite — *as CI runs it*
 
 A targeted run (`-k`, or just the file you edited) cannot see **stale siblings**: tests in *other*

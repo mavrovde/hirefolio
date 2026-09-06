@@ -8,11 +8,15 @@ timeline; inbox interactions can be promoted into / linked to one.
 
 import uuid
 from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:  # pragma: no cover - typing-only import, avoids a cycle
+    from app.models.interview import Interview
 
 # Plain strings validated at the API layer (same rationale as #69's sources):
 # stages are product vocabulary, not DB constraints — additive by design.
@@ -73,6 +77,13 @@ class Opportunity(Base):
         back_populates="opportunity",
         cascade="all, delete-orphan",
         order_by="OpportunityNote.created_at.desc()",
+    )
+    # The interview calendar (#70 / phase 2) — soonest first, the order both the
+    # opportunity detail view and the .ics export want.
+    interviews: Mapped[list["Interview"]] = relationship(
+        back_populates="opportunity",
+        cascade="all, delete-orphan",
+        order_by="Interview.scheduled_at.asc()",
     )
 
     __table_args__ = (

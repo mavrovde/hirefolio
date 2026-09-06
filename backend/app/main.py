@@ -17,6 +17,8 @@ from app.api.auth import router as auth_router
 from app.api.cv import router as cv_router
 from app.api.interactions import admin_router as admin_interactions_router
 from app.api.interactions import router as interactions_router
+from app.api.interviews import opportunity_router as opportunity_interviews_router
+from app.api.interviews import router as interviews_router
 from app.api.linkedin import router as linkedin_router
 from app.api.opportunities import router as opportunities_router
 from app.api.posts import router as posts_router
@@ -264,6 +266,8 @@ app.include_router(years_router, prefix=settings.api_prefix)
 app.include_router(interactions_router, prefix=settings.api_prefix)
 app.include_router(admin_interactions_router, prefix=settings.api_prefix)
 app.include_router(opportunities_router, prefix=settings.api_prefix)
+app.include_router(opportunity_interviews_router, prefix=settings.api_prefix)
+app.include_router(interviews_router, prefix=settings.api_prefix)
 app.include_router(profile_router, prefix=settings.api_prefix)
 app.include_router(admin_profile_router, prefix=settings.api_prefix)
 app.include_router(site_config_router, prefix=settings.api_prefix)
