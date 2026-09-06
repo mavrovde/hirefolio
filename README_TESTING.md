@@ -20,6 +20,11 @@ the live dev DB:
 export TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov
 ```
 
+> **Ports:** the integration overlay publishes the stack's Postgres on **5533**, not 5433, so a
+> verification stack never evicts your local pytest database (they collided until v1.12.x — the
+> symptom was `password authentication failed for user "postgres"` on the NEXT pytest run, which
+> looks nothing like a port conflict). Override with `POSTGRES_HOST_PORT` if 5533 is taken.
+
 `conftest.py` resolves `TEST_DATABASE_URL` → `DATABASE_URL` → the app config —
 and then HARD-REFUSES to run (pytest.exit) unless the resolved database name
 starts with `test_`: the suite drop/creates tables, so any other target would

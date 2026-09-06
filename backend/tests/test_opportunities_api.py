@@ -4,6 +4,7 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 
 from app.config import settings
 
@@ -87,6 +88,105 @@ async def test_note_rejects_whitespace_only_body(client: AsyncClient):
     assert resp.status_code == 422
 
 
+async def _seed_interaction(client: AsyncClient, source: str = "contact_form"):
+    """Create an interaction of the given source (contact_form via the public
+    endpoint; other sources are written directly — they have their own flows)."""
+    resp = await client.post(
+        f"{settings.api_prefix}/interactions/contact",
+        json={
+            "name": "Rita Recruiter",
+            "email": "rita@agency.example",
+            "company": "Agency GmbH",
+            "message": "Role at Acme for you",
+        },
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
+@pytest.mark.asyncio
+async def test_promote_is_idempotent_per_interaction(client: AsyncClient, db_session):
+    """#279: a double-click (or a retry) must not mint a second permanent card —
+    phase 1 has no DELETE to undo one. The second promote returns the SAME card."""
+    interaction = await _seed_interaction(client)
+    first = await client.post(
+        f"{URL}/promote", json={"interaction_id": interaction["id"]}
+    )
+    second = await client.post(
+        f"{URL}/promote", json={"interaction_id": interaction["id"]}
+    )
+    assert first.status_code == 201 and second.status_code == 201
+    assert first.json()["id"] == second.json()["id"]
+
+    from app.models.opportunity import Opportunity
+
+    rows = (await db_session.execute(select(Opportunity))).scalars().all()
+    assert len(rows) == 1
+    # The repeat must not duplicate the timeline note either.
+    assert len(second.json()["notes"]) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "interaction_source,expected_source",
+    [
+        ("contact_form", "recruiter_outreach"),
+        ("cv_request", "discovery"),
+        ("booking", "discovery"),
+    ],
+)
+async def test_promote_maps_the_interaction_source(
+    client: AsyncClient, db_session, interaction_source, expected_source
+):
+    """#278: the card's source derives from where the interaction CAME FROM —
+    hardcoding recruiter_outreach mislabelled every cv_request and booking."""
+    from app.models.interaction import Interaction
+
+    row = Interaction(
+        source=interaction_source,
+        status="new",
+        name="Rita Recruiter",
+        email="rita@agency.example",
+        company="Agency GmbH",
+        message="Role at Acme for you",
+    )
+    db_session.add(row)
+    await db_session.commit()
+    await db_session.refresh(row)
+
+    resp = await client.post(f"{URL}/promote", json={"interaction_id": str(row.id)})
+    assert resp.status_code == 201
+    assert resp.json()["source"] == expected_source
+
+
+@pytest.mark.asyncio
+async def test_promote_unknown_source_falls_back_safely(
+    client: AsyncClient, db_session
+):
+    """An interaction source added later (messengers #263, voice #264) must not
+    500 the promote path before its mapping lands — it degrades to the default."""
+    from app.models.interaction import Interaction
+
+    row = Interaction(
+        source="contact_form",
+        status="new",
+        name="Rita",
+        email="r@x.example",
+        company="C",
+        message="hello there",
+    )
+    db_session.add(row)
+    await db_session.commit()
+    await db_session.refresh(row)
+    # Simulate a source with no mapping entry yet.
+    row.source = "telegram"
+    await db_session.commit()
+
+    resp = await client.post(f"{URL}/promote", json={"interaction_id": str(row.id)})
+    assert resp.status_code == 201
+    assert resp.json()["source"] == "recruiter_outreach"
+
+
 @pytest.mark.asyncio
 async def test_promote_whitespace_company_falls_back_to_interaction(
     client: AsyncClient,
@@ -110,8 +210,18 @@ async def test_promote_whitespace_company_falls_back_to_interaction(
     )
     assert resp.status_code == 201
     assert resp.json()["company"] == "Agency GmbH"
-    # Explicit null must ride the normalizer's non-str fall-through unchanged
-    # (the #258 lesson: omitting the key skips validators on defaults entirely).
+
+
+@pytest.mark.asyncio
+async def test_promote_explicit_null_overrides_ride_the_normalizer(
+    client: AsyncClient,
+):
+    """Explicit null must ride the normalizer's non-str fall-through unchanged
+    (the #258 lesson: omitting the key skips validators on defaults entirely).
+    A FRESH interaction on purpose — promote is idempotent now (#279), so a
+    second call on the same interaction returns the first card and would never
+    exercise the override path."""
+    interaction = await _seed_interaction(client)
     resp = await client.post(
         f"{URL}/promote",
         json={
@@ -123,6 +233,24 @@ async def test_promote_whitespace_company_falls_back_to_interaction(
     assert resp.status_code == 201
     assert resp.json()["company"] == "Agency GmbH"
     assert resp.json()["role_title"] == "Staff Engineer"
+
+
+@pytest.mark.asyncio
+async def test_promote_overrides_apply_only_on_first_promotion(client: AsyncClient):
+    """Documented consequence of idempotency (#279): overrides passed to a
+    REPEAT promote are ignored — the existing card is returned untouched. A
+    caller that wants to change a card edits it, it does not re-promote."""
+    interaction = await _seed_interaction(client)
+    first = await client.post(
+        f"{URL}/promote",
+        json={"interaction_id": interaction["id"], "role_title": "Staff Engineer"},
+    )
+    second = await client.post(
+        f"{URL}/promote",
+        json={"interaction_id": interaction["id"], "role_title": "Principal Engineer"},
+    )
+    assert second.json()["id"] == first.json()["id"]
+    assert second.json()["role_title"] == "Staff Engineer"
 
 
 @pytest.mark.asyncio

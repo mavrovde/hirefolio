@@ -286,6 +286,18 @@ async def add_note(
     return OpportunityOut.from_model(opp, with_notes=True)
 
 
+# #278: an interaction's ORIGIN must survive promotion — hardcoding
+# "recruiter_outreach" mislabelled every cv_request and booking, corrupting the
+# one dimension the pipeline exists to measure (funnel analytics, #249).
+# Explicit table, not a guess: a cv_request is the candidate being discovered
+# through their own site, a booking is the same discovery with a slot attached.
+INTERACTION_TO_OPPORTUNITY_SOURCE = {
+    "contact_form": "recruiter_outreach",
+    "cv_request": "discovery",
+    "booking": "discovery",
+}
+
+
 @router.post("/promote", status_code=201, response_model=OpportunityOut)
 async def promote_interaction(
     body: PromoteIn, db: AsyncSession = Depends(get_db)
@@ -304,11 +316,33 @@ async def promote_interaction(
     if interaction is None:
         raise HTTPException(status_code=404, detail="Interaction not found")
 
+    # #279: promoting is IDEMPOTENT per interaction. A double-click (or a
+    # retried request) previously minted a second card, and phase 1 ships no
+    # DELETE to undo one. The first promotion's timeline note carries the link,
+    # so it is also the lookup key.
+    existing = (
+        (
+            await db.execute(
+                select(Opportunity)
+                .join(OpportunityNote)
+                .where(OpportunityNote.interaction_id == interaction.id)
+                .limit(1)
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if existing is not None:
+        await db.refresh(existing, attribute_names=["notes"])
+        return OpportunityOut.from_model(existing, with_notes=True)
+
     opp = Opportunity(
         company=body.company or interaction.company or "Unknown company",
         role_title=body.role_title or "Unknown role",
         stage="lead",
-        source="recruiter_outreach",
+        source=INTERACTION_TO_OPPORTUNITY_SOURCE.get(
+            interaction.source, "recruiter_outreach"
+        ),
         recruiter_name=interaction.name,
         recruiter_email=interaction.email,
     )
@@ -324,5 +358,9 @@ async def promote_interaction(
     if interaction.status == "new":
         interaction.status = "in_progress"
     await db.commit()
-    opp = await _get_or_404(db, opp.id)
+    # #277: refresh the loaded object instead of re-selecting — a post-commit
+    # re-select returns the SAME identity-mapped instance with its stale
+    # collection (lessons §22); it only "worked" here because notes was never
+    # loaded before the commit.
+    await db.refresh(opp, attribute_names=["notes"])
     return OpportunityOut.from_model(opp, with_notes=True)

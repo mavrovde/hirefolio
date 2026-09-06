@@ -29,6 +29,33 @@ All notable changes to this project will be documented in this file.
 - **Effort reports now record the MODEL per step** and Project 3 gains a `Model` field
   (`fable-5`/`opus-5`/`sonnet-5`/`haiku-4.5`/`mixed`), so cost, review rounds and defects caught
   can be compared per model rather than only per agent.
+### Fixed
+- **Integration/E2E verification stacks no longer evict the developer's test database** — the
+  `docker-compose.inttest.yml` overlay publishes Postgres on **5533** instead of 5433. Prod
+  compose published the same port the local pytest DB uses, so every verification stack silently
+  took it and the next `pytest` (or pre-push gate) died with `password authentication failed for
+  user "postgres"` — a symptom that looks nothing like a port conflict and cost real time three
+  times in one session. Nothing inside the stack uses the host port; `POSTGRES_HOST_PORT`
+  overrides the new default.
+- **Promoting an inbox interaction is idempotent, keeps its origin, and refreshes correctly**
+  (#279/#278/#277) — three #274 review findings fixed together because they live in one handler.
+  **Idempotency:** a repeated promote (double-click, retry) returns the FIRST card instead of
+  minting a second permanent one — phase 1 ships no DELETE, so a duplicate was forever; the
+  existing card is found through the timeline note that links it to the interaction, so no schema
+  change. Documented consequence, pinned by a test: overrides passed to a repeat promote are
+  ignored — changing a card is an edit, not a re-promote. **Origin:** the card's `source` now
+  derives from the interaction through an explicit map (contact_form → recruiter_outreach,
+  cv_request/booking → discovery, unknown → the default) instead of a hardcoded literal that
+  mislabelled every CV request and corrupted the one dimension the pipeline exists to measure
+  (#249); the unknown-source fallback is tested so a future channel (#263 messengers, #264 voice)
+  cannot 500 the promote path before its mapping lands. **Refresh:**
+  `db.refresh(attribute_names=["notes"])` replaces the post-commit re-select that returns the
+  same identity-mapped instance with a stale collection (lessons §22) — it only appeared to work
+  because `notes` had never been loaded.
+  Validated on three layers per rule 12: backend unit (880 passed, 100%), the WireMock
+  integration tier (idempotency and cv_request-origin over real HTTP through the proxy), and a
+  new browser journey spec — inbox → promote → pipeline with the original message surviving as
+  the first timeline note, plus double-click-yields-one-card and cv_request-keeps-its-origin.
 
 ### Added
 - **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose
