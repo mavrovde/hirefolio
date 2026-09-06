@@ -27,6 +27,10 @@ deny() {
   exit 0
 }
 
+# The env form only fires when the hook itself was launched with it. A caller
+# writes `PR_MERGE_GATE=0 gh pr merge …`, which is a prefix on the COMMAND TEXT
+# and never reaches this process — the check below (on each segment) is the one
+# that actually implements the documented hatch. Keeping both costs nothing.
 [ "${PR_MERGE_GATE:-1}" = "0" ] && allow
 
 # Extract the command with jq, like both siblings. A hand-rolled sed
@@ -92,6 +96,13 @@ segment_invokes_pr_merge() {
     case "$seg" in
       "do "*|"then "*|"else "*|"elif "*|"{ "*|"( "*) seg="${seg#* }"; changed=1 ;;
     esac
+    # The documented bypass lives HERE, not in the hook's own environment: a
+    # caller types `PR_MERGE_GATE=0 gh pr merge 291`, so the token is part of
+    # the command text and the strip below would eat it unread. Same regex and
+    # same position as guard-destructive.sh:242 — one model, two hooks (#237).
+    if printf '%s' "$seg" | grep -Eq '^([A-Za-z_][A-Za-z0-9_]*=[^ ]* )*PR_MERGE_GATE=0( |$)'; then
+      return 1   # authorized: this segment is not gated
+    fi
     while [[ "$seg" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+ ]]; do
       seg="${seg#* }"; changed=1
     done
@@ -136,7 +147,10 @@ segment_invokes_pr_merge() {
       [ "$sshflag" = "$sshrest" ] && break
       sshrest="${sshrest#* }"
       case "$sshflag" in
-        -[bcDEeFIiJLlmOopQRSWw]) sshrest="${sshrest#* }" ;;   # took a separate value
+        # A value-taking letter LAST in a cluster still consumes the next word:
+        # `-tp 22` is `-t -p 22`. Matching only `-p` missed `-tp` and read the
+        # port as the host.
+        -*[bcDEeFIiJLlmOopQRSWw]) sshrest="${sshrest#* }" ;;
       esac
     done
     sshrest="${sshrest#* }"                                    # drop [user@]host
@@ -156,7 +170,7 @@ segment_invokes_pr_merge() {
   # shellcheck disable=SC2086
   set -- $seg
   [ "${1:-}" = "gh" ] || return 1
-  shift
+  shift || return 1
   while [ $# -gt 0 ]; do
     case "$1" in
       --repo|-R|--hostname) shift; shift || return 1 ;;
@@ -174,7 +188,8 @@ segment_invokes_pr_merge() {
   MERGE_OPERAND=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      -b|--body|-t|--subject|--match-head-commit|--author-email) shift; shift || break ;;
+      -b|--body|-t|--subject|-F|--body-file|-A|--author-email|-R|--repo|--match-head-commit) \
+        shift; shift || break ;;
       -*) shift ;;
       *) MERGE_OPERAND="$1"; break ;;
     esac
@@ -193,7 +208,7 @@ while IFS= read -r line; do
   # contains the literal text `gh pr merge` — and this gate blocked its own
   # commit that way before this branch existed. The shared lib already models
   # heredocs for exactly this reason (#212/#237); skip a body until its
-  # delimiter. (A heredoc whose body is then EXECUTED — `bash <<EOF` — is the
+  # delimiter.
   if [ -n "$IN_HEREDOC_DELIM" ]; then
     trimmed="${line#"${line%%[![:space:]]*}"}"
     [ "$trimmed" = "$IN_HEREDOC_DELIM" ] && IN_HEREDOC_DELIM=""
@@ -235,15 +250,31 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 # normalised to its number.
 [ "${MERGE_OPERAND_UNKNOWABLE:-0}" = "1" ] && deny "this merges a PR whose number comes from stdin (xargs), so the verdict cannot be checked — run the merge with an explicit PR number"
 
-PR_NUM="$(printf '%s' "${MERGE_OPERAND:-}" \
-  | sed -E 's#^https?://[^ ]*/pull/([0-9]+)/?$#\1#' \
-  | grep -oE '^[0-9]+$' || true)"
-# An operand was PRESENT but is not a PR number — e.g. a quoted flag value that
-# word-split (`gh pr merge -b "squash msg" 291`). Falling back to the current
-# branch would verify a DIFFERENT PR and allow the merge, which is round-2
-# blocker 3's failure mode one level deeper. Fail closed instead.
+# ONE normalisation path for the operand. Two overlapping blocks lived here
+# briefly and the second silently rescued what the first dropped, which made the
+# "operand ignored" mutation EQUIVALENT — it survived, and a survivor is a
+# finding about the code, not a gap to paper over (§33). Strip the quotes once,
+# then: a number, a pull URL, or a branch gh can resolve.
+PR_NUM=""
+if [ -n "${MERGE_OPERAND:-}" ]; then
+  UNQUOTED="$(printf '%s' "$MERGE_OPERAND" | sed -E "s/^[\"']//; s/[\"']$//")"
+  PR_NUM="$(printf '%s' "$UNQUOTED" \
+    | sed -E 's#^https?://[^ ]*/pull/([0-9]+)/?$#\1#' \
+    | grep -oE '^[0-9]+$' || true)"
+  # `gh pr merge` also accepts a BRANCH; ask gh rather than guess at naming.
+  # An unexpanded `$VAR` this hook cannot evaluate is left for the deny below.
+  if [ -z "$PR_NUM" ] && [ "${UNQUOTED#*\$}" = "$UNQUOTED" ]; then
+    PR_NUM="$(gh pr view "$UNQUOTED" --json number --jq '.number' 2>/dev/null | grep -oE '^[0-9]+$' || true)"
+  fi
+fi
+
+# Still unreadable — e.g. a quoted flag value that word-split
+# (`gh pr merge -b "squash msg" 291`), or an unexpanded `$PR` this hook cannot
+# evaluate. Falling back to the current branch would verify a DIFFERENT PR and
+# allow the merge (round-2 blocker 3 one level deeper), so refuse instead. The
+# `PR_MERGE_GATE=0` prefix is a real escape now that it works.
 if [ -n "${MERGE_OPERAND:-}" ] && [ -z "$PR_NUM" ]; then
-  deny "could not read the PR number from this command (operand '${MERGE_OPERAND}') — refusing to verify a different PR than the one being merged"
+  deny "could not resolve '${MERGE_OPERAND}' to a pull request — pass an explicit PR number, or prefix PR_MERGE_GATE=0 if this merge is already authorized"
 fi
 if [ -z "$PR_NUM" ]; then
   PR_NUM="$(gh pr view --json number --jq '.number' 2>/dev/null)"

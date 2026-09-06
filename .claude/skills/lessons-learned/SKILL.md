@@ -694,6 +694,12 @@ acceptable, because only one push runs at a time. The real collision was paralle
 unchanged is not a fix, and "it's the shared DB again" was an assumption — the log said mass
 ERRORs, not the guard's refusal message, and that difference was the whole diagnosis.
 
+## 32. (reserved — lands with PR #290)
+
+Numbering is stable on purpose: §32 was written on the `fix/cd-safety-admin-scope` branch and is
+held there until that PR merges, so the numbers already cited from other files keep pointing at the
+same lessons. An empty slot is cheaper than a renumber.
+
 ## 33. A mutation contract needs an IDENTITY CONTROL, or it certifies nothing
 
 The merge gate's self-test was rebuilt twice and lied both times, in different ways:
@@ -740,6 +746,43 @@ denied and are kept only as guards.
 
 **Corollary — fail closed on an unreadable operand.** If the target cannot be parsed, DENY. Do not
 substitute a default target: the substitution is invisible and looks like success.
+
+## 35. Test a gate's ESCAPE HATCH the way a caller types it — and a hatch that never opens is a bug
+
+The merge gate's deny message advertised `PR_MERGE_GATE=0` as the authorized bypass. It never
+worked. The hook read the flag from **its own environment**, but a caller writes it as a **command
+prefix** — `PR_MERGE_GATE=0 gh pr merge 291` — which is part of the command TEXT and was eaten
+unread by the env-assignment strip a few lines later. Live repro: the command was denied, by a
+message naming the hatch it had just ignored.
+
+There WAS a passing case for the bypass. It set the variable in the **harness environment**, so it
+certified a path no caller can take — §34's defect, one level up: the test and the production
+caller disagreed about what "setting the variable" means. `guard-destructive.sh:242` had the correct
+shape all along (match the leading assignment run of the segment text); the gate simply didn't copy
+it, which is what a shared parsing model is supposed to prevent.
+
+**The rule:** a guard's bypass is part of its contract. Test it **as a command prefix**, add the
+negative cases (`OTHER_VAR=0`, `PR_MERGE_GATE=1` must NOT bypass), and mutate it — if removing the
+bypass check leaves the suite green, the hatch is untested. And when a guard has no working escape,
+every false positive becomes a hard stop: round 4 of this PR denied six legitimate `gh pr merge`
+shapes (`-R`, `-F`, `-A`, a quoted number, a branch name) with no way through.
+
+**Corollary — read the tool's own help before writing a flag walk.** The value-taking flags were
+guessed at; `gh help pr merge` lists them (`-A`, `-b`, `-F`, `-t`, `-R`, `--match-head-commit`) and
+says the operand is `[<number> | <url> | <branch>]`. Three missing flags meant their VALUES were
+read as the PR number.
+
+## 36. `git checkout <file>` DISCARDS uncommitted work — it is not an undo for your last edit
+
+Mid-review-round, a broken edit to `pre-merge-gate.test.sh` was "reverted" with
+`git checkout .claude/hooks/pre-merge-gate.test.sh`. The file also held 14 new test cases and 3 new
+mutations from that same round, none of it committed. All of it was destroyed in one command, and
+had to be rewritten from scratch.
+
+**How to apply.** Before `git checkout -- <file>`, `git restore <file>`, `git stash drop` or a hard
+reset, run `git status --short` and ask what ELSE is uncommitted in that file. To undo only the last
+edit, re-edit it — reach for the file-level revert only when you intend to lose everything since the
+last commit. Commit working increments during a long round so a revert costs minutes, not the round.
 
 ## Where the rules live (AI-config map)
 

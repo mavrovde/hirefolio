@@ -43,9 +43,24 @@ and the next retro should look there instead.
 
 So the series stays comparable, count the same way every time:
 
-- **Verdicts** = posted review bodies containing `APPROVE` or `REQUEST CHANGES`, counted from
-  `gh pr view <n> --json reviews,comments`. Count these, **not** the Project 3 `Review rounds`
-  field — v1.12.0 found that field disagreeing with the thread (5 recorded vs 3 posted on #240).
+- **Verdicts** = posted review bodies containing the UPPERCASE marker `APPROVE` or
+  `REQUEST CHANGES`, counted over the release's **merged** PRs. Count these, **not** the Project 3
+  `Review rounds` field — v1.12.0 found that field disagreeing with the thread (5 recorded vs 3
+  posted on #240). **Run this, do not count by hand** — three different hand counts (30, 32, 34)
+  were reported for v1.12.0 and none reproduced:
+
+  ```bash
+  # PR numbers for the release: git log --oneline <prev-tag>..<tag> cites ISSUES too,
+  # so resolve each and keep only real merged PRs.
+  for n in $(git log --oneline <prev-tag>..<tag> | grep -oE '\(#[0-9]+\)' | tr -d '(#)'); do
+    [ "$(gh pr view "$n" --json state --jq .state 2>/dev/null)" = MERGED ] || continue
+    gh pr view "$n" --json reviews,comments \
+      --jq '[(.reviews[]?.body),(.comments[]?.body)]|map(select(test("APPROVE|REQUEST CHANGES")))|length'
+  done | paste -sd+ - | bc
+  ```
+
+  Case matters: a lowercase "approve" in prose is not a verdict, and matching case-insensitively
+  inflated the v1.12.0 count by one.
 - **Rework share** = tokens spent in rounds 2+ ÷ total measured review tokens. Only rounds with
   real telemetry count; estimates are excluded and the sample size is stated.
 - **Release attribution** = the tag the work actually **shipped in**, not the one it was planned

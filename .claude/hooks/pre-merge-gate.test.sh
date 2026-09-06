@@ -21,6 +21,8 @@ cat > "$STUB/gh" <<'STUBEOF'
 args="$*"
 case "$args" in
   "pr view --json number"*) printf '%s' "${GH_STUB_CURRENT_PR-}" ;;
+  # `gh pr view <branch> --json number` -- how the hook resolves a branch operand.
+  "pr view "*"--json number"*) printf '%s' "${GH_STUB_BRANCH_PR-}" ;;
   "issue view "*)
     [ "${GH_STUB_ISSUE_FAIL-0}" = "1" ] && exit 1
     printf '%s' "${GH_STUB_ISSUE_BODY-}" ;;
@@ -37,7 +39,8 @@ case "$args" in
     _n=""; for _a in "$@"; do case "$_a" in ''|*[!0-9]*) ;; *) _n="$_a"; break ;; esac; done
     _alt="GH_STUB_PR_JSON_${_n}"
     if [ -n "${!_alt-}" ]; then printf '%s' "${!_alt}"
-    else printf '%s' "${GH_STUB_PR_JSON-{\"reviews\":[],\"comments\":[],\"body\":\"\"}}"; fi ;;
+    elif [ -n "${GH_STUB_PR_JSON-}" ]; then printf '%s' "$GH_STUB_PR_JSON"
+    else printf '%s' '{"reviews":[],"comments":[],"body":""}'; fi ;;
 esac
 STUBEOF
 chmod +x "$STUB/gh"
@@ -172,6 +175,50 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_C
 # and allowed the merge — round-2 blocker 3 one level deeper.
 GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
   run "quoted flag value before the operand" deny "gh pr merge -b \"squash msg\" 284"
+# The DOCUMENTED BYPASS, tested the way a caller actually writes it: as a
+# command PREFIX. The old case set the variable in the HARNESS environment,
+# which a real caller cannot do -- it certified a path nobody can take, this
+# PR's own fake-green class (round-4 review, lessons §34).
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+  run "bypass as a command prefix (the documented form)" allow "PR_MERGE_GATE=0 gh pr merge 284 --squash"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+  run "bypass after other assignments" allow "FOO=1 PR_MERGE_GATE=0 gh pr merge 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+  run "a DIFFERENT variable set to 0 does not bypass" deny "OTHER_GATE=0 gh pr merge 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+  run "PR_MERGE_GATE=1 does not bypass" deny "PR_MERGE_GATE=1 gh pr merge 284"
+# LEGITIMATE shapes. Ground truth `gh help pr merge`: the operand is
+# `[<number> | <url> | <branch>]`, and -A/-F/-R/-t/-b/--match-head-commit take
+# values. Round 4 read those VALUES as the operand and denied an APPROVED PR --
+# a hard stop on the sanctioned deploy trigger, with a bypass that did not work.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "--repo before the operand" allow "gh pr merge --repo mavrovde/hirefolio 284 --squash"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "-R before the operand" allow "gh pr merge -R mavrovde/hirefolio 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "--body-file before the operand" allow "gh pr merge --body-file notes.md 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "-F before the operand" allow "gh pr merge -F notes.md 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "-A author-email before the operand" allow "gh pr merge -A me@example.com 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "a QUOTED number is still that PR" allow "gh pr merge \"284\" --squash"
+# ...and those same flags must not become a way to smuggle a bad merge past.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "--repo before the operand, REQUEST CHANGES" deny "gh pr merge --repo mavrovde/hirefolio 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "-F before the operand, REQUEST CHANGES" deny "gh pr merge -F notes.md 284"
+# A BRANCH is valid gh input. Expect ALLOW, and only the RESOLVED PR is the
+# approved one: had the branch failed to resolve, the hook would fail closed and
+# deny -- so this case tells "resolved the branch" from "gave up", which is the
+# round-4 lesson (§34) applied to its own fix.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+GH_STUB_PR_JSON_284="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" \
+GH_STUB_CURRENT_PR=999 GH_STUB_BRANCH_PR=284 \
+  run "a branch operand resolves to its PR" allow "gh pr merge feat/release-retro --squash"
+# An operand this hook cannot evaluate still fails closed.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
+  run "an unresolvable operand fails closed" deny "gh pr merge \$PR --squash"
 # ...but a genuinely absent operand still resolves the current branch's PR.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=284 \
   run "no operand still resolves the current branch" allow "gh pr merge --squash"
@@ -221,8 +268,11 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
   run "no PR number and no current-branch PR" deny "gh pr merge --squash"
 
 # 7. The documented bypass.
+# The SESSION-ENV form (the hook process itself inherits the variable) -- a
+# different path from the command-prefix form above, which is what the deny
+# message advertises and what a caller can actually type.
 PR_MERGE_GATE=0 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
-  run "PR_MERGE_GATE=0" allow "gh pr merge 284 --squash"
+  run "PR_MERGE_GATE=0 in the hook's own environment" allow "gh pr merge 284 --squash"
 
 echo "merge gate self-test: $PASS passed, $FAIL failed"
 
@@ -336,9 +386,15 @@ PY
   mutate die "heredoc bodies always treated as data" \
     'replace::[ -n "$delim" ] && line_is_all_text_tools "$line"=>[ -n "$delim" ]'
   mutate die "operand-after-flags ignored (falls back to current branch)" \
-    "replace::printf '%s' \"\${MERGE_OPERAND:-}\"=>printf '%s' \"\""
+    "replace::UNQUOTED=\"\$(printf '%s' \"\$MERGE_OPERAND\"=>UNQUOTED=\"\$(printf '%s' \"\""
   mutate die "deadline denies removed" \
     "replace::past_deadline && deny=>false && deny"
+  mutate die "the command-prefix bypass stops being recognised" \
+    "replace::PR_MERGE_GATE=0( |\$)'=>PR_MERGE_GATE=0_NEVER( |\$)'"
+  mutate die "value-taking gh flags dropped from the operand walk" \
+    'replace::-b|--body|-t|--subject|-F|--body-file|-A|--author-email|-R|--repo|--match-head-commit=>-b|--body|-t|--subject|--match-head-commit'
+  mutate die "branch operands no longer resolved (valid input fails closed)" \
+    "replace::PR_NUM=\"\$(gh pr view \"\$UNQUOTED\" --json number=>PR_NUM=\"\$(true \"\$UNQUOTED\" --json number"
   mutate die "indirection (bash -c / eval / ssh) no longer inspected" \
     'replace::inner_script_invokes_pr_merge "$seg" && return 0=>false && return 0'
 

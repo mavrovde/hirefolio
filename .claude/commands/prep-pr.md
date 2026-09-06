@@ -32,9 +32,6 @@ E2E assertion). Consult the `env-gotchas` skill for platform pitfalls while runn
 6. **Secrets.** `git diff origin/main... | grep -iE 'password|secret|token|api_key'` — every hit
    must be a variable NAME or placeholder, never a value (public repo, no-secrets rule).
 
-Output: a table of check → PASS/FLAG with one line each on what to fix. Do NOT push or open the PR
-from this command; it prepares, the human/agent decides. $ARGUMENTS
-
 7. **Re-measure every number.** List every count or claim in the PR body, the commit message and the
    `[Unreleased]` CHANGELOG block — "N tests", "N cases", "N passed", "grep returns nothing", "X is
    fixed" — then RUN the thing that produces each one, AT THIS HEAD, and correct it. This is the
@@ -47,5 +44,8 @@ from this command; it prepares, the human/agent decides. $ARGUMENTS
    you ran and what it printed: backend `pytest -n auto --cov-fail-under=100`; the three Vitest
    projects; `./verify_all.sh` or `/e2e` for a user-facing surface; `./run_integration_tests.sh` for
    a composed API/AI path. `deploy.yml` gates E2E and the integration tier on `push`, so PR CI shows
-   them `skipping` — a LOCAL run is the only pre-merge evidence, and all 12 merged v1.12.0 PRs
+   them `skipping` — a LOCAL run is the only pre-merge evidence, and all 14 merged v1.12.0 PRs
    closed with the reviewer noting its absence. Name any layer that does not apply, and why.
+
+
+Output: a table of check → PASS/FLAG with one line each on what to fix. Do NOT push or open the PR from this command; it prepares, the human/agent decides. $ARGUMENTS

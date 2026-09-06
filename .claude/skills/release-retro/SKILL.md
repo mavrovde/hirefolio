@@ -31,8 +31,12 @@ gh pr list --repo mavrovde/hirefolio --state merged --search "merged:>=<prev-tag
 gh issue list --repo mavrovde/hirefolio --state closed --search "closed:>=<prev-tag-date>" \
   --json number,title,body,comments
 
-# Every review verdict in the window — the richest signal in the repo
-gh pr view <n> --repo mavrovde/hirefolio --json reviews --jq '.reviews[].body'
+# Every review verdict in the window — the richest signal in the repo.
+# BOTH streams: this repo's sanctioned verdict is often a COMMENT, because
+# same-identity `gh pr review --approve` is blocked (env-gotchas). Reading
+# `reviews` alone silently loses those — the same bug the merge gate's jq had.
+gh pr view <n> --repo mavrovde/hirefolio --json reviews,comments \
+  --jq '[(.reviews[]?.body),(.comments[]?.body)][]'
 
 # Effort telemetry (recorded at close-the-loop; not retrievable later)
 # GitHub Project 3: Tokens (k), Time of processing (min), Review rounds, Agent, Model
