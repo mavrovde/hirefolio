@@ -92,7 +92,7 @@ When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, miles
   (lessons §29). Coverage measures execution, not composition.
 
 ⚠️ **Mutation-check the fix that closed the LAST round's blocker.** It is the one nobody checks,
-  and it was itself a blocker five times in v1.12.0 (#240, #255, #256, #261, #284) — each in a PR
+  and it was itself a blocker five times in the v1.12.0 cycle (#240, #255, #256, #261, and post-tag #284) — each in a PR
   whose *other* tests were mutation-checked. Before re-requesting review, revert the round-N fix in
   a scratch worktree and confirm a test fails. If the two states are observably identical (#240's
   `return 0`/`return 1`, #277's refresh/re-select), say so IN THE TEST FILE rather than writing a

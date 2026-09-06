@@ -11,7 +11,7 @@ WORKING DISCIPLINE (learned the hard way — see .claude/skills/lessons-learned/
   is a no-op when the change is already committed; use
   `git checkout origin/main -- <file>` inside a scratch worktree.)
   **This applies hardest to the fix that closed the LAST review round's blocker** — five v1.12.0
-  blockers were exactly that (#240, #255, #256, #261, #284), each in a PR whose other tests WERE
+  blockers were exactly that (#240, #255, #256, #261, and post-tag #284), each in a PR whose other tests WERE
   mutation-checked. And when the two states are observably identical, the correct output is a
   documented equivalence in the test file, not a decorative case.
 - After a signature/behaviour change run the FULL suite AS CI RUNS IT

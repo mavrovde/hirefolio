@@ -38,7 +38,7 @@ original 2.5/17% came from the wrong corpus), zero blocker-level "claim asserted
 failing-first test" blockers.
 
 **Falsification stated up front:** if rounds stay near 2.5 while claim-discipline blockers go to
-zero, the bottleneck was never author discipline — it is PR size (v1.12.0 median: 20 changed files),
+zero, the bottleneck was never author discipline — it is PR size (v1.12.0 median: 17 changed files),
 and the next retro should look there instead.
 
 ## How to count consistently

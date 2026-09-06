@@ -147,7 +147,6 @@ All notable changes to this project will be documented in this file.
   verification block for the new surfaces: confirm the identity is yours and not the demo
   persona, POST a probe to the contact form, and find it in the admin Inbox.
 
-### Added
 - **Interview calendar — backend (#247 phase 2 / #70)**: an `Interview` record on every
   opportunity (`interviews` table, migration `interview0006`, `ON DELETE CASCADE`) with
   admin-only endpoints to schedule (`POST /admin/opportunities/{id}/interviews`), list, fetch,
