@@ -51,3 +51,9 @@ So the series stays comparable, count the same way every time:
 - **Release attribution** = the tag the work actually **shipped in**, not the one it was planned
   for. v1.12.0 found #235 filed under v1.11.1 although its PR merged after that tag, understating
   the release by ~11%.
+- **A multi-phase item's bucket is where its REMAINING work lands**, not where its first phase
+  shipped. Otherwise a phase-1 delivery keeps its release open forever: v1.12.0 read "in progress"
+  for hours after it was tagged because #247 (phase 1 shipped, phases 2–3 pending) and #61 (blocked
+  on an owner-gated deploy) still sat in its bucket, and the roadmap tracker — which spans every
+  release — was bucketed at all. **Move the item when a phase ships; a tracking issue gets no
+  release bucket.**
