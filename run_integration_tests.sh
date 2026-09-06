@@ -8,7 +8,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.inttest.yml)
+# ABSOLUTE paths: the suite runs from `$ROOT/backend/tests_integration`, and the
+# EXIT trap fires from THERE, so relative -f arguments resolved against the test
+# directory and the teardown died with "no such file or directory". The script
+# then exited 1 after printing "Integration tier PASSED" and left the stack up —
+# a green run that reports failure, which is how this tier came to be treated as
+# unrunnable and replaced by hand-assembled stacks (#289 review round 1).
+COMPOSE=(docker compose -f "$ROOT/docker-compose.yml" -f "$ROOT/docker-compose.inttest.yml")
 PYTEST="${PYTEST_PYTHON:-$ROOT/backend/venv/bin/python}"
 [ -x "$PYTEST" ] || PYTEST=python3
 
