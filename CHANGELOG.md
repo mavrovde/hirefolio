@@ -108,6 +108,17 @@ All notable changes to this project will be documented in this file.
   persona, POST a probe to the contact form, and find it in the admin Inbox.
 
 ### Added
+- **Interview calendar — admin UI (#247 phase 2 / #70)**: a `Calendar` screen in the admin panel
+  showing every scheduled round across all opportunities, **grouped by local day** with the company,
+  role, stage, kind, interviewer and location on each row. The window is switchable (7 / 14 / 30 / 90
+  days), a round that has **started but not finished** is flagged *in progress*, each row records an
+  outcome in place, and each offers its `.ics` download. Grouping uses a real `Date` rather than the
+  ISO string's UTC prefix: a 23:30 UTC round belongs to the next day anywhere east of UTC, and
+  slicing the string would file it under the wrong heading for exactly the users who care.
+  `InterviewsService` mirrors the backend schemas with explicit interfaces (no `any`), and the
+  screen carries a **zoneless repaint pin** alongside its normal spec — the zone.js-bundling spec
+  cannot see a missing `detectChanges()`, which is how five frozen-UI bugs reached this app (#276)
+  and a sixth survived the lint (#290). 12 new admin tests (suite 359 → 371, coverage 100%).
 - **Interview calendar — backend (#247 phase 2 / #70)**: an `Interview` record on every
   opportunity (`interviews` table, migration `interview0006`, `ON DELETE CASCADE`) with
   admin-only endpoints to schedule (`POST /admin/opportunities/{id}/interviews`), list, fetch,
