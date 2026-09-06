@@ -105,7 +105,13 @@ All notable changes to this project will be documented in this file.
   `PROFILE_URL` instead of defaulting to a personal profile, spec/E2E fixtures are neutralized,
   and a new **PII guard** (`scripts/check_no_pii.sh`) runs in the pre-push gate AND the CI
   Version Consistency job — reintroducing an identifier now fails the pipeline.
-  **⚠ Operator action (maintainer deployment):** the public profile falls back to these committed
+  **⚠ Operator action (any real deployment, BEFORE this release reaches the host):** the identity
+  DEFAULTS flipped to the demo persona — set `SITE_URL`, `SITE_NAME`, `OWNER_NAME`,
+  `OWNER_HEADLINE`, `OWNER_DESCRIPTION`, `SOCIAL_LINKS` in the host `.env` (alongside the #65
+  `HIREFOLIO_ANALYTICS_ID`). An unset `SITE_URL` now means the SSR HTML advertises
+  `og:url`/`og:image`/canonical/JSON-LD `url` pointing at `https://example.com` — actively wrong
+  SEO signals from a real domain (the static `sitemap.xml`/`robots.txt` still carry the canonical
+  domain until #71's generator). Also: the public profile falls back to these committed
   assets when no profile was uploaded via the admin panel — before rolling this release onto a
   host that relies on the fallback, upload the real Profile Data JSON and CV in the admin UI,
   or visitors will see the demo persona.

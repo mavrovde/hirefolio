@@ -6,7 +6,9 @@
 #
 # Patterns are IDENTIFIERS (name, email, LinkedIn handle, GA id) — deliberately
 # NOT the mavrov.de domain, which remains a legitimate infra default for the
-# canonical deployment.
+# canonical deployment. KNOWN LIMIT: text-only — PII inside binaries (a PDF's
+# FlateDecode streams, image EXIF) is invisible to git grep; binary assets need
+# eyeball review at PR time.
 set -u
 cd "$(dirname "$0")/.."
 
@@ -16,13 +18,11 @@ PATTERNS='serg\.mavrov|smavrov|sergii|G-1QSMT6N045'
 #   LICENSE            — the copyright holder is the real author (correct).
 #   CHANGELOG.md       — immutable history.
 #   specs/done/        — historical spec documents.
-#   test_email_service — contains an `assert "Sergii" not in …` negative pin.
 #   this script        — carries the patterns.
 hits=$(git grep -inE "$PATTERNS" -- . \
   ':(exclude)LICENSE' \
   ':(exclude)CHANGELOG.md' \
   ':(exclude)specs/done/*' \
-  ':(exclude)backend/tests/test_email_service.py' \
   ':(exclude)scripts/check_no_pii.sh' \
   2>/dev/null)
 

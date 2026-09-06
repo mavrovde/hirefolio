@@ -83,4 +83,3 @@ def test_requester_confirmation_uses_owner_name(email_service):
             msg = mock_server.send_message.call_args[0][0]
             assert "Pin Q. Owner" in msg["Subject"]
             assert "Pin Q. Owner's CV" in msg.get_content()
-            assert "Sergii" not in msg.get_content()

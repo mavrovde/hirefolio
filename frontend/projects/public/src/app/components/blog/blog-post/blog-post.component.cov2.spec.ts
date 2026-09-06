@@ -4,7 +4,7 @@ import { BlogService } from '@mavrov/shared';
 import { SeoService } from '../../../services/seo.service';
 import { SiteConfigService } from '../../../services/site-config.service';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
-import { of, throwError, BehaviorSubject } from 'rxjs';
+import { of, throwError, BehaviorSubject, firstValueFrom } from 'rxjs';
 import { MockTranslatePipe } from '@mavrov/shared/testing';
 import { PLATFORM_ID, RESPONSE_INIT } from '@angular/core';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -103,12 +103,26 @@ describe('BlogPostComponent — not-found SEO + SSR 404 status (#109)', () => {
     expect(seoServiceSpy.setNotFound).toHaveBeenCalled();
   });
 
-  it('unixUser falls back for an empty owner name (#66)', () => {
-    // Prototype-level: the getter needs no DI, only the site field.
-    const c: any = Object.create(BlogPostComponent.prototype);
-    c.site = { ownerName: '' };
-    expect(c.unixUser).toBe('owner');
-    c.site = { ownerName: 'Jane Doe' };
-    expect(c.unixUser).toBe('jane');
+  it('unixUser$ maps the runtime identity, empty name falls back to owner (#66)', async () => {
+    // Against the REAL constructor wiring: the TestBed mock emits 'Mock Owner'.
+    const fixture = setup('server', null, of(null));
+    expect(await firstValueFrom((fixture.componentInstance as any).unixUser$)).toBe('mock');
+
+    // Empty owner name -> 'owner' fallback, through the same constructor wiring.
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [BlogPostComponent, MockTranslatePipe],
+      providers: [
+        provideRouter([]),
+        { provide: SeoService, useValue: { updateSeo: vi.fn(), setJsonLd: vi.fn(), setNotFound: vi.fn() } },
+        { provide: BlogService, useValue: { getPost: vi.fn().mockReturnValue(of(null)) } },
+        { provide: PLATFORM_ID, useValue: 'server' },
+        { provide: RESPONSE_INIT, useValue: null },
+        { provide: ActivatedRoute, useValue: { paramMap: of({ get: () => 'x' }), snapshot: { paramMap: { get: () => 'x' } } } },
+        { provide: SiteConfigService, useValue: { config$: of({ ownerName: '' }) } },
+      ],
+    });
+    const bare = TestBed.createComponent(BlogPostComponent);
+    expect(await firstValueFrom((bare.componentInstance as any).unixUser$)).toBe('owner');
   });
 });
