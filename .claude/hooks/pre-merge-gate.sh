@@ -102,8 +102,12 @@ segment_invokes_pr_merge() {
       fi
     fi
     # `xargs [opts] gh pr merge` — same one-pass strip as the siblings (#219).
+    # The operand arrives on STDIN, so which PR this merges is unknowable here:
+    # record that, and fail closed below rather than silently checking whichever
+    # PR the current branch happens to have.
     if printf '%s' "$seg" | grep -Eq '^xargs( |$)'; then
       seg="$(printf '%s' "$seg" | sed -E 's/^xargs +//; s/^((-[^ ]+|\{\}|[A-Za-z]=) )*//')"
+      MERGE_OPERAND_UNKNOWABLE=1
       changed=1
     fi
   done
@@ -120,9 +124,24 @@ segment_invokes_pr_merge() {
     inner_script_invokes_pr_merge "$seg" && return 0
     return 1
   elif printf '%s' "$seg" | grep -Eq '^ssh '; then
-    # A merge on the remote end merges all the same; inspect the whole
-    # remainder — protection independent of parsing ssh's option grammar.
-    inner_script_invokes_pr_merge "${seg#ssh }" && return 0
+    # A merge on the remote end merges all the same. Inspect the WHOLE remainder
+    # first — protection independent of getting ssh's option grammar right —
+    # then walk options and the host off the front so a bare
+    # `ssh box gh pr merge N` is seen as the command it is. Handing the raw
+    # remainder to the recursion was DEAD CODE: its command word was the host.
+    local sshrest="${seg#ssh }" sshflag
+    inner_script_invokes_pr_merge "$sshrest" && return 0
+    while [ "${sshrest:0:1}" = "-" ]; do
+      sshflag="${sshrest%% *}"
+      [ "$sshflag" = "$sshrest" ] && break
+      sshrest="${sshrest#* }"
+      case "$sshflag" in
+        -[bcDEeFIiJLlmOopQRSWw]) sshrest="${sshrest#* }" ;;   # took a separate value
+      esac
+    done
+    sshrest="${sshrest#* }"                                    # drop [user@]host
+    sshrest="$(printf '%s' "$sshrest" | sed -E "s/^\\\$?[\"']//; s/[\"']$//")"
+    inner_script_invokes_pr_merge "$sshrest" && return 0
     return 1
   fi
 
@@ -165,6 +184,7 @@ segment_invokes_pr_merge() {
 
 MERGE_SEG=""
 MERGE_OPERAND=""
+MERGE_OPERAND_UNKNOWABLE=0
 OLD_IFS="$IFS"
 IN_HEREDOC_DELIM=""
 while IFS= read -r line; do
@@ -174,9 +194,6 @@ while IFS= read -r line; do
   # commit that way before this branch existed. The shared lib already models
   # heredocs for exactly this reason (#212/#237); skip a body until its
   # delimiter. (A heredoc whose body is then EXECUTED — `bash <<EOF` — is the
-  # dangerous shape the sibling guard analyses; a merge inside one is not
-  # reachable here without also passing the `gh` command-word check on the outer
-  # line, so treating bodies as data is safe for THIS gate.)
   if [ -n "$IN_HEREDOC_DELIM" ]; then
     trimmed="${line#"${line%%[![:space:]]*}"}"
     [ "$trimmed" = "$IN_HEREDOC_DELIM" ] && IN_HEREDOC_DELIM=""
@@ -184,10 +201,12 @@ while IFS= read -r line; do
   fi
   delim="$(heredoc_delim "$line" 2>/dev/null || true)"
   # ONLY a text-tool heredoc is data. `bash <<'EOF' … gh pr merge N … EOF` is a
-  # script the shell EXECUTES, and skipping it unconditionally was a live bypass
-  # (#291 review round 2). `line_is_all_text_tools` is the shared lib's answer to
-  # exactly this question (#204/#212): the body is dropped only when every
-  # command on the opening line is a text tool — `cat`, `git commit -F -`, …
+  # script the shell EXECUTES, and skipping every heredoc body unconditionally
+  # was a live bypass (#291 review round 2) — an earlier comment here argued a
+  # merge inside one "is not reachable"; it was, and that rationale is deleted
+  # rather than left as an invitation to revert this. `line_is_all_text_tools`
+  # is the shared lib's answer to exactly this question (#204/#212): the body is
+  # dropped only when every command on the opening line is a text tool.
   if [ -n "$delim" ] && line_is_all_text_tools "$line"; then
     IN_HEREDOC_DELIM="$delim"
   fi
@@ -214,9 +233,18 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 # (`gh pr merge --squash 291` previously fell through and checked the CURRENT
 # branch's PR — a live bypass found in review round 2). A URL operand is
 # normalised to its number.
+[ "${MERGE_OPERAND_UNKNOWABLE:-0}" = "1" ] && deny "this merges a PR whose number comes from stdin (xargs), so the verdict cannot be checked — run the merge with an explicit PR number"
+
 PR_NUM="$(printf '%s' "${MERGE_OPERAND:-}" \
   | sed -E 's#^https?://[^ ]*/pull/([0-9]+)/?$#\1#' \
   | grep -oE '^[0-9]+$' || true)"
+# An operand was PRESENT but is not a PR number — e.g. a quoted flag value that
+# word-split (`gh pr merge -b "squash msg" 291`). Falling back to the current
+# branch would verify a DIFFERENT PR and allow the merge, which is round-2
+# blocker 3's failure mode one level deeper. Fail closed instead.
+if [ -n "${MERGE_OPERAND:-}" ] && [ -z "$PR_NUM" ]; then
+  deny "could not read the PR number from this command (operand '${MERGE_OPERAND}') — refusing to verify a different PR than the one being merged"
+fi
 if [ -z "$PR_NUM" ]; then
   PR_NUM="$(gh pr view --json number --jq '.number' 2>/dev/null)"
   [ -z "$PR_NUM" ] && deny "could not determine which PR this merges (no number given, and no PR found for the current branch) — refusing to merge unverified"

@@ -718,6 +718,29 @@ an explicit REQUEST CHANGES both fail the APPROVE test anyway. They stayed — t
 what tells an author what to do — but they are documented as message-only rather than pinned by
 cases that cannot fail (§25 and the #240 precedent).
 
+## 34. A stub that answers identically for every entity cannot prove you asked about the right one
+
+Round 4 of the same gate. Two shapes — `echo 284 | xargs gh pr merge` and
+`gh pr merge -b "squash msg" 284` — detected the merge, failed to read the operand, silently fell
+back to the CURRENT BRANCH's PR, and verified a different PR than the one being merged. That is
+worse than missing the merge outright, because the output says "verified".
+
+New cases were written for both, and **they passed against the unfixed hook**. The `gh` stub
+returned the same verdict JSON no matter which PR was queried, so "checked PR 284" and "fell back
+to PR 999" were indistinguishable. Making the stub PR-aware was the fix — and the first attempt at
+that keyed on `$2`, which is the literal word `view` in `gh pr view <n> --json …`, so the lookup
+never hit and the stub was still uniform. Two rounds of a "fix" that measured nothing.
+
+**The rule:** when the behaviour under test is *which* entity was consulted, the fake must **vary
+its answer by entity**, and you must prove the variance is live — set the fallback entity to the
+OPPOSITE verdict, so a fallback flips the result. Then run the new cases against the **unfixed**
+code: a case that passes before the fix is pinning nothing. Measured here, that check turned a
+claimed 7 regressions into the honest 5 (3× `ssh`, `xargs`, quoted `-b`); the other two already
+denied and are kept only as guards.
+
+**Corollary — fail closed on an unreadable operand.** If the target cannot be parsed, DENY. Do not
+substitute a default target: the substitution is invisible and looks like success.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,

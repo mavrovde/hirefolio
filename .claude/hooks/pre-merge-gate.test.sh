@@ -25,8 +25,19 @@ case "$args" in
     [ "${GH_STUB_ISSUE_FAIL-0}" = "1" ] && exit 1
     printf '%s' "${GH_STUB_ISSUE_BODY-}" ;;
   "pr view "*)
+    [ -n "${GH_STUB_SLEEP-}" ] && sleep "$GH_STUB_SLEEP"
     [ "${GH_STUB_PR_FAIL-0}" = "1" ] && exit 1
-    printf '%s' "${GH_STUB_PR_JSON-{\"reviews\":[],\"comments\":[],\"body\":\"\"}}" ;;
+    # PR-AWARE ON PURPOSE. A stub that answers the same for every PR cannot tell
+    # "verified the right PR" from "fell back to the current branch and verified
+    # a different one" — the wrong-PR cases below would pass either way. Set
+    # GH_STUB_PR_JSON_<n> to give PR <n> its own verdict.
+    # Find the PR number wherever it sits in argv — it is `gh pr view <n> --json
+    # …`, i.e. $3, and keying this on $2 read the literal word "view", which
+    # made the whole PR-awareness silently inert (measured, #291 round 4).
+    _n=""; for _a in "$@"; do case "$_a" in ''|*[!0-9]*) ;; *) _n="$_a"; break ;; esac; done
+    _alt="GH_STUB_PR_JSON_${_n}"
+    if [ -n "${!_alt-}" ]; then printf '%s' "${!_alt}"
+    else printf '%s' "${GH_STUB_PR_JSON-{\"reviews\":[],\"comments\":[],\"body\":\"\"}}"; fi ;;
 esac
 STUBEOF
 chmod +x "$STUB/gh"
@@ -141,8 +152,29 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
   run "bash -c indirection" deny "bash -c 'gh pr merge 284 --squash'"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
   run "sh -c indirection" deny "sh -c \"gh pr merge 284\""
-GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
-  run "xargs indirection" deny "echo 284 | xargs gh pr merge"
+GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "xargs indirection (PR number comes from stdin -> unknowable)" deny "echo 284 | xargs gh pr merge"
+# ssh: the previous version handed `box gh pr merge N` to the recursion, whose
+# command word was the HOST — dead code that never matched. MEASURED against the
+# pre-round-4 hook: these three ssh shapes, the xargs case above, and the quoted
+# -b case below all ALLOWED a REQUEST-CHANGES PR (5 of the 7 cases added here).
+# `eval` and the no-operand case already denied; they pin that they still do.
+GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "ssh bare host" deny "ssh box gh pr merge 284"
+GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "ssh user@host" deny "ssh user@host gh pr merge 284"
+GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "ssh with a flag and a quoted script" deny "ssh -p 22 box 'gh pr merge 284'"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "eval indirection" deny "eval 'gh pr merge 284 --squash'"
+# A quoted flag VALUE word-splits, so the operand parse yields something that is
+# not a PR number. Falling back to the current branch verified a DIFFERENT PR
+# and allowed the merge — round-2 blocker 3 one level deeper.
+GH_STUB_PR_JSON_999="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "quoted flag value before the operand" deny "gh pr merge -b \"squash msg\" 284"
+# ...but a genuinely absent operand still resolves the current branch's PR.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=284 \
+  run "no operand still resolves the current branch" allow "gh pr merge --squash"
 # An APPROVE that merely QUOTES the phrase must not deny (this review thread
 # does exactly that). Measured base rate across v1.12.0's PRs: zero verdicts
 # change meaning under the windowed check.
@@ -179,6 +211,10 @@ EOF"
 # 6. Fail closed on anything unverifiable.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" PR_MERGE_GATE_DEADLINE=0 \
   run "deadline exceeded" deny "gh pr merge 284 --squash"
+# A SLOW gh, not a zero deadline: this reaches the `past_deadline && deny` lines
+# after the network call, which the zero-deadline case short-circuits before.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_SLEEP=2 PR_MERGE_GATE_DEADLINE=1 \
+  run "gh slower than the deadline" deny "gh pr merge 284 --squash"
 GH_STUB_PR_FAIL=1 \
   run "PR unreadable" deny "gh pr merge 284 --squash"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
@@ -301,6 +337,8 @@ PY
     'replace::[ -n "$delim" ] && line_is_all_text_tools "$line"=>[ -n "$delim" ]'
   mutate die "operand-after-flags ignored (falls back to current branch)" \
     "replace::printf '%s' \"\${MERGE_OPERAND:-}\"=>printf '%s' \"\""
+  mutate die "deadline denies removed" \
+    "replace::past_deadline && deny=>false && deny"
   mutate die "indirection (bash -c / eval / ssh) no longer inspected" \
     'replace::inner_script_invokes_pr_merge "$seg" && return 0=>false && return 0'
 
