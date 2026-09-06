@@ -20,6 +20,10 @@ All notable changes to this project will be documented in this file.
   mocks for what nothing else reaches; if a layer doesn't apply, the PR must name it and say why.
   The independent-review gate moves from rule 11 to **rule 13** (all references across CLAUDE.md,
   the seven agent charters, the skills and the shared playbook renumbered in this commit).
+- **Pull requests must carry labels too** — the "no orphan issues" invariant (type + area +
+  priority) now explicitly covers PRs, with the `gh pr create --label` recipe in the
+  `issue-workflow` skill; several v1.12.0-era PRs shipped unlabelled because the rule only named
+  issues.
 - **Effort reports now record the MODEL per step** and Project 3 gains a `Model` field
   (`fable-5`/`opus-5`/`sonnet-5`/`haiku-4.5`/`mixed`), so cost, review rounds and defects caught
   can be compared per model rather than only per agent.

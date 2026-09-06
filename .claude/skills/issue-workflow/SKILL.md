@@ -106,6 +106,22 @@ orchestrator and subagents on different models).
 
 Mark estimates as estimates; measured beats claimed (CLAUDE.md issue rule 7).
 
+## Every PR carries labels too (owner asked why they were missing, 2026-09-06)
+
+The "no orphan issues" invariant applies to PULL REQUESTS as well: a PR gets a **type** label
+(`bug`/`enhancement`/`documentation`/`dependencies`/`security`) plus **≥1 area** label
+(`backend`/`frontend`/`infra`/`ci-cd`/`ai-config`/`tech-debt`/…) and a **priority** at creation
+time — not after someone notices. Copy the linked issue's labels when there is one:
+
+```bash
+gh pr create --repo mavrovde/hirefolio --head <branch> --base main \
+  --title "…" --body-file <file> \
+  --label enhancement --label backend --label P2-medium
+```
+
+`gh pr create` accepts repeated `--label` flags; a comma-joined single flag can fail against
+multi-word sets, so prefer one flag per label.
+
 ## PR ↔ issue linking
 - `Closes #NN` / `Fixes #NN` in the PR body for issues the merge resolves (auto-closes on merge).
 - `Refs #NN` for partial/related work (issue stays open).
