@@ -524,6 +524,9 @@ All admin-only (auth required):
 - `POST /api/app/admin/opportunities` - Create an opportunity (strip-then-validate input contract)
 - `GET /api/app/admin/opportunities/{id}` - Detail incl. the notes timeline
 - `PATCH /api/app/admin/opportunities/{id}/stage` - Move a card through the stage workflow
+- `POST /api/app/admin/cv/upload` now takes **`activate`** (form field, default `true`):
+  `false` uploads a **variant** — listed in `/versions`, attachable to opportunities — while the
+  public `/cv/download` keeps serving the current default untouched
 - `POST /api/app/admin/opportunities/{id}/cv-sent` - Record which **CV variant** went to this
   company (`cv_document_id`): sets the current pointer + timestamp and appends the durable
   `CV sent: version (filename)` note to the timeline. Never touches which CV the public flow

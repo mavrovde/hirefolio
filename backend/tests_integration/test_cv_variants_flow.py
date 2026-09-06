@@ -5,13 +5,11 @@ cvvar0007-built columns and SET NULL FK serve the composed request path
 end-to-end — which is precisely what a migration PR must show.
 """
 
-import os
 import uuid
 
 import httpx
 
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000").rstrip("/")
-API = f"{BACKEND_URL}/api/app"
+from conftest import API
 
 
 def test_variant_upload_and_record_over_real_http(

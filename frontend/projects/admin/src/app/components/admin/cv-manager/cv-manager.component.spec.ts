@@ -78,6 +78,11 @@ describe('CvManagerComponent', () => {
         expect(component.uploading).toBe(false);
         expect(component.selectedFile).toBeNull(); // Should reset
         expect(mockCvService.getVersions).toHaveBeenCalledTimes(2); // Initial + after upload
+        // reset() must RE-SEED activate=true (#294 round-2 note): a plain
+        // reset() nulls the control, renders an UNCHECKED box, and the ?? true
+        // fallback still uploads as default — the UI would lie. Pin the
+        // control's post-reset value, which only reset({activate:true}) gives.
+        expect(component.uploadForm.controls['activate'].value).toBe(true);
     });
 
     it('uploads a VARIANT when the default checkbox is cleared — and a null control value falls back to true', () => {
