@@ -50,6 +50,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'calendar',
+        loadComponent: () =>
+          import('./components/admin/calendar/calendar.component').then(
+            (m) => m.CalendarComponent,
+          ),
+      },
+      {
         path: 'pipeline',
         loadComponent: () =>
           import('./components/admin/pipeline/pipeline.component').then(

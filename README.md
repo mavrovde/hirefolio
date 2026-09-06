@@ -292,7 +292,9 @@ npx playwright test e2e/admin/inbox.spec.ts # one spec file
 The suite covers the public site (SSR + hydration, blog, CV, i18n switching, the contact form
 incl. a phone viewport and an accessibility pass) and the admin console (auth, posts, tags, SQL,
 profile, **Inbox** with pagination and failure states, **Pipeline board** with stage moves and
-quick-create, and the promote hand-off from Inbox to pipeline).
+quick-create, the promote hand-off from Inbox to pipeline, and the **interview Calendar** —
+zoneless repaint, the authenticated `.ics` download with the Authorization header asserted on the
+wire, and the rejected-outcome snap-back).
 
 ### 3. Black-box integration tier (WireMock)
 

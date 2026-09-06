@@ -63,6 +63,10 @@ def test_reminder_sends_with_ics_attachment():
         assert len(attachments) == 1
         assert attachments[0].get_filename() == "interview.ics"
         assert attachments[0].get_content_type() == "text/calendar"
+        # get_content_type() STRIPS parameters, so it passes with or without
+        # the charset — round 2 proved it by deleting the param and watching
+        # this file stay green. get_content_charset() is the load-bearing one.
+        assert attachments[0].get_content_charset() == "utf-8"
         assert b"BEGIN:VCALENDAR" in attachments[0].get_payload(decode=True)
         # Time-bounded connection, like every sibling (#69 review).
         assert mock_smtp.call_args.kwargs["timeout"] == settings.smtp_timeout_seconds

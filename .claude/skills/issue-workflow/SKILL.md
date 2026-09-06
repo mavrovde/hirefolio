@@ -122,6 +122,13 @@ gh pr create --repo mavrovde/hirefolio --head <branch> --base main \
 `gh pr create` accepts repeated `--label` flags; a comma-joined single flag can fail against
 multi-word sets, so prefer one flag per label.
 
+**This rule has been violated and escalated by the owner TWICE (2026-09-06, both times in one
+day) — the second sweep backfilled labels onto 88 PRs.** Treat `--label` as a required part of
+the `gh pr create` invocation, exactly like `--title`: a PR command without labels is an
+incomplete command, not a to-do. If the labels are unclear, the type prefix decides
+(`feat:`→enhancement, `fix:`→bug, `chore(deps)`→dependencies, `docs:`→documentation,
+`fix(security)`→security) plus the area the diff actually touches.
+
 ## PR ↔ issue linking
 - `Closes #NN` / `Fixes #NN` in the PR body for issues the merge resolves (auto-closes on merge).
 - `Refs #NN` for partial/related work (issue stays open).
