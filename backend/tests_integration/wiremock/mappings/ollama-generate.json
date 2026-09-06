@@ -1,0 +1,18 @@
+{
+  "priority": 10,
+  "request": {
+    "method": "POST",
+    "urlPath": "/api/generate"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "model": "llama3.2",
+      "response": "[wiremock] deterministic generation: integration-stub answer.",
+      "done": true
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

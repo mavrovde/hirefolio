@@ -1,0 +1,49 @@
+# Integration-test overlay (#260): the black-box tier's stack shape.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.inttest.yml up -d
+#   (or just ./run_integration_tests.sh)
+#
+# The `ollama` service IS WireMock here: same hostname, same port (11434), so
+# the backend's OLLAMA_URL needs no change and the real model server never
+# boots — AI code paths are exercised against deterministic, credential-free
+# stubs (rule 10 by construction). Mappings live in
+# backend/tests_integration/wiremock/mappings/ and double as documentation of
+# what we expect the Ollama API to return; the __fault__ mappings inject
+# delays/errors so the #207 timeout/fallback behavior is integration-tested.
+services:
+  ollama:
+    image: wiremock/wiremock:3.10.0
+    entrypoint: ["/docker-entrypoint.sh", "--port", "11434", "--disable-banner", "--global-response-templating"]
+    # Neutralize the base service's `command:` (ollama serve args) — compose
+    # merge would otherwise append it to WireMock's argv (#261 review).
+    command: []
+    volumes:
+      - ./backend/tests_integration/wiremock:/home/wiremock:ro
+    networks:
+      app-network:
+        # nginx's rendered config names an `open-webui` upstream and refuses to
+        # START if the hostname doesn't resolve (measured: `host not found in
+        # upstream` emerg). open-webui itself is multi-GB and unused by this
+        # tier, so the WireMock container answers to that name too — the proxy
+        # boots, and nothing in the suite talks to /webui.
+        aliases:
+          - open-webui
+    healthcheck:
+      # Replaces the model-presence check — WireMock is healthy when its admin
+      # API answers.
+      test: ["CMD-SHELL", "curl -s -f http://localhost:11434/__admin/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  backend:
+    # The black-box tier needs the backend ORIGIN directly (root banner, API
+    # semantics) as well as the proxy path — prod compose publishes only :80,
+    # so expose :8000 here (#261 review blocker 1).
+    ports:
+      - "8000:8000"
+    environment:
+      # Same rule-10 posture as the E2E overlay: no signing secret to leak,
+      # no paid key that could make a billable call.
+      - JWT_ALLOW_EPHEMERAL_SECRET=true
+      - HIREFOLIO_GEMINI_API_KEY=

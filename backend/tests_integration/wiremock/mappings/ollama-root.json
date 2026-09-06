@@ -1,0 +1,14 @@
+{
+  "priority": 10,
+  "request": {
+    "method": "GET",
+    "url": "/"
+  },
+  "response": {
+    "status": 200,
+    "body": "Ollama is running",
+    "headers": {
+      "Content-Type": "text/plain"
+    }
+  }
+}

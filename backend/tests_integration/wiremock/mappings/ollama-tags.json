@@ -1,0 +1,29 @@
+{
+  "priority": 10,
+  "request": {
+    "method": "GET",
+    "url": "/api/tags"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "models": [
+        {
+          "name": "llama3.2",
+          "model": "llama3.2"
+        },
+        {
+          "name": "llama3.2:1b",
+          "model": "llama3.2:1b"
+        },
+        {
+          "name": "nomic-embed-text",
+          "model": "nomic-embed-text"
+        }
+      ]
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

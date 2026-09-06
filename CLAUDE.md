@@ -51,6 +51,11 @@ specs/      Feature specs (planned/done)
 - `./manage.sh start|stop|logs` — Docker stack
 - `./verify_all.sh` — full suite incl. Docker E2E (runs backend pytest via `backend/venv` → `python3`;
   override the interpreter with `PYTEST_PYTHON`)
+- `./run_integration_tests.sh` — black-box integration tier (#260): dev compose +
+  `docker-compose.inttest.yml` (the `ollama` service becomes **WireMock**), real-HTTP tests in
+  `backend/tests_integration/` incl. AI fault injection; volumes never touched
+- `./backend/perf/run_jmeter.sh` — JMeter performance smoke with EXECUTABLE latency budgets
+  (Dockerized, no local Java; non-zero exit on budget violation); see `README_TESTING.md`
 - Deploy = **push to `main`** → GitHub Actions builds + publishes images; the host is rolled
   **only** by the secrets-gated `Roll Out To Prod Host` job (`DEPLOY_*` secrets — absent = green run,
   nothing rolled; #112/#169). The scheduled `Live Freshness` workflow goes red whenever live ≠
