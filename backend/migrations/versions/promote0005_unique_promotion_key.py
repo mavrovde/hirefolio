@@ -67,8 +67,22 @@ def upgrade() -> None:
         )
     )
 
-    existing = {c["name"] for c in inspector.get_unique_constraints("opportunities")}
-    if "uq_opportunities_promoted_from_interaction_id" not in existing:
+    # Compare by COLUMN SET, never by name: on the pre-Alembic path `create_all`
+    # emits an INLINE column UNIQUE that Postgres auto-names
+    # `opportunities_promoted_from_interaction_id_key`, so a name check misses it
+    # and adds a SECOND constraint (a review reproduced exactly that — two unique
+    # constraints and two unique indexes on one column, invisible to `alembic
+    # check`, which compares column sets rather than names).
+    existing_cols = {
+        tuple(c["column_names"])
+        for c in inspector.get_unique_constraints("opportunities")
+    }
+    existing_cols |= {
+        tuple(i["column_names"])
+        for i in inspector.get_indexes("opportunities")
+        if i.get("unique")
+    }
+    if ("promoted_from_interaction_id",) not in existing_cols:
         op.create_unique_constraint(
             "uq_opportunities_promoted_from_interaction_id",
             "opportunities",
