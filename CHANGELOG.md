@@ -97,8 +97,16 @@ All notable changes to this project will be documented in this file.
   any calendar app. Timestamps are stored in UTC and any ISO-8601 offset is normalized on input;
   scheduling advances the opportunity to `interviewing` **forward only** (a card at `offer` or
   `closed_*` keeps its stage — the promote handler's never-regress rule), and every
-  schedule/reschedule/outcome/removal lands on the notes timeline. 48 backend tests
-  (suite 883 → 931 passing, coverage 100.00%), mutation-checked 8/8 — including the one that
+  schedule/reschedule/outcome/removal lands on the notes timeline. An instant near
+  `datetime.max` is rejected with 422 rather than accepted: `astimezone` and the `DTEND`
+  arithmetic raise **`OverflowError`, not `ValueError`**, so one shape 500'd on input and — worse
+  — another was accepted with 201 and then raised on *every* `.ics` export, forever. The parser
+  now bounds `scheduled_at` so DTEND stays representable at the **maximum** duration the schema
+  allows, because a later PATCH can raise the duration. `upcoming` keeps an interview that has
+  **started but not ended** (per-row end time, not a blanket lookback), an opportunity whose stage
+  is not in the known set is left untouched instead of raising, and the `UID` is escaped like
+  every other TEXT value. 57 backend tests
+  (suite 883 → 940 passing, coverage 100.00%), mutation-checked 8/8 — including the one that
   found `astimezone(UTC)` pinned by nothing, because `timestamptz` normalizes on the way back out
   (lessons §16 addendum) — plus 3 integration-tier tests that run the composed
   create → upcoming → .ics path over real HTTP. The

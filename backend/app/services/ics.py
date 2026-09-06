@@ -94,7 +94,10 @@ def build_event_ics(
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         "BEGIN:VEVENT",
-        f"UID:{uid}",
+        # Escaped like every other TEXT value. A UID is normally a bare UUID,
+        # but it is caller-supplied and one `,` or `;` in it silently splits the
+        # property into parameters, corrupting the event for every client.
+        f"UID:{escape_text(uid)}",
         f"DTSTAMP:{format_utc(dtstamp or datetime.now(UTC))}",
         f"DTSTART:{format_utc(start)}",
         f"DTEND:{format_utc(start + timedelta(minutes=duration_minutes))}",

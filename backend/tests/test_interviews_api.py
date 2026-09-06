@@ -7,6 +7,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.config import settings
+from app.models.opportunity import Opportunity
 
 OPPS = f"{settings.api_prefix}/admin/opportunities"
 IVS = f"{settings.api_prefix}/admin/interviews"
@@ -133,6 +134,25 @@ async def test_scheduling_an_already_interviewing_card_keeps_its_stage(
 @pytest.mark.parametrize(
     "overrides",
     [
+        {"duration_minutes": 5},
+        {"duration_minutes": 1440},
+        {"kind": "phone"},
+        {"kind": "other"},
+        {"notes": "n" * 20_000},
+    ],
+)
+async def test_schedule_accepts_boundaries(client: AsyncClient, overrides):
+    """The ACCEPT side of every bound the schema states. Only the reject side
+    was covered, so a bound tightened by accident would not have failed a test
+    (#289 review round 1)."""
+    opp = await _opportunity(client)
+    assert (await _schedule(client, opp["id"], **overrides)).status_code == 201
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "overrides",
+    [
         {"kind": "carrier-pigeon"},
         {"scheduled_at": "next tuesday"},
         {"scheduled_at": "   "},
@@ -141,6 +161,15 @@ async def test_scheduling_an_already_interviewing_card_keeps_its_stage(
         {"duration_minutes": 2000},
         {"location_or_link": "x" * 1001},
         {"interviewer": "y" * 201},
+        # Near datetime.max the offset shift raises OverflowError, not
+        # ValueError, so the parser let it escape as an unhandled 500 (#289
+        # review round 1).
+        {"scheduled_at": "9999-12-31T23:59:59-14:00"},
+        # ...and this one SURVIVED the shift and was accepted with 201, leaving
+        # a row whose .ics export raised on every request, forever. The parser
+        # now rejects any instant whose DTEND would not be representable at the
+        # maximum duration the schema allows.
+        {"scheduled_at": "9999-12-31T23:00:00+00:00"},
     ],
 )
 async def test_schedule_validation(client: AsyncClient, overrides):
@@ -283,6 +312,41 @@ async def test_upcoming_lists_the_window_soonest_first_with_company_context(
     assert rows[0]["company"] == "Globex"
     assert rows[0]["role_title"] == "Principal"
     assert rows[0]["stage"] == "interviewing"
+
+
+@pytest.mark.asyncio
+async def test_scheduling_leaves_an_unrecognised_stage_alone(
+    client: AsyncClient, db_session
+):
+    """Stage drift is a DATA problem, not a client error. `.index()` on a stage
+    outside OPPORTUNITY_STAGES raised ValueError -> 500 (#289 review round 1);
+    the row is now left untouched, because silently rewriting a stage the code
+    does not recognise would be worse than leaving it."""
+    opp = await _opportunity(client)
+    row = await db_session.get(Opportunity, uuid.UUID(opp["id"]))
+    row.stage = "archived_by_an_older_release"
+    await db_session.commit()
+
+    assert (await _schedule(client, opp["id"])).status_code == 201
+
+    await db_session.refresh(row)
+    assert row.stage == "archived_by_an_older_release"
+
+
+@pytest.mark.asyncio
+async def test_upcoming_keeps_an_interview_that_is_still_running(client: AsyncClient):
+    """A round that has STARTED but not ended is the most relevant row on the
+    dashboard, and `scheduled_at >= now` dropped it the moment it began (#289
+    review round 1). The one that already ended must still be excluded — the
+    predicate is per-row end time, not a blanket lookback."""
+    opp = await _opportunity(client)
+    running = (
+        await _schedule(client, opp["id"], scheduled_at=_in(-0.5), duration_minutes=60)
+    ).json()
+    await _schedule(client, opp["id"], scheduled_at=_in(-2), duration_minutes=30)
+
+    rows = (await client.get(f"{IVS}/upcoming")).json()
+    assert [r["id"] for r in rows] == [running["id"]]
 
 
 @pytest.mark.asyncio

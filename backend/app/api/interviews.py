@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -157,6 +157,12 @@ def _validate_outcome(outcome: object) -> None:
         )
 
 
+# Ceiling from InterviewIn/InterviewPatch (`duration_minutes: le=1440`). Kept
+# beside the parser because the two MUST agree: the parser guarantees that
+# DTEND is representable for every duration the schema will accept.
+_MAX_INTERVIEW_DURATION = timedelta(minutes=1440)
+
+
 def _parse_scheduled_at(value: str) -> datetime:
     """Parse an ISO-8601 instant and normalize it to UTC.
 
@@ -175,7 +181,26 @@ def _parse_scheduled_at(value: str) -> datetime:
         raise HTTPException(status_code=422, detail="Invalid scheduled_at") from e
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC)
+    # OverflowError, not ValueError, is what an instant near datetime.max
+    # raises — both when the offset shift crosses the boundary and later when
+    # the exporter adds DTEND. Catching only ValueError turned
+    # `9999-12-31T23:59:59-14:00` into an unhandled 500 instead of the
+    # documented 422, and — the serious half — a value that survived the shift
+    # was ACCEPTED with 201 and then raised on every `.ics` export, forever
+    # (#289 review round 1).
+    #
+    # The bound is the MAXIMUM allowed duration, not this interview's: a PATCH
+    # can raise the duration later, so anything accepted here must stay
+    # exportable for any duration the schema permits.
+    try:
+        normalized = parsed.astimezone(UTC)
+        normalized + _MAX_INTERVIEW_DURATION
+    except OverflowError as e:
+        raise HTTPException(
+            status_code=422,
+            detail="scheduled_at is outside the representable date range",
+        ) from e
+    return normalized
 
 
 def _reject_null(data: dict[str, Any], *keys: str) -> None:
@@ -226,6 +251,11 @@ def _advance_stage_to_interviewing(db: AsyncSession, opp: Opportunity) -> None:
     Mirrors the promote handler's never-regress rule: booking a follow-up round
     on a card that already reached ``offer`` must not drag it backwards.
     """
+    # A stage outside the known set is data drift, not a client error, and
+    # `.index()` on it raised ValueError -> 500. Treat it as "do not touch":
+    # silently rewriting an unrecognised stage would be worse than leaving it.
+    if opp.stage not in OPPORTUNITY_STAGES:
+        return
     if OPPORTUNITY_STAGES.index(opp.stage) >= _INTERVIEWING_INDEX:
         return
     db.add(
@@ -312,12 +342,20 @@ async def upcoming_interviews(
     prepare for", and a cancelled round is history, not a commitment.
     """
     now = datetime.now(UTC)
+    # The row stays listed while it is STILL RUNNING — an interview that has
+    # started but not finished is the most relevant row on a dashboard asking
+    # "what am I in right now", and `scheduled_at >= now` dropped it the moment
+    # it began (#289 review round 1). The predicate is per-row end time, not a
+    # fixed lookback: a blanket `now - max duration` would resurrect interviews
+    # that already ended, which an existing test correctly rejects.
     rows = (
         await db.execute(
             select(Interview, Opportunity)
             .join(Opportunity, Interview.opportunity_id == Opportunity.id)
             .where(
-                Interview.scheduled_at >= now,
+                Interview.scheduled_at
+                + func.make_interval(0, 0, 0, 0, 0, Interview.duration_minutes)
+                >= now,
                 Interview.scheduled_at <= now + timedelta(days=days),
                 Interview.outcome != "cancelled",
             )
