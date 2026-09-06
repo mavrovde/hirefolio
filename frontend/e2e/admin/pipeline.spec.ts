@@ -43,7 +43,8 @@ test.describe('Admin Pipeline board', () => {
 
         await page.goto('/pipeline');
         await expect(page.getByRole('heading', { name: 'Pipeline', exact: true })).toBeVisible();
-        for (const stage of ['lead', 'contacted', 'screening', 'interviewing', 'offer']) {
+        const ALL_STAGES = ['lead', 'contacted', 'screening', 'interviewing', 'offer', 'closed_won', 'closed_lost'];
+        for (const stage of ALL_STAGES) {
             await expect(page.getByRole('heading', { name: new RegExp(`^${stage}`, 'i') })).toBeVisible();
         }
         const card = page.getByTestId('card-op-1');
@@ -87,6 +88,13 @@ test.describe('Admin Pipeline board', () => {
         await page.getByTestId('card-op-1').click();
         await page.getByLabel('stage').selectOption('screening');
         await expect.poll(() => staged).toMatchObject({ stage: 'screening' });
+
+        // The board must reflect the move, not just send it: the card leaves
+        // the lead column and appears under screening (review nit 4).
+        const screeningColumn = page
+            .locator('div.w-64')
+            .filter({ has: page.getByRole('heading', { name: /^screening/i }) });
+        await expect(screeningColumn.getByTestId('card-op-1')).toBeVisible();
     });
 
     test('adds a timeline note and repaints with it', async ({ page }) => {

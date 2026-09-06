@@ -12,11 +12,17 @@ All notable changes to this project will be documented in this file.
   admin **Inbox** (`e2e/admin/inbox.spec.ts` — empty state, list + expand-to-read, status filter
   round trip, inline status PATCH, promote hand-off), and the admin **Pipeline board**
   (`e2e/admin/pipeline.spec.ts` — stage columns, card placement, detail panel, stage move, note
-  added and repainted). 13 tests, 96 → 109 in the suite. All twelve were **executed against a
+  added and repainted). 12 tests, 97 → 109 in the suite. All twelve were **executed against a
   real prod-topology stack** (published `dd18d8a` images) before commit — which caught a defect
   in the specs themselves: a Playwright glob `*` does not cross `/`, so the status-PATCH route
   escaped the mock to the live backend and the assertion silently observed nothing. The stage
-  assertion is mutation-checked (wrong stage → the spec fails).
+  assertion is mutation-checked (wrong stage → the spec fails). Review round 2 added the
+  hydration barrier the other public specs already use (a fill racing hydration let Angular's
+  `writeValue` wipe the typed values — 1 failure in 60 runs), corrected an overclaim (the
+  success-path test does NOT pin the zoneless repaint, because `reset()` notifies the scheduler
+  on its own — the ERROR-path test is the repaint pin, proven by mutating the served bundle),
+  asserted the card actually relocating after a stage move, covered all seven stages, and made
+  the SSR assertion real by checking the server's HTML rather than the hydrated DOM.
 
 ## [1.12.0] - 2026-09-06
 
