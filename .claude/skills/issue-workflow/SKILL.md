@@ -80,6 +80,25 @@ gh issue close 74
 The `github` MCP server does the same operations when `gh` isn't preferred. The `security-guidance`
 plugin supports triage of `security`-labelled issues.
 
+## Effort report (owner directive 2026-09-06 — REQUIRED on every delivery)
+
+Every delivery-status and close-the-loop comment carries an effort table; numbers come from the
+agent task telemetry (`subagent_tokens` / `duration_ms` / `tool_uses` in the task notification —
+record them IMMEDIATELY, they are not retrievable later). Mirror the totals to Project 3
+(`users/mavrovde/projects/3`) fields: `Tokens (k)`, `Time of processing (min)`, `Review rounds`,
+`Agent`, `Skills`; set Status=Done at close-the-loop. New issues are added to the board with a
+`Release` bucket on creation.
+
+```markdown
+### 📈 Effort report
+| Step | Agent | Tokens | Time | Tool uses | Prompt (gist) |
+|---|---|---|---|---|---|
+| implement + fix rounds | main-orchestrator | ~700k (est.) | 2.5h | — | build X per ACs |
+| review round 1 | pr-reviewer | 116.9k | 13m00s | 79 | full verdict vs ACs |
+```
+
+Mark estimates as estimates; measured beats claimed (CLAUDE.md issue rule 7).
+
 ## PR ↔ issue linking
 - `Closes #NN` / `Fixes #NN` in the PR body for issues the merge resolves (auto-closes on merge).
 - `Refs #NN` for partial/related work (issue stays open).

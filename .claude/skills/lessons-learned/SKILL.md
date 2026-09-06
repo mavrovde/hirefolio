@@ -606,6 +606,28 @@ already mandates this — it applies to everyone).
 
 ---
 
+## 27. Prove a NEW CI job by executing its exact recipe locally before flipping any gate (#261)
+
+A CI job that has never run is a hypothesis, not a gate. Before `needs:`-gating publishes on the
+new integration job, its EXACT recipe (prod compose + overlay, the published GHCR images at the
+current main SHA, same env) was executed locally — and that measurement caught two failures
+static review could not: compose `depends_on` drags a service in despite naming services on
+`up -d` (fix: `--no-deps` + every real dependency listed explicitly), and nginx hard-fails at
+STARTUP when an optional upstream hostname doesn't resolve (`host not found in upstream` emerg —
+fix: give the stand-in container a network `aliases:` entry for that name). On arm64 against
+amd64-only images: `docker pull --platform linux/amd64` per app image, native images for
+db/WireMock, and an isolated `compose -p <project>` so the dev stack isn't touched.
+
+## 28. One commit spawns MANY workflow runs — verify you are reading the right one (#69 postmortem)
+
+`gh run list --branch main --limit 1` (or grabbing the first run id after a merge) can return the
+CodeQL run, not Prod Deployment — checking THAT green produced a false "pipeline green"
+close-the-loop claim on #69 (corrected in-thread). Always select by
+`workflowName == "Prod Deployment"` before declaring a merge green. Related same-night lesson:
+Playwright `getByRole` name matching is case-insensitive SUBSTRING — German copy containing
+"en"/"de" collides with the EN/DE switcher buttons in strict mode (the "senden" incident, PR
+#275); use `exact: true` for short exact-text locators.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–11, issue-tracking flow,

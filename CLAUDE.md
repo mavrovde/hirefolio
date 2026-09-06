@@ -29,6 +29,7 @@ scraper/    LinkedIn scrapers — scrape-linkedin.js (profile) + scrape-posts.js
 importer/   Standalone LinkedIn → backend importer (POSTs to /api/app/linkedin/import-post)
 agents/     A2A multi-agent delivery team (independent of the importer)
 proxy/      Reverse proxy config
+scripts/    Repo-contract self-checks (live-freshness gate, PII guard) shared by pre-push + CI
 specs/      Feature specs (planned/done)
 ```
 

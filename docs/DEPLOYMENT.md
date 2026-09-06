@@ -36,6 +36,11 @@ cp .env.example .env
 #    loopback-only admin until you add your operator IPs).
 #    Optional: HIREFOLIO_GEMINI_API_KEY (+ HIREFOLIO_GEMINI_ENCRYPTION_KEY) — without it the AI
 #    features fall back to the in-stack Ollama.
+#    Identity (#65/#66 — the committed DEFAULTS are the Jane Doe demo persona):
+#    set SITE_URL, SITE_NAME, OWNER_NAME, OWNER_HEADLINE, OWNER_DESCRIPTION,
+#    SOCIAL_LINKS (and HIREFOLIO_ANALYTICS_ID to keep analytics) or the site
+#    renders the demo identity and SSR advertises example.com og:url/canonical.
+#    Then upload the real Profile Data JSON + CV via the admin panel.
 #    Image coordinates: IMAGE_REPO defaults to ghcr.io/mavrovde/hirefolio;
 #    set IMAGE_TAG to the release you are deploying (e.g. 1.9.0).
 
