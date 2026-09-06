@@ -100,6 +100,25 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST \
 If SMTP is configured, the owner also receives a notification for step 2; without SMTP the
 interaction is still stored and the send is skipped, by design.
 
+## Email options (#262)
+
+Three ways to make notifications flow, in order of recommendation:
+
+1. **External provider (recommended).** Point `SMTP_HOST/PORT/USER/PASSWORD` at any provider
+   (a mailbox account, SES, Sendgrid, …). STARTTLS and login are on by default. This is the only
+   option with dependable deliverability.
+2. **Dev / local: nothing to do.** The dev compose bundles **Mailpit**, a catch-all SMTP + web
+   inbox at `http://localhost:8025` — every notification is captured there and **nothing ever
+   leaves the machine**. The integration tier asserts the contact-form notification through
+   Mailpit's API, so the mail path is CI-tested end to end.
+3. **Self-hosted outbound relay (opt-in, eyes open).** `docker compose --profile mail up` adds a
+   send-only postfix (`mailer`) on the private network; set `SMTP_HOST=mailer`, `SMTP_PORT=587`,
+   `SMTP_STARTTLS=false`, and `MAIL_SENDER_DOMAIN=yourdomain`. **This does NOT make delivery
+   work by itself**: receiving servers will junk or refuse mail unless you set up **SPF** (an
+   `include`/`ip4` for your host), **DKIM**, and **reverse DNS** for the host's IP — and many VPS
+   providers **block outbound port 25 entirely**, which no compose file can fix. If any of that
+   sounds like a chore, use option 1. No documentation here promises otherwise on purpose.
+
 ## Automated rollout (the `deploy` job)
 
 `deploy.yml` ends with a `deploy` job that is a **no-op until secrets exist** —

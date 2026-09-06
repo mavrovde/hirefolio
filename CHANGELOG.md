@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Bundled email capability (#262)**: the dev stack now ships **Mailpit** — every notification
+  lands in a web inbox at `localhost:8025` with ZERO configuration and nothing ever leaves the
+  machine (rule 10 by construction). The integration tier gains the repo's **first true
+  end-to-end email assertion**: contact form → background task → real SMTP hop over the compose
+  network → message asserted through Mailpit's API (tier 20 → 21 tests). `EmailService`'s
+  quadruplicated SMTP block collapsed into ONE `_send` transport where **STARTTLS and login are
+  independent and each optional** — sending is gated on `SMTP_HOST` alone, so the no-credential
+  relay shape works while external providers keep auth+TLS by default (new `SMTP_STARTTLS`,
+  `SMTP_FROM` settings; 4 transport-mode tests). Prod compose gains an **opt-in** `mail` profile
+  (send-only postfix on the private network, absent from a default `up` — verified via
+  `config --services`); `docs/DEPLOYMENT.md` documents self-hosted deliverability honestly —
+  SPF/DKIM/rDNS and the port-25 egress reality — and recommends an external provider.
 - **CV variants on opportunities (#247 criterion 4 — the pipeline's last phase)**: the admin
   pipeline detail panel records **which CV variant went to which company, and when**. Backend:
   `POST /admin/opportunities/{id}/cv-sent` sets a `SET NULL` FK + timestamp (migration

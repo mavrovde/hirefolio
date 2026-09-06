@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+    # STARTTLS + auth are ON by default (external providers). A local catch-all
+    # like Mailpit (#262) speaks plain SMTP with no credentials — set
+    # SMTP_STARTTLS=false and leave user/password empty; only smtp_host gates
+    # whether sending is attempted at all.
+    smtp_starttls: bool = True
+    # From-address override; falls back to smtp_user, then a local placeholder
+    # (a no-auth relay has no user to borrow the From from).
+    smtp_from: str = ""
     admin_email: str = "admin@mavrov.de"
     api_prefix: str = "/api/app"
     # Read from HIREFOLIO_GEMINI_API_KEY, deliberately NOT the generic

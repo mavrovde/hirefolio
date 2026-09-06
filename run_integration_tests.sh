@@ -33,7 +33,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> Booting stack (ollama service = WireMock)"
-"${COMPOSE[@]}" up -d --no-deps db ollama backend frontend admin-frontend proxy
+"${COMPOSE[@]}" up -d --no-deps db ollama mailpit backend frontend admin-frontend proxy
 
 echo "==> Waiting for real readiness (backend health through its own port)"
 count=0
