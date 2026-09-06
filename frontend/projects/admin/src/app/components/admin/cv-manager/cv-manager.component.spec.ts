@@ -69,22 +69,39 @@ describe('CvManagerComponent', () => {
     it('should upload cv successfully', () => {
         const file = new File([''], 'test.pdf');
         component.selectedFile = file;
-        component.uploadForm.setValue({ version: 'v1.0' });
+        component.uploadForm.setValue({ version: 'v1.0', activate: true });
 
         component.onUpload();
 
-        expect(mockCvService.uploadCv).toHaveBeenCalledWith(file, 'v1.0');
+        expect(mockCvService.uploadCv).toHaveBeenCalledWith(file, 'v1.0', true);
         expect(component.successMessage).toBe('ADMIN.CV_UPLOAD_COMPLETE');
         expect(component.uploading).toBe(false);
         expect(component.selectedFile).toBeNull(); // Should reset
         expect(mockCvService.getVersions).toHaveBeenCalledTimes(2); // Initial + after upload
     });
 
+    it('uploads a VARIANT when the default checkbox is cleared — and a null control value falls back to true', () => {
+        const file = new File(['x'], 'cv.pdf', { type: 'application/pdf' });
+        component.selectedFile = file;
+        component.uploadForm.setValue({ version: 'acme-v1', activate: false });
+        mockCvService.uploadCv.mockReturnValue(of({ success: true }));
+        component.onUpload();
+        expect(mockCvService.uploadCv).toHaveBeenCalledWith(file, 'acme-v1', false);
+
+        // form.reset() nulls controls; the ?? true branch keeps the historical
+        // default so the NEXT upload never silently becomes a variant.
+        component.selectedFile = file;
+        component.uploadForm.controls['version'].setValue('v2');
+        component.uploadForm.controls['activate'].setValue(null);
+        component.onUpload();
+        expect(mockCvService.uploadCv).toHaveBeenLastCalledWith(file, 'v2', true);
+    });
+
     it('should handle upload error', () => {
         mockCvService.uploadCv.mockReturnValue(throwError(() => ({ error: { detail: 'Error' } })));
         const file = new File([''], 'test.pdf');
         component.selectedFile = file;
-        component.uploadForm.setValue({ version: 'v1.0' });
+        component.uploadForm.setValue({ version: 'v1.0', activate: true });
 
         component.onUpload();
 
@@ -97,7 +114,7 @@ describe('CvManagerComponent', () => {
         mockCvService.uploadCv.mockReturnValue(throwError(() => ({ error: {} })));
         const file = new File([''], 'test.pdf');
         component.selectedFile = file;
-        component.uploadForm.setValue({ version: 'v1.0' });
+        component.uploadForm.setValue({ version: 'v1.0', activate: true });
 
         component.onUpload();
 
@@ -110,7 +127,7 @@ describe('CvManagerComponent', () => {
         expect(mockCvService.uploadCv).not.toHaveBeenCalled();
 
         component.selectedFile = new File([''], 'test.pdf');
-        component.uploadForm.setValue({ version: '' }); // Invalid
+        component.uploadForm.setValue({ version: '', activate: true }); // Invalid
         component.onUpload();
         expect(mockCvService.uploadCv).not.toHaveBeenCalled();
     });
@@ -136,14 +153,14 @@ describe('CvManagerComponent', () => {
     });
 
     it('should not upload if form is invalid', () => {
-        component.uploadForm.setValue({ version: '' }); // Invalid
+        component.uploadForm.setValue({ version: '', activate: true }); // Invalid
         component.selectedFile = new File([''], 'test.pdf');
         component.onUpload();
         expect(mockCvService.uploadCv).not.toHaveBeenCalled();
     });
 
     it('should not upload if file is missing', () => {
-        component.uploadForm.setValue({ version: '1.0' });
+        component.uploadForm.setValue({ version: '1.0', activate: true });
         component.selectedFile = null; // Missing
         component.onUpload();
         expect(mockCvService.uploadCv).not.toHaveBeenCalled();

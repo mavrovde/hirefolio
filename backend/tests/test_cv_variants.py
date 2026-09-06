@@ -132,3 +132,100 @@ async def test_new_opportunity_starts_with_no_sent_variant(client: AsyncClient):
     opp = await _opportunity(client)
     assert opp["sent_cv_id"] is None
     assert opp["sent_cv_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_variant_upload_leaves_the_public_download_unchanged(
+    client: AsyncClient,
+):
+    """The middle clause END-TO-END (#294 review blocker 1): before the
+    `activate` flag, uploading a tailored variant unavoidably repointed the
+    public site — reproduced with two uploads, the download followed the
+    second. Now a variant upload (`activate=false`) leaves it alone, and an
+    activating upload still repoints it (the historical default)."""
+    from app.config import settings as cfg
+
+    cv_upload = f"{cfg.api_prefix}/admin/cv/upload"
+    download = f"{cfg.api_prefix}/cv/download"
+
+    r = await client.post(
+        cv_upload,
+        files={"file": ("general.pdf", b"%PDF-GENERAL", "application/pdf")},
+        data={"version": "general"},
+    )
+    assert r.status_code == 200
+    assert (await client.get(download)).content == b"%PDF-GENERAL"
+
+    r = await client.post(
+        cv_upload,
+        files={"file": ("acme.pdf", b"%PDF-ACME", "application/pdf")},
+        data={"version": "acme-v1", "activate": "false"},
+    )
+    assert r.status_code == 200
+    # THE clause: the public flow still serves the default.
+    assert (await client.get(download)).content == b"%PDF-GENERAL"
+
+    # ...and an activating upload still repoints, exactly as before the flag.
+    r = await client.post(
+        cv_upload,
+        files={"file": ("new.pdf", b"%PDF-NEWDEFAULT", "application/pdf")},
+        data={"version": "new-default"},
+    )
+    assert r.status_code == 200
+    assert (await client.get(download)).content == b"%PDF-NEWDEFAULT"
+
+
+@pytest.mark.asyncio
+async def test_deleting_the_sent_cv_nulls_the_pointer_and_keeps_the_note(
+    client: AsyncClient, db_session
+):
+    """The SET NULL claim, pinned instead of asserted (#294 review major 3):
+    deleting a CV version must not corrupt the opportunity — the pointer goes
+    NULL, the human-readable timeline record survives."""
+    opp = await _opportunity(client)
+    doc = await _cv(db_session, "doomed")
+    r = await client.post(
+        f"{OPPS}/{opp['id']}/cv-sent", json={"cv_document_id": str(doc.id)}
+    )
+    assert r.status_code == 201
+
+    await db_session.delete(doc)
+    await db_session.commit()
+
+    body = (await client.get(f"{OPPS}/{opp['id']}")).json()
+    assert body["sent_cv_id"] is None
+    assert any("CV sent: doomed (cv-doomed.pdf)" in n["body"] for n in body["notes"])
+
+
+@pytest.mark.asyncio
+async def test_malformed_cv_document_id_is_422(client: AsyncClient):
+    opp = await _opportunity(client)
+    r = await client.post(
+        f"{OPPS}/{opp['id']}/cv-sent", json={"cv_document_id": "not-a-uuid"}
+    )
+    assert r.status_code == 422
+    assert (
+        await client.post(f"{OPPS}/{opp['id']}/cv-sent", json={})
+    ).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_rerecording_the_same_variant_is_deliberate_resend_semantics(
+    client: AsyncClient, db_session
+):
+    """Re-recording the SAME variant appends a second note and moves the
+    timestamp — DELIBERATE: sending the same file twice (e.g. to a second
+    contact at the company) is a real event the timeline should show
+    (#294 review nit 9, answered with an assertion instead of prose)."""
+    opp = await _opportunity(client)
+    doc = await _cv(db_session, "v-same")
+    first = await client.post(
+        f"{OPPS}/{opp['id']}/cv-sent", json={"cv_document_id": str(doc.id)}
+    )
+    second = await client.post(
+        f"{OPPS}/{opp['id']}/cv-sent", json={"cv_document_id": str(doc.id)}
+    )
+    body = second.json()
+    sends = [n for n in body["notes"] if n["body"].startswith("CV sent:")]
+    assert len(sends) == 2
+    assert body["sent_cv_at"] >= first.json()["sent_cv_at"]

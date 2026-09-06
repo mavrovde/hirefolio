@@ -34,6 +34,15 @@ def upgrade() -> None:
             "opportunities",
             sa.Column("sent_cv_id", sa.Uuid(), nullable=True),
         )
+    # The FK guard is INDEPENDENT of the column guard (the promote0005 lesson,
+    # #294 review): on a pre-Alembic DB create_all built column AND constraint
+    # under its own auto-generated name, and a column could in principle exist
+    # without the constraint. Compare by COLUMN SET, never by name.
+    fks = {
+        tuple(fk["constrained_columns"])
+        for fk in inspector.get_foreign_keys("opportunities")
+    }
+    if ("sent_cv_id",) not in fks:
         op.create_foreign_key(
             "fk_opportunities_sent_cv_id",
             "opportunities",
@@ -50,8 +59,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint(
-        "fk_opportunities_sent_cv_id", "opportunities", type_="foreignkey"
-    )
+    # The FK's NAME depends on provenance: this migration names it, but a
+    # pre-Alembic DB carries create_all's auto-generated name (measured:
+    # `opportunities_sent_cv_id_fkey`, #294 review). Find it by column set.
+    inspector = sa.inspect(op.get_bind())
+    for fk in inspector.get_foreign_keys("opportunities"):
+        if tuple(fk["constrained_columns"]) == ("sent_cv_id",):
+            op.drop_constraint(fk["name"], "opportunities", type_="foreignkey")
     for name in reversed(_COLUMNS):
         op.drop_column("opportunities", name)

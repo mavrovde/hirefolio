@@ -177,7 +177,7 @@ test.describe('Admin Pipeline board', () => {
         await expect(page.getByRole('heading', { name: /^lead/i })).toBeVisible();
     });
     test('records a CV variant as sent — the criterion-4 flow in a real browser', async ({ page }) => {
-        const CV = { id: 'cv-1', filename: 'cv-backend.pdf', version: 'backend-focus', is_active: false, created_at: '2026-09-01T09:00:00Z' };
+        const CV = { id: 'cv-1', filename: 'cv-backend.pdf', version: 'backend-focus', is_active: true, created_at: '2026-09-01T09:00:00Z' };
         await page.route(`**${API_PREFIX}/admin/cv/versions*`, (route) =>
             route.fulfill({ status: 200, contentType: 'application/json',
                 body: JSON.stringify({ items: [CV], total: 1, page: 1, pages: 1 }) })
@@ -203,6 +203,8 @@ test.describe('Admin Pipeline board', () => {
         await page.goto('/pipeline');
         await page.getByTestId('card-op-1').click();
         await expect(page.getByText('No CV recorded for this opportunity yet.')).toBeVisible();
+        // The public default is flagged in the picker (#294 review minor 7).
+        await expect(page.getByLabel('CV variant')).toContainText('backend-focus (cv-backend.pdf) — public default');
 
         await page.getByLabel('CV variant').selectOption('cv-1');
         await page.getByRole('button', { name: 'Record as sent' }).click();

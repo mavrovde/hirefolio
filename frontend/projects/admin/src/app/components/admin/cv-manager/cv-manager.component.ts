@@ -34,7 +34,11 @@ export class CvManagerComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef
   ) {
     this.uploadForm = this.fb.group({
-      version: ['', Validators.required]
+      version: ['', Validators.required],
+      // Checked = becomes the public default (historical behavior). Unchecked
+      // = a tailored VARIANT for the pipeline; the public download is
+      // untouched (#247 criterion 4).
+      activate: [true]
     });
   }
 
@@ -120,11 +124,12 @@ export class CvManagerComponent implements OnInit, OnDestroy {
     this.successMessage = null;
 
     const version = this.uploadForm.value.version;
-    this.cvService.uploadCv(this.selectedFile, version).subscribe({
+    const activate = this.uploadForm.value.activate ?? true;
+    this.cvService.uploadCv(this.selectedFile, version, activate).subscribe({
       next: () => {
         this.successMessage = 'ADMIN.CV_UPLOAD_COMPLETE';
         this.uploading = false;
-        this.uploadForm.reset();
+        this.uploadForm.reset({ activate: true });
         this.selectedFile = null;
         this.loadVersions(); // Refresh versions list
         this.cdr.detectChanges();

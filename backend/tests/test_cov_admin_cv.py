@@ -102,6 +102,7 @@ async def test_upload_cv_success_path():
     result = await admin_cv.upload_cv(
         file=FakeUploadFile(filename="resume.pdf"),
         version="v9.9",
+        activate=True,
         db=db,
         admin=FakeAdmin(),
     )
@@ -128,6 +129,7 @@ async def test_upload_cv_rejects_non_pdf():
         await admin_cv.upload_cv(
             file=FakeUploadFile(content_type="text/plain", filename="x.txt"),
             version="v1",
+            activate=True,
             db=FakeDB(),
             admin=FakeAdmin(),
         )
@@ -148,6 +150,7 @@ async def test_upload_cv_error_triggers_rollback_and_500():
         await admin_cv.upload_cv(
             file=FakeUploadFile(),
             version="v1",
+            activate=True,
             db=db,
             admin=FakeAdmin(),
         )

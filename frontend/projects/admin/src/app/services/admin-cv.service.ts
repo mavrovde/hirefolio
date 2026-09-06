@@ -42,10 +42,14 @@ export class AdminCvService {
 
     constructor(private http: HttpClient) { }
 
-    uploadCv(file: File, version: string): Observable<any> {
+    /** `activate=false` uploads a VARIANT (#247 criterion 4): the public
+     *  download keeps serving the current default. Default true = the
+     *  historical make-it-the-default behavior. */
+    uploadCv(file: File, version: string, activate: boolean = true): Observable<any> {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('version', version);
+        formData.append('activate', String(activate));
         return this.http.post(`${this.apiUrl}/upload`, formData);
     }
 
