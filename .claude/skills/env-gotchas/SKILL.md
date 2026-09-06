@@ -36,7 +36,7 @@ Facts about THIS repo's environments that keep costing cycles. Check here before
 ## GitHub / gh
 - **Same-identity approval is blocked**: `gh pr review --approve` on your own PR fails. The
   pr-reviewer posts a clear **COMMENT verdict** (`gh pr review --comment` / `gh pr comment`) — that
-  counts as the rule-11 verdict; never work around the block.
+  counts as the rule-13 verdict; never work around the block.
 - **`gh release create` needs the FULL commit sha** for `--target`, not an abbreviation.
 - **A green run ≠ rolled out**: the `Roll Out To Prod Host` job and even its gate step report
   `success` when rollout is disabled — the tell is the gated steps being `skipped` (see

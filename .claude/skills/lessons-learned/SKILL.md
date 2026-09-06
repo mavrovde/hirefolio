@@ -216,7 +216,7 @@ skipped**. The implementing dev agent delivers the PR and does **not** merge; it
 necessary but not sufficient. Every merged PR must carry a visible review comment. If one ever slips
 through un-reviewed, post a **retrospective** review on the merged PR and fix-forward on any finding
 (as was done for the four un-gated merges in the incident that produced this rule). This is **CLAUDE.md
-rule 11**, enforced via the `pr-reviewer` agent.
+rule 13**, enforced via the `pr-reviewer` agent.
 
 ---
 
@@ -537,7 +537,7 @@ believed the general case had been found and had only found an instance.
    pass denies identically at 7.2 s instead of 19.7 s. Reviewing a budget means asking "what runs
    next, and is *it* bounded?"
 
-This is the clearest evidence yet for CLAUDE.md rule 11: an independent reviewer caught a security
+This is the clearest evidence yet for CLAUDE.md rule 13: an independent reviewer caught a security
 regression in four consecutive rounds that the author, the author's own new tests, and green CI all missed —
 and CI *could not* have caught it, because nothing in the pipeline runs that suite (#208, #210).
 
@@ -628,9 +628,32 @@ Playwright `getByRole` name matching is case-insensitive SUBSTRING — German co
 "en"/"de" collides with the EN/DE switcher buttons in strict mode (the "senden" incident, PR
 #275); use `exact: true` for short exact-text locators.
 
+## 29. 100% unit coverage says nothing about whether the feature works (v1.12.0)
+
+v1.12.0 shipped three user-facing screens — the public contact form, the admin Inbox, the admin
+Pipeline board — at 100% statements/branches/functions/lines on every project, and **not one of
+them had ever rendered in a browser under CI**. Two independent reviews closed with exactly that
+residual before anyone wrote a browser test. Coverage measures whether the units were executed,
+not whether the product composes: routing, SSR, hydration, the zoneless repaint, and the contract
+between client and server all live above it. (Closed by #282, which took the E2E suite 97 → 115.)
+
+**The rule:** a new user-facing surface is not done until it has a test at the layer where its
+failure mode lives — E2E for a screen, the integration tier for a composed API path (rule 12).
+When you finish a feature, ask "what breaks that every unit test would still pass through?" and
+write that test.
+
+**Corollary — run the specs before trusting them.** Writing those tests produced two fake-green
+specs that only execution revealed: a Playwright glob `*` does not cross `/`, so
+`**/admin/interactions*` never matched `/admin/interactions/{id}` and a mocked PATCH escaped to
+the live backend while the assertion observed nothing; and an assertion on a form's own bounding
+box could not detect page overflow (the form is clamped well inside the viewport — measure
+`document.documentElement.scrollWidth - clientWidth` instead). A third was circular: mocking an
+idempotent server to "prove" the client prevents double submits passes no matter what the client
+does — mock the NAIVE server, then the assertion means something.
+
 ## Where the rules live (AI-config map)
 
-- **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–11, issue-tracking flow,
+- **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,
   execution protocol). This skill is the *why + reproduction* companion.
 - **`.claude/agents/*.md`** + **`agents/common/roster.py`** (`PROJECT_PLAYBOOK`) — the agent charters;
   keep the two in sync (they restate overlapping lessons).

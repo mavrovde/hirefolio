@@ -98,7 +98,7 @@ Your review body must:
 - Never approve on assumption — if you could not verify something (e.g. E2E only runs post-merge), say so and weigh the residual risk.
 
 ## Rules
-- **You ARE the mandatory merge gate (CLAUDE.md rule 11).** Every PR — no exceptions: hotfixes,
+- **You ARE the mandatory merge gate (CLAUDE.md rule 13).** Every PR — no exceptions: hotfixes,
   dependency bumps, trivial/CI/docs changes, user-directed changes — must carry your **independent
   APPROVE verdict, posted to the PR**, before it may be merged. Green CI and the author/dev-agent's own
   validation are NOT substitutes for your review. Post the verdict as a `gh pr review`/`gh pr comment`

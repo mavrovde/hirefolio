@@ -91,13 +91,36 @@ record them IMMEDIATELY, they are not retrievable later). Mirror the totals to P
 
 ```markdown
 ### 📈 Effort report
-| Step | Agent | Tokens | Time | Tool uses | Prompt (gist) |
-|---|---|---|---|---|---|
-| implement + fix rounds | main-orchestrator | ~700k (est.) | 2.5h | — | build X per ACs |
-| review round 1 | pr-reviewer | 116.9k | 13m00s | 79 | full verdict vs ACs |
+| Step | Agent | Model | Tokens | Time | Tool uses | Prompt (gist) |
+|---|---|---|---|---|---|---|
+| implement + fix rounds | main-orchestrator | Fable 5 | ~700k (est.) | 2.5h | — | build X per ACs |
+| review round 1 | pr-reviewer | Opus 5 | 116.9k | 13m00s | 79 | full verdict vs ACs |
 ```
 
+**Record the MODEL for every step** (owner directive 2026-09-06) — it is the input to model
+effectiveness comparison: which model, at what cost, produced how many review rounds and how many
+defects caught. The agent's model comes from its charter frontmatter (`model:`) or the explicit
+override at spawn time; the main loop's model is this session's. Mirror it to the Project 3
+`Model` field (`fable-5` / `opus-5` / `sonnet-5` / `haiku-4.5` / `mixed` when an item spans an
+orchestrator and subagents on different models).
+
 Mark estimates as estimates; measured beats claimed (CLAUDE.md issue rule 7).
+
+## Every PR carries labels too (owner asked why they were missing, 2026-09-06)
+
+The "no orphan issues" invariant applies to PULL REQUESTS as well: a PR gets a **type** label
+(`bug`/`enhancement`/`documentation`/`dependencies`/`security`) plus **≥1 area** label
+(`backend`/`frontend`/`infra`/`ci-cd`/`ai-config`/`tech-debt`/…) and a **priority** at creation
+time — not after someone notices. Copy the linked issue's labels when there is one:
+
+```bash
+gh pr create --repo mavrovde/hirefolio --head <branch> --base main \
+  --title "…" --body-file <file> \
+  --label enhancement --label backend --label P2-medium
+```
+
+`gh pr create` accepts repeated `--label` flags; a comma-joined single flag can fail against
+multi-word sets, so prefer one flag per label.
 
 ## PR ↔ issue linking
 - `Closes #NN` / `Fixes #NN` in the PR body for issues the merge resolves (auto-closes on merge).
