@@ -5,33 +5,27 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three new screens
-  whose only browser validation was "the suite didn't break": the public **contact form**
-  (`e2e/public/contact-form.spec.ts` — renders in the SSR'd page, trimmed-validation gating, the
-  zoneless repaint after submit, and the API-failure path that keeps the visitor's text), the
-  admin **Inbox** (`e2e/admin/inbox.spec.ts` — empty state, list + expand-to-read, status filter
-  round trip, inline status PATCH, promote hand-off), and the admin **Pipeline board**
-  (`e2e/admin/pipeline.spec.ts` — stage columns, card placement, detail panel, stage move, note
-  added and repainted). 12 tests, 97 → 109 in the suite. All twelve were **executed against a
-  real prod-topology stack** (published `dd18d8a` images) before commit — which caught a defect
-  in the specs themselves: a Playwright glob `*` does not cross `/`, so the status-PATCH route
-  escaped the mock to the live backend and the assertion silently observed nothing. The stage
-  assertion is mutation-checked (wrong stage → the spec fails). Review round 2 added the
-  hydration barrier the other public specs already use (a fill racing hydration let Angular's
-  `writeValue` wipe the typed values — 1 failure in 60 runs), corrected an overclaim (the
-  success-path test does NOT pin the zoneless repaint, because `reset()` notifies the scheduler
-  on its own — the ERROR-path test is the repaint pin, proven by mutating the served bundle),
-  asserted the card actually relocating after a stage move, covered all seven stages, and made
-  the SSR assertion real by checking the server's HTML rather than the hydrated DOM. Round 3 widened
-  the batch on request: inbox **pagination** (Prev disabled on page 1, Next re-queries, and back
-  again — the control is not one-way) and a **load-failure** state that must not read as an empty
-  inbox; pipeline **quick-create** (whitespace-only required fields keep submit disabled) and its
-  own load-failure state; and on the public form a **phone-viewport** case (fits 390px, no
-  horizontal overflow) plus an **accessibility** case (every control has a real `<label for>`).
-  18 tests in the batch, suite 97 → 115. Round 4 replaced a vacuous
-  assertion the reviewer measured: the phone-viewport case checked the FORM's box (342px inside a
-  390px viewport — 48px of permanent slack, so an injected overflow still passed) and now checks
-  the document's `scrollWidth - clientWidth`, which fails on a real overflow.
+- **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose
+  only browser validation was "the suite didn't break". 18 tests, suite **97 → 115**: the public
+  **contact form** (`e2e/public/contact-form.spec.ts` — server-rendered then hydrated, trimmed
+  validators gating submit, the success contract, the API-failure path that keeps the visitor's
+  text, a 390px phone viewport that fails on real horizontal overflow, and an accessibility pass),
+  the admin **Inbox** (`e2e/admin/inbox.spec.ts` — empty state, list + expand-to-read, status
+  filter round trip, inline status PATCH, promote hand-off, two-way pagination, and a load-failure
+  state that must not read as an empty inbox), and the admin **Pipeline board**
+  (`e2e/admin/pipeline.spec.ts` — all seven stage columns, card placement, detail panel, a stage
+  move that asserts the card RELOCATING, a note added and repainted, quick-create rejecting
+  whitespace-only fields, and a load failure that keeps the board frame visible).
+  Every test was executed against a real prod-topology stack before commit, and the four review
+  rounds mutation-checked the pins rather than trusting them: the zoneless repaint is pinned by
+  the ERROR path (the success path passes with `markForCheck()` deleted, because `reset()`
+  notifies the scheduler on its own), the relocation assertion fails when only the client-side
+  move is removed, the viewport assertion fails on an injected 534px overflow, and the alert-copy
+  assertions fail when the component's message changes. Review also caught two defects in the
+  specs themselves: a Playwright glob `*` does not cross `/` (so a mocked PATCH escaped to the
+  live backend and asserted nothing), and a fill racing hydration let Angular's `writeValue` wipe
+  the typed values — both fixed, the latter with the `networkidle` barrier the other public specs
+  already use.
 
 ## [1.12.0] - 2026-09-06
 

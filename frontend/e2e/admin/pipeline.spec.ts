@@ -163,9 +163,11 @@ test.describe('Admin Pipeline board', () => {
             route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"boom"}' })
         );
         await page.goto('/pipeline');
-        // Scoped to the pipeline view and asserting the COPY, so a future shell
-        // toast neither collides in strict mode nor satisfies this silently.
-        const alert = page.locator('main [role="alert"], [role="alert"]').first();
+        // Genuinely scoped to the admin content region (the union selector this
+        // replaced was a no-op — the second branch is a superset), and asserting
+        // the COPY, so a future shell toast neither collides in strict mode nor
+        // satisfies this silently.
+        const alert = page.locator('main').getByRole('alert').first();
         await expect(alert).toBeVisible();
         await expect(alert).toContainText(/fail|error|load/i);
         // The board frame survives the failure — an operator sees an errored
