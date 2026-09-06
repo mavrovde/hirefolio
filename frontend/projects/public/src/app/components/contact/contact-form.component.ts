@@ -1,6 +1,13 @@
 import { ChangeDetectorRef, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+    AbstractControl,
+    FormBuilder,
+    FormGroup,
+    ReactiveFormsModule,
+    ValidationErrors,
+    Validators,
+} from '@angular/forms';
 import { TranslatePipe } from '@mavrov/shared';
 import { InteractionService } from '../../services/interaction.service';
 
@@ -9,6 +16,16 @@ import { InteractionService } from '../../services/interaction.service';
  * `source=contact_form` interactions — the recruiter's message is provably
  * received and tracked, not dropped into a mailto: void.
  */
+/** minLength on the TRIMMED value — the server rejects whitespace-only input
+ *  (interactions.py normalizers), so the form must agree instead of submitting
+ *  something that can only come back as a generic 422 (#69 review round 2). */
+function trimmedMinLength(min: number) {
+    return (control: AbstractControl): ValidationErrors | null => {
+        const value = String(control.value ?? '').trim();
+        return value.length >= min ? null : { trimmedMinLength: { requiredLength: min } };
+    };
+}
+
 @Component({
     selector: 'app-contact-form',
     standalone: true,
@@ -27,10 +44,10 @@ export class ContactFormComponent {
         private cdr: ChangeDetectorRef
     ) {
         this.contactForm = this.fb.group({
-            name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+            name: ['', [Validators.required, trimmedMinLength(2), Validators.maxLength(200)]],
             email: ['', [Validators.required, Validators.email]],
             company: ['', [Validators.maxLength(200)]],
-            message: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(10000)]],
+            message: ['', [Validators.required, trimmedMinLength(5), Validators.maxLength(10000)]],
         });
     }
 

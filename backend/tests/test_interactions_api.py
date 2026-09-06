@@ -86,6 +86,33 @@ async def test_contact_validation_errors(client: AsyncClient, overrides):
 
 
 @pytest.mark.asyncio
+async def test_contact_accepts_explicit_null_company(client: AsyncClient):
+    """The browser form sends company: null when untouched (contact-form.component.ts) —
+    the normalizer's non-str fall-through must pass it along unchanged (round-2 blocker:
+    omitting the key skips validators on defaults, so this MUST be an explicit null)."""
+    resp = await _post_contact(client, company=None)
+    assert resp.status_code == 201
+    assert resp.json()["company"] is None
+
+
+@pytest.mark.asyncio
+async def test_contact_rate_limiter_is_wired_to_settings(client: AsyncClient):
+    """Pins the configured budget path, not just the mechanism: the limiter must be
+    constructed from the CONTACT_RATE_LIMIT_* settings (review round 2, minor)."""
+    from app.api import interactions as interactions_module
+    from app.config import settings as app_settings
+
+    assert (
+        interactions_module.contact_rate_limiter.max_requests
+        == app_settings.contact_rate_limit_requests
+    )
+    assert (
+        interactions_module.contact_rate_limiter.window_seconds
+        == app_settings.contact_rate_limit_window_seconds
+    )
+
+
+@pytest.mark.asyncio
 async def test_contact_accepts_unicode_identity(client: AsyncClient):
     resp = await _post_contact(
         client,

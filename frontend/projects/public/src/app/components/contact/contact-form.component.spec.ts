@@ -100,6 +100,18 @@ describe('ContactFormComponent', () => {
         );
     });
 
+    it('rejects whitespace-only name/message client-side (mirrors the 422 the server would send)', () => {
+        component.contactForm.setValue({
+            name: '   ',
+            email: 'rita@agency.example',
+            company: null,
+            message: '  \n  ',
+        });
+        expect(component.contactForm.invalid).toBe(true);
+        component.onSubmit();
+        expect(serviceSpy.submitContact).not.toHaveBeenCalled();
+    });
+
     it('shows the error message on failure and keeps the form values', () => {
         serviceSpy.submitContact.mockReturnValue(throwError(() => ({ status: 500 })));
         fillValid();

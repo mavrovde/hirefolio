@@ -24,6 +24,13 @@ def test_send_email_success(email_service):
             res = email_service.send_requester_confirmation("Name", "test@test.com")
             assert res is True
             mock_server.send_message.assert_called_once()
+        # Every outbound SMTP connection must be time-bounded (#69 review):
+        # a hung peer would otherwise pin the worker thread.
+        from app.config import settings as app_settings
+
+        assert (
+            mock_smtp.call_args.kwargs["timeout"] == app_settings.smtp_timeout_seconds
+        )
 
 
 def test_send_email_failure(email_service):
@@ -54,6 +61,11 @@ def test_send_cv_notification_details(email_service):
             call_args = mock_server.send_message.call_args[0][0]
             assert "CV Request" in call_args["Subject"]
             assert "Name" in call_args.get_content()
+        from app.config import settings as app_settings
+
+        assert (
+            mock_smtp.call_args.kwargs["timeout"] == app_settings.smtp_timeout_seconds
+        )
 
 
 def test_email_config_missing(email_service):

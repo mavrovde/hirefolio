@@ -555,8 +555,6 @@ a create_all DB no-ops (the drift-guard CI job catches the clean direction only)
 
 ---
 
----
-
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–11, issue-tracking flow,
