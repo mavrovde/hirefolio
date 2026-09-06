@@ -81,8 +81,10 @@ identity or a missing admin allowlist fails silently:
 
 ```bash
 # 1. Identity really came from YOUR .env (not the shipped demo persona)
-curl -s https://<public-host>/api/app/config/site | jq '{siteName, ownerName, siteUrl}'
-#    ownerName must NOT be "Jane Doe" and siteUrl must NOT be example.com
+curl -s https://<public-host>/api/app/config/site | jq '{site_name, owner_name, site_url}'
+#    owner_name must NOT be "Jane Doe" and site_url must NOT be example.com
+#    (the API serializes snake_case — camelCase keys return null and the check
+#     would "pass" while telling you nothing)
 
 # 2. The public contact form accepts a message (creates an inbox interaction)
 curl -s -o /dev/null -w '%{http_code}\n' -X POST \

@@ -33,8 +33,7 @@ own name and domain.
   server-side.
 - **Opportunity pipeline** (#247 phase 1): a stage board (lead → … → closed), a notes timeline per
   opportunity, and one-click **promote** turning an inbox message into a pipeline card that keeps
-  the original text as its first note. Promoting is idempotent and preserves where the touch came
-  from.
+  the original text as its first note.
 
 **Make it yours**
 - **Runtime configuration** (#65): identity — site name/URL, owner name/headline/description,
@@ -266,7 +265,7 @@ Coverage percentage is not quality: v1.12.0 shipped three screens at 100% unit c
 never rendered in a browser. Ask what breaks that every unit test would still pass through, and
 write *that* test.
 
-### 1. Unit & Integration
+### 1. Unit tests (backend + frontend)
 
 ```bash
 # Backend (needs Postgres on 127.0.0.1:5433; point TEST_DATABASE_URL at a test_* DB —
@@ -284,16 +283,16 @@ cd frontend && npm test
 
 ```bash
 cd frontend
-npx playwright test                        # both suites (115 tests)
+npx playwright test                        # both suites
 npx playwright test --project=public-e2e   # public app only
 npx playwright test --project=admin-e2e    # admin app only
-npx playwright test e2e/admin/recruiter-journey.spec.ts   # one flow
+npx playwright test e2e/admin/inbox.spec.ts # one spec file
 ```
 
 The suite covers the public site (SSR + hydration, blog, CV, i18n switching, the contact form
 incl. a phone viewport and an accessibility pass) and the admin console (auth, posts, tags, SQL,
 profile, **Inbox** with pagination and failure states, **Pipeline board** with stage moves and
-quick-create, and the **recruiter journey** — inbox → promote → pipeline in one session).
+quick-create, and the promote hand-off from Inbox to pipeline).
 
 ### 3. Black-box integration tier (WireMock)
 
@@ -303,9 +302,10 @@ quick-create, and the **recruiter journey** — inbox → promote → pipeline i
 ```
 
 Real HTTP against a running stack, with deterministic AI stubs and fault injection
-(`__wiremock_slow__` / `__wiremock_error__`). It gates publishing in CI. Details and the port
-contract (the stack's Postgres publishes **5533**, so it never evicts your local test DB) are in
-`README_TESTING.md`.
+(`__wiremock_slow__` / `__wiremock_error__`). It gates publishing in CI — the four publish jobs
+`need` it. Details are in `README_TESTING.md`. **Note:** the stack currently publishes Postgres
+on the same host port as your local test database (5433), so booting it evicts that DB and the
+next `pytest` fails with a confusing authentication error — stop the stack first.
 
 ### 4. Verification Script
 
