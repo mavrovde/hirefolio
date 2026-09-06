@@ -4,6 +4,114 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Interview calendar — admin UI (#247 phase 2 / #70)**: a `Calendar` screen in the admin panel
+  showing every scheduled round across all opportunities, **grouped by local day** with the company,
+  role, stage, kind, interviewer and location on each row. The window is switchable (7 / 14 / 30 / 90
+  days), a round that has **started but not finished** is flagged *in progress*, each row records an
+  outcome in place, and each offers its `.ics` download. Grouping uses a real `Date` rather than the
+  ISO string's UTC prefix: a 23:30 UTC round belongs to the next day anywhere east of UTC, and
+  slicing the string would file it under the wrong heading for exactly the users who care.
+  `InterviewsService` mirrors the backend schemas with explicit interfaces (no `any`), and the
+  screen carries a **zoneless repaint pin** alongside its normal spec — the zone.js-bundling spec
+  cannot see a missing `detectChanges()`, which is how five frozen-UI bugs reached this app (#276)
+  and a sixth survived the lint (#290). The `.ics` control is a **button driving an authenticated blob download** — a plain `<a href>`
+  carries no Bearer token and the admin-gated endpoint answers 401, which is exactly what the first
+  version shipped (caught in review round 1, together with an outcome vocabulary the backend never
+  had: both specs had hard-coded the fiction, so 371 green tests never sent one real PATCH). Day
+  grouping is timezone-explicit (`Intl.DateTimeFormat` with an injectable IANA zone), a rejected
+  outcome PATCH snaps the select back to the model, and a 4-test Playwright spec runs the screen in
+  a real browser — including asserting the `Authorization` header on the download. 19 new admin
+  tests (suite 362 → 381 against the rebased base, coverage 100%).
+- **Interview calendar — backend (#247 phase 2 / #70)**: an `Interview` record on every
+  opportunity (`interviews` table, migration `interview0006`, `ON DELETE CASCADE`) with
+  admin-only endpoints to schedule (`POST /admin/opportunities/{id}/interviews`), list, fetch,
+  reschedule/record an outcome (`PATCH /admin/interviews/{id}`) and remove a mis-created slot
+  (`DELETE`, which writes the removal to the opportunity's notes timeline first, so no history is
+  lost). Two surfaces make it useful on day one: **`GET /admin/interviews/upcoming?days=14`** —
+  every scheduled round across all opportunities inside the window, soonest first, cancelled
+  excluded, each row carrying its company/role/stage — and **`GET /admin/interviews/{id}.ics`**, a
+  minimal RFC 5545 VEVENT (UTC `DTSTART`/`DTEND`, escaped TEXT values, 75-**octet** line folding
+  that never splits a multi-byte character, `STATUS:CANCELLED`, stable `UID`) that imports into
+  any calendar app. Timestamps are stored in UTC and any ISO-8601 offset is normalized on input;
+  scheduling advances the opportunity to `interviewing` **forward only** (a card at `offer` or
+  `closed_*` keeps its stage — the promote handler's never-regress rule), and every
+  schedule/reschedule/outcome/removal lands on the notes timeline. An instant near
+  `datetime.max` is rejected with 422 rather than accepted: `astimezone` and the `DTEND`
+  arithmetic raise **`OverflowError`, not `ValueError`**, so one shape 500'd on input and — worse
+  — another was accepted with 201 and then raised on *every* `.ics` export, forever. The parser
+  now bounds `scheduled_at` so DTEND stays representable at the **maximum** duration the schema
+  allows, because a later PATCH can raise the duration. `upcoming` keeps an interview that has
+  **started but not ended** (per-row end time, not a blanket lookback), an opportunity whose stage
+  is not in the known set is left untouched instead of raising, and the `UID` is escaped like
+  every other TEXT value. 57 backend tests
+  (suite 883 → 940 passing, coverage 100.00%), mutation-checked 8/8 — including the one that
+  found `astimezone(UTC)` pinned by nothing, because `timestamptz` normalizes on the way back out
+  (lessons §16 addendum) — plus 3 integration-tier tests that run the composed
+  create → upcoming → .ics path over real HTTP. The
+  `.ics` renderer lives in `app/services/ics.py`, deliberately free of DB imports, because #70's
+  recruiter self-booking flow shares it. Admin UI ships in #292.
+- **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose
+  only browser validation was "the suite didn't break". 18 tests, suite **97 → 115**: the public
+  **contact form** (`e2e/public/contact-form.spec.ts` — server-rendered then hydrated, trimmed
+  validators gating submit, the success contract, the API-failure path that keeps the visitor's
+  text, a 390px phone viewport that fails on real horizontal overflow, and an accessibility pass),
+  the admin **Inbox** (`e2e/admin/inbox.spec.ts` — empty state, list + expand-to-read, status
+  filter round trip, inline status PATCH, promote hand-off, two-way pagination, and a load-failure
+  state that must not read as an empty inbox), and the admin **Pipeline board**
+  (`e2e/admin/pipeline.spec.ts` — all seven stage columns, card placement, detail panel, a stage
+  move that asserts the card RELOCATING, a note added and repainted, quick-create rejecting
+  whitespace-only fields, and a load failure that keeps the board frame visible).
+  Every test was executed against a real prod-topology stack before commit, and the four review
+  rounds mutation-checked the pins rather than trusting them: the zoneless repaint is pinned by
+  the ERROR path (the success path passes with `markForCheck()` deleted, because `reset()`
+  notifies the scheduler on its own), the relocation assertion fails when only the client-side
+  move is removed, the viewport assertion fails on an injected 534px overflow, and the alert-copy
+  assertions fail when the component's message changes. Review also caught two defects in the
+  specs themselves: a Playwright glob `*` does not cross `/` (so a mocked PATCH escaped to the
+  live backend and asserted nothing), and a fill racing hydration let Angular's `writeValue` wipe
+  the typed values — both fixed, the latter with the `networkidle` barrier the other public specs
+  already use.
+- **Release retrospectives are now part of the release process** (owner directive) — a release is
+  finished when what it taught is written down, not when the tag is pushed. New `release-retro`
+  **skill** (the method: five questions, finding→action classification, and the rule that a retro
+  producing no config change must say why), new **`/retro` command** (the runbook, including
+  checking the PREVIOUS retro's prediction), `release-manager` gains step 12 and **may not report a
+  release complete until the retro PR is open**, and `ai-integration` owns it as a scheduled duty.
+  Every retrospective is archived as `docs/retrospectives/vX.Y.Z.md` with a **trend table** in that
+  directory's README, so the numbers can be compared release over release rather than read once in
+  an issue comment — with documented counting conventions, because v1.12.0 found the Project
+  `Review rounds` field disagreeing with the actual thread and one issue filed under the wrong
+  release (understating the release by ~11%).
+- **The pre-push gate no longer contends for the shared test database** — it runs against its own
+  `test_mavrov_prepush` with `-n auto`, which is also how CI invokes the suite. It previously ran
+  SERIALLY on the shared `test_mavrov` and merely *detected* concurrent runs with `pgrep`, which
+  samples only at start: an agent beginning a suite a second later still clobbered the gate, and
+  two suites doing `drop_all`/`create_all` on one database produce dozens of spurious ERRORs that
+  read exactly like real failures. It blocked four pushes in one session and each failure invited a
+  blind retry rather than a diagnosis. Isolation beats arbitration (lessons §31).
+- **Merge gate hook** (`.claude/hooks/pre-merge-gate.sh`, 77-case self-test plus a 17-mutation contract with an identity control, both run inside the pre-push gate) — refuses
+  `gh pr merge` when the latest posted verdict is not an APPROVE (rule 13 was restated across **eleven files**
+  as prose with zero mechanical enforcement), and when the PR body says `Closes #NN` against
+  an issue with unticked acceptance criteria (a blocker in **four** v1.12.0 PRs, caught every time
+  only because a review read the issue by hand). Command-position aware via the shared parsing
+  model, fails closed on a deadline or an unreadable verdict, bypass with `PR_MERGE_GATE=0`.
+
+### Changed
+- **The v1.12.0 retrospective's findings applied to the toolkit** — measured over 24 review
+  verdicts: `issue-author` learns four rules for writing an acceptance criterion that can actually
+  be met (one AC last release was unachievable as written; six of eight feature PRs shipped with a
+  silently-unmet criterion); both dev charters replace an unconditional "the PR body must
+  `Closes #NN`" with a deliberate Closes/Refs decision; `backend-dev` gains the E2E/integration
+  instruction it never had (all 10 merged PRs closed with that evidence missing) plus the rule to
+  mutation-check the fix that closed the *previous* round's blocker (itself a blocker five times);
+  `pr-reviewer`'s charter said "engineering rules 1–8" while the repo has 13 — omitting rule 12 and
+  rule 13, its own mandate; `/prep-pr` gains re-measure-every-number (all 10 merged PRs carried a claim
+  that did not reproduce, nine at blocker level) and layer-evidence steps; **lessons §30** records
+  the assert-the-guarantee-where-it-can-be-enforced class and the shared-session fixture that hides
+  races. Two duplicated rule restatements deleted from the playbook and a drifted second copy of
+  the config map deleted from lessons-learned — duplication is how the renumber drift happened.
+
 ### Security
 - **Internal AI-tooling session identifiers must never reach public surfaces** (owner directive)
   — CLAUDE.md's issue-flow rule 8 (no secrets in public issues/PRs) and `agents/PLAYBOOK.md` now
@@ -12,7 +120,6 @@ All notable changes to this project will be documented in this file.
   repo (`Co-authored-by:` attribution stays). All 17 affected PR bodies were scrubbed; the
   repo-wide search now returns zero editable occurrences.
 
-### Changed
 - **Two engineering rules added, one renumbered** (owner directives 2026-09-06) — **rule 11: fix
   review findings IN the PR** rather than converting them into issues (a follow-up issue is for
   genuinely out-of-scope work only; backlog growth is not progress), and **rule 12: a merged PR
@@ -107,74 +214,6 @@ All notable changes to this project will be documented in this file.
   verification block for the new surfaces: confirm the identity is yours and not the demo
   persona, POST a probe to the contact form, and find it in the admin Inbox.
 
-### Added
-- **Interview calendar — admin UI (#247 phase 2 / #70)**: a `Calendar` screen in the admin panel
-  showing every scheduled round across all opportunities, **grouped by local day** with the company,
-  role, stage, kind, interviewer and location on each row. The window is switchable (7 / 14 / 30 / 90
-  days), a round that has **started but not finished** is flagged *in progress*, each row records an
-  outcome in place, and each offers its `.ics` download. Grouping uses a real `Date` rather than the
-  ISO string's UTC prefix: a 23:30 UTC round belongs to the next day anywhere east of UTC, and
-  slicing the string would file it under the wrong heading for exactly the users who care.
-  `InterviewsService` mirrors the backend schemas with explicit interfaces (no `any`), and the
-  screen carries a **zoneless repaint pin** alongside its normal spec — the zone.js-bundling spec
-  cannot see a missing `detectChanges()`, which is how five frozen-UI bugs reached this app (#276)
-  and a sixth survived the lint (#290). The `.ics` control is a **button driving an authenticated blob download** — a plain `<a href>`
-  carries no Bearer token and the admin-gated endpoint answers 401, which is exactly what the first
-  version shipped (caught in review round 1, together with an outcome vocabulary the backend never
-  had: both specs had hard-coded the fiction, so 371 green tests never sent one real PATCH). Day
-  grouping is timezone-explicit (`Intl.DateTimeFormat` with an injectable IANA zone), a rejected
-  outcome PATCH snaps the select back to the model, and a 4-test Playwright spec runs the screen in
-  a real browser — including asserting the `Authorization` header on the download. 19 new admin
-  tests (suite 362 → 381 against the rebased base, coverage 100%).
-- **Interview calendar — backend (#247 phase 2 / #70)**: an `Interview` record on every
-  opportunity (`interviews` table, migration `interview0006`, `ON DELETE CASCADE`) with
-  admin-only endpoints to schedule (`POST /admin/opportunities/{id}/interviews`), list, fetch,
-  reschedule/record an outcome (`PATCH /admin/interviews/{id}`) and remove a mis-created slot
-  (`DELETE`, which writes the removal to the opportunity's notes timeline first, so no history is
-  lost). Two surfaces make it useful on day one: **`GET /admin/interviews/upcoming?days=14`** —
-  every scheduled round across all opportunities inside the window, soonest first, cancelled
-  excluded, each row carrying its company/role/stage — and **`GET /admin/interviews/{id}.ics`**, a
-  minimal RFC 5545 VEVENT (UTC `DTSTART`/`DTEND`, escaped TEXT values, 75-**octet** line folding
-  that never splits a multi-byte character, `STATUS:CANCELLED`, stable `UID`) that imports into
-  any calendar app. Timestamps are stored in UTC and any ISO-8601 offset is normalized on input;
-  scheduling advances the opportunity to `interviewing` **forward only** (a card at `offer` or
-  `closed_*` keeps its stage — the promote handler's never-regress rule), and every
-  schedule/reschedule/outcome/removal lands on the notes timeline. An instant near
-  `datetime.max` is rejected with 422 rather than accepted: `astimezone` and the `DTEND`
-  arithmetic raise **`OverflowError`, not `ValueError`**, so one shape 500'd on input and — worse
-  — another was accepted with 201 and then raised on *every* `.ics` export, forever. The parser
-  now bounds `scheduled_at` so DTEND stays representable at the **maximum** duration the schema
-  allows, because a later PATCH can raise the duration. `upcoming` keeps an interview that has
-  **started but not ended** (per-row end time, not a blanket lookback), an opportunity whose stage
-  is not in the known set is left untouched instead of raising, and the `UID` is escaped like
-  every other TEXT value. 57 backend tests
-  (suite 883 → 940 passing, coverage 100.00%), mutation-checked 8/8 — including the one that
-  found `astimezone(UTC)` pinned by nothing, because `timestamptz` normalizes on the way back out
-  (lessons §16 addendum) — plus 3 integration-tier tests that run the composed
-  create → upcoming → .ics path over real HTTP. The
-  `.ics` renderer lives in `app/services/ics.py`, deliberately free of DB imports, because #70's
-  recruiter self-booking flow shares it. Admin UI ships in #292.
-- **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose
-  only browser validation was "the suite didn't break". 18 tests, suite **97 → 115**: the public
-  **contact form** (`e2e/public/contact-form.spec.ts` — server-rendered then hydrated, trimmed
-  validators gating submit, the success contract, the API-failure path that keeps the visitor's
-  text, a 390px phone viewport that fails on real horizontal overflow, and an accessibility pass),
-  the admin **Inbox** (`e2e/admin/inbox.spec.ts` — empty state, list + expand-to-read, status
-  filter round trip, inline status PATCH, promote hand-off, two-way pagination, and a load-failure
-  state that must not read as an empty inbox), and the admin **Pipeline board**
-  (`e2e/admin/pipeline.spec.ts` — all seven stage columns, card placement, detail panel, a stage
-  move that asserts the card RELOCATING, a note added and repainted, quick-create rejecting
-  whitespace-only fields, and a load failure that keeps the board frame visible).
-  Every test was executed against a real prod-topology stack before commit, and the four review
-  rounds mutation-checked the pins rather than trusting them: the zoneless repaint is pinned by
-  the ERROR path (the success path passes with `markForCheck()` deleted, because `reset()`
-  notifies the scheduler on its own), the relocation assertion fails when only the client-side
-  move is removed, the viewport assertion fails on an injected 534px overflow, and the alert-copy
-  assertions fail when the component's message changes. Review also caught two defects in the
-  specs themselves: a Playwright glob `*` does not cross `/` (so a mocked PATCH escaped to the
-  live backend and asserted nothing), and a fill racing hydration let Angular's `writeValue` wipe
-  the typed values — both fixed, the latter with the `networkidle` barrier the other public specs
-  already use.
 
 ## [1.12.0] - 2026-09-06
 

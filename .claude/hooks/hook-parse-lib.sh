@@ -209,6 +209,56 @@ mask_quotes() {
   printf '%s' "$out"
 }
 
+# Split a command segment into ARGV the way the shell does: on UNQUOTED
+# whitespace, with a quoted run kept as ONE token and its quotes removed.
+# Result lands in the ARGV_SPLIT_RESULT array — an array, not a string list,
+# because a token can legitimately contain a newline.
+#
+# This exists because `set -- $seg` (IFS word-splitting) is NOT argv splitting
+# and cannot be made into it. `gh pr merge -b "squash 999" 284` splits into
+# `-b` `"squash` `999"` `284`, so a merge gate reading the operand positionally
+# saw `999"` — and a `sed` that stripped the stray quote turned it into a valid
+# PR number, verifying PR 999 while merging 284 (#291 review round 5). Quoting
+# must be modelled where the split happens, never patched afterwards.
+#
+# Same three quoting models as mask_quotes/quote_split — plain single, double,
+# and ANSI-C `$'…'` — plus backslash escapes outside single quotes. The three
+# functions must agree; #213 and #237 both came from them drifting apart.
+argv_split() {
+  local s="$1" n=${#1} i c q="" tok="" started=0
+  ARGV_SPLIT_RESULT=()
+  for (( i=0; i<n; i++ )); do
+    c="${s:i:1}"
+    if [ "$c" = '\' ] && [ "$q" != "'" ] && [ $((i + 1)) -lt "$n" ]; then
+      tok+="${s:i+1:1}"; started=1; i=$((i + 1)); continue
+    fi
+    if [ -n "$q" ]; then
+      if [ "$c" = "$q" ] || { [ "$q" = "$ANSI_Q" ] && [ "$c" = "'" ]; }; then q=""
+      else tok+="$c"; fi
+      continue
+    fi
+    if [ "$c" = '$' ] && [ $((i + 1)) -lt "$n" ] && [ "${s:i+1:1}" = "'" ]; then
+      q="$ANSI_Q"; started=1; i=$((i + 1)); continue
+    fi
+    case "$c" in
+      \'|\") q="$c"; started=1 ;;
+      ' '|$'\t'|$'\n')
+        if [ "$started" = "1" ]; then ARGV_SPLIT_RESULT+=("$tok"); tok=""; started=0; fi ;;
+      *) tok+="$c"; started=1 ;;
+    esac
+  done
+  [ "$started" = "1" ] && ARGV_SPLIT_RESULT+=("$tok")
+  # An OPEN quote at end-of-input means the caller handed us a fragment — the
+  # main loops read commands line-at-a-time, so a quoted value containing a
+  # NEWLINE arrives here cut in half and the tokens after the cut are missing.
+  # Callers that read a target positionally must treat this as "target unknown"
+  # and fail closed: the merge gate lost its operand exactly this way and fell
+  # back to verifying the current branch's PR (#291 review round 7).
+  ARGV_SPLIT_UNTERMINATED=0
+  [ -n "$q" ] && ARGV_SPLIT_UNTERMINATED=1
+  return 0
+}
+
 # Heredoc delimiter opened by this line, or empty. Reported ONLY for a heredoc
 # whose body the shell will NOT expand — i.e. a QUOTED (or backslash-escaped)
 # delimiter, `<<'EOF'` / `<<"EOF"` / `<<\EOF`, and outside quotes, and not a

@@ -529,7 +529,7 @@ believed the general case had been found and had only found an instance.
    the #211 review; the body had to be split across four files — item 7's "trains workarounds" in
    action), while a real `git -C <dir> push` never gated. The fix is item 12 applied ACROSS files:
    the guard's parsing (`quote_split`, `peel_wrapper`, the text-tool heredoc exemption) now lives in
-   `.claude/hooks/hook-parse-lib.sh`, sourced by BOTH hooks — one model of the input, so a parsing
+   `.claude/hooks/hook-parse-lib.sh`, sourced by ALL THREE hooks — one model of the input, so a parsing
    fix or hole cannot diverge between them. And check item 11's polarity when reusing: "cannot
    analyse" (size/depth/time bound) must DENY on the guard but GATE (run the checks) on the test
    hook — both conservative, but they are different actions, and copying the guard's habits
@@ -674,6 +674,49 @@ box could not detect page overflow (the form is clamped well inside the viewport
 idempotent server to "prove" the client prevents double submits passes no matter what the client
 does — mock the NAIVE server, then the assertion means something.
 
+## 30. Assert the guarantee at the layer that can ENFORCE it (v1.12.0)
+
+Three v1.12.0 blockers were one mistake: a guarantee stated at a layer that cannot hold it.
+
+- **Check-then-insert is not idempotency.** `POST /admin/opportunities/promote` did SELECT → `if
+  existing is None` → INSERT with no unique constraint behind it. `get_db` yields a FRESH session
+  per request, so review reproduced it directly: two sessions lined up on an `asyncio.Barrier` at
+  the decision point produced **two permanent cards** (the router ships no DELETE). Fixed by a DB
+  `UNIQUE` plus an `IntegrityError` recovery path, mutation-proven (drop `unique=True` → the race
+  test reports 2 cards).
+- **A rate limiter keyed on an attacker-controlled header limits nothing.** The bucket keyed on
+  `xff.split(",")[0]`, but nginx APPENDS the real peer to whatever the client sent — hop 0 is the
+  attacker's. `X-Real-IP` is authoritative here (#273).
+- **A budget that "fails closed" by returning into an unbounded loop is not closed** (#235): the
+  deadline check handed control to the one pre-inspection loop with no clock check, and a bulk
+  command carrying a real destruction payload answered PAST the hook timeout — an allow in prod.
+
+**The trap that makes this invisible:** the unit tier structurally CANNOT see a race.
+`backend/conftest.py` overrides `get_db` to yield ONE shared session to every request, so
+concurrent-looking calls in a test serialise. "883 passed" says nothing about concurrency. When the
+property is "at most one of X", ask *what physically prevents the second one* — and if the answer is
+an `if` in Python, write the constraint.
+
+## 31. Isolate the resource; do not arbitrate access to it (2026-09-06)
+
+The pre-push gate ran pytest SERIALLY against the shared `test_mavrov` and refused to start
+whenever `pgrep -f pytest` saw another suite. That guard samples only at start, so an agent
+beginning a suite one second later still clobbered the run — two suites doing `drop_all` /
+`create_all` on one database produce dozens of spurious ERRORs that look exactly like real
+failures. With agents working in parallel it blocked four pushes in one session, and each time the
+temptation was to retry rather than read the log.
+
+**The rule:** when two workers contend for a resource, give each its own instead of taking turns.
+The gate now uses `test_mavrov_prepush` (conftest creates databases on demand and only drops
+TABLES, so nothing accumulates) and runs `-n auto`, which is how CI runs it and additionally gives
+every xdist worker its own `_gwN` database. A detector that samples at a point in time cannot prevent a race;
+separate namespaces can. (Two concurrent pre-push runs would still share the gate's own name —
+acceptable, because only one push runs at a time. The real collision was parallel AGENTS.)
+
+**The meta-lesson, which cost more than the bug:** a gate failing repeatedly is data. Retrying it
+unchanged is not a fix, and "it's the shared DB again" was an assumption — the log said mass
+ERRORs, not the guard's refusal message, and that difference was the whole diagnosis.
+
 ## 32. A guard's SCOPE is a claim, and claims rot — check the premise, not the wiring (#276)
 
 `frontend/scripts/check-cd-safety.mjs` shipped in #233 scoped to `projects/public` with the
@@ -700,14 +743,137 @@ the scope cannot silently shrink again. And unit tests **can** see this bug clas
 TestBed that opts into `provideZonelessChangeDetection()` and never calls `detectChanges()` after
 the action reproduces the frozen UI — see the `ssr-cd-safety` skill.
 
+## 33. A mutation contract needs an IDENTITY CONTROL, or it certifies nothing
+
+The merge gate's self-test was rebuilt twice and lied both times, in different ways:
+
+1. **Round 1** asserted the process EXIT CODE — but these hooks deny via a JSON
+   `permissionDecision` and exit 0, so removing the blocking entirely still passed every case.
+2. **Round 2** added a mutation contract that reported 10/10 kills. Mutants were written to a temp
+   directory WITHOUT `hook-parse-lib.sh`, so every mutant died on a missing library. A reviewer
+   proved it by running a **byte-identical copy** of the hook through the same harness: it also
+   "died". The honest score was 4 of 10 — the same 4 as round 1.
+
+**The rule:** a mutation harness must run an **identity mutation that MUST SURVIVE**. If an
+unmodified copy dies, every other result in that run is noise, and the run should abort rather than
+report a score. Alongside it, three cheap validity checks stop a harness from flattering itself:
+a mutation producing **no diff** tests nothing; a mutant that fails `bash -n` died of a **syntax
+error**, not of the behaviour under test; and mutants need the same **environment** as the original
+(copy the shared library in).
+
+**And when a mutation legitimately survives, that is a finding about the CODE, not a gap to paper
+over.** Two denies in this gate survived because a third check subsumes them: an empty verdict and
+an explicit REQUEST CHANGES both fail the APPROVE test anyway. They stayed — their MESSAGES are
+what tells an author what to do — but they are documented as message-only rather than pinned by
+cases that cannot fail (§25 and the #240 precedent).
+
+## 34. A stub that answers identically for every entity cannot prove you asked about the right one
+
+Round 4 of the same gate. Two shapes — `echo 284 | xargs gh pr merge` and
+`gh pr merge -b "squash msg" 284` — detected the merge, failed to read the operand, silently fell
+back to the CURRENT BRANCH's PR, and verified a different PR than the one being merged. That is
+worse than missing the merge outright, because the output says "verified".
+
+New cases were written for both, and **they passed against the unfixed hook**. The `gh` stub
+returned the same verdict JSON no matter which PR was queried, so "checked PR 284" and "fell back
+to PR 999" were indistinguishable. Making the stub PR-aware was the fix — and the first attempt at
+that keyed on `$2`, which is the literal word `view` in `gh pr view <n> --json …`, so the lookup
+never hit and the stub was still uniform. Two rounds of a "fix" that measured nothing.
+
+**The rule:** when the behaviour under test is *which* entity was consulted, the fake must **vary
+its answer by entity**, and you must prove the variance is live — set the fallback entity to the
+OPPOSITE verdict, so a fallback flips the result. Then run the new cases against the **unfixed**
+code: a case that passes before the fix is pinning nothing. Measured here, that check turned a
+claimed 7 regressions into the honest 5 (3× `ssh`, `xargs`, quoted `-b`); the other two already
+denied and are kept only as guards.
+
+**Corollary — fail closed on an unreadable operand.** If the target cannot be parsed, DENY. Do not
+substitute a default target: the substitution is invisible and looks like success.
+
+## 35. Test a gate's ESCAPE HATCH the way a caller types it — and a hatch that never opens is a bug
+
+The merge gate's deny message advertised `PR_MERGE_GATE=0` as the authorized bypass. It never
+worked. The hook read the flag from **its own environment**, but a caller writes it as a **command
+prefix** — `PR_MERGE_GATE=0 gh pr merge 291` — which is part of the command TEXT and was eaten
+unread by the env-assignment strip a few lines later. Live repro: the command was denied, by a
+message naming the hatch it had just ignored.
+
+There WAS a passing case for the bypass. It set the variable in the **harness environment**, so it
+certified a path no caller can take — §34's defect, one level up: the test and the production
+caller disagreed about what "setting the variable" means. `guard-destructive.sh:242` had the correct
+shape all along (match the leading assignment run of the segment text); the gate simply didn't copy
+it, which is what a shared parsing model is supposed to prevent.
+
+**The rule:** a guard's bypass is part of its contract. Test it **as a command prefix**, add the
+negative cases (`OTHER_VAR=0`, `PR_MERGE_GATE=1` must NOT bypass), and mutate it — if removing the
+bypass check leaves the suite green, the hatch is untested. And when a guard has no working escape,
+every false positive becomes a hard stop: round 4 of this PR denied six legitimate `gh pr merge`
+shapes (`-R`, `-F`, `-A`, a quoted number, a branch name) with no way through.
+
+**Corollary — read the tool's own help before writing a flag walk.** The value-taking flags were
+guessed at; `gh help pr merge` lists them (`-A`, `-b`, `-F`, `-t`, `-R`, `--match-head-commit`) and
+says the operand is `[<number> | <url> | <branch>]`. Three missing flags meant their VALUES were
+read as the PR number.
+
+## 36. `git checkout <file>` DISCARDS uncommitted work — it is not an undo for your last edit
+
+Mid-review-round, a broken edit to `pre-merge-gate.test.sh` was "reverted" with
+`git checkout .claude/hooks/pre-merge-gate.test.sh`. The file also held 14 new test cases and 3 new
+mutations from that same round, none of it committed. All of it was destroyed in one command, and
+had to be rewritten from scratch.
+
+**How to apply.** Before `git checkout -- <file>`, `git restore <file>`, `git stash drop` or a hard
+reset, run `git status --short` and ask what ELSE is uncommitted in that file. To undo only the last
+edit, re-edit it — reach for the file-level revert only when you intend to lose everything since the
+last commit. Commit working increments during a long round so a revert costs minutes, not the round.
+
+## 37. Model quoting AT THE SPLIT — a strip afterwards forges values
+
+`set -- $seg` is IFS word-splitting, not argv splitting, and no amount of cleanup afterwards makes
+it one. The merge gate split `gh pr merge -b "squash 999" 284` into `-b` `"squash` `999"` `284`,
+read `999"` as the operand, and a `sed` added to "fix the quotes" turned it into a valid PR number.
+The gate then verified PR **999** (approved) while merging PR **284** (request changes) — and
+reported success. The same patch also *denied* every legitimate `-b "multi word" 284`.
+
+The fix is `argv_split` in `hook-parse-lib.sh`: one character loop with the same three quoting
+models the other parsers use, quotes consumed where they are, tokens preserved whole.
+
+**The rule:** when a value's meaning depends on quoting, parse the quoting where the split happens.
+A post-hoc strip cannot distinguish "a quote that closed a token" from "a quote character inside
+data", so it will eventually manufacture a value that looks legitimate. That is worse than failing,
+because the wrong answer is indistinguishable from the right one. And when a guard reads a target
+positionally, ask what a quoted argument *ending in the target's shape* does to it.
+
+## 38. Counting conventions go wrong on the CORPUS, not the matcher
+
+Four hand counts were published for the same release — 30, 32, 34, 29 — and none reproduced; the measured value is 24. Every one used
+essentially the same matcher (a review body containing APPROVE or REQUEST CHANGES). All the
+disagreement was in *which pull requests are in the release*:
+
+- `git log <prev-tag>..<tag> | grep -oE '\(#[0-9]+\)'` cites **issue** numbers as well as PR
+  numbers — #65, #66, #69, #237, #239, #260 are issues, and `gh pr view` cannot resolve them.
+- It also sweeps in PRs that merged **before** the previous tag (#245 *is* the v1.11.1 release PR).
+- A hand-assembled list drifted the other way and included PRs merged **after** the tag.
+
+**How to apply.** Define the corpus as a query, never a list: PRs whose `mergedAt` falls between the
+two tags' dates. Put the runnable command in the doc, and when two people disagree about a number,
+compare corpora first — the matcher is almost never the problem. A metric nobody can re-derive is
+not a baseline, and a prediction stated against it (here: "below 2.5 rounds", when the real figure
+was 2.4) is unfalsifiable.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,
-  execution protocol). This skill is the *why + reproduction* companion.
+  execution protocol) **and the AI-config map**: the single table of every agent, command, skill,
+  hook, plugin and MCP server. This file deliberately does NOT repeat that table — the copy that
+  used to live here drifted every time the surface changed (it listed four of eight commands and
+  said "rules 1–11" after a renumber), and one stale map is worse than none. This skill is the
+  *why + reproduction* companion to the rules.
 - **`.claude/agents/*.md`** + **`agents/common/roster.py`** (`PROJECT_PLAYBOOK`) — the agent charters;
   keep the two in sync (they restate overlapping lessons).
 - **`.claude/skills/issue-workflow/`** — the issue/PR/milestone/label operational flow.
 - **`.claude/hooks/`** — `pre-push-tests.sh` (test gate), `guard-destructive.sh` (destruction guard),
-  `hook-parse-lib.sh` (the ONE parsing model both source, #237), plus a `*.test.sh` self-test beside
-  each hook.
-- **`.claude/commands/`** — `/verify`, `/release`, `/issue-triage`, `/linkedin-sync`.
+  `pre-merge-gate.sh` (rule-13 + Closes/AC merge gate), `hook-parse-lib.sh` (the ONE parsing model
+  all three source, #237), plus a `*.test.sh` self-test beside each hook — the merge gate's carries
+  a mutation contract with an identity control, because its first two versions certified themselves
+  green while pinning nothing.
