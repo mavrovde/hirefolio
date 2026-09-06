@@ -120,6 +120,35 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
   run "multi-line command" deny "git status
 gh pr merge 284 --squash"
 
+# 4b. Shapes proven to bypass the gate in review round 2.
+# An EXECUTED heredoc body is a script, not a document — skipping it
+# unconditionally let `bash <<'EOF' … gh pr merge N … EOF` through.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+  run "bash heredoc whose BODY merges" deny "bash <<'EOF'
+gh pr merge 284 --squash
+EOF"
+# The operand can follow flags; the old regex required digits right after
+# `merge`, so this fell through to current-branch resolution and checked a
+# DIFFERENT PR — the worst failure mode, because it looks like it worked.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "flags before the operand" deny "gh pr merge --squash 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "several flags before the operand" deny "gh pr merge --admin --squash 284"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
+  run "-R and flags before the operand" deny "gh -R o/r pr merge --squash 284"
+# Indirection through a shell / xargs / ssh.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+  run "bash -c indirection" deny "bash -c 'gh pr merge 284 --squash'"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+  run "sh -c indirection" deny "sh -c \"gh pr merge 284\""
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
+  run "xargs indirection" deny "echo 284 | xargs gh pr merge"
+# An APPROVE that merely QUOTES the phrase must not deny (this review thread
+# does exactly that). Measured base rate across v1.12.0's PRs: zero verdicts
+# change meaning under the windowed check.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED — round 3\n\nThe round-2 REQUEST CHANGES findings are all fixed.')" \
+  run "approval that mentions REQUEST CHANGES later in its body" allow "gh pr merge 284 --squash"
+
 # 5. Quoted prose is DATA (#204/#237) — the false-positive direction.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
   run "phrase quoted in a comment body" allow "gh pr comment 284 --body 'do not gh pr merge 284 yet'"
@@ -162,35 +191,121 @@ PR_MERGE_GATE=0 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHAN
 echo "merge gate self-test: $PASS passed, $FAIL failed"
 
 # --- Mutation contract -------------------------------------------------------
-# `--mutations` proves the cases above actually bite. Each mutation must make at
-# least one case fail; 10/10 is the contract. Run in a COPY so the real hook is
-# never modified.
+# `--mutations` proves the cases above actually bite. The FIRST version of this
+# section was itself fake-green: mutants were written to a temp dir WITHOUT
+# `hook-parse-lib.sh`, so every mutant died on a missing library — a
+# byte-identical copy "died" too, and the honest score was 4 of 10. The harness
+# now defends against that specific failure:
+#   * the shared lib is copied beside the mutant, so a mutant fails for its OWN
+#     reason;
+#   * an IDENTITY mutation must SURVIVE — if it dies, the harness is broken and
+#     every other result is meaningless, so the run aborts;
+#   * a mutation that produces NO diff, or that leaves the script unparseable
+#     (`bash -n`), is an invalid experiment and fails the contract rather than
+#     counting as a kill.
 if [ "${1-}" = "--mutations" ]; then
   echo
   echo "== mutation contract =="
-  MPASS=0; MFAIL=0
-  ORIG="$(cat "$HOOK")"
-  WORK="$STUB/mutant.sh"
-  mutate() { # mutate <name> <sed-expression>
-    printf '%s' "$ORIG" | sed -E "$2" > "$WORK"
-    chmod +x "$WORK"
-    local before_fail=$FAIL
-    HOOK="$WORK" bash "$0" >/dev/null 2>&1
-    if [ $? -ne 0 ]; then MPASS=$((MPASS+1)); printf '  ✓ killed: %s\n' "$1"
-    else MFAIL=$((MFAIL+1)); printf '  ✗ SURVIVED: %s\n' "$1"; fi
+  MPASS=0; MFAIL=0; MBAD=0
+  MDIR="$STUB/mut"; mkdir -p "$MDIR"
+  cp "$(dirname "$HOOK")/hook-parse-lib.sh" "$MDIR/" 2>/dev/null || {
+    echo "  ✗ HARNESS: cannot copy hook-parse-lib.sh — mutants would die for the wrong reason"; exit 1; }
+  WORK="$MDIR/pre-merge-gate.sh"
+
+  apply() { # apply <python-expr-file-content> -> writes WORK, echoes changed?
+    python3 - "$HOOK" "$WORK" "$1" <<'PY'
+import sys, re
+src, dst, spec = sys.argv[1], sys.argv[2], sys.argv[3]
+text = open(src).read()
+kind, _, arg = spec.partition("::")
+if kind == "identity":
+    out = text
+elif kind == "replace":
+    a, _, b = arg.partition("=>")
+    out = text.replace(a, b)
+elif kind == "delete_block":
+    # delete from the line containing arg up to (not including) the next line
+    # that is a closing `fi`/`}` at the same indent, keeping the script parseable
+    lines = text.split("\n")
+    out_lines, i = [], 0
+    while i < len(lines):
+        if arg in lines[i]:
+            indent = len(lines[i]) - len(lines[i].lstrip())
+            i += 1
+            while i < len(lines):
+                stripped = lines[i].strip()
+                cur = len(lines[i]) - len(lines[i].lstrip())
+                if stripped in ("fi", "}", "done") and cur <= indent:
+                    i += 1
+                    break
+                if stripped and cur <= indent and not stripped.startswith(("|", "&", "#")):
+                    break
+                i += 1
+            continue
+        out_lines.append(lines[i]); i += 1
+    out = "\n".join(out_lines)
+else:
+    raise SystemExit("unknown mutation kind: " + kind)
+open(dst, "w").write(out)
+print("CHANGED" if out != text else "SAME")
+PY
   }
-  mutate "deny() no longer emits a deny decision"        's/"permissionDecision":\\"deny\\"/"permissionDecision":\\"allow\\"/'
-  mutate "REQUEST CHANGES check removed"                 '/latest verdict is REQUEST CHANGES/d'
-  mutate "APPROVE requirement removed"                   's/^printf .%s. "\$VERDICT" \| grep -qiE .APPROVE./true/'
-  mutate "empty-verdict deny removed"                    '/has no posted review verdict/d'
-  mutate "newest-verdict selection reversed"             's/sort_by\(\.at\) \| last/sort_by(.at) | first/'
-  mutate "comments stream dropped"                       's/\(\(\.comments \/\/ \[\]\)\[\][^)]*\)//'
-  mutate "Closes/AC check removed"                       '/unticked acceptance criteria/d'
-  mutate "unreadable issue fails OPEN"                   's/\|\| deny "PR #\$PR_NUM says it closes #\$issue but that issue could not be read[^"]*"/|| continue/'
-  mutate "deadline no longer denies"                     '/could not finish within/d'
-  mutate "current-branch PR resolution removed"          '/could not determine which PR this merges/d'
-  echo "mutation contract: $MPASS killed, $MFAIL survived"
-  [ "$MFAIL" -eq 0 ] || exit 1
+
+  mutate() { # mutate <expect: die|survive> <name> <spec>
+    local expect="$1" name="$2" spec="$3" changed rc
+    changed="$(apply "$spec")" || { echo "  ✗ INVALID: $name (mutation script failed)"; MBAD=$((MBAD+1)); return; }
+    if [ "$expect" = "die" ] && [ "$changed" = "SAME" ]; then
+      echo "  ✗ INVALID: $name — produced NO diff, so it tests nothing"; MBAD=$((MBAD+1)); return
+    fi
+    chmod +x "$WORK"
+    if ! bash -n "$WORK" 2>/dev/null; then
+      echo "  ✗ INVALID: $name — mutant is not parseable; a syntax error is not a kill"; MBAD=$((MBAD+1)); return
+    fi
+    HOOK="$WORK" bash "$0" >/dev/null 2>&1; rc=$?
+    if [ "$expect" = "survive" ]; then
+      if [ $rc -eq 0 ]; then echo "  ✓ control survived: $name"
+      else echo "  ✗ HARNESS BROKEN: $name should survive but died — every other result is meaningless"; MBAD=$((MBAD+1)); fi
+      return
+    fi
+    if [ $rc -ne 0 ]; then MPASS=$((MPASS+1)); printf '  ✓ killed: %s\n' "$name"
+    else MFAIL=$((MFAIL+1)); printf '  ✗ SURVIVED: %s\n' "$name"; fi
+  }
+
+  # CONTROL FIRST: an unmodified copy must pass. If this dies, the harness is
+  # lying and nothing below can be trusted.
+  mutate survive "identity (byte-identical copy)" "identity::"
+  [ "$MBAD" -eq 0 ] || { echo "mutation contract: HARNESS INVALID"; exit 1; }
+
+  mutate die "deny() emits allow instead of deny" \
+    'replace::permissionDecision\":\"deny=>permissionDecision\":\"allow'
+  # NOT a mutation, for the same reason as the empty-verdict deny: a
+  # REQUEST-CHANGES marker also fails the APPROVE test, so deleting this check
+  # changes no decision. Both were mutation-tested, both SURVIVED, and both are
+  # documented as message-only in the hook rather than pinned by cases that
+  # cannot fail. Exactly one check here is load-bearing: APPROVE.
+  mutate die "APPROVE requirement inverted" \
+    "replace::grep -qiE 'APPROVE'=>grep -qivE 'APPROVE'"
+  # NOT a mutation: the empty-verdict deny is message-only — an empty verdict
+  # also yields an empty FIRST_MARKER, so the APPROVE check denies anyway. The
+  # two are behaviourally equivalent for every input the jq filter admits, so a
+  # case for it could not fail. Documented in the hook instead - the #240 answer.
+  mutate die "newest-verdict selection reversed" \
+    'replace::sort_by(.at) | last=>sort_by(.at) | first'
+  mutate die "comments stream dropped" \
+    'replace::((.comments // [])[] | {at: .createdAt,   body: (.body // "")}) =>'
+  mutate die "Closes/AC check removed" \
+    'delete_block::if [ "${UNCHECKED:-0}" -gt 0 ]'
+  mutate die "unreadable issue fails OPEN" \
+    'replace::|| deny "PR #$PR_NUM says it closes #$issue but that issue could not be read=>|| true # '
+  mutate die "heredoc bodies always treated as data" \
+    'replace::[ -n "$delim" ] && line_is_all_text_tools "$line"=>[ -n "$delim" ]'
+  mutate die "operand-after-flags ignored (falls back to current branch)" \
+    "replace::printf '%s' \"\${MERGE_OPERAND:-}\"=>printf '%s' \"\""
+  mutate die "indirection (bash -c / eval / ssh) no longer inspected" \
+    'replace::inner_script_invokes_pr_merge "$seg" && return 0=>false && return 0'
+
+  echo "mutation contract: $MPASS killed, $MFAIL survived, $MBAD invalid"
+  [ "$MFAIL" -eq 0 ] && [ "$MBAD" -eq 0 ] || exit 1
 fi
 
 [ "$FAIL" -eq 0 ]

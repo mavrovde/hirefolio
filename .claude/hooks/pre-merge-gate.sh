@@ -58,6 +58,27 @@ INSPECT_DEADLINE=$((START + DEADLINE_SECONDS))
 # spellings and leading assignments are handled exactly as the pre-push gate
 # handles `git push` — and `gh pr merge` inside a quoted argument stays DATA
 # (#204/#237).
+# A quoted argument handed to bash -c / eval / ssh is a SCRIPT: split it like
+# the shell would and ask each inner command. Depth-bounded, like the sibling.
+PMG_INNER_DEPTH=0
+inner_script_invokes_pr_merge() {
+  local body="$1" line inner found=1 OLD="$IFS"
+  [ "$PMG_INNER_DEPTH" -ge 3 ] && return 0        # cannot analyse further → gate
+  PMG_INNER_DEPTH=$((PMG_INNER_DEPTH + 1))
+  body="${body//$NL_SENTINEL/$'\n'}"
+  while IFS= read -r line; do
+    [ "$found" = 0 ] && break
+    IFS=$'\n'
+    for inner in $(quote_split "$line"); do
+      if segment_invokes_pr_merge "$inner"; then found=0; break; fi
+    done
+    IFS="$OLD"
+  done <<< "$body"
+  IFS="$OLD"
+  PMG_INNER_DEPTH=$((PMG_INNER_DEPTH - 1))
+  return $found
+}
+
 segment_invokes_pr_merge() {
   local seg="$1"
   [ "$SECONDS" -ge "$INSPECT_DEADLINE" ] && return 0   # cannot analyse → gate
@@ -80,7 +101,30 @@ segment_invokes_pr_merge() {
         seg="$PEEL_RESULT"; changed=1
       fi
     fi
+    # `xargs [opts] gh pr merge` — same one-pass strip as the siblings (#219).
+    if printf '%s' "$seg" | grep -Eq '^xargs( |$)'; then
+      seg="$(printf '%s' "$seg" | sed -E 's/^xargs +//; s/^((-[^ ]+|\{\}|[A-Za-z]=) )*//')"
+      changed=1
+    fi
   done
+
+  # `bash -c "…"` / `sh -lc '…'` / `eval …` / `ssh host "…"`: the argument is a
+  # SCRIPT, and a merge inside it is a real merge. Same patterns the pre-push
+  # gate uses (#291 review round 2 proved all four were open here).
+  if printf '%s' "$seg" | grep -Eq '^(bash|sh|zsh|dash) +((-o [^ ]+|-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c[A-Za-z]* (-- +)?'; then
+    seg="$(printf '%s' "$seg" | sed -E "s/^(bash|sh|zsh|dash) +((-o [^ ]+|-[A-Za-z]+|--[A-Za-z-]+) +)*-[A-Za-z]*c[A-Za-z]* +(-- +)?//; s/^\\\$?[\"']//; s/[\"']$//")"
+    inner_script_invokes_pr_merge "$seg" && return 0
+    return 1
+  elif printf '%s' "$seg" | grep -Eq '^eval '; then
+    seg="$(printf '%s' "$seg" | sed -E "s/^eval +//; s/^\\\$?[\"']//; s/[\"']$//")"
+    inner_script_invokes_pr_merge "$seg" && return 0
+    return 1
+  elif printf '%s' "$seg" | grep -Eq '^ssh '; then
+    # A merge on the remote end merges all the same; inspect the whole
+    # remainder — protection independent of parsing ssh's option grammar.
+    inner_script_invokes_pr_merge "${seg#ssh }" && return 0
+    return 1
+  fi
 
   # Command word must be `gh`, then the subcommand pair `pr merge` — with gh's
   # value-taking globals consumed in between, so `gh --repo x pr merge 1` is
@@ -104,10 +148,23 @@ segment_invokes_pr_merge() {
   [ "${1:-}" = "pr" ] || return 1
   shift
   [ "${1:-}" = "merge" ] || return 1
+  shift
+  # The operand may sit after flags (`gh pr merge --squash 291`) or be absent
+  # (merge the current branch's PR). Walk the rest the same way, consuming
+  # value-taking merge flags, and keep the FIRST bare operand.
+  MERGE_OPERAND=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -b|--body|-t|--subject|--match-head-commit|--author-email) shift; shift || break ;;
+      -*) shift ;;
+      *) MERGE_OPERAND="$1"; break ;;
+    esac
+  done
   return 0
 }
 
 MERGE_SEG=""
+MERGE_OPERAND=""
 OLD_IFS="$IFS"
 IN_HEREDOC_DELIM=""
 while IFS= read -r line; do
@@ -126,9 +183,13 @@ while IFS= read -r line; do
     continue
   fi
   delim="$(heredoc_delim "$line" 2>/dev/null || true)"
-  if [ -n "$delim" ]; then
+  # ONLY a text-tool heredoc is data. `bash <<'EOF' … gh pr merge N … EOF` is a
+  # script the shell EXECUTES, and skipping it unconditionally was a live bypass
+  # (#291 review round 2). `line_is_all_text_tools` is the shared lib's answer to
+  # exactly this question (#204/#212): the body is dropped only when every
+  # command on the opening line is a text tool — `cat`, `git commit -F -`, …
+  if [ -n "$delim" ] && line_is_all_text_tools "$line"; then
     IN_HEREDOC_DELIM="$delim"
-    # The line introducing the heredoc is still a real command line; inspect it.
   fi
   IFS=$'\n'
   for seg in $(quote_split "$line"); do
@@ -149,9 +210,13 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 # Which PR? `gh pr merge` with no argument merges the CURRENT BRANCH's PR — the
 # most natural invocation, and previously an unconditional bypass. A URL form
 # (`gh pr merge https://…/pull/291`) is normalised first.
-PR_NUM="$(printf '%s' "$MERGE_SEG" \
-  | sed -E 's#https?://[^ ]*/pull/([0-9]+)#\1#g' \
-  | sed -n 's/.*merge[[:space:]]\{1,\}\([0-9]\{1,\}\).*/\1/p' | head -1)"
+# MERGE_OPERAND comes from the argv walk, so flags before the number are handled
+# (`gh pr merge --squash 291` previously fell through and checked the CURRENT
+# branch's PR — a live bypass found in review round 2). A URL operand is
+# normalised to its number.
+PR_NUM="$(printf '%s' "${MERGE_OPERAND:-}" \
+  | sed -E 's#^https?://[^ ]*/pull/([0-9]+)/?$#\1#' \
+  | grep -oE '^[0-9]+$' || true)"
 if [ -z "$PR_NUM" ]; then
   PR_NUM="$(gh pr view --json number --jq '.number' 2>/dev/null)"
   [ -z "$PR_NUM" ] && deny "could not determine which PR this merges (no number given, and no PR found for the current branch) — refusing to merge unverified"
@@ -176,12 +241,35 @@ VERDICT="$(printf '%s' "$PR_JSON" | jq -r '
   | map(select(.at != null and (.body | test("APPROVE|APPROVED|REQUEST CHANGES"; "i"))))
   | sort_by(.at) | last | .body // ""' 2>/dev/null)"
 
+# MESSAGE-ONLY, and deliberately so (#291 review round 2, the #240 answer). An
+# empty verdict also yields an empty FIRST_MARKER, so the APPROVE check below
+# denies anyway — the two are behaviourally equivalent for every input the jq
+# filter admits, and no test can distinguish them. This line exists because
+# "no posted review verdict" tells the author what to DO, where "does not state
+# APPROVE" would not. It is therefore NOT in the mutation contract: writing a
+# case that cannot fail is worse than documenting the equivalence.
 [ -z "$VERDICT" ] && deny "PR #$PR_NUM has no posted review verdict — rule 13 requires an independent pr-reviewer APPROVE before merge"
 
-if printf '%s' "$VERDICT" | grep -qiE 'REQUEST CHANGES'; then
+# The verdict is whichever marker appears FIRST — that is the heading. A body
+# that approves and then quotes the round it supersedes ("the REQUEST CHANGES
+# findings are fixed") must not flip to deny; review threads do this routinely,
+# including the one that found this. A fixed head -N window got it wrong
+# whenever the quote landed inside the window.
+FIRST_MARKER="$(printf '%s' "$VERDICT" | grep -oiE 'REQUEST CHANGES|APPROVED?' | head -1)"
+
+# ONE check is load-bearing here: the APPROVE requirement below. The two denies
+# that precede it (empty verdict, explicit REQUEST CHANGES) are MESSAGE-ONLY —
+# an empty verdict yields an empty marker, and a REQUEST-CHANGES marker fails
+# the APPROVE test, so deleting either changes no decision for any input the jq
+# filter admits. Both were mutation-tested and SURVIVED; rather than dress that
+# up with cases that cannot fail, the equivalence is documented here (the #240
+# answer, applied to my own gate). They earn their place by telling the author
+# what to DO — "no posted review verdict" and "fix the findings in this PR
+# first" are actionable where "does not state APPROVE" is not.
+if printf '%s' "$FIRST_MARKER" | grep -qiE 'REQUEST CHANGES'; then
   deny "PR #$PR_NUM's latest verdict is REQUEST CHANGES — fix the findings in this PR first (rule 11)"
 fi
-printf '%s' "$VERDICT" | grep -qiE 'APPROVE' \
+printf '%s' "$FIRST_MARKER" | grep -qiE 'APPROVE' \
   || deny "PR #$PR_NUM's latest verdict does not state APPROVE (rule 13)"
 
 # --- Check 2: `Closes #NN` must not point at unticked criteria ---------------
@@ -193,7 +281,9 @@ for issue in $CLOSES; do
   # FAIL CLOSED: an unreadable issue is not evidence that its criteria are met.
   IBODY="$(gh issue view "$issue" --json body --jq '.body // ""' 2>/dev/null)" \
     || deny "PR #$PR_NUM says it closes #$issue but that issue could not be read — refusing to close an issue whose criteria are unverified"
-  # Heading match tolerates bold and all-caps; BWK-awk portable (no IGNORECASE).
+  # Heading match is `#`-anchored and tolerates all-caps; a **bold** pseudo-heading
+  # is NOT matched (measured) — the issue template always uses a real heading.
+  # BWK-awk portable: no IGNORECASE (macOS ships BWK awk).
   UNCHECKED="$(printf '%s' "$IBODY" \
     | awk '/^#+.*([Aa]cceptance|ACCEPTANCE).*([Cc]riteria|CRITERIA)/{f=1;next} f&&/^#+ /{f=0} f' \
     | grep -cE '^[[:space:]]*[-*][[:space:]]*\[[[:space:]]\]' || true)"

@@ -506,7 +506,7 @@ believed the general case had been found and had only found an instance.
    the #211 review; the body had to be split across four files — item 7's "trains workarounds" in
    action), while a real `git -C <dir> push` never gated. The fix is item 12 applied ACROSS files:
    the guard's parsing (`quote_split`, `peel_wrapper`, the text-tool heredoc exemption) now lives in
-   `.claude/hooks/hook-parse-lib.sh`, sourced by BOTH hooks — one model of the input, so a parsing
+   `.claude/hooks/hook-parse-lib.sh`, sourced by ALL THREE hooks — one model of the input, so a parsing
    fix or hole cannot diverge between them. And check item 11's polarity when reusing: "cannot
    analyse" (size/depth/time bound) must DENY on the guard but GATE (run the checks) on the test
    hook — both conservative, but they are different actions, and copying the guard's habits
@@ -694,6 +694,30 @@ acceptable, because only one push runs at a time. The real collision was paralle
 unchanged is not a fix, and "it's the shared DB again" was an assumption — the log said mass
 ERRORs, not the guard's refusal message, and that difference was the whole diagnosis.
 
+## 33. A mutation contract needs an IDENTITY CONTROL, or it certifies nothing
+
+The merge gate's self-test was rebuilt twice and lied both times, in different ways:
+
+1. **Round 1** asserted the process EXIT CODE — but these hooks deny via a JSON
+   `permissionDecision` and exit 0, so removing the blocking entirely still passed every case.
+2. **Round 2** added a mutation contract that reported 10/10 kills. Mutants were written to a temp
+   directory WITHOUT `hook-parse-lib.sh`, so every mutant died on a missing library. A reviewer
+   proved it by running a **byte-identical copy** of the hook through the same harness: it also
+   "died". The honest score was 4 of 10 — the same 4 as round 1.
+
+**The rule:** a mutation harness must run an **identity mutation that MUST SURVIVE**. If an
+unmodified copy dies, every other result in that run is noise, and the run should abort rather than
+report a score. Alongside it, three cheap validity checks stop a harness from flattering itself:
+a mutation producing **no diff** tests nothing; a mutant that fails `bash -n` died of a **syntax
+error**, not of the behaviour under test; and mutants need the same **environment** as the original
+(copy the shared library in).
+
+**And when a mutation legitimately survives, that is a finding about the CODE, not a gap to paper
+over.** Two denies in this gate survived because a third check subsumes them: an empty verdict and
+an explicit REQUEST CHANGES both fail the APPROVE test anyway. They stayed — their MESSAGES are
+what tells an author what to do — but they are documented as message-only rather than pinned by
+cases that cannot fail (§25 and the #240 precedent).
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,
@@ -706,5 +730,7 @@ ERRORs, not the guard's refusal message, and that difference was the whole diagn
   keep the two in sync (they restate overlapping lessons).
 - **`.claude/skills/issue-workflow/`** — the issue/PR/milestone/label operational flow.
 - **`.claude/hooks/`** — `pre-push-tests.sh` (test gate), `guard-destructive.sh` (destruction guard),
-  `hook-parse-lib.sh` (the ONE parsing model both source, #237), plus a `*.test.sh` self-test beside
-  each hook.
+  `pre-merge-gate.sh` (rule-13 + Closes/AC merge gate), `hook-parse-lib.sh` (the ONE parsing model
+  all three source, #237), plus a `*.test.sh` self-test beside each hook — the merge gate's carries
+  a mutation contract with an identity control, because its first two versions certified themselves
+  green while pinning nothing.
