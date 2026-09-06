@@ -30,10 +30,13 @@ PR CI (which runs only CodeQL) — they only surface in the full Docker E2E or i
 
 ---
 
-## 1. The public app is effectively ZONELESS — async property mutations don't repaint
+## 1. BOTH apps are zoneless — async property mutations don't repaint
 
-**Trap.** `frontend/projects/public` bundles **no `zone.js`** at runtime (`angular.json` has no
-`polyfills` entry; zone.js is only in `test-setup.ts` for unit tests). A component that mutates a
+**Trap.** **Neither** `frontend/projects/public` **nor** `frontend/projects/admin` bundles
+`zone.js` at runtime — `angular.json` has no `polyfills` entry for either, and zone.js is only in
+`test-setup.ts` for unit tests. (This entry said "the public app" until #276: the admin app was
+excluded from the cd-safety lint on that false premise, and the widened lint immediately found
+**five** frozen-UI bugs in admin, plus a sixth the lint cannot see — see below.) A component that mutates a
 **plain property** inside a `subscribe` / `setInterval` / `setTimeout` / `async`-`fetch` callback will
 **silently never repaint**. This froze the footer at `BE: vUnknown` / `UPTIME 00:00:00` (#94) even
 though the `/stats/public` fetch returned 200.
@@ -45,8 +48,16 @@ the freeze only appears in the browser / Docker E2E.
 explicitly: inject `ChangeDetectorRef` and call `markForCheck()` after each async mutation, **or** use
 signals, **or** render an `Observable` via the `async` pipe. The app is committed to zoneless via
 `provideZonelessChangeDetection()` in `app.config.ts` (#105) — the async-mutation rule still holds.
-Grep pattern to audit: `subscribe(` / `setInterval(` / `setTimeout(` in `projects/public` that assign
+Grep pattern to audit: `subscribe(` / `setInterval(` / `setTimeout(` in **either** app that assign
 `this.<prop> =` without a following `markForCheck()`.
+
+**The lint does NOT follow `await`** (its documented #234 gap), so an `async` method that assigns
+after an await is invisible to it. #290's review found exactly that live in
+`admin-linkedin.component.ts`: `checkLoginStatus()` set `isLoggedIn = true` and the banner kept
+reading "🔴 Not Connected" with the login form still up. Three layers missed it — the lint by that
+gap, the unit specs because they bundle zone.js, and the e2e spec because it always mocked the
+initial status as logged-out. When you audit, read the `async` methods by hand; a green lint is not
+a clean bill of health here.
 
 ## 2. SSR relative→absolute URL rewrite belongs in an `HttpBackend`, delegating to `HttpXhrBackend`
 

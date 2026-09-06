@@ -13,6 +13,7 @@ import { AdminLinkedinComponent } from './admin-linkedin.component';
 import { LinkedinService } from '../../../services/linkedin.service';
 
 class MockLinkedinService {
+  loggedIn = false;
   async syncProfile() {
     return {};
   }
@@ -23,7 +24,7 @@ class MockLinkedinService {
     return { id: 0, message: '' };
   }
   async getStatus() {
-    return { logged_in: false };
+    return { logged_in: this.loggedIn };
   }
   async login() {
     return {};
@@ -51,6 +52,30 @@ describe('AdminLinkedinComponent (zoneless repaint)', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  // #290 review round 1 found this one LIVE, in a file this PR already edits:
+  // `checkLoginStatus` is the only async method here without a
+  // `finally { detectChanges() }`, and it runs from ngOnInit. A logged-in
+  // operator saw "🔴 Not Connected" plus the login form, forever.
+  //
+  // Three layers were blind to it and that is the point of pinning it here:
+  // the cd-safety lint does not follow `await` (its documented #234 gap), the
+  // other unit specs bundle zone.js so change detection fires for them, and the
+  // e2e spec always mocks the initial status as logged_in: false.
+  it('repaints the connected state after ngOnInit resolves (no manual CD)', async () => {
+    const svc = TestBed.inject(LinkedinService) as unknown as MockLinkedinService;
+    svc.loggedIn = true;
+
+    fixture.detectChanges();        // initial render + ngOnInit
+    await fixture.whenStable();     // let checkLoginStatus' await resolve
+
+    // Deliberately NO detectChanges() after this point: the component must
+    // repaint itself, exactly as every sibling async method here already does.
+    expect(component.isLoggedIn).toBe(true);
+    expect(host.textContent).toContain('🟢 Connected');
+    expect(host.textContent).not.toContain('🔴 Not Connected');
+    expect(host.querySelector('.auth-form')).toBeNull();
   });
 
   it('repaints away the status bar when the 5s auto-clear timer fires', () => {

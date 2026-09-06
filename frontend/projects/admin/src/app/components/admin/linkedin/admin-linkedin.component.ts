@@ -41,6 +41,12 @@ export class AdminLinkedinComponent implements OnInit {
             this.isLoggedIn = status.logged_in;
         } catch (e) {
             console.error('Failed to get status', e);
+        } finally {
+            // The app is zoneless, so an assignment after `await` repaints
+            // nothing on its own. Without this the connection banner and the
+            // login form stayed frozen at "not connected" for an operator who
+            // WAS connected — every sibling async method here already does it.
+            this.cdr.detectChanges();
         }
     }
 

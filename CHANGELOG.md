@@ -47,7 +47,13 @@ All notable changes to this project will be documented in this file.
   elsewhere in the template. Each fix carries a `*.zoneless.spec.ts` regression pin that opts its
   TestBed into `provideZonelessChangeDetection()` — a technique that lets unit tests see this
   class at all, now documented in the `ssr-cd-safety` skill along with the admin app's real
-  zoneless status.
+  zoneless status. **A sixth bug of the same class, which the lint cannot see**, was found by the
+  review and fixed here too: `checkLoginStatus()` in `admin-linkedin.component.ts` assigns after an
+  `await`, and the checker does not follow `await` (the documented #234 gap), so a connected
+  operator kept reading "🔴 Not Connected" with the login form still up. Three layers were blind —
+  the lint by that gap, the unit specs because they bundle zone.js, and the e2e spec because it
+  always mocked the initial status as logged-out. **The widened lint is a floor, not a guarantee:**
+  it covers `subscribe`/`setTimeout`/`setInterval` assignments, not `async`/`await` ones.
 - **Integration/E2E verification stacks no longer evict the developer's test database** — the
   `docker-compose.inttest.yml` overlay publishes Postgres on **5533** instead of 5433. Prod
   compose published the same port the local pytest DB uses, so every verification stack silently

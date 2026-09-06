@@ -89,9 +89,17 @@ function check(desc, ok) {
   }
 }
 
-const scope = execFileSync(process.execPath, [CHECKER, "--print-scope"], {
-  stdio: "pipe",
-}).toString();
+// Guarded like every other invocation here: an unhandled throw aborts the whole
+// suite with a stack trace and no results, which reads as "the tests vanished"
+// rather than "one check failed".
+let scope = "";
+try {
+  scope = execFileSync(process.execPath, [CHECKER, "--print-scope"], {
+    stdio: "pipe",
+  }).toString();
+} catch (err) {
+  check(`--print-scope runs (${err.message})`, false);
+}
 check(
   "default scope includes projects/public/src",
   scope.includes(join("projects", "public", "src")),
