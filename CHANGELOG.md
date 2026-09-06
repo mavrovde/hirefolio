@@ -6,7 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Security
 - **Internal AI-tooling session identifiers must never reach public surfaces** (owner directive)
-  — CLAUDE.md rule 8 and `agents/PLAYBOOK.md` now forbid writing `Claude-Session:` trailers or
+  — CLAUDE.md's issue-flow rule 8 (no secrets in public issues/PRs) and `agents/PLAYBOOK.md` now
+  forbid writing `Claude-Session:` trailers or
   `claude.ai/code/session_…` URLs into commits, PR bodies, issues or the changelog on this PUBLIC
   repo (`Co-authored-by:` attribution stays). All 17 affected PR bodies were scrubbed; the
   repo-wide search now returns zero editable occurrences.

@@ -653,7 +653,7 @@ does — mock the NAIVE server, then the assertion means something.
 
 ## Where the rules live (AI-config map)
 
-- **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–11, issue-tracking flow,
+- **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,
   execution protocol). This skill is the *why + reproduction* companion.
 - **`.claude/agents/*.md`** + **`agents/common/roster.py`** (`PROJECT_PLAYBOOK`) — the agent charters;
   keep the two in sync (they restate overlapping lessons).
