@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
  * cd-safety lint (#118): flag the imperative subscribe-and-assign anti-pattern
- * in the ZONELESS public app.
+ * in the ZONELESS browser apps (public AND admin).
  *
- * The public app ships no zone.js (provideZonelessChangeDetection, #105), so a
- * component property assigned inside a subscribe/setInterval/setTimeout
- * callback renders once and then silently never repaints — the exact class
- * behind #94 (footer frozen at "BE: vUnknown" while the fetch returned 200).
+ * Neither app ships zone.js, so a component property assigned inside a
+ * subscribe/setInterval/setTimeout callback renders once and then silently
+ * never repaints — the exact class behind #94 (footer frozen at
+ * "BE: vUnknown" while the fetch returned 200).
  * Unit tests bundle zone.js and therefore CANNOT catch it; only the browser /
  * Docker E2E can. This check catches it at authoring time instead.
  *
@@ -23,16 +23,48 @@
  * this heuristic to span — that shape needs the AST lint (#234). Documented,
  * not silently uncovered (#233 review round 1).
  *
- * Scope: projects/public runtime sources only. The admin app is zone-based CSR
- * and the shared lib is consumed by both; neither has the zoneless footgun.
+ * SCOPE — the real reason (#276; the previous comment here claimed "the admin
+ * app is zone-based CSR", which was false and left the whole admin app
+ * unguarded):
+ *   - projects/public/src — zoneless EXPLICITLY: app.config.ts calls
+ *     provideZonelessChangeDetection() (#105).
+ *   - projects/admin/src  — zoneless BY DEFAULT: angular.json gives the admin
+ *     project no `polyfills` entry (so no zone.js is bundled) and app.config.ts
+ *     provides no provideZoneChangeDetection(), and @angular/core's
+ *     ZONELESS_ENABLED token defaults to `factory: () => true`. Verified on
+ *     22.1.4 in node_modules/@angular/core/fesm2022/_pending_tasks-chunk.mjs.
+ *     Proven reachable in the browser: stripping the addNote() detectChanges()
+ *     from the served pipeline chunk made e2e/admin/pipeline.spec.ts fail while
+ *     its API assertion still passed — the note reached the server and the
+ *     operator never saw it.
+ *   - projects/shared/src is NOT scanned: it is a library consumed by both
+ *     apps, its services expose Observables rather than mutating component
+ *     state, and it has no component that owns a view to repaint.
+ * If admin ever adopts provideZoneChangeDetection(), drop it from SCAN_ROOTS
+ * here and say so — a scope whose justification is false is worse than no scope.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { delimiter, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
-const SCAN_ROOT =
-  process.env.CD_SAFETY_SCAN_ROOT ?? join(ROOT, "projects", "public", "src");
+const DEFAULT_SCAN_ROOTS = [
+  join(ROOT, "projects", "public", "src"),
+  join(ROOT, "projects", "admin", "src"),
+];
+// CD_SAFETY_SCAN_ROOT overrides the scope (used by the self-test); it accepts
+// several roots separated by the platform path delimiter.
+const SCAN_ROOTS = process.env.CD_SAFETY_SCAN_ROOT
+  ? process.env.CD_SAFETY_SCAN_ROOT.split(delimiter).filter(Boolean)
+  : DEFAULT_SCAN_ROOTS;
+const SCOPE = SCAN_ROOTS.map((r) => relative(ROOT, r) || r).join(", ");
+
+// `--print-scope` reports the scope and exits without scanning, so the
+// self-test can pin that admin is in the DEFAULT scope (#276).
+if (process.argv.includes("--print-scope")) {
+  console.log(`cd-safety: scope ${SCOPE}`);
+  process.exit(0);
+}
 
 const TRIGGERS = /\.(subscribe|then)\s*\(|(?<![.\w])(setInterval|setTimeout)\s*\(/g;
 const ASSIGN = /this\.[A-Za-z_$][\w$]*(?:\.[\w$]+)*\s*=(?![=>])/;
@@ -72,7 +104,7 @@ function argSpan(src, openParen) {
 }
 
 const violations = [];
-for (const file of tsFiles(SCAN_ROOT)) {
+for (const file of SCAN_ROOTS.flatMap((root) => [...tsFiles(root)])) {
   const src = readFileSync(file, "utf8");
   const lines = src.split("\n");
   let m;
@@ -104,9 +136,11 @@ for (const file of tsFiles(SCAN_ROOT)) {
 }
 
 if (violations.length) {
-  console.error("cd-safety: FAIL — zoneless repaint hazards in projects/public\n");
+  console.error(`cd-safety: FAIL — zoneless repaint hazards in ${SCOPE}\n`);
   for (const v of violations) console.error("  " + v);
   console.error(`\n${violations.length} violation(s).`);
   process.exit(1);
 }
-console.log("cd-safety: OK (projects/public imperative-callback assignments all have a repaint path)");
+console.log(
+  `cd-safety: OK (${SCOPE} — imperative-callback assignments all have a repaint path)`,
+);

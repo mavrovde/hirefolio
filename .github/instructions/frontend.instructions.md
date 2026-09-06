@@ -16,8 +16,10 @@ applyTo: "frontend/**"
 
 ## Zoneless & SSR traps (unit tests hide these; only the Docker E2E catches them)
 
-- **The public app is zoneless** (no zone.js at runtime). Mutating a plain property inside
-  `subscribe`/`setInterval`/`setTimeout` will silently never repaint. Use the `async` pipe,
+- **Both browser apps are zoneless** (no zone.js at runtime) — public explicitly
+  (`provideZonelessChangeDetection()`, #105) and admin by default (no `polyfills` entry in
+  `angular.json`, so Angular's `ZONELESS_ENABLED` default applies, #276). Mutating a plain property
+  inside `subscribe`/`setInterval`/`setTimeout` will silently never repaint. Use the `async` pipe,
   signals, or inject `ChangeDetectorRef` + `markForCheck()` after each async mutation.
 - Guard all DOM access (`window`, `document`, `localStorage`) with `isPlatformBrowser()`.
 - The SSR relative→absolute URL rewrite lives in `SsrHttpBackend` (an `HttpBackend`, terminal in

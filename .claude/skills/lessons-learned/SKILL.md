@@ -651,6 +651,32 @@ box could not detect page overflow (the form is clamped well inside the viewport
 idempotent server to "prove" the client prevents double submits passes no matter what the client
 does — mock the NAIVE server, then the assertion means something.
 
+## 32. A guard's SCOPE is a claim, and claims rot — check the premise, not the wiring (#276)
+
+`frontend/scripts/check-cd-safety.mjs` shipped in #233 scoped to `projects/public` with the
+comment *"The admin app is zone-based CSR … neither has the zoneless footgun."* That sentence was
+false on the day it was written: `frontend/angular.json` gives the admin project **no `polyfills`
+entry** (so no zone.js is bundled — `grep -rl __zone_symbol__ dist/admin/` returns nothing) and its
+`app.config.ts` provides no `provideZoneChangeDetection()`, so `@angular/core`'s `ZONELESS_ENABLED`
+default `factory: () => true` applies. The admin app was zoneless and completely unguarded for a
+release cycle. Cost: **four** independent reviews raised it (#274 r1, #282 r1, #284 r2, plus issue
+#276) before it was fixed, and when the gate was finally pointed at admin it flagged **five real
+frozen-UI bugs** on the first run — a stale status bar, a stuck "Saving…" with an invisible error
+banner, a permanent success banner, and a sidebar username that never tracked login/logout.
+
+**The rule:** when you narrow a gate, the narrowing needs the same evidence standard as a
+suppression — state *why* the excluded scope is safe, in falsifiable terms, and verify it against
+the artifact (the built bundle, the config file), not against your memory of the architecture. A
+green gate that is green because it is not looking is worse than no gate: it buys false confidence.
+Same defect class as §21's `cd-safety-ok` suppression whose justification a later commit made
+untrue — one level up, at the scope instead of the line.
+
+**Corollary — the exclusion needs a test too.** The self-test now pins the *default scope*
+(`--print-scope` must name both roots) and flags a violation planted only under an admin root, so
+the scope cannot silently shrink again. And unit tests **can** see this bug class after all: a
+TestBed that opts into `provideZonelessChangeDetection()` and never calls `detectChanges()` after
+the action reproduces the frozen UI — see the `ssr-cd-safety` skill.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,

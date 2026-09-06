@@ -316,6 +316,9 @@ export class PostEditorComponent implements OnInit {
         // (Simplification: in real app manage cleaner state or separate save vs publish)
         this.errorMessage = error.error?.detail || 'Failed to save post';
         console.error('Save error:', error);
+        // Zoneless admin app (#276): without this the editor stays stuck on
+        // "Saving…" and the error banner never appears.
+        this.cdr.detectChanges();
       },
     });
   }

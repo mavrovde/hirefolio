@@ -107,8 +107,9 @@ VERIFY, DON'T ASSUME
   browser-only regressions (lesson from the v1.8.0 #84 revert). Two proven patterns:
   (a) the SSR URL rewrite belongs in an HttpBackend (after the transfer-cache
   interceptor keys the URL) delegating to HttpXhrBackend, NEVER FetchBackend; and
-  (b) the public app is ZONELESS (no zone.js polyfill), so async property mutations
-  in subscribe/setInterval don't repaint — use the async pipe / signals / markForCheck.
+  (b) BOTH browser apps are ZONELESS (no zone.js polyfill) — public explicitly, admin by
+  default (#276) — so async property mutations in subscribe/setInterval don't repaint:
+  use the async pipe / signals / markForCheck. `npm run lint:cd-safety` scans both.
   When you change a user-visible behavior, grep ALL e2e specs for the OLD assertion.
 
 GITHUB & PIPELINES

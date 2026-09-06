@@ -156,6 +156,9 @@ export class AdminLinkedinComponent implements OnInit {
     clearMessageAfterDelay() {
         setTimeout(() => {
             this.statusMessage = '';
+            // Zoneless admin app (#276): without this the status bar stays on
+            // screen forever even though statusMessage is already ''.
+            this.cdr.detectChanges();
         }, 5000);
     }
 
