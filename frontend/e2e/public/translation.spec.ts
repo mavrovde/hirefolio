@@ -22,7 +22,11 @@ test.describe('Translation Integrity', () => {
 
     test('should switch to German and back', async ({ page }) => {
         // Switch to DE
-        await page.getByRole('button', { name: 'DE' }).click();
+        // exact: getByRole name-matching is case-insensitive SUBSTRING — the German
+        // contact-form submit "senden" contains both "de" and "en", so the bare
+        // locators broke in strict mode the moment #69 added the form (deploy run
+        // 34009222801). Exact matching pins the language switcher alone.
+        await page.getByRole('button', { name: 'DE', exact: true }).click();
 
         await expect(page.locator('nav').getByText('Über Mich')).toBeVisible();
         await expect(page.locator('nav').getByText('Erfahrung')).toBeVisible();
@@ -33,7 +37,7 @@ test.describe('Translation Integrity', () => {
         await expect(page.locator('nav').getByText('LLM')).toBeVisible();
 
         // Switch back to EN
-        await page.getByRole('button', { name: 'EN' }).click();
+        await page.getByRole('button', { name: 'EN', exact: true }).click();
         await expect(page.locator('nav').getByText('About')).toBeVisible();
     });
 
