@@ -146,6 +146,24 @@ def _test_database_url() -> URL:
     Without xdist the single shared database is used unchanged.
     """
     url = make_url(_base_test_url())
+    # HARD GUARD (lessons-learned §4, now ENFORCED): the suite drops/creates
+    # tables on every run — pointed at a non-test database it silently
+    # destroys dev data. This happened in practice: with TEST_DATABASE_URL
+    # unset, resolution fell through to the app default (`.../mavrov`) and
+    # single-process runs clobbered the dev DB all day before a lock made it
+    # visible. Only `test_*` databases may ever be the target (CLAUDE.md
+    # rule 9 allows dropping test_* only).
+    if not (url.database or "").startswith("test_"):
+        import pytest
+
+        pytest.exit(
+            f"REFUSING to run: resolved test database is '{url.database}', "
+            "which is not a test_* database. Export TEST_DATABASE_URL "
+            "(e.g. postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/"
+            "test_mavrov) — the suite drop/creates tables and would destroy "
+            "this database's data.",
+            returncode=2,
+        )
     worker = _xdist_worker_id()
     if worker is not None:
         url = url.set(database=f"{url.database}_{worker}")

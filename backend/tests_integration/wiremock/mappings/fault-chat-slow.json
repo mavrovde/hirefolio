@@ -1,0 +1,24 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/api/chat",
+    "bodyPatterns": [
+      {
+        "contains": "__wiremock_slow__"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "fixedDelayMilliseconds": 8000,
+    "jsonBody": {
+      "model": "llama3.2",
+      "message": {
+        "role": "assistant",
+        "content": "slow reply"
+      },
+      "done": true
+    }
+  }
+}

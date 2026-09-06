@@ -87,6 +87,16 @@ change to ship the rest, then redo it properly (never leave `main` red).
   container's table locks (and would wipe the dev DB if it didn't block).
 - The `test_mavrov` DB lives in the `mavrovde-db-1` container. Create if missing:
   `docker exec mavrovde-db-1 psql -U postgres -p 5433 -c "CREATE DATABASE test_mavrov"`.
+- **2026-09-06 addendum — the rule is now ENFORCED IN CODE, because documentation did not stop
+  the recurrence.** This exact lesson was on record, and an agent still ran ad-hoc
+  `./venv/bin/pytest` without the export during the #65/#69 work: single-process runs silently
+  drop/created tables on the dev `mavrov` DB all day (the parallel `-n auto` runs were spared only
+  because the xdist worker-suffix DBs didn't exist as `mavrov_gw0`), and it only became VISIBLE
+  when the integration stack's backend held a table lock and the drop hung — then every retried
+  run stacked into zombie pytest processes behind the same lock. `backend/conftest.py` now
+  refuses (`pytest.exit`) any resolved DB whose name doesn't start with `test_` (#260/#261).
+  Meta-lesson: when a footgun recurs despite being documented, the fix is a GUARD, not a louder
+  paragraph — same class as items 18 (gates must gate) and the #142/#177 startup refusals.
 - **Never run two full pytest suites against `test_mavrov` at once** (e.g. a manual run while the
   pre-push hook fires). Both do `drop_all`/`create_all` per test on the same DB and clobber each other
   → dozens of spurious `InvalidRequestError: Could not refresh instance` / count-mismatch failures.
@@ -531,27 +541,68 @@ This is the clearest evidence yet for CLAUDE.md rule 11: an independent reviewer
 regression in four consecutive rounds that the author, the author's own new tests, and green CI all missed —
 and CI *could not* have caught it, because nothing in the pipeline runs that suite (#208, #210).
 
-## Alembic on a create_all legacy: every post-baseline CREATE TABLE needs the self-adopt guard (#69)
+## 22. Async SQLAlchemy after commit/rollback: the identity map and expiry WILL bite
 
-A long-lived deployment may have gotten its schema from SQLAlchemy `create_all` BEFORE Alembic
-was introduced (the entrypoint stamps `baseline0001` over the existing tables). On such a host a
-later migration's `op.create_table(...)` explodes with `DuplicateTable` — the table already
-exists, Alembic just never made it. `inbox0003` (the `interactions` table, PR #258) was the FIRST
-post-baseline `create_table` and went CI-red on exactly this; `encrypt0002` never hit it because
-it only ALTERs.
+Two distinct traps from the #69/#247 work, both invisible to unit tests that mock the session:
 
-**The rule:** every migration that creates a table (or index) must start with the self-adopt
-guard —
+1. **Re-selecting after a commit does NOT refresh an already-loaded relationship.** The session's
+   identity map returns the SAME object, keeping its stale (e.g. empty) collection — a `POST
+   /notes` handler committed the note, re-selected the parent with `selectinload`, and returned
+   `notes: []` anyway. Fix: `await db.refresh(obj, attribute_names=["notes", ...])` after the
+   commit. A 201 with the write visible in the DB but absent from the response is this bug.
+2. **`await db.rollback()` expires COMMITTED objects too.** Touching `obj.id` afterwards triggers a
+   lazy sync reload inside the async context → `greenlet_spawn has not been called` → the whole
+   request 500s. In a "guarded side-write" pattern (commit A; try commit B; except → rollback),
+   capture every attribute of A you still need BEFORE the guarded block. The guard that was meant
+   to make B optional otherwise takes A down with it (found by writing the coverage test for the
+   guard — the test caught a real bug, the exact point of rule 2's error-path coverage).
 
-```python
-if sa.inspect(op.get_bind()).has_table("interactions"):
-    return  # pre-Alembic install already has it; adopt, don't crash
-```
+## 23. The FIRST post-baseline CREATE TABLE migration must self-adopt (has_table guard)
 
-and the downgrade must be symmetric. This applies to EVERY future `create_table` in this repo,
-not just the first one: any pre-Alembic install that ever ran a newer `create_all` image has an
-unpredictable subset of tables. Test it both ways — migration on a clean DB creates; migration on
-a create_all DB no-ops (the drift-guard CI job catches the clean direction only).
+The drift-guard CI job (and any historical pre-Alembic host) simulates prod by running
+`Base.metadata.create_all` — which materializes every CURRENT model — then stamps `baseline0001`
+and upgrades. Any later migration that `op.create_table`s therefore crashes on DuplicateTable in
+exactly that scenario (first hit: `inbox0003`, #69/#258). Every migration that creates a table
+must start with `if sa.inspect(op.get_bind()).has_table("<table>"): return` (create_all also built
+the indexes, so skipping everything is correct). `encrypt0002` never hit this because it only
+ALTERs; test both directions — clean DB creates, create_all DB no-ops. Product context: after the one-time fresh-server
+pivot deploy, every deploy MIGRATES (user decision, 2026-09-05) — this guard class is permanent.
+
+## 24. Compose `${VAR:-}` forwarding turns "unset on the host" into "EMPTY in the container"
+
+The compose files forward env explicitly (`- SITE_NAME=${SITE_NAME:-}`); an unset host variable
+arrives as an empty string, and pydantic-settings takes a present-but-empty env var as the VALUE,
+silently overriding the field default ("" branding, "" CORS allowlist…). Either duplicate the
+default in the compose line (drift-prone) or — the #65 pattern — a `field_validator(mode="before")`
+that maps empty → field default for fields where empty is meaningless, EXCLUDING fields where empty
+is a documented off-switch (`analytics_id`). Pin both directions with tests. Corollary: a new
+Settings field does nothing in Docker until BOTH compose files forward it — grep the compose files
+whenever adding one. **#256 corollary, one review round later:** a wizard that GENERATES a secret
+must verify every compose file FORWARDS it — setup.sh printed working admin credentials while the
+dev compose silently dropped `ADMIN_PASSWORD`, so the backend refused to seed. `docker compose
+config` rendered against the generated `.env` is the 30-second check that catches this class.
+
+## 25. A test that asserts equality with UNMODIFIED defaults pins nothing
+
+Sharper special case of item 16, caught three times in one review (#255): `assert
+payload.owner_name == settings.owner_name` passes verbatim against a mutant that hardcodes the
+default value — defaults equal themselves. Same for a CORS test comparing middleware origins to
+the default list, and an email test asserting a name that IS the default. The pin is a DISTINCT
+patched value: monkeypatch `owner_name="Pin Owner"`, assert `"Pin Owner"` comes out. For wiring
+fixed at import time (middleware built at module load), monkeypatch the setting, `importlib.reload`
+the module, inspect the installed object's kwargs, and reload back in `finally`. And when the
+behavior is "async config arrives LATER" (SSR), the pin needs a stream that has NOT emitted yet
+(`ReplaySubject`, assert nothing-applied, then emit, assert applied) — every eager `of(config)`
+mock hides the race by emitting during construction.
+
+## 26. In this harness, a PreToolUse deny kills the ENTIRE compound command
+
+`git add && git commit && git push` denied by the pre-push gate means NOTHING ran — not even the
+`add`. Twice in one session an agent believed a commit existed because "only the push was denied";
+both times the working tree still held the changes and a later `push` reported "up-to-date" for
+the WRONG reason. Rule: after any hook deny, re-verify state (`git status`, `git log -1`) before
+reasoning about it; keep `commit` and `push` as separate Bash calls (the release-manager charter
+already mandates this — it applies to everyone).
 
 ---
 

@@ -59,3 +59,5 @@ agents/.venv/
 
 # Angular build cache (root-level, if a build ran outside frontend/)
 .angular/
+backend/perf/results/
+.playwright-mcp/

@@ -1,0 +1,16 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/api/chat",
+    "bodyPatterns": [
+      {
+        "contains": "__wiremock_error__"
+      }
+    ]
+  },
+  "response": {
+    "status": 500,
+    "body": "injected upstream failure"
+  }
+}

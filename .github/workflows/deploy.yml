@@ -693,6 +693,95 @@ jobs:
           path: frontend/playwright-report/
           retention-days: 7
 
+  integration-tests:
+    name: Integration Tests (WireMock Stack)
+    # Build/publish/deploy: push to `main` only, never on a pull request (#208).
+    # Runs in PARALLEL with the browser E2E: same built images, but the ollama
+    # service is WireMock (docker-compose.inttest.yml), so this stack needs no
+    # model pulls and exercises the AI boundary + composition + fault injection the
+    # E2E cannot (deterministic stubs, delay/500 mappings — #260/#261).
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend, build-admin-frontend, build-proxy]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Start stack (prod topology, ollama = WireMock)
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: mavrov
+          IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMAGE_TAG: sha-${{ github.sha }}
+          # Rule 10: identical posture to the E2E job — empty paid key, an
+          # ephemeral signing key, nothing from secrets. WireMock replacing
+          # Ollama makes a billable call structurally impossible here.
+          HIREFOLIO_GEMINI_API_KEY: ""
+          JWT_ALLOW_EPHEMERAL_SECRET: "true"
+        run: |
+          # Free disk first — the E2E job needed this to survive on the shared
+          # runner, and this job pulls the same four images (#261 review).
+          docker system prune -a -f --volumes
+          # Name the services WITH --no-deps: open-webui is multi-GB, unused by
+          # this suite, and would be dragged in via proxy's depends_on otherwise
+          # (measured locally — every real dependency is in the explicit list).
+          docker compose -f docker-compose.prod.yml -f docker-compose.inttest.yml up -d --no-deps db ollama backend frontend admin-frontend proxy
+
+      - name: Wait for real readiness
+        run: |
+          count=0
+          until curl -s -f http://localhost/api/app/health >/dev/null; do
+            count=$((count + 1))
+            if [ "$count" -ge 60 ]; then
+              echo "Backend never became healthy"; docker compose -f docker-compose.prod.yml -f docker-compose.inttest.yml logs --tail 80 backend ollama; exit 1
+            fi
+            sleep 3
+          done
+          echo "Backend healthy through the proxy."
+
+      - name: Seed the integration admin user
+        run: docker compose -f docker-compose.prod.yml -f docker-compose.inttest.yml exec -T backend python scripts/seed_e2e_user.py
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Run the black-box integration suite
+        working-directory: backend/tests_integration
+        env:
+          # BACKEND_URL means the backend ORIGIN (the overlay publishes :8000);
+          # PUBLIC_URL goes through the proxy — both surfaces covered
+          # (#261 review blocker 1: pointing BACKEND_URL at the proxy silently
+          # changed its meaning and made the root-banner test impossible).
+          BACKEND_URL: http://localhost:8000
+          PUBLIC_URL: http://localhost
+        run: |
+          pip install --quiet pytest httpx
+          # Gating run: deterministic composition cases only. Wall-clock
+          # fault budgets are reported by the next step but don't gate a
+          # publish on shared-runner timing (#261 review major 5).
+          python -m pytest . -q -m "not faults"
+
+      - name: Fault-injection timing cases (reported, non-gating)
+        continue-on-error: true
+        working-directory: backend/tests_integration
+        env:
+          BACKEND_URL: http://localhost:8000
+          PUBLIC_URL: http://localhost
+        run: python -m pytest . -q -m faults
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.prod.yml -f docker-compose.inttest.yml logs --tail 120 backend ollama proxy
+
   # ============================================
   # PUBLISH ARTIFACTS (Split for Visibility)
   # ============================================
@@ -701,7 +790,7 @@ jobs:
     # Build/publish/deploy: push to `main` only, never on a pull request (#208).
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: [e2e-tests]
+    needs: [e2e-tests, integration-tests]
     permissions:
       contents: read
       packages: write
@@ -733,7 +822,7 @@ jobs:
     # Build/publish/deploy: push to `main` only, never on a pull request (#208).
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: [e2e-tests]
+    needs: [e2e-tests, integration-tests]
     permissions:
       contents: read
       packages: write
@@ -765,7 +854,7 @@ jobs:
     # Build/publish/deploy: push to `main` only, never on a pull request (#208).
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: [e2e-tests]
+    needs: [e2e-tests, integration-tests]
     permissions:
       contents: read
       packages: write
@@ -797,7 +886,7 @@ jobs:
     # Build/publish/deploy: push to `main` only, never on a pull request (#208).
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: [e2e-tests]
+    needs: [e2e-tests, integration-tests]
     permissions:
       contents: read
       packages: write

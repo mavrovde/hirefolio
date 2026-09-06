@@ -37,6 +37,17 @@ same callback and no signal/async-pipe consumption of that property — `npm run
 automates exactly this. An `await`-then-assign continuation is the heuristic's known blind spot
 (needs the #234 AST lint) — check those by eye.
 
+**Rule (the READ direction, #255): never read an async-populated field synchronously in
+`ngOnInit` — compose off the stream.** The mirror image of the repaint rule: a constructor
+subscription filling `this.site` looks done by `ngOnInit`, but on SSR the router resolves in a
+microtask while the config HTTP response is a macrotask — `ngOnInit` reads the placeholder, bakes
+it into interpolated strings (SEO meta, JSON-LD), and NO later re-apply can repair strings already
+built. Fix: `config$.pipe(take(1)).subscribe(cfg => updateSeo(...))` so SSR's stability tracking
+waits for the value. Unit-pin it with a NOT-yet-emitted `ReplaySubject` (assert nothing applied,
+then emit, assert applied) — every eager `of(config)` mock emits during construction and hides the
+race, which is why 321 green tests missed it. E2E only asserts the `<title>`, so it can't see a
+wrong meta description either — this class is invisible to both gates without that specific pin.
+
 ## The SSR HTTP contract
 
 - The SSR relative→absolute URL rewrite lives in a custom **`HttpBackend`**

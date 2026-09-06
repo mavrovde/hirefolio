@@ -20,8 +20,11 @@ the live dev DB:
 export TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov
 ```
 
-`conftest.py` resolves `TEST_DATABASE_URL` → `DATABASE_URL` → the app config,
-and auto-creates the database if it is missing (per-worker `<db>_gwN` copies
+`conftest.py` resolves `TEST_DATABASE_URL` → `DATABASE_URL` → the app config —
+and then HARD-REFUSES to run (pytest.exit) unless the resolved database name
+starts with `test_`: the suite drop/creates tables, so any other target would
+be destroyed (lesson §4, enforced in code and pinned by
+`tests/test_conftest_db_guard.py`). It also auto-creates the database if it is missing (per-worker `<db>_gwN` copies
 under `pytest -n`). `backend/scripts/create_test_db.py` can also create a test
 DB (with the `vector` extension) up front. Only `test_*` databases are ever
 dropped by the suite. Do not run two pytest suites at the same time — they
@@ -99,6 +102,48 @@ Coverage reports are generated per project under `coverage/{shared,public,admin}
 open coverage/public/index.html  # macOS
 xdg-open coverage/public/index.html  # Linux
 ```
+
+## The test tiers — what belongs where (#260)
+
+| Tier | Lives in | Runs against | Job |
+|---|---|---|---|
+| **Unit** (backend) | `backend/tests/` | in-process ASGI, mocks at boundaries | logic + error paths, 100% coverage gate |
+| **Unit** (frontend) | `projects/*/src/**/*.spec.ts` | TestBed, mocked services | component/service logic, 100% per project |
+| **Black-box integration** | `backend/tests_integration/` | the RUNNING Docker stack over real HTTP, **WireMock as the `ollama` service** | composition: proxy routing, CORS preflight, authz boundary, 404s, the #69 contact→inbox round trip, pgvector path, AI-boundary behavior incl. fault injection |
+| **Performance smoke** | `backend/perf/` (JMeter) | a running stack | executable latency budgets on public endpoints |
+| **E2E** | `frontend/projects/*-e2e/` (Playwright) | prod-topology stack | browser behavior, SSR/zoneless regressions |
+
+> Naming honesty: `backend/tests/integration/` (inside the unit tree) is
+> in-process **workflow unit tests** — it mocks the boundaries and never leaves
+> the process. The black-box tier above is the real integration layer.
+
+### Black-box integration tier
+
+```bash
+./run_integration_tests.sh              # boot (dev compose + inttest overlay), seed, run, stop
+KEEP_STACK=1 ./run_integration_tests.sh # leave the stack up for iterating
+```
+
+The `docker-compose.inttest.yml` overlay replaces the `ollama` service with
+**WireMock** (same hostname/port), so AI code paths run against deterministic,
+credential-free stubs — rule 10 by construction. Mappings live in
+`backend/tests_integration/wiremock/mappings/`; the `fault-*` mappings inject
+delays/500s (trigger with `__wiremock_slow__` / `__wiremock_error__` in a
+prompt) so timeout/fallback behavior (#207) is tested end-to-end. The suite has
+its own pytest rootdir on purpose — the unit run's coverage gate does not apply
+to system tests, and `cd backend && pytest` never collects them.
+
+### Performance smoke (JMeter, Dockerized — no local Java)
+
+```bash
+./backend/perf/run_jmeter.sh                          # 10 threads, 60 s, 800 ms budget
+THREADS=25 DURATION=120 ./backend/perf/run_jmeter.sh
+BUDGET_READ_MS=1 ./backend/perf/run_jmeter.sh         # negative test: must exit non-zero
+```
+
+Budgets are **executable**: a Duration Assertion fails the sample and the
+runner exits non-zero. HTML dashboard lands in `backend/perf/results/<ts>/`.
+Perf runs are local/nightly tooling — never a PR gate (shared-runner noise).
 
 ## Integration Testing with Docker/Podman
 

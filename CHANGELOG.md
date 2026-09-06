@@ -88,6 +88,27 @@ All notable changes to this project will be documented in this file.
   are pinned failing-first by a new `setup.test.sh` (10 cases) wired into the pre-push docs leg;
   the root `.env.example` gains the #65 identity block; `setup.sh` is explicitly scoped as the
   LOCAL quickstart (servers use `docs/DEPLOYMENT.md`).
+- **A serious integration & performance test tier — WireMock + JMeter** (#260) — the testing
+  pyramid gains its missing middle: `./run_integration_tests.sh` boots the stack with a
+  `docker-compose.inttest.yml` overlay where the `ollama` service **is WireMock** (same
+  hostname/port — the real model server never boots), then runs black-box tests in
+  `backend/tests_integration/` over real HTTP: composed-system health, proxy routing, the
+  pgvector post round-trip (create → list → slug → semantic search, embeddings served by the
+  stub), and the AI boundary with **fault injection** (`__wiremock_slow__`/`__wiremock_error__`
+  markers hit delay/500 mappings — fault injection is PROVEN to traverse the real boundary
+  (the 8 s delay is observed end-to-end), the groundwork for asserting #207's timeout/fallback
+  budgets at this tier —
+  credential-free — rule 10 by construction). `backend/perf/smoke.jmx` + `run_jmeter.sh` add
+  Dockerized JMeter load smoke with **executable latency budgets** (Duration Assertions; the
+  runner exits non-zero on violation). `README_TESTING.md` documents the tier contract and names
+  the old in-process `tests/integration/` for what it is (workflow unit tests). The tier is
+  **wired into the pipeline**: a new `Integration Tests (WireMock Stack)` job runs on every push
+  to `main` in parallel with the browser E2E — same built images, but with no model pulls
+  (WireMock stands in for the model server) — and all four publish jobs now gate on it, so a red integration tier blocks
+  publishing exactly like a red E2E. Unit suites and their coverage gates are untouched.
+  Lessons-learned §22–26 record the session's ORM/migration/compose/test-pinning footguns, and
+  `backend/conftest.py` now REFUSES any non-`test_*` database (lesson §4, enforced in code after
+  it recurred in practice).
 
 - **Recruiter communication hub: a unified inbox — no recruiter contact is ever missed** (#69) —
   the first piece of the Job-search CRM milestone. New `Interaction` model + `inbox0003` migration:

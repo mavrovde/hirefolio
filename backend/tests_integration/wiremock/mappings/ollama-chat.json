@@ -1,0 +1,21 @@
+{
+  "priority": 10,
+  "request": {
+    "method": "POST",
+    "urlPath": "/api/chat"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "model": "llama3.2",
+      "message": {
+        "role": "assistant",
+        "content": "[wiremock] deterministic chat reply."
+      },
+      "done": true
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}
