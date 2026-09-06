@@ -26,16 +26,25 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Response,
+)
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.logger import logger
 from app.models.interview import INTERVIEW_KINDS, INTERVIEW_OUTCOMES, Interview
 from app.models.opportunity import OPPORTUNITY_STAGES, Opportunity, OpportunityNote
 from app.services.auth import get_current_admin_user
+from app.services.email import EmailService
 from app.services.ics import build_event_ics
 
 # Interviews are reached two ways: nested under their opportunity (create/list)
@@ -273,6 +282,7 @@ def _advance_stage_to_interviewing(db: AsyncSession, opp: Opportunity) -> None:
 async def schedule_interview(
     opportunity_id: uuid.UUID,
     body: InterviewIn,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> InterviewOut:
     """Book a slot on an opportunity and advance its stage to `interviewing`."""
@@ -303,6 +313,22 @@ async def schedule_interview(
     _advance_stage_to_interviewing(db, opp)
     await db.commit()
     await db.refresh(interview)
+    # #247 criterion 3's reminder clause: owner email with the invite attached,
+    # AFTER commit so the .ics reflects the persisted row. Background — a mail
+    # failure must never fail the scheduling — and the service skips itself
+    # when SMTP is unconfigured.
+    background_tasks.add_task(
+        _send_reminder,
+        company=opp.company,
+        role_title=opp.role_title,
+        kind=interview.kind,
+        scheduled_at_iso=interview.scheduled_at.isoformat(),
+        duration_minutes=interview.duration_minutes,
+        location_or_link=interview.location_or_link,
+        interviewer=interview.interviewer,
+        ics_payload=_interview_ics(interview, opp),
+        rescheduled=False,
+    )
     return InterviewOut.from_model(interview)
 
 
@@ -365,13 +391,13 @@ async def upcoming_interviews(
     return [UpcomingInterviewOut.from_row(iv, opp) for iv, opp in rows]
 
 
-@router.get("/{interview_id}.ics", response_class=Response)
-async def export_interview_ics(
-    interview_id: uuid.UUID, db: AsyncSession = Depends(get_db)
-) -> Response:
-    """RFC 5545 VEVENT for one interview — importable into any calendar app."""
-    interview, opp = await _get_interview_or_404(db, interview_id)
+def _interview_ics(interview: Interview, opp: Opportunity) -> str:
+    """The ONE rendering of an interview as a VEVENT.
 
+    Shared by the export route and the reminder email so the attachment a
+    calendar imports and the file the admin downloads are the same event —
+    same UID included, so importing both UPDATES rather than duplicates.
+    """
     description = [
         (
             f"{interview.kind.capitalize()} interview for "
@@ -388,7 +414,7 @@ async def export_interview_ics(
     # A UID must be globally unique and stable across re-exports, so a calendar
     # UPDATES the event instead of duplicating it: row id @ the site's domain.
     host = urlparse(settings.site_url).hostname or "hirefolio"
-    body = build_event_ics(
+    return build_event_ics(
         uid=f"{interview.id}@{host}",
         summary=f"Interview: {opp.company} — {opp.role_title}",
         start=interview.scheduled_at,
@@ -398,6 +424,46 @@ async def export_interview_ics(
         cancelled=interview.outcome == "cancelled",
         dtstamp=interview.updated_at,
     )
+
+
+def _send_reminder(
+    *,
+    company: str,
+    role_title: str,
+    kind: str,
+    scheduled_at_iso: str,
+    duration_minutes: int,
+    location_or_link: str | None,
+    interviewer: str | None,
+    ics_payload: str,
+    rescheduled: bool,
+) -> None:
+    """BackgroundTasks target — the interactions._notify idiom: a reminder
+    failure must never surface into the API response that scheduled the round.
+    The service itself already skips gracefully when SMTP is unconfigured."""
+    try:
+        EmailService().send_interview_reminder(
+            company=company,
+            role_title=role_title,
+            kind=kind,
+            scheduled_at_iso=scheduled_at_iso,
+            duration_minutes=duration_minutes,
+            location_or_link=location_or_link,
+            interviewer=interviewer,
+            ics_payload=ics_payload,
+            rescheduled=rescheduled,
+        )
+    except Exception as e:
+        logger.error(f"Interview reminder failed in background: {e}")
+
+
+@router.get("/{interview_id}.ics", response_class=Response)
+async def export_interview_ics(
+    interview_id: uuid.UUID, db: AsyncSession = Depends(get_db)
+) -> Response:
+    """RFC 5545 VEVENT for one interview — importable into any calendar app."""
+    interview, opp = await _get_interview_or_404(db, interview_id)
+    body = _interview_ics(interview, opp)
     return Response(
         content=body,
         media_type="text/calendar; charset=utf-8",
@@ -422,6 +488,7 @@ async def get_interview(
 async def update_interview(
     interview_id: uuid.UUID,
     body: InterviewPatch,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> InterviewOut:
     """Reschedule a slot and/or record its outcome."""
@@ -434,9 +501,11 @@ async def update_interview(
 
     interview, opp = await _get_interview_or_404(db, interview_id)
 
+    rescheduled = False
     if "scheduled_at" in data:
         moved_to = _parse_scheduled_at(data["scheduled_at"])
         if moved_to != interview.scheduled_at:
+            rescheduled = True
             db.add(
                 OpportunityNote(
                     opportunity_id=opp.id,
@@ -469,6 +538,21 @@ async def update_interview(
     # refresh, never a post-commit re-select: the identity map would hand back
     # the same object with stale, expired state (§22).
     await db.refresh(interview)
+    # Only an actual MOVE re-notifies — recording an outcome or editing notes
+    # is not calendar news, and a same-instant "reschedule" is a no-op.
+    if rescheduled:
+        background_tasks.add_task(
+            _send_reminder,
+            company=opp.company,
+            role_title=opp.role_title,
+            kind=interview.kind,
+            scheduled_at_iso=interview.scheduled_at.isoformat(),
+            duration_minutes=interview.duration_minutes,
+            location_or_link=interview.location_or_link,
+            interviewer=interview.interviewer,
+            ics_payload=_interview_ics(interview, opp),
+            rescheduled=True,
+        )
     return InterviewOut.from_model(interview)
 
 

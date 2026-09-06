@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Interview reminder emails (#247 criterion 3, reminder clause — closes the deferral from #289)**:
+  scheduling (or genuinely RE-scheduling) an interview now emails the owner via the existing SMTP
+  service with the event's `.ics` attached — the same VEVENT the export route serves, from one
+  shared builder, stable UID included, so importing both updates rather than duplicates. Sent in a
+  FastAPI background task after commit: a mail failure can never fail the scheduling (pinned by a
+  test whose fake service raises), and the service skips itself gracefully when SMTP is
+  unconfigured — the criterion's own words, pinned with `smtplib` asserted NOT called. An
+  outcome-only PATCH and a same-instant "reschedule" send nothing (mutation-checked: forcing the
+  reschedule guard to always-fire fails the suite). This ships the reminder at booking time with
+  the invite carrying the calendar alarm; a scheduler-driven "N hours before" push would need a
+  process this repo deliberately does not run. 6 new tests (suite 940 → 946, coverage 100.00%).
 - **Interview calendar — admin UI (#247 phase 2 / #70)**: a `Calendar` screen in the admin panel
   showing every scheduled round across all opportunities, **grouped by local day** with the company,
   role, stage, kind, interviewer and location on each row. The window is switchable (7 / 14 / 30 / 90

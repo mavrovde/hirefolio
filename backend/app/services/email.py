@@ -104,6 +104,85 @@ Best regards,
             logger.error(f"Failed to send confirmation email to {email}: {e}")
             return False
 
+    def send_interview_reminder(
+        self,
+        *,
+        company: str,
+        role_title: str,
+        kind: str,
+        scheduled_at_iso: str,
+        duration_minutes: int,
+        location_or_link: str | None,
+        interviewer: str | None,
+        ics_payload: str,
+        rescheduled: bool = False,
+    ) -> bool:
+        """Owner-facing interview reminder with the event's `.ics` attached.
+
+        #247 criterion 3: "the owner gets a reminder email via existing SMTP
+        (skipped gracefully when SMTP is unconfigured)". Sent at scheduling
+        (and RE-scheduling) time with the invite attached — the calendar app
+        the owner imports it into carries the actual time-based alarm; this
+        repo deliberately has no scheduler process to fire one later.
+        """
+        if (
+            not settings.smtp_host
+            or not settings.smtp_user
+            or not settings.smtp_password
+        ):
+            logger.warning("Email configuration missing. Skipping email sending.")
+            return False
+
+        try:
+            verb = "rescheduled" if rescheduled else "scheduled"
+            msg = EmailMessage()
+            msg.set_content(f"""
+Interview {verb}!
+
+Details:
+--------------------------------
+Company: {company}
+Role: {role_title}
+Kind: {kind}
+When: {scheduled_at_iso} ({duration_minutes} min)
+Where: {location_or_link or "N/A"}
+Interviewer: {interviewer or "N/A"}
+--------------------------------
+
+The invite is attached — import it into your calendar for a timed reminder.
+""")
+            msg["Subject"] = (
+                f"Interview {verb}: {role_title} at {company} — {scheduled_at_iso}"
+            )
+            msg["From"] = settings.smtp_user
+            msg["To"] = settings.admin_email
+            msg.add_attachment(
+                ics_payload.encode("utf-8"),
+                maintype="text",
+                subtype="calendar",
+                filename="interview.ics",
+                # RFC 2046 defaults text/* to us-ascii; the payload is UTF-8
+                # (company names, interviewer names), and the export route
+                # already declares charset=utf-8 — the attachment must match.
+                params={"charset": "utf-8"},
+            )
+
+            with smtplib.SMTP(
+                settings.smtp_host,
+                settings.smtp_port,
+                timeout=settings.smtp_timeout_seconds,
+            ) as server:
+                server.starttls()
+                server.login(settings.smtp_user, settings.smtp_password)
+                server.send_message(msg)
+
+            logger.info(f"Interview reminder sent to {settings.admin_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}")
+            return False
+
     def send_interaction_notification(
         self,
         source: str,
