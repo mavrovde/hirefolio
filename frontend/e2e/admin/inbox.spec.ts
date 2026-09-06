@@ -147,7 +147,9 @@ test.describe('Admin Inbox', () => {
             route.fulfill({ status: 500, contentType: 'application/json', body: '{"detail":"boom"}' })
         );
         await page.goto('/inbox');
-        await expect(page.locator('[role="alert"]')).toBeVisible();
+        const alert = page.locator('[role="alert"]').first();
+        await expect(alert).toBeVisible();
+        await expect(alert).toContainText(/fail|error|load/i);
         // The empty-state copy must NOT appear on an error — "no messages" and
         // "we could not load your messages" mean very different things.
         await expect(page.getByText(/No interactions yet/)).toHaveCount(0);

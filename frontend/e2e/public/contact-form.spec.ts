@@ -126,10 +126,15 @@ test.describe('Public contact form', () => {
         await expect(form).toBeVisible();
         await expect(page.locator('#contact-name')).toBeVisible();
 
-        const box = await form.boundingBox();
-        expect(box).not.toBeNull();
-        // No horizontal overflow: the form fits the viewport it renders in.
-        expect(box!.width).toBeLessThanOrEqual(390);
+        // The PAGE must not scroll sideways. Measuring the form's own box is
+        // vacuous — reviewer measured 342px inside a 390px viewport, i.e. 48px
+        // of permanent slack, so an injected overflow still passed. The
+        // document's scrollWidth vs clientWidth is the real property (verified
+        // both directions: 0 clean, 534 with an injected overflow).
+        const overflow = await page.evaluate(
+            () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+        );
+        expect(overflow).toBeLessThanOrEqual(0);
     });
 
     test('labels every field for assistive technology', async ({ page }) => {

@@ -28,7 +28,10 @@ All notable changes to this project will be documented in this file.
   inbox; pipeline **quick-create** (whitespace-only required fields keep submit disabled) and its
   own load-failure state; and on the public form a **phone-viewport** case (fits 390px, no
   horizontal overflow) plus an **accessibility** case (every control has a real `<label for>`).
-  18 tests in the batch, suite 97 → 115.
+  18 tests in the batch, suite 97 → 115. Round 4 replaced a vacuous
+  assertion the reviewer measured: the phone-viewport case checked the FORM's box (342px inside a
+  390px viewport — 48px of permanent slack, so an injected overflow still passed) and now checks
+  the document's `scrollWidth - clientWidth`, which fails on a real overflow.
 
 ## [1.12.0] - 2026-09-06
 
