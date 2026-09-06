@@ -73,7 +73,7 @@ the real cause — never by weakening tests or checks.
    - a shared pre-push hook (`.claude/hooks/pre-push-tests.sh`) runs docs + backend + frontend
      tests before the push completes; if it blocks, fix what it reports.
    - **Your validation is NOT the merge gate.** However green your suite is, the PR still requires an
-     **independent `pr-reviewer` APPROVAL** before anyone merges it (CLAUDE.md rule 11). Deliver the
+     **independent `pr-reviewer` APPROVAL** before anyone merges it (CLAUDE.md rule 13). Deliver the
      PR; do not merge it and do not treat "tests pass" as sign-off.
 5. Report: what was wrong, the fix, verification output, and the PR URL.
 

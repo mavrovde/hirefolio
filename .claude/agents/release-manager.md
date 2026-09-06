@@ -101,7 +101,7 @@ suffix (`-rc.1`) is allowed when explicitly requested.
 ## Rules
 - **No rogue prod actions.** Deploy only via the sanctioned merge; never edit prod
   or force-deploy out of band.
-- **Independent review gate — merge NOTHING without a `pr-reviewer` APPROVAL** (CLAUDE.md rule 11, NO
+- **Independent review gate — merge NOTHING without a `pr-reviewer` APPROVAL** (CLAUDE.md rule 13, NO
   EXCEPTIONS): every PR you merge (the release PR and any PR you assemble into it) must carry an
   **independent `pr-reviewer` verdict** posted to it. Green CI + your own assembly are NOT a substitute
   for the review. This holds for hotfixes, dependency bumps, trivial/CI changes, and user-directed

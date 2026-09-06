@@ -78,7 +78,7 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 | agent | `backend-dev` | reproduce → fix → verify backend (Python/FastAPI) diagnoses; delivers via PR |
 | agent | `frontend-dev` | same for Angular/TS frontend |
 | agent | `devops-pipeline` | babysit the prod pipeline after a merge; classify failures, brief dev agents |
-| agent | `pr-reviewer` | independent review verdict on every PR (rule 11 merge gate) |
+| agent | `pr-reviewer` | independent review verdict on every PR (rule 13 merge gate) |
 | agent | `release-manager` | assemble + ship a release end-to-end (SemVer by content, green pipeline, tag) |
 | agent | `security-triage` | CodeQL/Dependabot/secret-scanning triage every release |
 | agent | `issue-author` | turn a rough idea into a grounded, criteria-complete GitHub issue |
@@ -132,7 +132,7 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
     candidates reviewed against this stack: `commit-commands` (the repo's rule-3 branch→PR flow,
     `/prep-pr`, and the `issue-workflow` skill already cover commit/PR hygiene with repo context),
     `claude-md-management` (CLAUDE.md is curated by hand; the #232 drift-check pattern guards it),
-    `code-review` (rule 11's `pr-reviewer` agent is the merge gate — a generic reviewer has less
+    `code-review` (rule 13's `pr-reviewer` agent is the merge gate — a generic reviewer has less
     repo context and no standing in the gate). Nothing filled a gap the in-repo toolkit doesn't;
     revisit only when a concrete gap surfaces in practice.
   - **Project plugin (`mavrovde-toolkit`) — DEFERRED, deliberately**: packaging the 7 agents +
@@ -215,7 +215,25 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
     needlessly exposes the credential to CI logs. Treat any such wiring as a critical bug to fix, not
     to run. (In this repo: CI passes `HIREFOLIO_GEMINI_API_KEY: ""` so the E2E falls back to the local Ollama;
     paid-API specs are also mocked.)
-11. **Independent review gate — EVERY PR requires a `pr-reviewer` verdict before merge. NO
+11. **Fix review findings IN the PR — do not convert them into new issues.** (Owner directive
+    2026-09-06: "if the behavior was not confirmed by the reviewer during the review — do not
+    open a new issue, resolve it immediately during the work on the PR. I do not need the amount
+    of issues growing, I need clear progress.") A finding is deferred to an issue ONLY when it is
+    genuinely out of the PR's scope (a different subsystem, or work the owner has scheduled for a
+    later release) — and then say so explicitly in the PR. Anything the reviewer could not
+    confirm, anything the PR itself introduced, and anything cheap to fix gets fixed in the next
+    round. Backlog growth is not progress.
+
+12. **A merged PR means VALIDATED ON EVERY APPLICABLE LAYER.** (Owner directive 2026-09-06.)
+    Before merge, the change must be exercised at every layer that can see its failure mode:
+    backend unit (pytest, 100%), frontend unit (Vitest ×3 projects, 100%), **E2E in a real
+    browser** for any user-facing surface, the **WireMock integration tier** for any composed
+    API/AI path, and plain mocks/stubs for boundaries the others cannot reach. "The units are
+    green" is not validation — v1.12.0 shipped three screens at 100% unit coverage that had never
+    rendered in a browser (lessons §29). If a layer genuinely does not apply, say WHICH and WHY in
+    the PR; if it applies and is missing, the PR is not ready.
+
+13. **Independent review gate — EVERY PR requires a `pr-reviewer` verdict before merge. NO
     EXCEPTIONS.** No pull request is merged until an **independent** `pr-reviewer` review (an APPROVE
     verdict) is **posted to the PR**. Green CI, a passing local/pre-push suite, and validation by the
     implementing dev agent (`backend-dev`/`frontend-dev`) are **necessary but NOT sufficient** — none

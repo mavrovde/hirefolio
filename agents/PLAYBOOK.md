@@ -168,3 +168,32 @@ COMMUNICATION (predictable hand-offs)
 
 Now perform YOUR role below with this discipline.
 ---
+
+## Never publish internal tool/session identifiers (owner directive, 2026-09-06)
+
+This repo is PUBLIC. Do not write `Claude-Session:` trailers, `claude.ai/code/session_…` URLs,
+agent ids, or any other internal tooling identifier into commit messages, PR bodies, issue
+comments, or the changelog — they are internal service information, and once in commit history
+they cannot be edited away. `Co-authored-by:` attribution is fine. When you notice one already
+published: scrub every editable surface immediately (PR and issue bodies/comments via `gh`),
+then report honestly what survives in immutable history rather than rewriting public history on
+your own initiative (that is a destructive, fork-breaking, tag-invalidating action — it needs
+explicit owner authorization, rule 9 in spirit).
+
+## Review findings are FIXED IN THE PR, not filed as issues (owner directive, 2026-09-06)
+
+When a reviewer raises something, resolve it in the next round of the same PR. File a follow-up
+issue ONLY when the work is genuinely out of scope (another subsystem, or a release the owner has
+already scheduled it into) — and say so in the PR. Anything the reviewer could not confirm,
+anything the PR introduced, and anything cheap belongs in the PR. A growing backlog is not
+progress; a merged, fully-fixed PR is.
+
+## A merged PR is validated on EVERY applicable layer (owner directive, 2026-09-06)
+
+Before you ask for a merge, the change must be exercised wherever its failure mode can appear:
+backend unit (pytest at 100%), frontend unit (Vitest, three projects at 100%), **E2E in a real
+browser** for any user-facing surface, the **WireMock integration tier** for any composed API/AI
+path, plus plain mocks for boundaries nothing else reaches. Green units are not validation —
+v1.12.0 shipped three screens at 100% unit coverage that had never rendered in a browser. If a
+layer does not apply, name it and say why in the PR; if it applies and is missing, the PR is not
+ready.

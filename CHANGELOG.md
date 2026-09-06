@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+- **Internal AI-tooling session identifiers must never reach public surfaces** (owner directive)
+  — CLAUDE.md rule 8 and `agents/PLAYBOOK.md` now forbid writing `Claude-Session:` trailers or
+  `claude.ai/code/session_…` URLs into commits, PR bodies, issues or the changelog on this PUBLIC
+  repo (`Co-authored-by:` attribution stays). All 17 affected PR bodies were scrubbed; the
+  repo-wide search now returns zero editable occurrences.
+
+### Changed
+- **Two engineering rules added, one renumbered** (owner directives 2026-09-06) — **rule 11: fix
+  review findings IN the PR** rather than converting them into issues (a follow-up issue is for
+  genuinely out-of-scope work only; backlog growth is not progress), and **rule 12: a merged PR
+  means validated on every applicable layer** — backend unit, frontend unit, E2E in a real
+  browser for user-facing surfaces, the WireMock integration tier for composed API/AI paths, and
+  mocks for what nothing else reaches; if a layer doesn't apply, the PR must name it and say why.
+  The independent-review gate moves from rule 11 to **rule 13** (all references across CLAUDE.md,
+  the seven agent charters, the skills and the shared playbook renumbered in this commit).
+- **Effort reports now record the MODEL per step** and Project 3 gains a `Model` field
+  (`fable-5`/`opus-5`/`sonnet-5`/`haiku-4.5`/`mixed`), so cost, review rounds and defects caught
+  can be compared per model rather than only per agent.
+
 ### Added
 - **E2E coverage for every v1.12.0 user-facing surface** — the release shipped three screens whose
   only browser validation was "the suite didn't break". 18 tests, suite **97 → 115**: the public

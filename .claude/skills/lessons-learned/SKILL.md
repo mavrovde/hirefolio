@@ -216,7 +216,7 @@ skipped**. The implementing dev agent delivers the PR and does **not** merge; it
 necessary but not sufficient. Every merged PR must carry a visible review comment. If one ever slips
 through un-reviewed, post a **retrospective** review on the merged PR and fix-forward on any finding
 (as was done for the four un-gated merges in the incident that produced this rule). This is **CLAUDE.md
-rule 11**, enforced via the `pr-reviewer` agent.
+rule 13**, enforced via the `pr-reviewer` agent.
 
 ---
 
@@ -537,7 +537,7 @@ believed the general case had been found and had only found an instance.
    pass denies identically at 7.2 s instead of 19.7 s. Reviewing a budget means asking "what runs
    next, and is *it* bounded?"
 
-This is the clearest evidence yet for CLAUDE.md rule 11: an independent reviewer caught a security
+This is the clearest evidence yet for CLAUDE.md rule 13: an independent reviewer caught a security
 regression in four consecutive rounds that the author, the author's own new tests, and green CI all missed —
 and CI *could not* have caught it, because nothing in the pipeline runs that suite (#208, #210).
 
