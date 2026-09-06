@@ -57,7 +57,7 @@ All notable changes to this project will be documented in this file.
 - **Live-freshness gate: "green pipeline" can no longer impersonate "live site"** (#169) — a new
   scheduled `Live Freshness` workflow (daily + on-demand, no secrets needed) probes the live site
   and FAILS RED whenever live ≠ released, via the shared `scripts/check_live_freshness.sh`
-  (also used by `/deploy-status`): `backend_version` from `/api/app/stats/public` must equal
+  (its second caller is the deploy pipeline's health gate; wiring `/deploy-status` to it is #280): `backend_version` from `/api/app/stats/public` must equal
   the repo `VERSION`, and public `/admin/login` must 404; verdicts are distinct — 0 fresh /
   1 stale / 2 unreachable (an outage is not a pre-split frontend), and staleness evidence
   beats an outage headline in mixed states (a 200 proves a pre-workspace-split
