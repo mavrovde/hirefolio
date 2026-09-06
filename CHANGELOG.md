@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **Public E2E: language-switcher locators are exact-match** — `getByRole` name matching is
+  case-insensitive substring, so the #69 German submit button "senden" (contains "en"/"de")
+  collided with the EN/DE switcher buttons in strict mode and failed the post-merge Docker E2E
+  (run 34009222801). `exact: true` pins the switcher; regression class: any German copy
+  containing "en"/"de" — i.e. most of it.
 - **Destruction guard: many-segment cost reduced 4–10× on every measured shape** (#235) —
   `pipes_into_shell()` forked ~3 processes per separator-split segment with no budget check, so
   bulk alone defeated the guard regardless of parsing correctness: against the 15 s hook timeout
