@@ -8,7 +8,7 @@ import uuid
 from math import ceil
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -21,7 +21,6 @@ from app.models.opportunity import (
     Opportunity,
     OpportunityNote,
 )
-from app.models.user import User
 from app.services.auth import get_current_admin_user
 
 router = APIRouter(
@@ -31,7 +30,19 @@ router = APIRouter(
 )
 
 
+def _strip_str(v: object) -> object:
+    """Strip strings before length validation; empty-after-strip optional
+    fields become None (mirrors interactions.py's normalizers)."""
+    if isinstance(v, str):
+        v = v.strip()
+        return v or None
+    return v
+
+
 class OpportunityIn(BaseModel):
+    # Same normalization contract as the public ContactRequest (interactions.py):
+    # strip first, THEN validate — whitespace padding must not satisfy a minimum
+    # and a blank card must be impossible (phase 1 has no DELETE to undo one).
     company: str = Field(min_length=1, max_length=200)
     role_title: str = Field(min_length=1, max_length=200)
     stage: str = "lead"
@@ -42,6 +53,16 @@ class OpportunityIn(BaseModel):
     salary_note: str | None = Field(default=None, max_length=500)
     next_action: str | None = Field(default=None, max_length=500)
     next_action_date: str | None = None  # ISO date
+
+    _strip = field_validator(
+        "company",
+        "role_title",
+        "recruiter_name",
+        "link",
+        "salary_note",
+        "next_action",
+        mode="before",
+    )(_strip_str)
 
 
 class NoteOut(BaseModel):
@@ -114,11 +135,15 @@ class NoteIn(BaseModel):
     body: str = Field(min_length=1, max_length=20_000)
     interaction_id: uuid.UUID | None = None
 
+    _strip = field_validator("body", mode="before")(_strip_str)
+
 
 class PromoteIn(BaseModel):
     interaction_id: uuid.UUID
     company: str | None = Field(default=None, max_length=200)
     role_title: str | None = Field(default=None, max_length=200)
+
+    _strip = field_validator("company", "role_title", mode="before")(_strip_str)
 
 
 def _validate_stage(stage: str) -> None:
@@ -301,8 +326,3 @@ async def promote_interaction(
     await db.commit()
     opp = await _get_or_404(db, opp.id)
     return OpportunityOut.from_model(opp, with_notes=True)
-
-
-# get_current_admin_user is referenced via router dependencies; User import keeps
-# the dependency's annotation resolvable for OpenAPI generation.
-_ = User

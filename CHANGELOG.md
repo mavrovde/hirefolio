@@ -126,7 +126,7 @@ All notable changes to this project will be documented in this file.
   **Pipeline board** (cards by stage, quick-create, detail panel with timeline + stage control +
   next-action), and the Inbox gains **↗ Promote to pipeline** — one click turns a recruiter
   interaction into an opportunity, carrying the message as the first note and the recruiter's
-  contact onto the record (the interaction advances new → in_progress, never regressed). 14 backend
+  contact onto the record (the interaction advances new → in_progress, never regressed). 17 backend
   + 17 frontend tests; backend 100%, all three frontend projects 100%. Interviews/calendar and CV
   variants are #247's later phases.
 - **Recruiter communication hub: a unified inbox — no recruiter contact is ever missed** (#69) —
