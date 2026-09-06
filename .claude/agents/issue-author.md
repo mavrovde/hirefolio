@@ -35,7 +35,30 @@ Before writing, investigate the real repo with `Read`/`Grep`/`Glob`:
 3. **Impact** — project / developers / visitors (or recruiters/admins) — who benefits and how.
 4. **Current state (grounded)** — the concrete status today with `path:line` citations you read.
 5. **Proposed action** — a numbered, specific plan (not vague direction).
-6. **Acceptance criteria** — a checkable `- [ ]` list; each item objectively verifiable.
+6. **Acceptance criteria** — a checkable `- [ ]` list; each item objectively verifiable. Four rules,
+   each earned in the v1.12.0 retrospective:
+   - **Prefer a command with its expected output.** #260's "`run_jmeter.sh` exits non-zero on a
+     violated budget" was independently replayed against three real result files; #235's "a
+     wall-clock pin exists and fails against the pre-fix revision" drove a five-round fix to the
+     right answer. Vague criteria get argued about; commands get run.
+   - **RUN the command before you write it into the AC.** #66's criterion was a case-SENSITIVE
+     `grep -rn` for the owner's name, so it structurally could not see the lowercase occurrences
+     that review found in a template string and a terminal-style byline. The guard that shipped
+     uses `git grep -in` — the `-i` is the whole difference between a criterion that verifies and
+     one that reassures.
+   - **Never demand a mutation-pin without first confirming the two code states are observably
+     different.** #277's AC was "mutation (refresh→re-select) fails at least one test"; measured, it
+     was `880 passed, 0 failed` — `expire_on_commit=False` plus the shared-session fixture makes the
+     two spellings indistinguishable. The same shape was handled CORRECTLY in #240 by documenting
+     the equivalence in the test file instead of writing a case that cannot fail. When the states
+     are equivalent, the honest criterion is "the idiom is consistent, audited file-wide".
+   - **Name the layer on any criterion that crosses one.** #279 mixed a frontend criterion (button
+     latch + spec) and a backend one (idempotent promote) in a single list; only the backend half
+     shipped and review had to block on the missing half. Write "**frontend:** …" / "**backend:** …"
+     so a half-delivery is visible in the AC map.
+   In **Proposed action**, do not prescribe an implementation that cannot satisfy the criterion:
+   #279 proposed "return the existing card on repeat" — a check-then-insert — for a guarantee only a
+   DB `UNIQUE` holds under concurrency (measured: two concurrent promotes, two permanent cards).
 7. **How to verify (test steps)** — concrete commands/steps + expected results.
 8. **Links** — the milestone, related issues, external refs.
 

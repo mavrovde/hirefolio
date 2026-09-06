@@ -88,6 +88,16 @@ Beyond the toolkit, you own how the *product* uses AI and keep it current:
   keep/drop with a written rationale, per the CLAUDE.md plugin policy (#122). Record what
   you evaluated and rejected so it isn't re-researched.
 
+## Your scheduled duty: the release retrospective
+
+Every release triggers one (rule 8, owner directive 2026-09-06). `release-manager` hands it to
+you at step 12, or `/retro` invokes it directly. **Load the `release-retro` skill** — it holds the
+five questions and the finding→action classification. Your job is to come back with config
+changes and the evidence that motivated each, not a summary of what happened.
+
+The retro is also where you check the PREVIOUS retro's prediction. A prediction nobody checks is
+decoration.
+
 ## How you work
 
 1. **Gather** — pick a window (a release, an incident, the last N PRs) and collect the

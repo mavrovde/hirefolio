@@ -89,15 +89,18 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 | command | `/linkedin-sync` | scrape LinkedIn profile+posts → import into the backend |
 | command | `/deploy-status` | true deploy state: pipeline + published + LIVE version + verdict (#120) |
 | command | `/e2e` | the known-good Docker E2E loop (#117) |
+| command | `/retro` | release retrospective: turn the shipped release's evidence into config changes (mandatory release step) |
 | command | `/prep-pr` | pre-PR hygiene gate: stale-main, CHANGELOG dup, stale assertions (#119) |
 | skill | `issue-workflow` | issue/PR/milestone/label flow with copy-paste `gh` commands |
 | skill | `lessons-learned` | committed do-not-repeat KB — consult before SSR/pytest/CI-cache/release/destructive work |
+| skill | `release-retro` | the retrospective method: five questions, finding→action classification, the no-change-must-say-why rule |
 | skill | `e2e-validation` | the E2E loop + its traps, for agents (#117) |
 | skill | `env-gotchas` | macOS/BSD/gh platform pitfalls (#119) |
 | skill | `ssr-cd-safety` | zoneless repaint + SSR HTTP contract (#118) |
 | hook | `pre-push-tests.sh` | PreToolUse Bash: docs + backend + frontend gates before every real `git push` (command-position aware, #237) |
 | hook | `guard-destructive.sh` | PreToolUse Bash: blocks irreversible local/infra destruction (rule 9) |
-| hook | `hook-parse-lib.sh` | the ONE quote-aware command-parsing model, sourced by both hooks (#237) |
+| hook | `pre-merge-gate.sh` | PreToolUse Bash: refuses `gh pr merge` without an APPROVE verdict, or with `Closes #NN` against unticked criteria (rule 13 enforced, not asked) |
+| hook | `hook-parse-lib.sh` | the ONE quote-aware command-parsing model, sourced by all three hooks (#237) |
 | plugin | `frontend-design`, `context7`, `pyright-lsp`, `typescript-lsp`, `security-guidance` | per-plugin keep-rationale in "Plugins" below (#122) |
 | MCP | `postgres`, `playwright`, `github` | read-only SQL / browser automation / PRs+issues |
 
@@ -108,13 +111,14 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
   AI-config map above for one-line purposes. **`ai-integration` is the improvement loop**: run it
   after a release or a painful incident to turn measured agent behavior (review rounds, effort
   telemetry, incidents) into edits to the charters/skills/hooks themselves.
-- **Hooks** (`.claude/hooks/`, via committed `.claude/settings.json`, both `PreToolUse Bash`):
+- **Hooks** (`.claude/hooks/`, via committed `.claude/settings.json`, all `PreToolUse Bash`):
   `pre-push-tests.sh` runs docs + backend pytest + backend lint/type (ruff check + ruff format --check
   + mypy) + frontend tests before every `git push` (env-configurable: `PREPUSH_RUN_LINT`/
   `PREPUSH_RUN_RUFF`/`PREPUSH_RUN_MYPY` …, self-gating); `guard-destructive.sh` blocks irreversible
-  local/infra destruction (rule 9) — bypass one command with `GUARD_DESTRUCTIVE=0`. Both hooks are
+  local/infra destruction (rule 9) — bypass one command with `GUARD_DESTRUCTIVE=0`. All three hooks are
   **command-position aware** (quoted prose is data, #204/#237) and share ONE parsing model,
-  `.claude/hooks/hook-parse-lib.sh`; each has a self-test (`*.test.sh`) beside it.
+  `.claude/hooks/hook-parse-lib.sh`; each has a self-test (`*.test.sh`) beside it, and all three self-tests run inside the pre-push gate — `pre-merge-gate.test.sh` with its `--mutations` contract, because its first version passed every case against a gate whose blocking had been removed.
+  `pre-merge-gate.sh` blocks `gh pr merge` unless the newest posted verdict states APPROVE and every `Closes #NN` points at an issue with all acceptance criteria ticked; bypass one authorized command with `PR_MERGE_GATE=0`.
 - **Plugins** (project scope; curation rationale + review cadence per #122 — re-review each
   release alongside the security check):
   - `context7` — KEEP: live library docs beat training-data recall for Angular 22 / FastAPI /
@@ -143,14 +147,15 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
     template product (#61/#88), but today every consumer of this config is this repo itself —
     packaging would add a version-sync surface with zero second consumers. Tracked as follow-up
     issue **#244**; trigger = the first real fork/template user (milestone #2).
-- **Skills** (`.claude/skills/`): all five — `issue-workflow` (issue/PR/milestone/label flow),
+- **Skills** (`.claude/skills/`): all six — `issue-workflow` (issue/PR/milestone/label flow),
+  `release-retro` (the release retrospective method — rule 8's mandatory step),
   `e2e-validation` (#117), `env-gotchas` (#119), `ssr-cd-safety` (#118), and
   **`lessons-learned`** — the committed "do-not-repeat" knowledge base (zoneless-CD + SSR-HttpBackend
   traps, pytest local-DB isolation, GHA multi-GB-cache net-negative, SemVer-by-content, green-pipeline
   release rule, destruction guardrail). **Consult `lessons-learned` before** SSR/HTTP/CD changes,
   local pytest, adding a CI cache, a release, or destructive local commands — it exists so we don't
   re-research what we already know.
-- **Slash commands** (`.claude/commands/`): all seven — `/verify`, `/release`, `/issue-triage`,
+- **Slash commands** (`.claude/commands/`): all eight — `/verify`, `/release`, `/retro`, `/issue-triage`,
   `/linkedin-sync`, `/deploy-status` (#120), `/e2e` (#117), `/prep-pr` (pre-PR hygiene gate:
   stale-main, CHANGELOG duplicates, stale
   old-behavior assertions — #119). The **`env-gotchas` skill** (`.claude/skills/env-gotchas/`)
@@ -192,7 +197,13 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
    secrets) rolled out + health-gated on the live host*; while those secrets are absent, live
    state must be verified manually (`docs/DEPLOYMENT.md`, issues #112/#156). Babysit the
    run and react to results (fix forward on red), then tag `vX.Y.Z`. **Check GitHub security reports
-   (CodeQL + Dependabot) every release** and triage them. Confirm before anything irreversible or
+   (CodeQL + Dependabot) every release** and triage them. **Then run the release retrospective
+   (`/retro`, owner directive 2026-09-06): analyse the release's issues, PRs, review threads and
+   effort telemetry, and turn what happened into committed changes to the agents/skills/hooks/rules
+   — a release is finished when what it taught is written down, not when the tag is pushed.**
+   Every retrospective is archived as `docs/retrospectives/vX.Y.Z.md` with the trend table in that
+   directory's README updated, so the series can be compared release over release. A
+   retrospective that produces no configuration change must say why, in writing. Confirm before anything irreversible or
    outward-facing (merging to `main` triggers a prod deploy).
 9. **No irreversible local/infra destruction.** Never `docker volume rm`, `docker volume prune`,
    `docker compose down -v/--volumes`, `docker system prune`, `docker image prune -a`, `DROP`/recreate
