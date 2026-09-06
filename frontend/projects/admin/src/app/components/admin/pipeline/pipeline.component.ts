@@ -7,6 +7,7 @@ import {
   OPPORTUNITY_STAGES,
   OPPORTUNITY_SOURCES,
 } from '../../../services/opportunities.service';
+import { AdminCvService, CvVersion } from '../../../services/admin-cv.service';
 
 /**
  * Job-search pipeline board (#247): opportunities by stage, with a detail
@@ -34,8 +35,15 @@ export class PipelineComponent implements OnInit {
 
   noteDraft = '';
 
+  // CV variants (#247 criterion 4): loaded lazily when the detail panel opens,
+  // because most panel opens never touch the CV control.
+  cvVersions: CvVersion[] = [];
+  cvChoice = '';
+  sendingCv = false;
+
   constructor(
     private opportunitiesService: OpportunitiesService,
+    private adminCvService: AdminCvService,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -85,6 +93,7 @@ export class PipelineComponent implements OnInit {
   }
 
   open(opportunity: Opportunity) {
+    this.loadCvVersions();
     this.opportunitiesService.get(opportunity.id).subscribe({
       next: (full) => {
         this.selected = full;
@@ -134,6 +143,53 @@ export class PipelineComponent implements OnInit {
       error: (err) => {
         console.error('Error adding note:', err);
         this.error = 'Failed to add the note';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  loadCvVersions() {
+    this.adminCvService.getVersions(1, 100).subscribe({
+      next: (page) => {
+        this.cvVersions = page.items;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        // Not fatal to the panel: the rest of the detail view works without
+        // the CV list; the control simply stays empty.
+        console.error('Error loading CV versions:', err);
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  /** The variant currently recorded on the selected opportunity, if the list
+   *  has it (it may have been deleted — the FK is SET NULL server-side). */
+  sentCvLabel(): string | null {
+    if (!this.selected?.sent_cv_id) {
+      return null;
+    }
+    const doc = this.cvVersions.find((v) => v.id === this.selected!.sent_cv_id);
+    return doc ? `${doc.version} (${doc.filename})` : 'a since-deleted version';
+  }
+
+  recordCvSent() {
+    if (!this.selected || !this.cvChoice || this.sendingCv) {
+      return;
+    }
+    this.sendingCv = true;
+    this.opportunitiesService.recordCvSent(this.selected.id, this.cvChoice).subscribe({
+      next: (full) => {
+        this.selected = full;
+        this.all = this.all.map((o) => (o.id === full.id ? full : o));
+        this.cvChoice = '';
+        this.sendingCv = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error recording the sent CV:', err);
+        this.error = 'Failed to record the sent CV';
+        this.sendingCv = false;
         this.cdr.detectChanges();
       },
     });

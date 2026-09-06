@@ -37,6 +37,14 @@ describe('OpportunitiesService', () => {
         req2.flush({ items: [], total: 0, page: 2, pages: 1 });
     });
 
+    it('records which CV variant was sent', () => {
+        service.recordCvSent('o1', 'cv9').subscribe();
+        const req = httpMock.expectOne(`${base}/o1/cv-sent`);
+        expect(req.request.method).toBe('POST');
+        expect(req.request.body).toEqual({ cv_document_id: 'cv9' });
+        req.flush({ id: 'o1', sent_cv_id: 'cv9' });
+    });
+
     it('gets, creates, moves stage, adds notes', () => {
         service.get('o1').subscribe();
         httpMock.expectOne(`${base}/o1`).flush({ id: 'o1' });

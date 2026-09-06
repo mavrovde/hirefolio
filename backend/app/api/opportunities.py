@@ -5,6 +5,7 @@ promotion of an inbox interaction (#69) into an opportunity.
 """
 
 import uuid
+from datetime import UTC, datetime
 from math import ceil
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
+from app.models.cv_document import CvDocument
 from app.models.interaction import Interaction
 from app.models.opportunity import (
     OPPORTUNITY_SOURCES,
@@ -85,6 +87,8 @@ class OpportunityOut(BaseModel):
     salary_note: str | None
     next_action: str | None
     next_action_date: str | None
+    sent_cv_id: uuid.UUID | None
+    sent_cv_at: str | None
     created_at: str
     updated_at: str
     notes: list[NoteOut] = []
@@ -105,6 +109,8 @@ class OpportunityOut(BaseModel):
             next_action_date=o.next_action_date.isoformat()
             if o.next_action_date
             else None,
+            sent_cv_id=o.sent_cv_id,
+            sent_cv_at=o.sent_cv_at.isoformat() if o.sent_cv_at else None,
             created_at=o.created_at.isoformat(),
             updated_at=o.updated_at.isoformat(),
             notes=[
@@ -303,6 +309,45 @@ async def add_note(
             opportunity_id=opp.id,
             interaction_id=body.interaction_id,
             body=body.body,
+        )
+    )
+    await db.commit()
+    # Identity-map trap: see move_stage — the relationship must be refreshed.
+    await db.refresh(opp, attribute_names=["notes", "updated_at"])
+    return OpportunityOut.from_model(opp, with_notes=True)
+
+
+class CvSentIn(BaseModel):
+    cv_document_id: uuid.UUID
+
+
+@router.post(
+    "/{opportunity_id}/cv-sent", status_code=201, response_model=OpportunityOut
+)
+async def record_cv_sent(
+    opportunity_id: uuid.UUID, body: CvSentIn, db: AsyncSession = Depends(get_db)
+) -> OpportunityOut:
+    """Record which CV variant went to this company, and when (#247 crit. 4).
+
+    Two records on purpose: the structured columns carry the CURRENT variant
+    for the UI, and the timeline note carries the durable human-readable
+    history (version + filename), which survives even if the CV row is later
+    deleted (the FK is SET NULL). Deliberately does NOT touch `is_active` —
+    what the public site serves and what went to one company are independent
+    facts, and a regression test pins that.
+    """
+    opp = await _get_or_404(db, opportunity_id)
+    cv = await db.get(CvDocument, body.cv_document_id)
+    if cv is None:
+        raise HTTPException(status_code=404, detail="CV document not found")
+
+    now = datetime.now(UTC)
+    opp.sent_cv_id = cv.id
+    opp.sent_cv_at = now
+    db.add(
+        OpportunityNote(
+            opportunity_id=opp.id,
+            body=f"CV sent: {cv.version} ({cv.filename})",
         )
     )
     await db.commit()

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **CV variants on opportunities (#247 criterion 4 — the pipeline's last phase)**: the admin
+  pipeline detail panel records **which CV variant went to which company, and when**. Backend:
+  `POST /admin/opportunities/{id}/cv-sent` sets a `SET NULL` FK + timestamp (migration
+  `cvvar0007`, self-adopt guard comparing column sets) and appends the durable
+  `CV sent: version (filename)` note to the timeline — which survives even if the CV row is later
+  deleted. **The invariant that matters is pinned by a dedicated test: recording a send NEVER
+  touches `is_active`** — what the public site serves and what went to one company are independent
+  facts. Admin UI: a variant picker in the detail panel (loaded lazily, public default flagged),
+  the current sent-variant with its timestamp, a since-deleted fallback label, and in-flight/
+  error states — every callback repainting explicitly (zoneless). 5 backend tests
+  (suite 946 → 951, 100.00%), 7 admin unit specs (suite 381 → 388, 100% on all four metrics),
+  and a browser E2E driving the full record flow with the POST body asserted on the wire.
 - **Interview reminder emails (#247 criterion 3, reminder clause — closes the deferral from #289)**:
   scheduling (or genuinely RE-scheduling) an interview now emails the owner via the existing SMTP
   service with the event's `.ics` attached — the same VEVENT the export route serves, from one

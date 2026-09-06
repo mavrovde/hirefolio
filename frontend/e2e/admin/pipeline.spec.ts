@@ -21,6 +21,8 @@ const OPP = {
     next_action: null,
     next_action_date: null,
     notes: [] as unknown[],
+    sent_cv_id: null as string | null,
+    sent_cv_at: null as string | null,
     created_at: '2026-09-06T09:00:00Z',
     updated_at: '2026-09-06T09:00:00Z',
 };
@@ -174,4 +176,44 @@ test.describe('Admin Pipeline board', () => {
         // board, not a blank page that looks like "you have no opportunities".
         await expect(page.getByRole('heading', { name: /^lead/i })).toBeVisible();
     });
+    test('records a CV variant as sent — the criterion-4 flow in a real browser', async ({ page }) => {
+        const CV = { id: 'cv-1', filename: 'cv-backend.pdf', version: 'backend-focus', is_active: false, created_at: '2026-09-01T09:00:00Z' };
+        await page.route(`**${API_PREFIX}/admin/cv/versions*`, (route) =>
+            route.fulfill({ status: 200, contentType: 'application/json',
+                body: JSON.stringify({ items: [CV], total: 1, page: 1, pages: 1 }) })
+        );
+        let recorded: Record<string, unknown> | null = null;
+        await page.route(`**${API_PREFIX}/admin/opportunities/op-1/cv-sent`, (route) => {
+            recorded = route.request().postDataJSON();
+            return route.fulfill({
+                status: 201, contentType: 'application/json',
+                body: JSON.stringify({
+                    ...OPP, sent_cv_id: 'cv-1', sent_cv_at: '2026-09-06T21:00:00Z',
+                    notes: [{ id: 'n1', interaction_id: null, body: 'CV sent: backend-focus (cv-backend.pdf)', created_at: '2026-09-06T21:00:00Z' }],
+                }),
+            });
+        });
+        await page.route(`**${API_PREFIX}/admin/opportunities/op-1`, (route) =>
+            route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(OPP) })
+        );
+        await page.route(`**${API_PREFIX}/admin/opportunities*`, (route) =>
+            route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(page1([OPP])) })
+        );
+
+        await page.goto('/pipeline');
+        await page.getByTestId('card-op-1').click();
+        await expect(page.getByText('No CV recorded for this opportunity yet.')).toBeVisible();
+
+        await page.getByLabel('CV variant').selectOption('cv-1');
+        await page.getByRole('button', { name: 'Record as sent' }).click();
+
+        // Zoneless: the subscribe callback must repaint the panel on its own.
+        // Specific locators — the version string legitimately appears in three
+        // places (the Sent line, the <option>, the timeline note).
+        await expect(page.getByText(/^Sent: backend-focus \(cv-backend\.pdf\)/)).toBeVisible();
+        await expect(page.getByText(/^CV sent: backend-focus \(cv-backend\.pdf\)$/)).toBeVisible();
+        await expect(page.getByText('No CV recorded for this opportunity yet.')).toHaveCount(0);
+        expect(recorded).toEqual({ cv_document_id: 'cv-1' });
+    });
+
 });
