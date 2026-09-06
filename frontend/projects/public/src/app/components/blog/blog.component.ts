@@ -49,6 +49,11 @@ export class BlogComponent implements OnInit {
     this.siteConfig?.config$?.subscribe((cfg) => (this.site = cfg));
   }
 
+  /** Terminal-style username derived from the runtime identity (#66). */
+  get unixUser(): string {
+    return (this.site.ownerName.split(' ')[0] || 'owner').toLowerCase();
+  }
+
   ngOnInit() {
     if (this.standalone) {
       // SEO strings must COMPOSE off the config stream (#255 review blocker 1):

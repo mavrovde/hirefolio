@@ -11,7 +11,7 @@ import { environment } from '../../environments/environment';
 const DTO = {
     site_name: 'mavrov.de',
     site_url: 'https://mavrov.de',
-    owner_name: 'Sergii Mavrov',
+    owner_name: 'Mock Owner',
     owner_headline: 'Principal Software Engineer',
     owner_description: 'Desc.',
     social_links: ['https://linkedin.example/x'],
@@ -43,7 +43,7 @@ describe('SiteConfigService', () => {
         expect(received).toEqual({
             siteName: 'mavrov.de',
             siteUrl: 'https://mavrov.de',
-            ownerName: 'Sergii Mavrov',
+            ownerName: 'Mock Owner',
             ownerHeadline: 'Principal Software Engineer',
             ownerDescription: 'Desc.',
             

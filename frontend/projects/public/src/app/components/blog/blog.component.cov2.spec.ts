@@ -71,7 +71,7 @@ describe('BlogComponent (cov2 branch coverage)', () => {
           useValue: {
             config$: of({
               siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
-              ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+              ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
               ownerDescription: 'Desc.', socialLinks: [],
               analyticsId: '',
             }),
@@ -132,6 +132,13 @@ describe('BlogComponent (cov2 branch coverage)', () => {
         description: expect.stringContaining('Portfolio Owner'),
       })
     );
+  });
+
+  it('unixUser derives from the runtime identity, with a fallback for empty names (#66)', () => {
+    (component as any).site = { ...(component as any).site, ownerName: 'Jane Doe' };
+    expect(component.unixUser).toBe('jane');
+    (component as any).site = { ...(component as any).site, ownerName: '' };
+    expect(component.unixUser).toBe('owner');
   });
 
   // Lines 65: early return when already loading

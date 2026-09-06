@@ -32,7 +32,7 @@ describe('BlogPostComponent — not-found SEO + SSR 404 status (#109)', () => {
             useValue: {
                 config$: of({
                     siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
-                    ownerName: 'Sergii Mavrov', ownerHeadline: 'Principal Software Engineer',
+                    ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
                     ownerDescription: 'Desc.', socialLinks: [],
                     analyticsId: '',
                 }),
@@ -101,5 +101,14 @@ describe('BlogPostComponent — not-found SEO + SSR 404 status (#109)', () => {
     // Browser is not the SSR platform → status must remain the client-side default.
     expect(responseInit.status).toBe(200);
     expect(seoServiceSpy.setNotFound).toHaveBeenCalled();
+  });
+
+  it('unixUser falls back for an empty owner name (#66)', () => {
+    // Prototype-level: the getter needs no DI, only the site field.
+    const c: any = Object.create(BlogPostComponent.prototype);
+    c.site = { ownerName: '' };
+    expect(c.unixUser).toBe('owner');
+    c.site = { ownerName: 'Jane Doe' };
+    expect(c.unixUser).toBe('jane');
   });
 });

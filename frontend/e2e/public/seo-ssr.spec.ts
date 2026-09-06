@@ -29,11 +29,11 @@ test.describe('SEO & SSR Verification', () => {
 
         // Check for rendered content (not just a blank app-root)
         expect(html).toContain('<app-root');
-        expect(html).toContain('Sergii Mavrov');
-        expect(html).toContain('Principal Software Engineer');
+        expect(html).toContain('Jane Doe');
+        expect(html).toContain('Senior Software Engineer');
 
         // Verify Meta Tags are in the initial HTML (Proof of SSR)
-        expect(html).toContain('<title>Home | Sergii Mavrov</title>');
+        expect(html).toContain('<title>Home | Jane Doe</title>');
         expect(html).toContain('description');
         expect(html).toContain('og:title');
         expect(html).toContain('twitter:card');
@@ -42,7 +42,7 @@ test.describe('SEO & SSR Verification', () => {
         expect(html).toContain('application/ld+json');
         expect(html).toContain('"@type"');
         expect(html).toContain('"Person"');
-        expect(html).toContain('"Sergii Mavrov"');
+        expect(html).toContain('"Jane Doe"');
     });
 
     // 4. Verify SSR (Blog Post Initial Paint)
@@ -57,7 +57,7 @@ test.describe('SEO & SSR Verification', () => {
 
         // If we want to test a specific post, we'd need to ensure the test DB has it.
         // For now, let's just verify the /blog list SSR.
-        expect(html).toContain('<title>Blog | Sergii Mavrov</title>');
+        expect(html).toContain('<title>Blog | Jane Doe</title>');
     });
 
     // 5. Verify semantic HTML in SSR output

@@ -277,6 +277,13 @@ run_checks() {
     }
     # setup.sh's .env helpers hold the user's secrets file to an idempotency
     # contract — pinned by its own self-test (#61/#256), same pattern.
+    # PII guard (#66): the demo-persona swap must never silently regress.
+    if [ -f "$ROOT/scripts/check_no_pii.sh" ]; then
+      ( cd "$ROOT" && bash scripts/check_no_pii.sh >/dev/null ) || {
+        echo "  ✗ check_no_pii.sh failed — run 'bash scripts/check_no_pii.sh' to see the hits"
+        return 1
+      }
+    fi
     if [ -f "$ROOT/setup.test.sh" ]; then
       ( cd "$ROOT" && bash setup.test.sh >/dev/null ) || {
         echo "  ✗ setup.test.sh failed — run 'bash setup.test.sh' to see which case"

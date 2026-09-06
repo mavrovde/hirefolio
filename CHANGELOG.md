@@ -97,7 +97,14 @@ All notable changes to this project will be documented in this file.
   clearly-fictional demo entries, `backend/app/static/cv.pdf` is a generated demo CV,
   `assets/images/profile.png` is a neutral initials avatar (7 KB vs the 718 KB personal photo),
   and the i18n consent copy names "the site owner" instead of a person. Real content is strictly
-  bring-your-own via the existing admin uploads (Profile Data + CV Manager).
+  bring-your-own via the existing admin uploads (Profile Data + CV Manager). Review round 2
+  finished what the fixtures alone couldn't: the #65 CONFIG DEFAULTS are now the demo persona too
+  (a fresh stack no longer renders the real owner's title/JSON-LD over a Jane Doe hero — the
+  canonical deployment sets its identity in the host `.env` like any forker), the terminal-style
+  `author:`/`-rw-r--r--` usernames derive from the runtime identity, the scrapers REQUIRE
+  `PROFILE_URL` instead of defaulting to a personal profile, spec/E2E fixtures are neutralized,
+  and a new **PII guard** (`scripts/check_no_pii.sh`) runs in the pre-push gate AND the CI
+  Version Consistency job — reintroducing an identifier now fails the pipeline.
   **⚠ Operator action (maintainer deployment):** the public profile falls back to these committed
   assets when no profile was uploaded via the admin panel — before rolling this release onto a
   host that relies on the fallback, upload the real Profile Data JSON and CV in the admin UI,

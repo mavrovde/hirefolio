@@ -50,7 +50,7 @@ export interface BlogPostVm {
 
                 <div class="flex flex-wrap items-center gap-4 text-sm text-secondary">
                   <span class="flex items-center gap-2">
-                    <span class="text-terminal-highlight">author:</span> sergii
+                    <span class="text-terminal-highlight">author:</span> {{ unixUser }}
                   </span>
                   <span class="flex items-center gap-2">
                     <span class="text-terminal-highlight">date:</span> {{ vm.post!.created_at | date }}
@@ -145,6 +145,11 @@ export class BlogPostComponent implements OnInit {
   ) {
     // cd-safety-ok: assigns a private field consumed only inside later callbacks — nothing template-bound.
     siteConfig.config$.subscribe((cfg) => (this.site = cfg));
+  }
+
+  /** Terminal-style username derived from the runtime identity (#66). */
+  get unixUser(): string {
+    return (this.site.ownerName.split(' ')[0] || 'owner').toLowerCase();
   }
 
   ngOnInit() {
