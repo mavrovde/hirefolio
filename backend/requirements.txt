@@ -1,6 +1,6 @@
 fastapi==0.141.1
 uvicorn[standard]==0.52.4
-pydantic>=2.13.0
+pydantic>=2.13.5
 pydantic-settings==2.15.0
 python-dotenv==1.2.3
 sqlalchemy[asyncio]==2.0.52
@@ -20,6 +20,6 @@ Pillow==12.3.0
 setuptools==84.0.0
 
 
-google-genai==2.20.0
+google-genai==2.22.0
 respx==0.23.1
 linkedin-api==2.2.1

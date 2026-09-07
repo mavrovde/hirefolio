@@ -55,9 +55,9 @@ def post_contact(client: httpx.Client, payload: dict) -> httpx.Response:
     FIVE contacts per full run — exactly the budget — so a back-to-back local
     re-run starts inside a saturated window. Every contact-posting test rides
     a 429 retry — this helper, or the equivalent loop the mailpit test keeps
-    inline (it asserts on the response between attempts): the sliding window
-    frees a slot 60s after the hit that took it, so a partial wait cannot
-    clear it.
+    inline (it breaks out on the first non-429 and asserts once, after the
+    loop): the sliding window frees a slot 60s after the hit that took it, so
+    a partial wait cannot clear it.
     """
     resp = client.post(f"{API}/interactions/contact", json=payload)
     for _ in range(3):
