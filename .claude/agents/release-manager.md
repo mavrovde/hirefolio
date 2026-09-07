@@ -48,6 +48,15 @@ about versioning, changelog accuracy, and not breaking prod.
   whether the `Roll Out To Prod Host` job actually ran; if it was skipped, never
   announce "prod is on vX.Y.Z" — verify the live site (footer `BE: vX.Y.Z`) or
   state that host rollout is pending.
+- **Verifying the host (#310):** when the rollout job DID run, confirming the
+  release means checking the live host, and the host is **shared by several
+  projects with no server panel**. Load `.claude/skills/ssh-deploy/` before any
+  host-side verification or rollback: it holds the failure→diagnosis table for
+  each rollout step, the certificate-renewal runbook, and the multi-tenant
+  do-not-touch list. Verify TLS **without `-k`** (curl exits 60 on a bad chain, so
+  a 200 is the assertion) and never run a command that is not scoped to
+  hirefolio's compose project. Design + host lifecycle:
+  `docs/wiki/production-deployment.md`.
 - **Tag:** `vX.Y.Z` on the merge commit (`git rev-parse main` — use the FULL SHA;
   `gh release create` rejects a short SHA as `target_commitish`).
 

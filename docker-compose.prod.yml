@@ -1,7 +1,24 @@
+# Shared defaults (#310 — hirefolio is ONE TENANT on a multi-project host).
+#
+# LOGGING: the json-file driver is UNBOUNDED by default, so one chatty tenant
+# fills the disk for every project on the box. 10 MB × 3 files caps each
+# container at ~30 MB. Override host-wide with DOCKER_LOG_MAX_SIZE /
+# DOCKER_LOG_MAX_FILE, or set the same defaults daemon-wide in
+# /etc/docker/daemon.json (see docs/wiki/production-deployment.md § Log rotation).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+    max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+
 services:
   db:
     image: pgvector/pgvector:pg16
     restart: always
+    logging: *default-logging
+    # Ceiling, not a reservation: an unbounded container can OOM-kill a
+    # NEIGHBOURING project, which is a cross-project outage, not a hirefolio bug.
+    mem_limit: ${DB_MEM_LIMIT:-2g}
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -10,7 +27,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
     ports:
-      - "${POSTGRES_PORT:-5433}:${POSTGRES_PORT:-5433}"
+      # LOOPBACK BY DEFAULT (#310, security change). Before this, the database
+      # was published on every host interface — and `ufw deny` does NOT protect
+      # it: Docker publishes ports with a DNAT rule in PREROUTING and the packet
+      # traverses FORWARD, so it never enters the INPUT chain ufw filters. A
+      # 127.0.0.1 bind is the fix that does not depend on the firewall at all
+      # (the kernel drops any off-host packet claiming 127.0.0.1 as destination).
+      # Reach it from a workstation over an SSH tunnel, never by re-opening this.
+      # Escape hatch, eyes open: POSTGRES_BIND_HOST=0.0.0.0.
+      - "${POSTGRES_BIND_HOST:-127.0.0.1}:${POSTGRES_PORT:-5433}:${POSTGRES_PORT:-5433}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-hirefolio} -p ${POSTGRES_PORT:-5433}"]
       interval: 5s
@@ -22,6 +47,15 @@ services:
   ollama:
     image: ollama/ollama:0.5.7
     restart: always
+    logging: *default-logging
+    # THE named hog (#310): model pulls + inference with OLLAMA_KEEP_ALIVE=-1
+    # keep up to OLLAMA_MAX_LOADED_MODELS resident forever. Measured working set
+    # for the three pinned models (llama3.2 ~2 GB, llama3.2:1b ~0.8 GB,
+    # nomic-embed-text ~0.3 GB) plus runtime is well under this ceiling, so the
+    # default changes nothing for a healthy stack — it only stops a runaway from
+    # taking the whole box (and its neighbours) with it. Size it per host:
+    # docs/wiki/production-deployment.md § Resource isolation.
+    mem_limit: ${OLLAMA_MEM_LIMIT:-8g}
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
@@ -54,6 +88,8 @@ services:
   backend:
     image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-backend:${IMAGE_TAG:-1.13.0}
     restart: always
+    logging: *default-logging
+    mem_limit: ${BACKEND_MEM_LIMIT:-4g}
     volumes:
       # Persist the saved LinkedIn login session across deploys/restarts
       # (see LINKEDIN_COOKIES_DIR / app.services.linkedin.COOKIES_DIR).
@@ -149,6 +185,8 @@ services:
   frontend:
     image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-frontend:${IMAGE_TAG:-1.13.0}
     restart: always
+    logging: *default-logging
+    mem_limit: ${FRONTEND_MEM_LIMIT:-1g}
     expose:
       - "80"
       - "4000"
@@ -167,6 +205,8 @@ services:
   admin-frontend:
     image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-admin-frontend:${IMAGE_TAG:-1.13.0}
     restart: always
+    logging: *default-logging
+    mem_limit: ${ADMIN_FRONTEND_MEM_LIMIT:-512m}
     expose:
       - "80"
     environment:
@@ -178,8 +218,15 @@ services:
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:v0.11.0
-    container_name: open-webui
+    # NO fixed container name (#310): that compose key is HOST-GLOBAL and
+    # bypasses project scoping, so a second project on the same box running Open
+    # WebUI collides on the literal name and one of the two refuses to start.
+    # The compose-generated name (<project>-open-webui-1) is per-project, and
+    # the SERVICE NAME stays a network alias either way — which is what
+    # `proxy_pass http://open-webui:8080/` resolves (proxy/default.conf.template).
     restart: always
+    logging: *default-logging
+    mem_limit: ${OPEN_WEBUI_MEM_LIMIT:-2g}
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
 
@@ -192,8 +239,13 @@ services:
 
   proxy:
     image: ${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}-proxy:${IMAGE_TAG:-1.13.0}
-    container_name: global_proxy
+    # NO fixed container name (#310): `global_proxy` claimed a host-GLOBAL
+    # identity by name on a box hirefolio does not own. Resolve it via
+    # `docker compose -f docker-compose.prod.yml ps -q proxy` instead of a
+    # literal name (deploy.yml's proxy smoke check now does exactly that).
     restart: always
+    logging: *default-logging
+    mem_limit: ${PROXY_MEM_LIMIT:-512m}
     environment:
       # Owner-configurable proxy identity (see .env.example). Defaults preserve
       # the canonical mavrov.de behavior; a forker overrides these in the root .env.
@@ -208,8 +260,22 @@ services:
       - TRUSTED_PROXY_CIDRS=${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
       - REAL_IP_HEADER=${REAL_IP_HEADER:-X-Forwarded-For}
     ports:
-      - "80:80"
-      - "10443:443"
+      # PUBLISHED BINDINGS as ONE variable each (#310). hirefolio must be able to
+      # stop claiming host-global 80 on a shared box WITHOUT editing this file:
+      # the rollout job runs a hardcoded `docker compose -f docker-compose.prod.yml`
+      # (.github/workflows/deploy.yml), so a per-host override file would never
+      # be loaded — but the host `.env` IS read, on every rollout.
+      #
+      # Defaults are byte-identical to the pre-#310 values, so CI, the Docker E2E
+      # and the WireMock integration tier are untouched. On a SHARED-EDGE host the
+      # owner sets, in the host .env (this is the cutover step, not a code change):
+      #   PROXY_HTTP_PUBLISH=127.0.0.1:18080:80
+      #   PROXY_HTTPS_PUBLISH=127.0.0.1:18443:443
+      # …and the host edge (Caddy) terminates TLS on 80/443 and proxies to those.
+      # See docs/wiki/production-deployment.md § Multi-project host architecture
+      # and § Host port registry.
+      - "${PROXY_HTTP_PUBLISH:-80:80}"
+      - "${PROXY_HTTPS_PUBLISH:-10443:443}"
     depends_on:
       - frontend
       - admin-frontend
@@ -229,6 +295,8 @@ services:
   mailer:
     image: boky/postfix:v4.2.0
     profiles: ["mail"]
+    logging: *default-logging
+    mem_limit: ${MAILER_MEM_LIMIT:-256m}
     # No restart policy ON PURPOSE: with an empty MAIL_SENDER_DOMAIN postfix
     # exits at startup, and unless-stopped would crash-loop it silently
     # forever (#296 round 2). Fail once, visibly.

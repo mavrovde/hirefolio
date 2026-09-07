@@ -1,8 +1,8 @@
 #!/bin/sh
 # Generate the nginx real-client-IP trust config + the admin allowlist from env.
 #
-# WHY: in the containerized prod topology the admin subdomain is fronted by a
-# reverse proxy (1panel) and Docker NAT, so nginx sees the Docker bridge gateway
+# WHY: in the containerized prod topology the admin subdomain is fronted by an
+# edge reverse proxy and Docker NAT, so nginx sees the Docker bridge gateway
 # as $remote_addr for EVERY client. Trusting the upstream CIDR and reading the
 # forwarded-for header restores the real client IP, which the admin allow/deny
 # rules (and access logs) then filter on.

@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Production deploy process: panel-free SSH flow on a multi-project host (#310)** — the researched
+  runbook `docs/wiki/production-deployment.md` (21 `##` sections; held in-repo until the owner
+  initializes the repository wiki, then moved verbatim — `docs/wiki/README.md`), plus the compose
+  hardening its design requires. hirefolio becomes **one tenant** on a shared box instead of its
+  owner:
+  - **"What the owner must prepare — cutover checklist"** (owner directive) — 36 checkable items,
+    each tagged `[owner]` or `[agent-at-cutover]`, covering the server and its **measured** minimum
+    sizing, domain/DNS, TLS ("nothing to buy" on the Let's Encrypt path), every secret to generate,
+    provider firewall and the port-25 reality, the GitHub-side actions, first-import content, and a
+    cutover-day running order. Sizing is measured on a live warm stack, not estimated: `ollama`
+    **4.195 GiB** resident with all three models, whole stack **≈ 5.4 GiB**, images **≈ 15.9 GB**
+    for one copy (of which `ollama` 7.29 GB and `open-webui` 6.51 GB), `ollama_data` **3.6 GB** ⇒
+    **8 GB RAM / 40 GB disk / 2 vCPU** minimum for hirefolio alone, 16 GB / 60–80 GB on a shared
+    host.
+  - **Shared edge chosen and argued.** A host-level Caddy edge owns 80/443 for every project;
+    hirefolio's own `proxy` was rejected as the edge because it is in `APP_SERVICES`
+    (`deploy.yml:934`), so every hirefolio rollout *and rollback* would recreate every tenant's
+    traffic path. Includes a measured finding: the edge must forward to the tenant's **443**, not its
+    80 — `Host: mavrov.de` on `:80` returns `301 https://mavrov.de/` (a redirect loop through the
+    edge), on `:443` returns `200`.
+  - **Fixed container names removed** (`open-webui`, `global_proxy`) from both compose files —
+    `container_name` is host-global and collides between projects. The service name remains a network
+    alias, verified on a live stack (`getent hosts open-webui` → resolved; nginx, which refuses to
+    start on an unresolvable upstream, started). `deploy.yml`'s proxy smoke check now resolves the
+    container with `docker compose ps -q proxy` instead of a literal name.
+  - **Bounded logging** on every service in both compose files (`json-file`, `max-size=10m`,
+    `max-file=3`, overridable) — the default driver is unbounded, so one chatty tenant fills the disk
+    for everyone; a daemon-wide `/etc/docker/daemon.json` equivalent is documented.
+  - **Memory ceilings** on every prod service, all parameterized, Ollama named as the hog
+    (`OLLAMA_MEM_LIMIT=8g`). Ceilings, not reservations: a healthy stack is unaffected.
+  - **`COMPOSE_PROJECT_NAME` guidance** in `.env.example`, shipped **unset** with a #288-style
+    continuity warning — Compose derives the name from the deploy directory basename, so pinning the
+    wrong value re-points the stack at new, empty volumes.
+  - **Postgres is no longer internet-facing**: `POSTGRES_BIND_HOST` defaults to `127.0.0.1`. Note
+    `ufw` does **not** filter Docker-published ports (DNAT in `PREROUTING`, never reaches `INPUT`), so
+    a firewall rule was never the fix.
+  - **`ssh-deploy` skill** (`.claude/skills/ssh-deploy/`) — failure→diagnosis for every step of
+    `Roll Out To Prod Host`, the certificate-renewal runbook and the multi-tenant do-not-touch list;
+    referenced from the `devops-pipeline` and `release-manager` charters and the CLAUDE.md AI-config
+    map. Lessons-learned §44 records the four shared-host defaults that assume a dedicated machine.
+  - Residual **1Panel/panel references removed** from `docs/`, `.env.example`, `proxy/` and
+    `.claude/` (5 → 0), generalized to "whatever terminates TLS at the edge"; the product's own
+    "admin panel" wording is untouched. `docs/DEPLOYMENT.md` now states the canonical split (compose
+    runbook here, host lifecycle in the wiki) and warns that the `DEPLOY_*` secrets must not be added
+    before 443 serves a real certificate — the health gate polls 443 while the stack self-signs.
+
+  Compose defaults are byte-identical to the previous published bindings (`80:80`, `10443:443`), so
+  CI, the Docker E2E and the WireMock integration tier are unchanged; the shared-edge remap is a host
+  `.env` setting applied at cutover.
 - **v1.13.0 release retrospective (#265)** — `docs/retrospectives/v1.13.0.md` plus the trend row,
   from 16 merged PRs and 50 reviewer verdicts read in full. Two new repo-contract lints, each with a
   self-test that runs beside it in the pre-push gate; the first also runs in CI, the second is

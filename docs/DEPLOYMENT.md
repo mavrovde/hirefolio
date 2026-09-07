@@ -1,5 +1,18 @@
 # Deployment
 
+> **Two documents, one split (#310).** **This file is canonical for the compose
+> project runbook** — environment variables, image coordinates, rollout secrets,
+> per-release operator actions. **The host lifecycle and the multi-project layout
+> are canonical in the wiki article**: provisioning, OS hardening, the shared
+> edge, the host port registry, TLS issuance and renewal, backup/restore and
+> incident response. That article lives at
+> [`docs/wiki/production-deployment.md`](wiki/production-deployment.md) until the
+> repository wiki is initialized, after which it moves there verbatim.
+> Read the wiki article **before** the first deploy below; this file assumes the
+> host it describes already exists. Its **"What the owner must prepare — cutover
+> checklist"** section is the list to work through first: server sizing, DNS, TLS,
+> the secrets to generate, and who does what.
+
 Two paths: a **first deploy** onto a clean host (manual, one-time) and the
 **automated rollout** that keeps the host current on every green `main` pipeline
 once the owner adds three secrets. CI publishes multi-tagged amd64 images to
@@ -16,10 +29,33 @@ while every job that builds, publishes, or rolls out is gated on
 
 ## First deploy (clean server)
 
-Prerequisites on the host: Docker Engine + the compose plugin, ports 80/443
-open, DNS for the public + admin hostnames pointed at the host. A panel such as
-1Panel may own SSL/certs, or you can mount your own certs (the proxy expects
-`fullchain.pem`/`privkey.pem` — see `proxy/`).
+Prerequisites on the host: Docker Engine + the compose plugin (installed from the
+vendor APT repo, not the convenience script), DNS for the public + admin
+hostnames pointed at the host, and **a TLS terminator that already holds a valid
+certificate for both hostnames** — no server panel is involved anywhere in this
+process (owner decision, 2026-09-07; `#156` was closed `not planned`).
+
+There is no panel to hand certificates to the stack, so exactly one of these is
+true and you must know which:
+
+- **Shared-edge host (the documented topology):** a host-level **Caddy** edge owns
+  80/443 for every project on the box, terminates TLS with certificates it obtains
+  and renews itself, and forwards to hirefolio on a loopback high port. This
+  container's self-signed `/CN=localhost` fallback (`proxy/entrypoint.sh`) is then
+  **correct** — that hop is internal. Set `PROXY_HTTP_PUBLISH` /
+  `PROXY_HTTPS_PUBLISH` in the host `.env` (see `.env.example`).
+- **This proxy terminates TLS (single-tenant box):** mount a real
+  `fullchain.pem`/`privkey.pem` into the proxy's `/etc/nginx/ssl` and publish
+  `443`. One certificate must cover the public **and** admin hostnames (a SAN) —
+  `proxy/default.conf.template` points both server blocks at the same files.
+
+Issuance, renewal, the SAN-vs-wildcard decision and the port registry are in
+[the wiki article](wiki/production-deployment.md) — do not re-derive them here.
+
+Also decide `COMPOSE_PROJECT_NAME` **before** the first `up`: unset, Compose
+derives it from the directory basename, so moving the deploy directory later
+orphans every volume. On an existing host, pin the name already in use rather
+than the one you would prefer (`.env.example`, "Multi-project host").
 
 ```bash
 # 1. Get the compose project onto the host (default rollout dir; override with
@@ -152,9 +188,20 @@ rolled by CI, verifies each running container **by image digest**, waits on
 issue #169), and **rolls back to the previous sha tag** on failure. Volumes
 are never touched (CLAUDE.md rule 9).
 
+**Do not add these secrets before the host can pass the gate.** The health step
+polls `https://<PUBLIC_URL>/api/app/health` on **443**. Out of the box this stack
+publishes `80` and `10443` and self-signs a `/CN=localhost` certificate, so on a
+host with nothing terminating TLS on 443 the rollout would mutate the host and
+then fail its own gate on every run. Order of operations: stand the edge up and
+get a real certificate first (wiki § TLS certificates), confirm `curl` succeeds with **no
+`-k`**, *then* add the secrets.
+
 Host-side hardening checklist: dedicated `deploy` user in the `docker` group
 only, `authorized_keys` restricted to that key, password auth off, fail2ban or
-an IP allowlist on sshd. The key in GitHub should exist nowhere else.
+an IP allowlist on sshd. The key in GitHub should exist nowhere else. The full
+procedure — sshd config, `ufw`, `unattended-upgrades`, the Docker APT repo, and
+why `ufw` does **not** protect a published container port — is in the
+[wiki article](wiki/production-deployment.md) § Host preparation.
 
 ## Upgrading a host across the #141 rename
 

@@ -657,12 +657,21 @@ jobs:
       # Nginx logged its start banner, preserving the old job's exact guarantee.
       - name: Verify Proxy Startup (Smoke)
         run: |
-          if [ "$(docker inspect -f '{{.State.Running}}' global_proxy)" != "true" ]; then
-            echo "❌ Proxy container died!"
-            docker logs global_proxy
+          # Resolve the container through compose, not by a literal name: #310
+          # removed `container_name: global_proxy` because container_name is
+          # HOST-GLOBAL and collides between projects on a shared host.
+          PROXY_CID=$(docker compose -f docker-compose.prod.yml ps -q proxy)
+          if [ -z "$PROXY_CID" ]; then
+            echo "❌ Proxy container not found (compose ps -q proxy returned nothing)"
+            docker compose -f docker-compose.prod.yml ps
             exit 1
           fi
-          LOGS=$(docker logs global_proxy 2>&1)
+          if [ "$(docker inspect -f '{{.State.Running}}' "$PROXY_CID")" != "true" ]; then
+            echo "❌ Proxy container died!"
+            docker logs "$PROXY_CID"
+            exit 1
+          fi
+          LOGS=$(docker logs "$PROXY_CID" 2>&1)
           echo "=== PROXY LOGS ==="
           echo "$LOGS"
           if echo "$LOGS" | grep -q "Starting Nginx..."; then
