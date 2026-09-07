@@ -47,6 +47,18 @@ services:
     ports: !override
       - "${POSTGRES_HOST_PORT:-5533}:${POSTGRES_PORT:-5433}"
 
+  # Catch-all inbox for the tier (#262): the email assertion runs against
+  # THIS, never a real relay. Present in the overlay — not only the dev base —
+  # because CI layers this overlay over docker-compose.prod.yml, which has no
+  # mailpit (review #296 round 1: the tier was green locally on the dev base
+  # and would have reddened main on the prod base).
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025"
+    networks:
+      - app-network
+
   backend:
     # The black-box tier needs the backend ORIGIN directly (root banner, API
     # semantics) as well as the proxy path — prod compose publishes only :80,
@@ -54,6 +66,15 @@ services:
     ports:
       - "8000:8000"
     environment:
+      # PINNED, not inherited (#296 review, rule 10): a maintainer with real
+      # provider credentials in .env must never have the tier deliver through
+      # a paid relay. Same defense the e2e overlay applies to the Gemini key.
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_USER=
+      - SMTP_PASSWORD=
+      - SMTP_STARTTLS=false
+      - SMTP_FROM=hirefolio-inttest@localhost
       # Same rule-10 posture as the E2E overlay: no signing secret to leak,
       # no paid key that could make a billable call.
       - JWT_ALLOW_EPHEMERAL_SECRET=true

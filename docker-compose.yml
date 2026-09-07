@@ -76,7 +76,9 @@ services:
       # Email (#262): the dev stack defaults to the bundled Mailpit catch-all —
       # every notification is visible at http://localhost:8025 with ZERO
       # config, and nothing ever leaves the machine (rule 10). Point SMTP_* at
-      # a real provider to override; empty SMTP_HOST disables sending.
+      # a real provider to override — and then ALSO set SMTP_STARTTLS=true:
+      # the false default below belongs to the plaintext local relay only.
+      # Empty SMTP_HOST disables sending.
       - SMTP_HOST=${SMTP_HOST-mailpit}
       - SMTP_PORT=${SMTP_PORT:-1025}
       - SMTP_USER=${SMTP_USER:-}

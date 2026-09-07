@@ -34,6 +34,16 @@ class EmailService:
                 if settings.smtp_starttls:
                     server.starttls()
                 if settings.smtp_user and settings.smtp_password:
+                    if not settings.smtp_starttls:
+                        # Credentials over plaintext is almost always a
+                        # misconfiguration (STARTTLS off is meant for the
+                        # no-auth local relay). Send anyway — a local Mailpit
+                        # with dummy creds is legitimate — but say so loudly.
+                        logger.warning(
+                            "SMTP login without STARTTLS: credentials sent in "
+                            "plaintext. Set SMTP_STARTTLS=true for a real "
+                            "provider."
+                        )
                     server.login(settings.smtp_user, settings.smtp_password)
                 server.send_message(msg)
             logger.info(success_log)

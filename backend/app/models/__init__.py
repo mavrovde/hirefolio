@@ -5,6 +5,7 @@ from app.models.interview import Interview
 from app.models.opportunity import Opportunity, OpportunityNote
 from app.models.post import Post
 from app.models.profile_snapshot import ProfileSnapshot
+from app.models.site_setting import SiteSetting
 from app.models.user import User
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "OpportunityNote",
     "Post",
     "ProfileSnapshot",
+    "SiteSetting",
     "User",
 ]

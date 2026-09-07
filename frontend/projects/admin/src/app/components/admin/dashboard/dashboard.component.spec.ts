@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DashboardComponent } from './dashboard.component';
+import { SiteSettingsService } from '../../../services/site-settings.service';
 import { StatsService, SystemStats } from '@mavrov/shared';
 import { of, throwError } from 'rxjs';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -9,6 +10,7 @@ describe('DashboardComponent', () => {
   let component: DashboardComponent;
   let fixture: ComponentFixture<DashboardComponent>;
   let statsServiceSpy: { getStats: Mock };
+  let siteSettingsSpy: { getAvailability: Mock; setAvailability: Mock };
 
   const mockStats: SystemStats = {
     posts: {
@@ -30,10 +32,17 @@ describe('DashboardComponent', () => {
 
   beforeEach(async () => {
     statsServiceSpy = { getStats: vi.fn() };
+    siteSettingsSpy = {
+      getAvailability: vi.fn().mockReturnValue(of({ value: 'listening' })),
+      setAvailability: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [DashboardComponent, RouterTestingModule],
-      providers: [{ provide: StatsService, useValue: statsServiceSpy }],
+      providers: [
+        { provide: StatsService, useValue: statsServiceSpy },
+        { provide: SiteSettingsService, useValue: siteSettingsSpy },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DashboardComponent);
@@ -76,5 +85,63 @@ describe('DashboardComponent', () => {
   it('should return empty languages if by_language is missing', () => {
     component.stats = { posts: {} } as any;
     expect(component.getLanguages()).toEqual([]);
+  });
+});
+
+describe('DashboardComponent — availability (#271)', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+  let siteSettingsSpy: { getAvailability: Mock; setAvailability: Mock };
+
+  beforeEach(async () => {
+    siteSettingsSpy = {
+      getAvailability: vi.fn().mockReturnValue(of({ value: 'listening' })),
+      setAvailability: vi.fn(),
+    };
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent, RouterTestingModule],
+      providers: [
+        { provide: StatsService, useValue: { getStats: vi.fn().mockReturnValue(of(null)) } },
+        { provide: SiteSettingsService, useValue: siteSettingsSpy },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('loads the current state on init', () => {
+    expect(component.availability).toBe('listening');
+  });
+
+  it('surfaces a load failure', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    siteSettingsSpy.getAvailability.mockReturnValue(throwError(() => new Error('boom')));
+    component.loadAvailability();
+    expect(component.availabilityError).toBe('Failed to load availability');
+  });
+
+  it('saves a new state and reflects the server value', () => {
+    siteSettingsSpy.setAvailability.mockReturnValue(of({ value: 'open' }));
+    component.setAvailability('open');
+    expect(siteSettingsSpy.setAvailability).toHaveBeenCalledWith('open');
+    expect(component.availability).toBe('open');
+    expect(component.availabilitySaving).toBe(false);
+  });
+
+  it('rolls back on a failed save so the control never lies', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    siteSettingsSpy.setAvailability.mockReturnValue(throwError(() => new Error('no')));
+    component.setAvailability('open');
+    expect(component.availability).toBe('listening');
+    expect(component.availabilityError).toBe('Failed to save availability');
+    expect(component.availabilitySaving).toBe(false);
+  });
+
+  it('ignores a no-op click and a click while saving', () => {
+    component.setAvailability('listening');
+    component.availabilitySaving = true;
+    component.setAvailability('open');
+    expect(siteSettingsSpy.setAvailability).not.toHaveBeenCalled();
   });
 });

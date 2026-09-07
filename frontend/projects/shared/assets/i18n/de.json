@@ -48,7 +48,8 @@
     "CERTIFICATIONS_SUB": "> Zertifikate",
     "RECOMMENDATIONS": "> Empfehlungen",
     "BLOG": "> Blog_Beiträge",
-    "CONTACT": "> Kontakt_Info"
+    "CONTACT": "> Kontakt_Info",
+    "HIRE_ME": "Jetzt anfragen"
   },
   "COMMON": {
     "VIEW_CREDENTIAL": "[ Zertifikat ansehen ]",
@@ -129,5 +130,10 @@
     "SUCCESS": "Nachricht erhalten — ich melde mich in Kürze.",
     "ERROR": "Senden fehlgeschlagen. Bitte erneut versuchen oder die E-Mail oben nutzen.",
     "PRIVACY_NOTE": "Ihr Name, Ihre E-Mail und Ihre Nachricht werden gespeichert, damit der Seiteninhaber antworten kann, und niemals an Dritte weitergegeben."
+  },
+  "AVAILABILITY": {
+    "OPEN": "Offen für Angebote",
+    "LISTENING": "Gesprächsbereit",
+    "NOT_LOOKING": "Derzeit nicht auf der Suche"
   }
 }

@@ -9,6 +9,8 @@ import { environment } from '../../environments/environment';
  * Fetched at runtime from the backend so a prebuilt image is rebranded by
  * env vars alone; components never hardcode identity.
  */
+export const AVAILABILITY_STATES = ['open', 'listening', 'not_looking'] as const;
+
 export interface SiteConfig {
     siteName: string;
     siteUrl: string;
@@ -17,6 +19,9 @@ export interface SiteConfig {
     ownerDescription: string;
     socialLinks: string[];
     analyticsId: string;
+    /** Owner's job-search state (#271): 'open' | 'listening' | 'not_looking'.
+     *  GUARANTEED here — the projection normalizes an absent wire value. */
+    availability: string;
 }
 
 /** Backend wire shape (snake_case, see backend/app/api/site_config.py). */
@@ -28,6 +33,10 @@ interface SiteConfigDto {
     owner_description: string;
     social_links: string[];
     analytics_id: string;
+    /** ABSENT on an older backend (deploy-window skew) — normalized to the
+     *  default in the projection, per this service's degrade-never-break
+     *  contract. */
+    availability?: string;
 }
 
 /**
@@ -42,6 +51,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     ownerDescription: 'Professional software engineering portfolio.',
     socialLinks: [],
     analyticsId: '',
+    availability: 'listening',
 };
 
 @Injectable({
@@ -62,6 +72,21 @@ export class SiteConfigService {
                 ownerDescription: dto.owner_description,
                 socialLinks: dto.social_links,
                 analyticsId: dto.analytics_id,
+                // An older backend omits this (deploy-window skew). Without the
+                // fallback, undefined reached toUpperCase() downstream and the
+                // WHOLE availability stream errored — the indicator silently
+                // vanished while the rest of the hero rendered (measured against
+                // the running v1.12 container).
+                // Absent OR unknown both normalize (#295 review nit 8): a
+                // hand-edited DB row with a state outside the vocabulary
+                // would otherwise render a raw AVAILABILITY.<X> key with no
+                // dot colour. The write path validates; the read path
+                // degrades.
+                availability:
+                    dto.availability &&
+                    (AVAILABILITY_STATES as readonly string[]).includes(dto.availability)
+                        ? dto.availability
+                        : DEFAULT_SITE_CONFIG.availability,
             })),
             catchError(() => of(DEFAULT_SITE_CONFIG)),
             shareReplay(1)
