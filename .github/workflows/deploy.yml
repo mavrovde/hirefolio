@@ -660,9 +660,14 @@ jobs:
           # Resolve the container through compose, not by a literal name: #310
           # removed `container_name: global_proxy` because container_name is
           # HOST-GLOBAL and collides between projects on a shared host.
-          PROXY_CID=$(docker compose -f docker-compose.prod.yml ps -q proxy)
+          # `-a` is hardening, not a bug fix: plain `ps -q` was measured to list
+          # a restarting container, so the check already worked — but a proxy
+          # that has EXITED is exactly the failure this step exists to report,
+          # and without -a that case resolves to an empty id and the diagnosis
+          # degrades from "died, here are its logs" to "not found".
+          PROXY_CID=$(docker compose -f docker-compose.prod.yml ps -aq proxy)
           if [ -z "$PROXY_CID" ]; then
-            echo "❌ Proxy container not found (compose ps -q proxy returned nothing)"
+            echo "❌ Proxy container not found (compose ps -aq proxy returned nothing)"
             docker compose -f docker-compose.prod.yml ps
             exit 1
           fi

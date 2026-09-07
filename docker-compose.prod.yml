@@ -49,11 +49,12 @@ services:
     restart: always
     logging: *default-logging
     # THE named hog (#310): model pulls + inference with OLLAMA_KEEP_ALIVE=-1
-    # keep up to OLLAMA_MAX_LOADED_MODELS resident forever. Measured working set
-    # for the three pinned models (llama3.2 ~2 GB, llama3.2:1b ~0.8 GB,
-    # nomic-embed-text ~0.3 GB) plus runtime is well under this ceiling, so the
-    # default changes nothing for a healthy stack — it only stops a runaway from
-    # taking the whole box (and its neighbours) with it. Size it per host:
+    # keep up to OLLAMA_MAX_LOADED_MODELS resident forever. MEASURED on a warm
+    # stack: 4.195 GiB RSS with all three pinned models resident (llama3.2
+    # 2.0 GB, llama3.2:1b 1.3 GB, nomic-embed-text 274 MB) — so this ceiling is
+    # ~2x the observed working set and changes nothing for a healthy stack. It
+    # only stops a runaway from taking the whole box (and its neighbours) with
+    # it. Size it per host:
     # docs/wiki/production-deployment.md § Resource isolation.
     mem_limit: ${OLLAMA_MEM_LIMIT:-8g}
     volumes:

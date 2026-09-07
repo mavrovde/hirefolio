@@ -87,6 +87,25 @@ bash scripts/check_live_freshness.sh https://<public-host> "$(cat VERSION)"
 
 Rolling back is the same three commands with the `IMAGE_TAG` from `.env.rollback`.
 
+**One-time after the release that adds log bounds / memory ceilings (#310).** Both
+bind at container CREATE, and the rollout only recreates `backend frontend
+admin-frontend proxy` — so on an existing host `db`, `ollama` and `open-webui`
+keep their old unbounded configuration forever, including `ollama`, which is the
+hog the ceiling exists for. Run once, on the host:
+
+```bash
+cd /opt/hirefolio
+docker compose -f docker-compose.prod.yml up -d          # NO --no-deps
+# Compose recreates only what changed; volumes untouched (up -d, never down -v).
+# Verify, per service — mem=0 on db/ollama/open-webui means it has not run yet:
+docker inspect -f '{{.Name}} {{.HostConfig.LogConfig.Config}} mem={{.HostConfig.Memory}}' \
+  $(docker compose -f docker-compose.prod.yml ps -aq)
+```
+
+Interrupts THIS tenant only (no neighbour is in this compose project); Ollama
+re-warms from the cached volume, so nothing re-downloads but the first AI request
+is slow again. A fresh install never needs this.
+
 **Never** `docker compose down` on a shared host when `up -d --no-deps <services>`
 will do: `down` stops the whole project including `db` and `ollama`, and `down -v`
 destroys volumes (blocked by rule 9 / `guard-destructive.sh`).
@@ -96,8 +115,10 @@ fixed `open-webui` / `global_proxy` names because they are host-global and colli
 between projects:
 
 ```bash
-docker compose -f docker-compose.prod.yml ps -q proxy      # -> container id
-docker inspect -f '{{.State.Running}}' "$(docker compose -f docker-compose.prod.yml ps -q proxy)"
+# -aq, not -q, when DIAGNOSING: a container that has EXITED is the case you are
+# looking at, and plain -q would resolve it to an empty id.
+docker compose -f docker-compose.prod.yml ps -aq proxy      # -> container id
+docker inspect -f '{{.State.Running}}' "$(docker compose -f docker-compose.prod.yml ps -aq proxy)"
 ```
 
 ## Failure → diagnosis, per step of `Roll Out To Prod Host`

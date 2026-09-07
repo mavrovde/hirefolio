@@ -419,12 +419,17 @@ other-project.example {
 
 Two consequences for hirefolio's own configuration:
 
-- `TRUSTED_PROXY_CIDRS` must name the edge's source address, not the Docker
-  bridge default. Traffic now arrives from the host loopback via the Docker
-  gateway; set it to the gateway CIDR the proxy actually observes and **verify in
-  the proxy access log that `$remote_addr` is the real client**, not the gateway,
-  before trusting `ADMIN_ALLOWED_CIDRS` (lessons-learned §12 — an allowlist
-  without working `real_ip` is decoration).
+- `TRUSTED_PROXY_CIDRS` — **check it; do not assume it needs changing.** A
+  host-level edge connects to the tenant over loopback, so the packet still
+  reaches nginx through Docker NAT and `$remote_addr` is still the **Docker
+  bridge gateway** — which the committed default `172.16.0.0/12` already covers.
+  The likely outcome is that no change is needed. What is **not** optional is the
+  verification: **confirm in the proxy access log that `$remote_addr` is the real
+  client IP**, not the gateway, before trusting `ADMIN_ALLOWED_CIDRS`
+  (lessons-learned §12 — an allowlist without working `real_ip` is decoration,
+  and this is a runtime check that cannot be reproduced locally). Narrow the CIDR
+  to the exact observed gateway only if you want to tighten it; a trusted hop can
+  spoof the header, so trust as little as works.
 - `REAL_IP_HEADER` stays `X-Forwarded-For`; the Caddyfile above sets it.
 
 ### Network and volume naming convention
@@ -491,6 +496,45 @@ sudo systemctl restart docker     # containers pick it up on next recreate
 docker inspect -f '{{.HostConfig.LogConfig.Type}} {{.HostConfig.LogConfig.Config}}' $(docker ps -q)
 ```
 
+### These settings bind at container CREATE — which the rollout does for only 4 of 7 services
+
+Both `logging:` and `mem_limit:` are applied when a container is **created**, not
+when the image changes. The rollout runs `up -d --no-deps backend frontend
+admin-frontend proxy` (`deploy.yml`), and `db` / `ollama` / `open-webui` are
+deliberately **never** rolled by CI. So on a host that already exists, merging
+this change and letting the pipeline roll gives you bounded logs and ceilings on
+**four** services, while the other three keep running with their old, unbounded
+configuration — indefinitely, because nothing ever recreates them.
+
+That inverts the intent for the service that matters most: **`ollama` is the named
+hog, and it is one of the three the rollout does not touch.**
+
+One-time, on the host, after the first rollout that carries this change:
+
+```bash
+cd /opt/hirefolio
+docker compose -f docker-compose.prod.yml up -d          # NO --no-deps
+```
+
+Compose recreates only containers whose configuration differs, so this is a short
+restart of `db`, `ollama` and `open-webui` and a no-op for the rest. **Volumes are
+untouched** — it is `up -d`, never `down -v` (rule 9). Ollama re-warms its models
+from the cached `ollama_data` volume, so nothing is re-downloaded, but the first
+AI request afterwards is slow again. On a shared host this interrupts **only this
+tenant**: no neighbour's container is in this compose project.
+
+Verify it actually took, per service — the point of the exercise:
+
+```bash
+docker inspect -f '{{.Name}} {{.HostConfig.LogConfig.Config}} mem={{.HostConfig.Memory}}' \
+  $(docker compose -f docker-compose.prod.yml ps -aq)
+# every line: max-size/max-file present, and mem non-zero where a ceiling is set.
+# A `mem=0` on db/ollama/open-webui means the one-time recreate has not run yet.
+```
+
+A fresh install never sees this: the first `up -d` creates everything with the
+new configuration.
+
 ### Disk-space policy that does not require a prohibited command
 
 "The disk is full" is exactly when someone reaches for `docker system prune`. On a
@@ -548,6 +592,15 @@ ceilings. Size `OLLAMA_MEM_LIMIT` to leave every other tenant its working set: o
 an 8 GB box, lowering it to `5g` still clears the measured 4.195 GiB while
 reserving ~2 GB for a neighbour; on 16 GB the default is fine as shipped. Ollama's
 appetite is also why a **swap file** matters (§ Host preparation).
+
+> **On an existing host these ceilings do not exist until you recreate the
+> containers.** `mem_limit` binds at container create, and the rollout recreates
+> only `backend frontend admin-frontend proxy` — so `db`, `ollama` and
+> `open-webui` keep running unlimited until a one-time
+> `docker compose -f docker-compose.prod.yml up -d` (no `--no-deps`). `ollama` is
+> both the hog this table exists for and one of the three, so skipping that step
+> leaves the ceiling that matters unapplied. Command, caveats and the
+> per-service verification are in § These settings bind at container CREATE.
 
 CPU is left unlimited by default. Add `cpus:` to any service that needs it —
 `cpus: 2.0` under the service key — and prefer it over memory pressure as the
@@ -1175,8 +1228,10 @@ docker compose -f docker-compose.prod.yml logs -f --tail 100 backend
 docker compose -f docker-compose.prod.yml logs --since 30m proxy
 docker compose -f docker-compose.prod.yml ps
 
-# Resolve a container WITHOUT a literal name (#310 removed the fixed names)
-docker inspect -f '{{.State.Running}}' "$(docker compose -f docker-compose.prod.yml ps -q proxy)"
+# Resolve a container WITHOUT a literal name (#310 removed the fixed names).
+# Use -aq when diagnosing: an EXITED container is exactly what you are chasing,
+# and plain -q lists only running ones, so it would resolve to an empty id.
+docker inspect -f '{{.State.Running}}' "$(docker compose -f docker-compose.prod.yml ps -aq proxy)"
 
 # Host / daemon
 journalctl -u docker -n 200 --no-pager

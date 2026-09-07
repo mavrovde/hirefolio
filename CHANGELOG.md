@@ -41,6 +41,12 @@ All notable changes to this project will be documented in this file.
     for everyone; a daemon-wide `/etc/docker/daemon.json` equivalent is documented.
   - **Memory ceilings** on every prod service, all parameterized, Ollama named as the hog
     (`OLLAMA_MEM_LIMIT=8g`). Ceilings, not reservations: a healthy stack is unaffected.
+  - **Operator action on an EXISTING host, once:** both `logging:` and `mem_limit:` bind at
+    container *create*, and the rollout recreates only `backend frontend admin-frontend proxy`
+    (`--no-deps`) — so `db`, `ollama` and `open-webui` keep their old unbounded configuration
+    until a one-time `docker compose -f docker-compose.prod.yml up -d` (no `--no-deps`) on the
+    host. That includes `ollama`, the hog the ceiling exists for. Volumes untouched; a fresh
+    install needs nothing.
   - **`COMPOSE_PROJECT_NAME` guidance** in `.env.example`, shipped **unset** with a #288-style
     continuity warning — Compose derives the name from the deploy directory basename, so pinning the
     wrong value re-points the stack at new, empty volumes.
