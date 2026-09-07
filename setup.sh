@@ -147,5 +147,9 @@ else
   echo "  Admin password: (unchanged, from your .env)"
 fi
 echo
+echo "Email: dev captures everything in Mailpit (http://localhost:8025) with zero"
+echo "config; for real delivery set SMTP_* to a provider, or see the opt-in"
+echo "'mail' compose profile in docs/DEPLOYMENT.md (deliverability caveats there)."
+echo
 echo "Make it yours: edit the identity block in .env (OWNER_NAME, SITE_URL, ...)"
 echo "and upload your own profile data + CV in the admin panel — no code edits."

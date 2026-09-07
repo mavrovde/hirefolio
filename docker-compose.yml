@@ -73,6 +73,18 @@ services:
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
       - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY}
+      # Email (#262): the dev stack defaults to the bundled Mailpit catch-all —
+      # every notification is visible at http://localhost:8025 with ZERO
+      # config, and nothing ever leaves the machine (rule 10). Point SMTP_* at
+      # a real provider to override — and then ALSO set SMTP_STARTTLS=true:
+      # the false default below belongs to the plaintext local relay only.
+      # Empty SMTP_HOST disables sending.
+      - SMTP_HOST=${SMTP_HOST-mailpit}
+      - SMTP_PORT=${SMTP_PORT:-1025}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_STARTTLS=${SMTP_STARTTLS:-false}
+      - SMTP_FROM=${SMTP_FROM:-hirefolio@localhost}
       # Names ONLY (never values) of pre-#141 variables still set on the host, so
       # the backend can warn that they are ignored (#141). A credential never
       # enters the container through this.
@@ -125,6 +137,17 @@ services:
         condition: service_healthy
       ollama:
         condition: service_healthy
+    networks:
+      - app-network
+
+  # Catch-all SMTP + web inbox for DEV (#262): captures every outbound mail,
+  # delivers nothing externally. UI: http://localhost:8025. The prod compose
+  # deliberately has no such service — see the `mail` profile there.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"   # web UI + REST API (the integration tier asserts via it)
     networks:
       - app-network
 

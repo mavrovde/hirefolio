@@ -137,7 +137,8 @@ Then open <http://localhost:4200> (public site) and <http://admin.localhost:4200
 ### Manual start (the same stack, no wizard)
 
 ```bash
-# Start all services
+# Start all services (incl. Mailpit — every notification email lands in the
+# catch-all inbox at http://localhost:8025, nothing leaves the machine; #262)
 ./manage.sh start
 
 # View logs
