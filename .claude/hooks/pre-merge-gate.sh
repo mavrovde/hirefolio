@@ -380,13 +380,33 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 # case-insensitive body-wide match read as the verdict and allowed on.
 #
 # KNOWN RESIDUAL, deliberately unpinned (lessons §43): a fix report whose FIRST
-# LINE itself carries a marker (`## Round 4 — all blockers APPROVED-ready`) is
-# still selected and still allows. No lexical rule separates it from a real
-# heading, which also carries prose (`## ⛔ REQUEST CHANGES — round 5 (3a6d7bb)`),
-# so tightening would reject legitimate verdicts to catch a shape nobody has
-# posted. The charter convention ("## Round N — what changed") is the guard. A
-# case asserting the residual could never fail, so it is documented, not tested
-# (the #240 answer, applied again).
+# LINE itself carries a marker is still selected and still allows.
+#
+# THIS SHAPE IS POSTED IN THIS REPO — measured, not hypothetical. Sweeping all
+# 145 merged PRs (179 marker-bearing headings across 92 of them) finds two author
+# fix reports that the selection above picks OVER the reviewer's verdict:
+#   #281 (2026-09-06) "Round-1 APPROVE findings applied on `1abb0fe` …", 6 min
+#        after the reviewer's `## ✅ APPROVED`;
+#   #181 (2026-08-30) "Approved-with-findings applied before merge:", 2 min
+#        after the reviewer's `**✅ APPROVED** — …`.
+# Both were DECISION-NEUTRAL — the standing verdict was itself APPROVE — so no
+# false-allow has occurred. Flip the standing verdict and the same sentence
+# allows a merge against REQUEST CHANGES: the #291 hole, one line up.
+#
+# It stays unpinned anyway, because no lexical rule separates it from a REAL
+# reviewer heading that also puts prose BEFORE the marker — all measured in this
+# repo: `## Round 3 — ✅ APPROVED` and `## Round 2 — ⛔ REJECTED (…)` (#255), and
+# `PR-REVIEWER VERDICT: APPROVE` (#171). The first is already pinned as a case in
+# pre-merge-gate.test.sh. Tightening buys the residual at the price of rejecting
+# those. The GUARD is therefore the charter convention (`pr-reviewer.md` +
+# `agents/PLAYBOOK.md`: a fix report opens "## Round N — what changed", never with
+# a marker), and a case asserting the residual could never fail, so it is
+# documented rather than tested (the #240 answer, applied again).
+#
+# REVISIT TRIGGER — deliberately NOT "an actual bad merge": the shape exists, so
+# waiting for the incident is the posture this repo argues against. Revisit on the
+# first fix report with a leading marker posted while the standing verdict is
+# NEGATIVE — that instance is decision-CHANGING, and it is the cheap signal.
 VERDICT="$(printf '%s' "$PR_JSON" | jq -r '
   def heading: (.body // "") | split("\n") | map(select(test("\\S"))) | (.[0] // "");
   [ ((.reviews // [])[]  | {at: .submittedAt, body: (.body // "")}),

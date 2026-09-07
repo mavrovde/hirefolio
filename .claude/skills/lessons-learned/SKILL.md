@@ -988,14 +988,31 @@ matcher is the tell that the defect was the *rule*, not the wording of any one r
 
 **KNOWN RESIDUAL — say it out loud, because a gate whose limit is unwritten gets trusted past it.**
 The heading rule cannot tell a verdict from a fix report whose **first line itself** contains a
-marker: measured, `## Round 4 — all blockers APPROVED-ready` is still selected and still allows.
-**No lexical rule closes this** — real reviewer headings carry prose too (`## ⛔ REQUEST CHANGES —
-round 5 (3a6d7bb)`), so any tightening that rejects the fix report also rejects legitimate verdicts,
-which is a regression traded for a shape nobody has posted. The convention (`## Round N — what
-changed`) is therefore the guard, and it lives in `pr-reviewer.md` and the playbook. Deliberately NOT
-pinned by a test case: a case asserting the residual can never fail against any hook that has it, and
-this repo's rule is to document an equivalence rather than dress it up as coverage (the #240 answer).
-If a fix report ever *does* false-allow in practice, that is the evidence to revisit — not this note.
+marker. **This shape IS posted here — it is the repo's own habit, not a hypothetical.** Sweeping all
+**145 merged PRs** (179 marker-bearing headings across 92 of them) finds two author fix reports that
+the gate selects *over the reviewer's verdict*:
+
+| PR | The author's first line | Posted after |
+|---|---|---|
+| **#281** (2026-09-06) | ``Round-1 APPROVE findings applied on `1abb0fe` (wording only…)`` | the reviewer's `## ✅ APPROVED`, 6 min earlier |
+| **#181** (2026-08-30) | `Approved-with-findings applied before merge:` | the reviewer's `**✅ APPROVED** — …`, 2 min earlier |
+
+Both were **decision-neutral** — the standing verdict was itself APPROVE — so no false-allow has
+happened. Flip the standing verdict and the same sentence allows a merge against REQUEST CHANGES:
+the #291 hole, one line up.
+
+**It stays unpinned anyway, and the reason is measurable:** no lexical rule separates it from a REAL
+reviewer heading that also puts prose **before** the marker — `## Round 3 — ✅ APPROVED` and
+`## Round 2 — ⛔ REJECTED (…)` (#255), `PR-REVIEWER VERDICT: APPROVE` (#171). The first is already
+pinned as a case in `pre-merge-gate.test.sh`. Tightening buys the residual at the price of rejecting
+those three. So the **guard is the convention** — `pr-reviewer.md` and the playbook both require a
+fix report to open `## Round N — what changed`, never with a marker — and the residual is documented
+rather than tested, because a case asserting it could never fail (the #240 answer).
+
+**Revisit trigger — deliberately NOT "an actual bad merge".** The shape exists, so waiting for the
+incident is the posture this repo argues against. Revisit on **the first fix report with a leading
+marker posted while the standing verdict is NEGATIVE**: that instance is decision-*changing*, and it
+is the cheap signal that arrives before the damage.
 
 ## Where the rules live (AI-config map)
 
