@@ -75,7 +75,11 @@
                 <span *ngIf="i.translation_status === 'pending'" class="text-xs text-gray-500">
                   translating…
                 </span>
-                <button *ngIf="i.translation_status === 'failed' || i.translated_message" type="button"
+<!-- 'pending' included deliberately: a backend restart between the 201 and the
+     task strands rows at pending forever, and the button IS the recovery path
+     (#298 round 2, minor B). Re-running an actually-in-flight translation is
+     harmless — the task only rewrites translated_* columns. -->
+                <button *ngIf="i.translation_status === 'failed' || i.translation_status === 'pending' || i.translated_message" type="button"
                   (click)="retranslate(i)" [disabled]="retranslatingId === i.id"
                   class="text-xs underline text-blue-700 disabled:opacity-40"
                   [attr.aria-label]="'re-run translation for ' + i.name">

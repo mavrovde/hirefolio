@@ -82,9 +82,10 @@ async def request_cv(
                 },
             )
             db.add(interaction)
-            # Flush assigns the PK while the object is live; touching it after
-            # commit would lazily reload an expired object (greenlet error, see
-            # cv_request_id above).
+            # Flush assigns the PK; captured before commit so the id survives
+            # the rollback path below, where the object is gone. (Post-commit
+            # access would also work — expire_on_commit=False — but only on
+            # the happy path.)
             await db.flush()
             inbox_interaction_id = interaction.id
             await db.commit()

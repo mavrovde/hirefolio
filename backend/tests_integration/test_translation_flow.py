@@ -12,7 +12,7 @@ import time
 
 import httpx
 
-from conftest import API
+from conftest import API, post_contact
 
 
 def _poll_translated(
@@ -36,9 +36,9 @@ def _poll_translated(
 
 
 def test_contact_message_is_translated_end_to_end(client, admin_headers):
-    created = client.post(
-        f"{API}/interactions/contact",
-        json={
+    created = post_contact(
+        client,
+        {
             "name": "Ilse Integration",
             "email": "ilse@agency.example",
             "message": "Hallo, sind Sie offen für eine neue Stelle? [inttest]",
@@ -55,9 +55,9 @@ def test_contact_message_is_translated_end_to_end(client, admin_headers):
 
 
 def test_rerun_endpoint_requires_admin_and_works_with_it(client, admin_headers):
-    created = client.post(
-        f"{API}/interactions/contact",
-        json={
+    created = post_contact(
+        client,
+        {
             "name": "Norbert NoAuth",
             "email": "norbert@agency.example",
             "message": "Guten Tag, hätten Sie Interesse? [inttest-rerun]",

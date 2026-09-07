@@ -10,7 +10,7 @@ import uuid
 
 import httpx
 
-from conftest import API
+from conftest import API, post_contact
 
 
 def test_admin_write_rejects_anonymous_callers(client: httpx.Client):
@@ -56,9 +56,9 @@ def test_contact_form_lands_in_the_admin_inbox(client: httpx.Client, admin_token
     validated, normalized) must surface in the admin inbox with the right
     source and status — the tier's headline composition case."""
     marker = f"it-{uuid.uuid4().hex[:12]}"
-    resp = client.post(
-        f"{API}/interactions/contact",
-        json={
+    resp = post_contact(
+        client,
+        {
             "name": "Integration Prober",
             "email": f"{marker}@integration.example",
             "company": "Tier Two GmbH",
@@ -87,9 +87,9 @@ def test_promote_is_idempotent_through_the_real_stack(
     a repeated promote — the unit test proves the handler, this proves the
     contract survives serialization, the proxy and the session boundary."""
     marker = f"idem-{uuid.uuid4().hex[:12]}"
-    created = client.post(
-        f"{API}/interactions/contact",
-        json={
+    created = post_contact(
+        client,
+        {
             "name": "Idem Prober",
             "email": f"{marker}@integration.example",
             "company": "Idem GmbH",

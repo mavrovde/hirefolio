@@ -304,7 +304,7 @@ describe('InboxComponent — transparent translation (#248)', () => {
         expect(bar?.querySelector('.font-mono')).toBeNull();
     });
 
-    it('a pending row shows progress without translation chrome', () => {
+    it('a pending row shows progress AND the re-translate recovery path', () => {
         component.items = [
             makeInteraction({ translation_status: 'pending' }),
         ];
@@ -316,6 +316,12 @@ describe('InboxComponent — transparent translation (#248)', () => {
         );
         expect(bar?.textContent).toContain('translating…');
         expect(component.displayedMessage(i)).toBe(i.message);
+        // A row stranded at 'pending' (backend restart mid-task) must be
+        // recoverable from the UI — the button is the only recovery path.
+        const retryBtn = Array.from(bar?.querySelectorAll('button') ?? []).find(
+            (b) => b.textContent?.includes('re-translate'),
+        );
+        expect(retryBtn).toBeTruthy();
     });
 });
 

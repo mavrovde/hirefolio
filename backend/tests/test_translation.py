@@ -277,7 +277,9 @@ async def test_owner_language_casing_and_region_are_normalized(
 ):
     """OWNER_LANGUAGE=EN or en-US must not make every English message look
     untranslated-into-target (and re-translate forever)."""
-    for raw_setting in ("EN", "en-US"):
+    # "" pins the fallback: an unset/blank OWNER_LANGUAGE means English, not
+    # a target of "" that nothing can ever equal.
+    for raw_setting in ("EN", "en-US", ""):
         with (
             patch("app.config.settings.owner_language", raw_setting),
             patch(

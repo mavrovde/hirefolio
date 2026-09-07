@@ -27,11 +27,13 @@ def test_contact_form_notification_lands_in_mailpit(client: httpx.Client):
 
     marker = f"mp-{uuid.uuid4().hex[:10]}"
 
-    # RATE-LIMIT BUDGET (#296 round 2): the contact endpoint allows 5/60s and
-    # the whole tier currently posts 3 contacts, so the gating run has a
-    # headroom of two — an invariant WRITTEN DOWN here because nothing else
-    # enforces it. The retry keeps a manual re-run (or a future fourth poster)
-    # from failing on 429 instead of on the mail path.
+    # RATE-LIMIT BUDGET (#296 round 2; updated #298 round 2): the contact
+    # endpoint allows 5/60s and the tier now posts 5 contacts per run (this
+    # one plus 2 in test_security_and_errors plus 2 in
+    # test_translation_flow) — ZERO headroom, an invariant WRITTEN DOWN here
+    # because nothing else enforces it. Every contact-posting test therefore
+    # rides a 429 retry (`conftest.post_contact` or the loop below) so a
+    # back-to-back re-run waits out the window instead of reddening.
     submitted = None
     for _ in range(3):
         submitted = client.post(

@@ -29,13 +29,15 @@ All notable changes to this project will be documented in this file.
   disables cleanly (no tasks scheduled, task-level belt, re-run 409s, zero UI remnants). Found
   and fixed on the way: background tasks bypass the test suite's `get_db` override, so without a
   session redirect they write to the DEV database — the conftest now redirects the module-level
-  factory for every test (lessons §4's failure mode, one layer deeper). 11 backend tests
-  (suite 967 → 978, 100.00%), 7 admin unit specs (398 → 404, 100% all four), and the inbox
+  factory for every test (lessons §4's failure mode, one layer deeper). Backend suite
+  984 → 1001 (100.00%), admin unit 398 → 406 (100% all four), and the inbox
   browser E2E drives label → toggle-to-original → re-translate end-to-end. Review round 1
   hardened all four of its blockers at the root: the re-run endpoint now requires admin auth
   (anonymous 401 pinned at unit AND composed layers); the whole test suite is hermetic at the
-  LLM boundary (autouse `_generate` mock + Gemini-key scrub — no test reaches a real LLM or a
-  paid API, guard-mutation-verified); failed/pending translations are visible and recoverable
+  LLM boundary (autouse `_generate` mock + Gemini-key scrub — no test in the default unit
+  suite reaches a real LLM, and no test anywhere reaches a paid API; the explicitly opt-in
+  live-Ollama tests under `tests/integration/` are unchanged); failed/pending translations
+  are visible and recoverable
   in the UI (the backend's exact failure shape covered at unit + browser layers); and
   `TRANSLATION_ENABLED`/`OWNER_LANGUAGE` are forwarded by both compose files so the knobs
   actually reach the container. CV-request messages get the same background translation, the
