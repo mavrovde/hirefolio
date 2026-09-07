@@ -65,7 +65,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.4.1",
     "@vitest/browser-playwright": "^4.1.11",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^5.0.0",
     "jsdom": "^30.0.1",
     "ng-packagr": "^22.0.2",
     "stylelint": "^17.14.1",
