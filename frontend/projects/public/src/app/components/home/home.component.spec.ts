@@ -3,30 +3,42 @@ import { ActivatedRoute } from '@angular/router';
 import { ViewportScroller } from '@angular/common';
 import { vi } from 'vitest';
 import { HomeComponent } from './home.component';
-import { ProfileService } from '../../services/profile.service';
+import { Profile, ProfileService } from '../../services/profile.service';
 import { SeoService } from '../../services/seo.service';
-import { SiteConfigService } from '../../services/site-config.service';
+import { SiteConfig, SiteConfigService } from '../../services/site-config.service';
+import { buildPersonSchema } from '../../seo/person-schema';
 import { LanguageService, provideSharedEnvironment } from '@mavrov/shared';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 import { MockLanguageService } from '@mavrov/shared/testing';
 
+/** Hoisted so the JSON-LD test can assert the EXACT node built from them (#71). */
+const MOCK_PROFILE: Profile = {
+  name: 'Test',
+  headline: 'Headline',
+  location: 'Loc',
+  about: 'About',
+  contact: { email: 'e', linkedin: 'l' },
+  experience: [],
+  education: [],
+  skills: [],
+  certifications: [],
+  languages: [],
+  recommendations: [],
+};
+
+const MOCK_SITE: SiteConfig = {
+  siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+  ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
+  ownerDescription: 'Desc.', socialLinks: [],
+  analyticsId: '',
+  availability: 'listening',
+};
+
 // Mock Services
 class MockProfileService {
   getProfile() {
-    return of({
-      name: 'Test',
-      headline: 'Headline',
-      location: 'Loc',
-      about: 'About',
-      contact: { email: 'e', linkedin: 'l' },
-      experience: [],
-      education: [],
-      skills: [],
-      certifications: [],
-      languages: [],
-      recommendations: [],
-    });
+    return of(MOCK_PROFILE);
   }
 }
 
@@ -56,15 +68,7 @@ describe('HomeComponent', () => {
         { provide: ActivatedRoute, useValue: mockActivatedRoute },
         {
           provide: SiteConfigService,
-          useValue: {
-            config$: of({
-              siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
-              ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
-              ownerDescription: 'Desc.', socialLinks: [],
-              analyticsId: '',
-                availability: 'listening',
-            }),
-          },
+          useValue: { config$: of(MOCK_SITE) },
         }
       ],
     }).compileComponents();
@@ -92,7 +96,10 @@ describe('HomeComponent', () => {
     fixture.detectChanges();
     tick(); // resolve the pipe(take(1)) observable and fragment subscription
     expect(seoService.updateSeo).toHaveBeenCalled();
-    expect(seoService.setJsonLd).toHaveBeenCalled();
+    // Pin the WIRING, not just the call: asserting only `toHaveBeenCalled()` let a
+    // hand-rolled minimal Person node pass the whole suite (#317 review round 1),
+    // because `person-schema.ts` stays fully covered by its own spec either way.
+    expect(seoService.setJsonLd).toHaveBeenCalledWith(buildPersonSchema(MOCK_PROFILE, MOCK_SITE));
   }));
 
   it('should attempt scrolling if fragment exists', fakeAsync(() => {
