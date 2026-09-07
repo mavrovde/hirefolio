@@ -107,7 +107,7 @@ should have caught first.
 - **Action shape:** rework share is the number to drive down; name the single change most likely
   to move it and record the prediction so the NEXT retro can check it.
 - **Before calling rounds "churn", check whether any round found NOTHING.** v1.13.0's mean rose
-  2.4 → 3.00 while **zero** of its 32 REQUEST CHANGES verdicts came back empty — every one
+  2.4 → 3.13 while **zero** of its 33 negative verdicts came back empty — every one
   reproduced a defect. Rounds that all find real blockers are the gate working on harder material,
   and the right target is then "the same defect, one layer earlier" (a lint, a stated observable),
   not "fewer rounds". Check the material too: v1.13.0's features were credential-, billing- and

@@ -6,8 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **v1.13.0 release retrospective (#265)** — `docs/retrospectives/v1.13.0.md` plus the trend row,
-  from 16 merged PRs and 50 reviewer verdicts read in full. Two new repo-contract lints, both wired
-  into the pre-push gate **and** CI, each with a self-test that runs beside it:
+  from 16 merged PRs and 50 reviewer verdicts read in full. Two new repo-contract lints, each with a
+  self-test that runs beside it in the pre-push gate; the first also runs in CI, the second is
+  gate-only because CI already runs the three Vitest projects as separate jobs:
   - `scripts/check_compose_env.sh` — every `Settings` key the documentation promises must appear in
     the backend `environment:` allowlist of **both** compose files. Three blocker-level review
     findings in one release were this exact bug (#296 SMTP, #297 Telegram/webhook, #298
@@ -19,8 +20,8 @@ All notable changes to this project will be documented in this file.
     stack now honours it.** Also `LINKEDIN_COOKIES_DIR`
     was advertised as settable while being a volume-mount target (now documented as not settable).
     12 self-test cases, failing-first.
-  - `scripts/run_frontend_suites.sh` — runs the three Vitest projects independently instead of
-    `npm test`'s `&&` chain, and retries a project **once** only when its output carries the
+  - `scripts/run_frontend_suites.sh` (pre-push gate only) — runs the three Vitest projects
+    independently instead of `npm test`'s `&&` chain, and retries a project **once** only when its output carries the
     Vitest 4 worker-teardown signature *and* reports zero failed tests. That race hard-failed the
     whole pre-push gate twice this cycle with 337/337 tests passing — once while pushing the release
     tag — and the chain meant `admin` never ran either time. A real failure is never retried;
@@ -32,8 +33,14 @@ All notable changes to this project will be documented in this file.
   On #291 two such bodies are the author's own fix reports whose first marker is `APPROVED`; since
   reviewer and author post under one GitHub identity, either would have counted as the newest
   verdict and allowed a merge while the standing verdict was REQUEST CHANGES. A verdict must now
-  state its marker in the **first non-empty line**. 8 new cases (3 of which fail against the
-  previous hook) and a new mutation in the contract, now 18 killed.
+  state its marker in the **first non-empty line**. It also closes a SECOND false-allow, found by
+  this change's reviewer rather than its author: #293's `## ⛔ REJECTED` body carries no marker in
+  its heading and exactly one anywhere — the prose "expect to approve immediately" — which the old
+  case-insensitive body-wide match read as the verdict. Self-test **77 → 85 cases**, of which
+  **4 fail against the previous hook**, plus a new mutation in the contract (now 18 killed).
+  Known residual, documented rather than pinned (lessons §43): a fix report whose *first line*
+  itself carries a marker still allows — no lexical rule separates it from a real heading, so the
+  charter convention is the guard.
 - **`pr-reviewer` charter told reviewers to write `⛔ REJECTED`**, a heading containing neither
   marker. Three costs, all measured: the merge gate could not have read it; the retrospective's
   verdict count silently lost #293's two real REQUEST-CHANGES rounds; and #293 therefore read as the

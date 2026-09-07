@@ -115,6 +115,14 @@ GH_STUB_PR_JSON="$(both 2026-09-06T10:00:00Z '## ✅ APPROVED' 2026-09-06T11:00:
   run "author note quoting REQUEST CHANGES does not revoke an approval" allow "gh pr merge 284 --squash"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z 'Round 2 review — head abc1234\n\nI checked the migration.\n\nVerdict: APPROVE')" \
   run "marker buried below the heading is not a verdict (fail CLOSED)" deny "gh pr merge 284 --squash"
+# A SECOND real false-allow on `main`, found by the reviewer of this change, not
+# by its author. #293's second `## ⛔ REJECTED` body contains no marker in its
+# heading and exactly one anywhere: the prose "…I will re-run the mutation and
+# the suite and expect to approve immediately" (line 108). The old filter matched
+# case-INSENSITIVELY anywhere in the body, so that sentence became the verdict and
+# the gate ALLOWED the merge while the standing verdict was a rejection.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REJECTED\n\nOne blocker below.\n\nPing me on the new head; I expect to approve immediately.')" \
+  run "prose 'expect to approve' is not a verdict (the #293 false-allow)" deny "gh pr merge 284 --squash"
 # Heading forms this repo has actually used must all still be recognised.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '⛔ **REQUEST CHANGES** (VERDICT: REQUEST CHANGES)')" \
   run "heading form: bold marker with a parenthetical" deny "gh pr merge 284 --squash"

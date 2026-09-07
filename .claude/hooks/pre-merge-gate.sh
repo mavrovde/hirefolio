@@ -373,6 +373,20 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 # three does not. This is fail-CLOSED in both directions: a reviewer who forgets
 # the heading gets "no posted review verdict" (deny), never a false allow.
 # `.claude/agents/pr-reviewer.md` mandates the heading form.
+#
+# It closes a SECOND false-allow too, found by this change's own reviewer: #293's
+# `## ⛔ REJECTED` body has no marker in its heading and exactly one anywhere —
+# the prose "expect to approve immediately" (line 108) — which the old
+# case-insensitive body-wide match read as the verdict and allowed on.
+#
+# KNOWN RESIDUAL, deliberately unpinned (lessons §43): a fix report whose FIRST
+# LINE itself carries a marker (`## Round 4 — all blockers APPROVED-ready`) is
+# still selected and still allows. No lexical rule separates it from a real
+# heading, which also carries prose (`## ⛔ REQUEST CHANGES — round 5 (3a6d7bb)`),
+# so tightening would reject legitimate verdicts to catch a shape nobody has
+# posted. The charter convention ("## Round N — what changed") is the guard. A
+# case asserting the residual could never fail, so it is documented, not tested
+# (the #240 answer, applied again).
 VERDICT="$(printf '%s' "$PR_JSON" | jq -r '
   def heading: (.body // "") | split("\n") | map(select(test("\\S"))) | (.[0] // "");
   [ ((.reviews // [])[]  | {at: .submittedAt, body: (.body // "")}),

@@ -29,8 +29,8 @@ Update this when you add a retro. These are the numbers worth watching; everythi
 
 | Release | PRs merged | Verdicts (loose / canonical-heading) | Mean rounds | Approved r1 | Rework share of verdicts | "Claim not measured" findings | Median files/PR | Tokens | Agent-time |
 |---|---|---|---|---|---|---|---|---|---|
-| [v1.12.0](v1.12.0.md) | 10 | 24 / n-a¹ | **2.4** | 20% (2/10) | 58% | **9** | 17 | 9.07M² | 28.1h² |
-| [v1.13.0](v1.13.0.md) | 16 | 52 / **50** | **3.13** | **0% (0/16)** | 68% | **12** | 14 | not recorded³ | 23.5h tag→tag |
+| [v1.12.0](v1.12.0.md) | 10 | 24 / n-a¹ | **2.4** | 20% (2/10) | 58%⁴ | **9**⁵ | 17 | 9.07M² | 28.1h² |
+| [v1.13.0](v1.13.0.md) | 16 | 52 / **50** | **3.13** | **0% (0/16)** | 68%⁴ | **12**⁵ | 14 | not recorded³ | 23.5h tag→tag |
 
 ¹ v1.12.0's verdict headings predate the mandated form, so a canonical-heading re-count undercounts
 that window (15). From v1.13.0 the heading is charter-mandated **and** gate-enforced, so this column
@@ -42,6 +42,10 @@ and `Review rounds` is unset for all six issues v1.13.0 shipped. Inventing a com
 be the exact defect these retros keep finding; the measurable GitHub-side proxies are in the table
 instead (PR count, verdicts, rounds, PR size, wall clock). Either the fields get filled at
 close-the-loop or the columns should be dropped — decide it at v1.14.
+⁴ Rework share is measured in **verdicts**, not tokens — a redefinition, and v1.12.0's cell was
+re-derived under it (its originally published 75% was token-based). See "How to count consistently".
+⁵ The two cells count **different severity populations** (v1.12.0 blocker-only, v1.13.0 blocker +
+major). Two data points, not a trend — see "How to count consistently".
 
 **v1.12.0's prediction: FAILED.** It asked for mean rounds < 2.0 and ≥40% round-1 approvals;
 measured **3.13** and **0%** — no PR in the release was approved on its first round. Its own falsification test (PR size) was also refuted — median size FELL 17→14
@@ -123,8 +127,23 @@ So the series stays comparable, count the same way every time:
 
   Do NOT retro-fit the heading-anchored number onto pre-v1.13.0 releases: it returns 15 for v1.12.0's
   24, an undercount caused by format drift, not a correction.
-- **Rework share** = tokens spent in rounds 2+ ÷ total measured review tokens. Only rounds with
-  real telemetry count; estimates are excluded and the sample size is stated.
+- **Rework share of verdicts** = verdicts posted in rounds 2+ ÷ total verdicts, i.e.
+  `(verdicts − PRs) ÷ verdicts` (every PR spends exactly one verdict on round 1). v1.13.0:
+  `(50 − 16) / 50` = **68%**.
+  **This is a REDEFINITION, not a correction, and the v1.12.0 cell was re-derived under it.** The
+  column used to be *tokens* spent in rounds 2+ ÷ total measured review tokens, and v1.12.0
+  published **75%** on that basis. Token telemetry turned out to be unrecorded repo-wide (see the
+  trend table's note 3), so a token-based column could only ever be re-derived from console
+  estimates. v1.12.0's cell now reads **58%** = `(24 − 10) / 24`, the verdict-based figure for the
+  same window — the 75% is not wrong, it measured a different thing that nothing records. If token
+  telemetry is ever actually captured, add it as a SEPARATE column rather than redefining this one
+  again.
+- **"Claim not measured" findings** = the count of class-F review findings, and **the two published
+  cells count different populations**: v1.12.0's **9** is blocker-level only; v1.13.0's **12** is
+  blocker *and* major (its §3 table is explicitly "Blocker- and major-level findings"). Read the
+  column as two data points, not a trend, until one of them is re-split — each release's own record
+  carries the severity-resolved detail. State the severity population whenever you fill this cell;
+  this is the same comparability trap the verdicts column already carries a footnote for.
 - **Release attribution** = the tag the work actually **shipped in**, not the one it was planned
   for. v1.12.0 found #235 filed under v1.11.1 although its PR merged after that tag, understating
   the release by ~11%.

@@ -979,6 +979,24 @@ three, which now denies rather than allows. **Fix reports must not open with a m
 `## Round N — what changed`. This also makes the retrospective's verdict count exact instead of
 regex-guessed (see `docs/retrospectives/README.md`).
 
+**A second false-allow the same change closes, found by the REVIEWER of the fix, not its author.**
+#293's second `## ⛔ REJECTED` body carries no marker in its heading and exactly one anywhere: the
+prose *"Ping me on the new head; I will re-run the mutation and the suite and expect to approve
+immediately"* (line 108). The old filter matched case-insensitively **anywhere in the body**, so that
+sentence became the verdict and the gate allowed the merge. Two independent false-allows from one
+matcher is the tell that the defect was the *rule*, not the wording of any one review.
+
+**KNOWN RESIDUAL — say it out loud, because a gate whose limit is unwritten gets trusted past it.**
+The heading rule cannot tell a verdict from a fix report whose **first line itself** contains a
+marker: measured, `## Round 4 — all blockers APPROVED-ready` is still selected and still allows.
+**No lexical rule closes this** — real reviewer headings carry prose too (`## ⛔ REQUEST CHANGES —
+round 5 (3a6d7bb)`), so any tightening that rejects the fix report also rejects legitimate verdicts,
+which is a regression traded for a shape nobody has posted. The convention (`## Round N — what
+changed`) is therefore the guard, and it lives in `pr-reviewer.md` and the playbook. Deliberately NOT
+pinned by a test case: a case asserting the residual can never fail against any hook that has it, and
+this repo's rule is to document an equivalence rather than dress it up as coverage (the #240 answer).
+If a fix report ever *does* false-allow in practice, that is the evidence to revisit — not this note.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,
