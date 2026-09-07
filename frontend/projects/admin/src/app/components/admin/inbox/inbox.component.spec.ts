@@ -16,6 +16,10 @@ function makeInteraction(overrides: Partial<Interaction> = {}): Interaction {
         company: 'Agency',
         message: 'Hello there',
         payload: null,
+        detected_language: null,
+        translated_message: null,
+        translated_to: null,
+        translation_status: null,
         created_at: '2026-09-05T10:00:00Z',
         updated_at: '2026-09-05T10:00:00Z',
         ...overrides,
@@ -184,3 +188,96 @@ describe('InboxComponent', () => {
         expect(text).toContain('No interactions yet');
     });
 });
+
+describe('InboxComponent — transparent translation (#248)', () => {
+    let fixture: ComponentFixture<InboxComponent>;
+    let component: InboxComponent;
+    let serviceSpy: Record<'list' | 'updateStatus' | 'rerunTranslation', ReturnType<typeof vi.fn>>;
+
+    function translated(overrides: Partial<Interaction> = {}): Interaction {
+        return makeInteraction({
+            detected_language: 'de',
+            translated_message: 'Hello, are you open?',
+            translated_to: 'en',
+            translation_status: 'done',
+            ...overrides,
+        });
+    }
+
+    beforeEach(async () => {
+        serviceSpy = {
+            list: vi.fn().mockReturnValue(of({ items: [translated()], total: 1, page: 1, pages: 1 })),
+            updateStatus: vi.fn(),
+            rerunTranslation: vi.fn(),
+        };
+        await TestBed.configureTestingModule({
+            imports: [InboxComponent],
+            providers: [{ provide: InteractionsService, useValue: serviceSpy }],
+        }).compileComponents();
+        fixture = TestBed.createComponent(InboxComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
+
+    it('shows the labeled machine translation by default, original on toggle', () => {
+        const i = component.items[0];
+        expect(component.displayedMessage(i)).toBe('Hello, are you open?');
+        expect(component.showingTranslation(i)).toBe(true);
+
+        component.toggleOriginal(i);
+        // The transparency contract: the ORIGINAL is one click away, intact.
+        expect(component.displayedMessage(i)).toBe(i.message);
+        expect(component.showingTranslation(i)).toBe(false);
+        component.toggleOriginal(i);
+        expect(component.displayedMessage(i)).toBe('Hello, are you open?');
+    });
+
+    it('renders the badge, the machine-generated label and the toggle', () => {
+        component.expandedId = component.items[0].id;
+        fixture.detectChanges();
+        const host = fixture.nativeElement as HTMLElement;
+        const bar = host.querySelector('[data-testid="translation-bar"]');
+        expect(bar?.textContent).toContain('de');
+        expect(bar?.textContent).toContain('machine-translated to en');
+        expect(bar?.textContent).toContain('show original');
+    });
+
+    it('an untranslated row shows the original with no translation chrome', () => {
+        component.items = [makeInteraction()];
+        const i = component.items[0];
+        expect(component.displayedMessage(i)).toBe(i.message);
+        expect(component.showingTranslation(i)).toBe(false);
+        component.expandedId = i.id;
+        fixture.detectChanges();
+        expect(
+            (fixture.nativeElement as HTMLElement).querySelector('[data-testid="translation-bar"]'),
+        ).toBeNull();
+    });
+
+    it('re-translate replaces the row and clears the busy flag', () => {
+        const updated = translated({ translated_message: 'Better translation' });
+        serviceSpy.rerunTranslation.mockReturnValue(of(updated));
+        // A second, unrelated row pins the map's other branch (untouched rows
+        // keep identity) — the same lesson the pipeline spec learned.
+        const other = makeInteraction({ id: 'other-row' });
+        component.items = [translated(), other];
+        component.retranslate(component.items[0]);
+        expect(serviceSpy.rerunTranslation).toHaveBeenCalledWith(component.items[0].id);
+        expect(component.items[0].translated_message).toBe('Better translation');
+        expect(component.items[1]).toBe(other);
+        expect(component.retranslatingId).toBeNull();
+    });
+
+    it('re-translate failure surfaces and unlocks; in-flight clicks are ignored', () => {
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        serviceSpy.rerunTranslation.mockReturnValue(throwError(() => new Error('no')));
+        component.retranslate(component.items[0]);
+        expect(component.error).toBe('Failed to re-run translation');
+        expect(component.retranslatingId).toBeNull();
+
+        component.retranslatingId = 'busy';
+        component.retranslate(component.items[0]);
+        expect(serviceSpy.rerunTranslation).toHaveBeenCalledTimes(1);
+    });
+});
+

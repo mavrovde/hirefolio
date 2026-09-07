@@ -62,3 +62,22 @@ def mock_embedding_global(mocker):
     mocker.patch("app.api.linkedin.get_embedding", side_effect=mock_get_embedding)
 
     return mock_get_embedding
+
+
+@pytest.fixture(autouse=True)
+def _redirect_background_sessions(monkeypatch):
+    """Background tasks open their OWN session via app.database.async_session
+    (#248's translation task is the first). The get_db override cannot reach
+    them, so without this redirect a background task in a test writes to the
+    DEV database — the exact isolation failure lessons §4 exists to prevent.
+    Point the module-level factory at the test engine for every test."""
+    import app.database
+    from conftest import get_test_async_session
+
+    monkeypatch.setattr(app.database, "async_session", get_test_async_session())
+    # Modules that imported the name directly get the same redirect.
+    import app.services.translation
+
+    monkeypatch.setattr(
+        app.services.translation, "async_session", get_test_async_session()
+    )

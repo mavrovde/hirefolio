@@ -515,6 +515,13 @@ Meta-verified business account, pre-approved message templates, and bills per co
 That cost/approval model makes it a deliberate later adapter; the channel seam
 (`NotificationChannel` in `backend/app/services/notifications.py`) makes it one small class the
 day an owner actually needs it. No stub pretends otherwise.
+## 🌐 Transparent translation (#248)
+
+Recruiter messages arrive in any language; the inbox detects it and shows a translation into
+your language (`OWNER_LANGUAGE`, default `en`) — **clearly labeled as machine-generated, with
+the original always one click away and never modified in storage**. Local Ollama by default
+(nothing leaves your machine); your Gemini key upgrades it if configured. `TRANSLATION_ENABLED=false`
+turns the whole feature off cleanly.
 
 ## 🌐 API Endpoints
 
