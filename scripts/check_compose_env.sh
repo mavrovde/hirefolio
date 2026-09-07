@@ -32,15 +32,14 @@
 # `.env.example` are what make it catch #297 (the Telegram/webhook trio was
 # promised by README + setup.sh before it was ever added to `.env.example`).
 #
-# Exemptions: add the key to EXEMPT below WITH A REASON. An exemption without a
+# Exemptions: add the key to EXEMPT_LIST below WITH A REASON. An exemption without a
 # reason is how a guard's scope rots (lessons §21/§32).
 #
 # Usage:  bash scripts/check_compose_env.sh            # exit 1 on any gap
-#         bash scripts/check_compose_env.sh --list     # show the derived contract
+#         bash scripts/check_compose_env.sh --list     # derived contract + exemptions
 set -u
 
 ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
-ENV_EXAMPLE="$ROOT/.env.example"
 CONFIG_PY="$ROOT/backend/app/config.py"
 COMPOSE_FILES="docker-compose.yml docker-compose.prod.yml"
 
@@ -65,8 +64,8 @@ DOC_FILES=".env.example README.md docs/DEPLOYMENT.md setup.sh"
 fail=0
 note() { printf '%s\n' "$*"; }
 
-[ -f "$ENV_EXAMPLE" ] || { note "✗ $ENV_EXAMPLE not found"; exit 1; }
-[ -f "$CONFIG_PY" ]   || { note "✗ $CONFIG_PY not found"; exit 1; }
+[ -f "$ROOT/.env.example" ] || { note "✗ $ROOT/.env.example not found"; exit 1; }
+[ -f "$CONFIG_PY" ]         || { note "✗ $CONFIG_PY not found"; exit 1; }
 
 # (1) Env keys `Settings` actually binds: every field name uppercased, plus every
 #     explicit validation_alias (the #141 HIREFOLIO_* namespacing).
@@ -95,8 +94,8 @@ is_exempt() {
 # The backend service's environment allowlist in one compose file.
 backend_env_keys() {
   awk '
-    /^  [a-zA-Z_-]+:/ { in_backend = ($0 ~ /^  backend:/); in_env = 0 }
-    in_backend && /^    [a-zA-Z_-]+:/ { in_env = ($0 ~ /^    environment:/) }
+    /^  [a-zA-Z0-9_-]+:/ { in_backend = ($0 ~ /^  backend:/); in_env = 0 }
+    in_backend && /^    [a-zA-Z0-9_-]+:/ { in_env = ($0 ~ /^    environment:/) }
     in_backend && in_env && /^      - [A-Z][A-Z0-9_]*=/ {
       line = $0; sub(/^      - /, "", line); sub(/=.*/, "", line); print line
     }
@@ -110,6 +109,9 @@ if [ "${1-}" = "--list" ]; then
   note "Documented keys that Settings binds (the contract):"
   # shellcheck disable=SC2086
   printf '%s\n' $contract | sort | sed '/^$/d;s/^/  /'
+  note ""
+  note "Exemptions (documented + a Settings field, but deliberately NOT forwarded):"
+  printf '%s\n' "$EXEMPT_LIST" | sed '/^$/d;s/^/  - /'
   note ""
   for f in $COMPOSE_FILES; do
     note "$f backend environment: $(backend_env_keys "$ROOT/$f" | tr '\n' ' ')"
