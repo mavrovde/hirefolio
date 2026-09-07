@@ -27,15 +27,25 @@ def test_contact_form_notification_lands_in_mailpit(client: httpx.Client):
 
     marker = f"mp-{uuid.uuid4().hex[:10]}"
 
-    submitted = client.post(
-        f"{API}/interactions/contact",
-        json={
-            "name": f"Mailpit Probe {marker}",
-            "email": "probe@example.com",
-            "message": f"Integration probe {marker}: does the owner get mail?",
-        },
-    )
-    assert submitted.status_code == 201, submitted.text
+    # RATE-LIMIT BUDGET (#296 round 2): the contact endpoint allows 5/60s and
+    # the whole tier currently posts 3 contacts, so the gating run has a
+    # headroom of two — an invariant WRITTEN DOWN here because nothing else
+    # enforces it. The retry keeps a manual re-run (or a future fourth poster)
+    # from failing on 429 instead of on the mail path.
+    submitted = None
+    for _ in range(3):
+        submitted = client.post(
+            f"{API}/interactions/contact",
+            json={
+                "name": f"Mailpit Probe {marker}",
+                "email": "probe@example.com",
+                "message": f"Integration probe {marker}: does the owner get mail?",
+            },
+        )
+        if submitted.status_code != 429:
+            break
+        time.sleep(21)  # a third of the window frees a slot
+    assert submitted is not None and submitted.status_code == 201, submitted.text
 
     # The notification rides a background task + real SMTP hop; poll briefly
     # rather than sleeping a fixed worst case.

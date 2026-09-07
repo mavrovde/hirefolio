@@ -28,8 +28,10 @@ def _sent_with(patches: dict):
 
 
 def test_local_relay_mode_skips_starttls_and_login():
-    """The Mailpit shape: host set, TLS off, no credentials — the mail must
-    SEND, with neither starttls() nor login() ever called."""
+    """The Mailpit shape: host set, TLS off, NO user/password configured —
+    the mail must SEND with neither starttls() nor login() called. (With
+    credentials present, login happens even without TLS — warned loudly,
+    pinned in its own test below.)"""
     ok, mock_smtp, server = _sent_with(
         {"smtp_host": "mailpit", "smtp_port": 1025, "smtp_starttls": False}
     )
@@ -41,6 +43,28 @@ def test_local_relay_mode_skips_starttls_and_login():
     from app.config import settings
 
     assert mock_smtp.call_args.kwargs["timeout"] == settings.smtp_timeout_seconds
+
+
+def test_plaintext_login_warns_loudly_but_still_sends():
+    """Credentials over a non-TLS connection are almost always a
+    misconfiguration; the send proceeds (dummy creds against a local catch-all
+    are legitimate) but the warning must fire (#296 round 2: this branch
+    shipped uncovered — new behavior, zero test changes — and reddened CI).
+    Patch target is app.services.email.logger: email.py REBINDS the name."""
+    with patch("app.services.email.logger") as log:
+        ok, _, server = _sent_with(
+            {
+                "smtp_host": "mailpit",
+                "smtp_starttls": False,
+                "smtp_user": "dummy",
+                "smtp_password": "dummy",
+            }
+        )
+    assert ok is True
+    server.starttls.assert_not_called()
+    server.login.assert_called_once_with("dummy", "dummy")
+    warned = " ".join(str(c) for c in log.warning.call_args_list)
+    assert "plaintext" in warned and "SMTP_STARTTLS" in warned
 
 
 def test_provider_mode_still_negotiates_tls_and_logs_in():

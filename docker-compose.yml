@@ -147,7 +147,7 @@ services:
     image: axllent/mailpit:v1.21
     restart: unless-stopped
     ports:
-      - "8025:8025"   # web UI + REST API (the integration tier asserts via it)
+      - "127.0.0.1:8025:8025"   # web UI + REST API (the integration tier asserts via it)
     networks:
       - app-network
 
