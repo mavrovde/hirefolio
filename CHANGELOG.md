@@ -15,8 +15,8 @@ All notable changes to this project will be documented in this file.
   absent field from an older backend to the default** — deploy-window skew made the whole
   availability stream error and the indicator silently vanish (measured against the running v1.12
   container) — and a test pins the old-shape wire response. A vocabulary-sync test fails the
-  backend suite if a new state ships without its EN/DE translations. 5 backend tests
-  (suite 951 → 956, 100.00%), public 336 @ 100% / admin 394 @ 100% on all four metrics, and a
+  backend suite if a new state ships without its EN/DE translations. 6 backend tests
+  (suite 955 → 962 at this head, 100.00%), public 337 @ 100% / admin 398 @ 100% on all four metrics, and a
   3-test Playwright spec: indicator + CTA render translated, the CTA reaches the contact form,
   and **flipping the state through the real admin API changes the public hero** (route-mocking is
   impossible here — /config/site is fetched server-side and transfer-cached; measured).
@@ -27,7 +27,6 @@ All notable changes to this project will be documented in this file.
   `CV sent: version (filename)` note to the timeline — which survives even if the CV row is later
   deleted. **The invariant that matters is pinned by a dedicated test: recording a send NEVER
   touches `is_active`** — what the public site serves and what went to one company are independent
-  facts. Admin UI: a variant picker in the detail panel (loaded lazily, public default flagged),
   facts. `POST /admin/cv/upload` gains **`activate`** (default true = the historical
   make-it-the-default behavior; `false` uploads a variant WITHOUT touching what the public site
   serves — before this flag, uploading a tailored variant unavoidably repointed the public CV,

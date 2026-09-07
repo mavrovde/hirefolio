@@ -54,9 +54,7 @@ async def test_router_gate_rejects_anonymous_reads_and_writes(
     """The dependency is ROUTER-level: GET must be gated exactly like PUT —
     previously untested (#295 review)."""
     assert (await clean_client.get(ADMIN)).status_code == 401
-    assert (
-        await clean_client.put(ADMIN, json={"value": "open"})
-    ).status_code == 401
+    assert (await clean_client.put(ADMIN, json={"value": "open"})).status_code == 401
 
 
 @pytest.mark.asyncio

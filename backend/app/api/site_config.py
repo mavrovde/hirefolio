@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.site_settings import read_availability
+from app.api.site_settings import AVAILABILITY_DEFAULT, read_availability
 from app.config import settings
 from app.database import get_db
 
@@ -38,8 +38,8 @@ class SiteConfig(BaseModel):
 async def _availability_or_default(db: AsyncSession) -> str:
     try:
         return await read_availability(db)
-    except Exception:  # noqa: BLE001 — any DB failure degrades, never breaks
-        return "listening"
+    except Exception:  # any DB failure degrades, never breaks
+        return AVAILABILITY_DEFAULT
 
 
 @router.get("/site", response_model=SiteConfig)

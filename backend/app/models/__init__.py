@@ -17,6 +17,6 @@ __all__ = [
     "OpportunityNote",
     "Post",
     "ProfileSnapshot",
-    "User",
     "SiteSetting",
+    "User",
 ]

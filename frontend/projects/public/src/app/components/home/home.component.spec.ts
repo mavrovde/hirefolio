@@ -62,7 +62,8 @@ describe('HomeComponent', () => {
               ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
               ownerDescription: 'Desc.', socialLinks: [],
               analyticsId: '',
-             availability: 'listening',}),
+                availability: 'listening',
+            }),
           },
         }
       ],
