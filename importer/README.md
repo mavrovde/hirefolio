@@ -1,6 +1,6 @@
 # LinkedIn importer
 
-A small, **stable, standalone** process that pushes your LinkedIn posts into mavrov.de.
+A small, **stable, standalone** process that pushes your LinkedIn posts into your Hirefolio backend.
 It is **not** part of the `agents/` A2A team and has no dependency on it.
 
 ```
@@ -19,7 +19,7 @@ exits non-zero if any post hard-failed (so cron can alert).
 ```bash
 pip install -r importer/requirements.txt
 
-export MAVROV_API_URL=https://mavrov.de           # or http://localhost:8000
+export MAVROV_API_URL=https://<your-domain>   # or http://localhost:8000
 export LINKEDIN_IMPORT_TOKEN=...                  # must match the backend
 export LINKEDIN_COOKIE_LI_AT=...                  # for authenticated image downloads
 # posts come from scraper/posts_data.json (run `npm run scrape:posts` first — spec 05)

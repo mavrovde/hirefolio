@@ -22,8 +22,10 @@ Gather all four facts, then give the verdict:
 3. **Published images**: the tags the green run pushed (`sha-<headSha>` + version tag) — cite the
    run's publish jobs rather than assuming.
 4. **Live prod version** — probe the deployment being reported on, not a hardcoded host. Take its
-   base URL from the environment (`SITE_URL`), falling back to the repo's own `.env`/`.env.example`
-   `SITE_URL=`; if neither is set, ASK which deployment to probe rather than guessing:
+   base URL from the environment (`SITE_URL`), falling back to an **uncommented** `SITE_URL=` in the
+   repo's own `.env`. Never read `.env.example` — its `SITE_URL` is the `example.com` placeholder,
+   and probing that would report a stranger's site as this deployment's live version. If neither is
+   set, ASK which deployment to probe rather than guessing:
    `SITE_URL="${SITE_URL:-$(grep -m1 '^SITE_URL=' .env 2>/dev/null | cut -d= -f2-)}"`
    `curl -s --max-time 10 "${SITE_URL:?no SITE_URL — ask which deployment to probe}/api/app/stats/public" | jq -r .backend_version`
    (cross-check the site footer `BE: vX.Y.Z` if the endpoint is unreachable).

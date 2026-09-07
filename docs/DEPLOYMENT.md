@@ -167,7 +167,7 @@ add these in Settings → Secrets and variables → Actions:
 | `DEPLOY_HOST` | yes | Host to SSH to |
 | `DEPLOY_USER` | yes | Dedicated non-root deploy user |
 | `DEPLOY_SSH_KEY` | yes | Private key for that user (generate a dedicated pair; never reuse a personal key) |
-| `DEPLOY_DIR` | no | Compose project dir (default **`/opt/hirefolio`** since #310 — the historical default was `/opt/mavrov.de`, a maintainer-specific path). This default is only reached when the secret is unset, and the rollout has never run on any host, so nothing existing is repointed. **A deployment that lives elsewhere sets this secret to its own path.** |
+| `DEPLOY_DIR` | no | Compose project dir (default **`/opt/hirefolio`** since #310 — it was `/opt/mavrov.de`, a maintainer-specific path <!-- de-brand:historical: the pre-#310 default -->). This default is only reached when the secret is unset, and the rollout has never run on any host, so nothing existing is repointed. **A deployment that lives elsewhere sets this secret to its own path.** |
 | `DEPLOY_SSH_PORT` | no | SSH port (default 22) |
 | `DEPLOY_PUBLIC_URL` | no | Legacy secret for the health-gate URL — superseded by the `PUBLIC_URL` **variable** below, still honoured |
 

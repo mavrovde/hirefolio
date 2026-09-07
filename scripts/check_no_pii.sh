@@ -17,9 +17,12 @@
 # pattern; it is banned only on CURRENT-GUIDANCE surfaces, and there only when
 # it is unannotated.
 #
-# Scope of check B (the acceptance grep of #313, plus the agent playbook):
-#   README.md, docs/ (minus retrospectives/ + agent-runs/), .claude/,
-#   .env.example, agents/PLAYBOOK.md
+# Scope of check B — every surface that INSTRUCTS a forker, an operator or an
+# agent (the acceptance grep of #313, widened by the round-1 review of #318):
+#   README.md, README_TESTING.md, SECURITY.md, .env.example,
+#   docs/ (minus retrospectives/ + agent-runs/), .claude/, agents/PLAYBOOK.md,
+#   .github/copilot-instructions.md, .github/prompts/, .github/dependabot.yml,
+#   importer/README.md
 # Deliberately OUT of scope, because the domain legitimately lives there:
 #   CHANGELOG.md, docs/retrospectives/, docs/agent-runs/  — immutable history
 #   docker-compose*.yml, proxy/entrypoint.sh                — real runtime fallbacks; changing
@@ -27,13 +30,24 @@
 #   CLAUDE.md, agents/ (A2A roster/README)                  — not de-branded yet; see #313 PR notes
 #
 # A line inside the scope may keep the domain ONLY if it carries one of three
-# annotations, on the SAME line (this is the whole point: an exception must be
-# deliberate and visible in the diff, not implicit):
-#   * "canonical"  — an explicitly-marked canonical-deployment-instance aside
-#   * "historical" — a historical record; either the plain word in prose or a
-#                    trailing `<!-- de-brand:historical: … -->` comment, which
-#                    annotates an incident narrative WITHOUT rewriting it
-#   * ghcr.io/mavrovde/mavrov.de — a pre-rename GHCR image path (#88)
+# NAMESPACED annotations, on the SAME line (an exception must be deliberate and
+# visible in the diff, not implicit):
+#   * `<!-- de-brand:canonical: … -->`  — an explicitly-marked canonical-deployment-instance aside
+#   * `<!-- de-brand:historical: … -->` — a historical record; the comment annotates an
+#                                         incident narrative WITHOUT rewriting it
+#   * ghcr.io/mavrovde/mavrov.de        — a pre-rename GHCR image path (#88)
+#
+# The `de-brand:` namespace and the exact lowercase spelling are load-bearing, and
+# so is matching CONTENT ONLY. Round 1 of #318 shipped this as three BARE words
+# (`canonical|historical|…`) matched against the whole `git grep` output line, and
+# the reviewer walked three violations straight through it — the decisive one being
+# a REVERT of the very README row this change fixed, which passed because the cell
+# said "canonical". 21 lines already in scope use that word innocently ("preserves
+# the canonical behavior", "the canonical URL for every page"). Matching the whole
+# output line added a second hole: any file under a `docs/canonical-urls/`-style
+# PATH was exempt forever. And it corrupted the prose — two doc lines had the word
+# "historical" inserted purely to satisfy the matcher. An annotation mechanism that
+# rewrites documentation to appease itself is the wrong mechanism (lessons §47).
 set -u
 ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 cd "$ROOT"
@@ -64,24 +78,41 @@ else
 fi
 
 # --- CHECK B: no maintainer-domain branding on current-guidance surfaces -----
-GUIDANCE_ANNOTATIONS='canonical|historical|ghcr\.io/mavrovde/mavrov\.de'
+# Case-SENSITIVE and namespaced on purpose (see the header): only a deliberate
+# `de-brand:` marker, or the literal legacy GHCR path, exempts a line.
+GUIDANCE_ANNOTATIONS='de-brand:(canonical|historical)|ghcr\.io/mavrovde/mavrov\.de'
 
-brand=$(git grep -inE 'mavrov\.de' -- \
-  'README.md' 'docs' '.claude' '.env.example' 'agents/PLAYBOOK.md' \
+# Ask git only for the FILE LIST, then let awk read each file and judge its lines.
+# The marker is therefore tested against file CONTENT and nothing else. Filtering
+# `git grep -n` output instead (round 1 of #318) tests `path:line:content`, so a
+# directory named `canonical-urls/` exempts everything inside it — and stripping
+# the prefix textually does not fix that, because a path may itself contain `:`.
+# Reading the file is the only formulation with no prefix to parse. `-z` keeps
+# paths with spaces intact; the report re-creates `path:line:content` itself.
+brand=$(git grep -zilE 'mavrov\.de' -- \
+  'README.md' 'README_TESTING.md' 'SECURITY.md' '.env.example' \
+  'docs' '.claude' 'agents/PLAYBOOK.md' \
+  '.github/copilot-instructions.md' '.github/prompts' '.github/dependabot.yml' \
+  'importer/README.md' \
   ':(exclude)docs/retrospectives/*' \
   ':(exclude)docs/agent-runs/*' \
-  2>/dev/null | grep -ivE "$GUIDANCE_ANNOTATIONS" || true)
+  2>/dev/null | while IFS= read -r -d '' f; do
+    awk -v f="$f" -v pat="$GUIDANCE_ANNOTATIONS" '
+      tolower($0) ~ /mavrov\.de/ && $0 !~ pat { printf "%s:%d:%s\n", f, FNR, $0 }
+    ' "$f"
+  done)
 
 if [ -n "$brand" ]; then
   echo "✗ De-brand guard (#313): the maintainer's domain appears, unannotated, on a"
   echo "  CURRENT-GUIDANCE surface — docs written for whoever deploys Hirefolio:"
   printf '%s\n' "$brand"
-  echo "  Fix it one of three ways:"
+  echo "  Fix it one of three ways (the marker must be on the SAME line, exactly as spelled):"
   echo "    * write the product voice instead — 'Hirefolio', '<your-domain>', 'example.com';"
-  echo "    * if it is genuinely the canonical deployment INSTANCE, say so on the line"
-  echo "      (the word 'canonical' is the marker) — README keeps exactly one such aside;"
+  echo "    * if the line is genuinely an aside about the canonical deployment INSTANCE,"
+  echo "      append '<!-- de-brand:canonical: … -->' — README keeps exactly one such aside;"
   echo "    * if it is a historical record, annotate WITHOUT rewriting the narrative:"
   echo "      append '<!-- de-brand:historical: … -->' to the line."
+  echo "  Prose that merely CONTAINS the words 'canonical' or 'historical' is not a marker."
   rc=1
 else
   echo "✓ De-brand guard: current-guidance surfaces speak in the product's voice."

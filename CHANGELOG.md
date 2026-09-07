@@ -129,13 +129,19 @@ All notable changes to this project will be documented in this file.
   2026-09-07 ("stop orienting all docs to mavrov and mavrov.de, it is an open project"). Completes
   the arc #66 (content) → #288 (database identifiers) → this (documentation). Measured on the
   issue's own acceptance grep — README.md, `docs/` minus `retrospectives/`+`agent-runs/`, `.claude/`,
-  `.env.example`: **38 hits → 9**, and every survivor is one of the three sanctioned kinds.
+  `.env.example`: **37 hits → 9**, and every survivor is one of the three sanctioned kinds.
   - **Guidance surfaces speak the product's voice.** All seven agent charters and the four skills /
     commands that named the maintainer's domain now say **Hirefolio** (`backend-dev`, `frontend-dev`,
     `devops-pipeline`, `pr-reviewer`, `release-manager`, `security-triage`, `issue-author`;
     `lessons-learned`, `issue-workflow`, `e2e-validation`, `/linkedin-sync`, `/deploy-status`,
-    `agents/PLAYBOOK.md`, the pre-push hook header). `/deploy-status` no longer curls a hardcoded
-    host: it resolves `SITE_URL` from the environment or `.env` and **asks** rather than guessing.
+    `agents/PLAYBOOK.md`, the pre-push hook header), joined in review round 2 by six surfaces the
+    acceptance grep never covered: `README_TESTING.md`, `.github/copilot-instructions.md`,
+    `.github/prompts/release-check.prompt.md`, `.github/dependabot.yml`, `importer/README.md`, and
+    `SECURITY.md` — whose vulnerability-report link still pointed at the **pre-rename**
+    `mavrovde/mavrov.de` advisory path and worked only through GitHub's redirect.
+    `/deploy-status` no longer curls a hardcoded host: it resolves `SITE_URL` from the environment or
+    an uncommented `SITE_URL=` in `.env` — never `.env.example`, whose placeholder would send it to
+    probe `example.com` — and **asks** rather than guessing.
   - **`.env.example`** hostname examples become `example.com`-style placeholders matching the
     existing Jane-Doe convention — a forker sees no maintainer domain to edit out — with an explicit
     warning that these two knobs must be set, because the compose fallback is deliberately unchanged.
@@ -146,15 +152,25 @@ All notable changes to this project will be documented in this file.
   - **The stance is now enforced, not asked.** `scripts/check_no_pii.sh` grew a second contract that
     **reverses its own former exemption** (its header excluded `mavrov.de` as "a legitimate infra
     default"): the domain is still fine in runtime fallbacks and history, but on a current-guidance
-    surface it must carry one of three same-line annotations — `canonical` (the one sanctioned
-    canonical-instance aside), `historical`, or a `ghcr.io/mavrovde/mavrov.de` legacy image path.
-    New `scripts/check_no_pii.test.sh` pins both contracts with **23 cases** including the
-    failing-first one, every in-scope surface, and the out-of-scope surfaces that must *not* trip;
-    it runs in the pre-push docs leg and in CI's Version Consistency job. Verified by mutation:
-    dropping the `rc=1` or narrowing the scope list turns the self-test red. The gate caught its own
-    author on the first push attempt — the self-test's fixture *was* the identifier check A hunts, so
-    the fixture is now assembled at runtime rather than the file exempted (**lessons §46**: never
-    widen a guard's exclusion list to accommodate the guard's own tests).
+    surface the line must carry one of three **namespaced, case-sensitive** annotations —
+    `<!-- de-brand:canonical: … -->` (the one sanctioned instance aside),
+    `<!-- de-brand:historical: … -->`, or a literal `ghcr.io/mavrovde/mavrov.de` legacy image path —
+    matched against file **content only**. `scripts/check_no_pii.test.sh` pins both contracts with
+    **35 cases** covering the failing-first one, all 12 in-scope surfaces individually, the
+    out-of-scope surfaces that must *not* trip, and — the part round 1 was missing — the **negative
+    direction**: prose that merely contains "canonical"/"historical", a marker in the wrong case, and
+    a marker living in a *directory name*. It runs in the pre-push docs leg and in CI's Version
+    Consistency job. Every contract is mutation-proved: restoring round 1's bare-word,
+    whole-`grep`-line matcher turns **7 of 35** red, neutering check B's `rc=1` turns **19** red,
+    dropping the six new scope entries **5**, removing a history exclusion **1**.
+  - **Two lessons banked, both found by a gate rather than by reasoning.** **§46** — the gate caught
+    its own author on the first push: the self-test's fixture *was* the identifier check A hunts, so
+    the fixture is now assembled at runtime rather than the file exempted (never widen a guard's
+    exclusion list to accommodate the guard's own tests). **§47** — an exemption marker is an API,
+    not a word: round 1's bare `canonical|historical` matched 21 innocent in-scope lines, exempted
+    every file under a `canonical`-named *path*, and even bent two doc sentences into inserting the
+    word "historical" for the matcher's benefit. For any allowlist or skip-marker, **the
+    load-bearing test is the negative one** — 23 green cases all pinned the permissive direction.
   - **No behaviour change.** `DEPLOY_DIR` was already `/opt/hirefolio` (#310); the compose /
     `proxy/entrypoint.sh` `PUBLIC_SERVER_NAME`/`ADMIN_SERVER_NAME` fallbacks are untouched on
     purpose, so no existing deployment is repointed.

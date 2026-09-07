@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document explains how to run tests and view coverage reports for the mavrov.de application.
+This document explains how to run tests and view coverage reports for the Hirefolio application.
 
 ## Backend Tests (Python/FastAPI)
 

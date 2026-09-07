@@ -19,7 +19,7 @@ bad() { fail=$((fail+1)); printf '  ✗ %s\n     %s\n' "$1" "$2"; }
 skeleton() {
   d="$1"
   mkdir -p "$d/docs/retrospectives" "$d/docs/agent-runs" "$d/docs/wiki" \
-           "$d/.claude/agents" "$d/agents"
+           "$d/.claude/agents" "$d/agents" "$d/.github/prompts" "$d/importer"
   echo "# Hirefolio" > "$d/README.md"
   echo "deploy Hirefolio at <your-domain>" > "$d/docs/DEPLOYMENT.md"
   echo "see <your-domain>" > "$d/docs/wiki/production-deployment.md"
@@ -28,6 +28,12 @@ skeleton() {
   echo "You work on Hirefolio." > "$d/.claude/agents/backend-dev.md"
   echo "# SITE_URL=https://example.com" > "$d/.env.example"
   echo "You are part of the Hirefolio delivery team." > "$d/agents/PLAYBOOK.md"
+  echo "Hirefolio testing guide." > "$d/README_TESTING.md"
+  echo "Report at https://github.com/mavrovde/hirefolio/security/advisories/new" > "$d/SECURITY.md"
+  echo "A LinkedIn -> Hirefolio content pipeline." > "$d/.github/copilot-instructions.md"
+  echo "Prepare and check a release of Hirefolio." > "$d/.github/prompts/release-check.prompt.md"
+  echo "# Dependabot version updates for Hirefolio" > "$d/.github/dependabot.yml"
+  echo "Pushes your posts into your Hirefolio backend." > "$d/importer/README.md"
   echo "## v1.0.0 — moved off mavrov.de" > "$d/CHANGELOG.md"
   echo "  - PUBLIC_SERVER_NAME=\${PUBLIC_SERVER_NAME:-mavrov.de}" > "$d/docker-compose.yml"
   ( cd "$d" && git init -q . && git add -A ) >/dev/null 2>&1
@@ -58,10 +64,9 @@ rm -rf "$d"
 
 # --- 3. The three annotations are the ONLY way to keep the domain -----------
 for marker in \
-  "mavrov.de is the canonical instance of Hirefolio" \
-  "the historical default was /opt/mavrov.de" \
-  "pre-rename images live at ghcr.io/mavrovde/mavrov.de-backend" \
-  "narrative <!-- de-brand:historical: verbatim incident record -->  mavrov.de/admin 404"
+  "the maintainer's install <!-- de-brand:canonical: the one sanctioned aside --> at mavrov.de" \
+  "it was /opt/mavrov.de <!-- de-brand:historical: the pre-#310 default -->" \
+  "pre-rename images live at ghcr.io/mavrovde/mavrov.de-backend"
 do
   d="$(mktemp -d)"; skeleton "$d"
   printf '%s\n' "$marker" >> "$d/README.md"
@@ -71,10 +76,56 @@ do
   rm -rf "$d"
 done
 
+# --- 3b. NEGATIVE direction: an INCIDENTAL marker word must NOT exempt -------
+#     Round 1 of #318 matched three BARE words against the whole `git grep`
+#     output line. The reviewer walked all three of these through it green — the
+#     third being a straight REVERT of the README row this change fixed, exempted
+#     because the cell says "canonical". "canonical" and "historical" are ordinary
+#     English in this repo (21 in-scope lines already use "canonical" innocently),
+#     so the ONLY thing that may exempt a line is the `de-brand:` namespace.
+for prose in \
+  "Set SSR to advertise mavrov.de as the canonical URL for every page." \
+  "The historical posts feed is served from mavrov.de/blog." \
+  "| PUBLIC_SERVER_NAME | .env | mavrov.de www.mavrov.de | the canonical fallback |" \
+  "mavrov.de is the instance <!-- DE-BRAND:CANONICAL --> — marker in the wrong case."
+do
+  d="$(mktemp -d)"; skeleton "$d"
+  printf '%s\n' "$prose" >> "$d/README.md"
+  out="$(run "$d")"; rc=$?
+  [ "$rc" -eq 1 ] && ok "incidental marker does NOT exempt: ${prose:0:36}…" \
+    || bad "incidental marker must not exempt: $prose" "rc=$rc, out=$out"
+  rm -rf "$d"
+done
+
+# --- 3c. NEGATIVE direction: the marker may not live in the PATH -------------
+#     `git grep -in` emits `path:line:content`; filtering the whole line made
+#     every file under a `canonical`/`historical`-named directory exempt forever.
+#     The third path carries the FULL namespaced marker in a directory name — it
+#     is the case that falsifies the fix itself: stripping the prefix textually
+#     cannot handle a path containing `:`, so the checker must read the file.
+for p in docs/canonical-urls/setup.md docs/historical-notes/hosting.md \
+         'docs/de-brand:historical-notes/hosting.md'
+do
+  d="$(mktemp -d)"; skeleton "$d"
+  mkdir -p "$d/$(dirname "$p")"
+  echo "Point your DNS at mavrov.de and you are done." > "$d/$p"
+  out="$(run "$d")"; rc=$?
+  [ "$rc" -eq 1 ] && ok "a marker word in the PATH does not exempt: $p" \
+    || bad "path-level exemption hole: $p" "rc=$rc, out=$out"
+  rm -rf "$d"
+done
+
 # --- 4. EVERY in-scope surface is actually scanned ---------------------------
-#     (a scope list is a claim; an unscanned entry is a silent hole)
+#     (a scope list is a claim; an unscanned entry is a silent hole). The last
+#     six entered the list in round 2 of #318 — the reviewer found five of them
+#     branded AND permanently unguarded, which is the failure mode this loop
+#     exists for: the guard's scope has to grow with the de-branding, or the very
+#     next drift lands somewhere nothing looks.
 for f in README.md docs/DEPLOYMENT.md docs/wiki/production-deployment.md \
-         .claude/agents/backend-dev.md .env.example agents/PLAYBOOK.md
+         .claude/agents/backend-dev.md .env.example agents/PLAYBOOK.md \
+         README_TESTING.md SECURITY.md .github/copilot-instructions.md \
+         .github/prompts/release-check.prompt.md .github/dependabot.yml \
+         importer/README.md
 do
   d="$(mktemp -d)"; skeleton "$d"
   echo "deploy it at mavrov.de" >> "$d/$f"

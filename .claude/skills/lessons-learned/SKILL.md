@@ -1135,6 +1135,45 @@ anyone reasoned about it.** Running the checker by hand from a clean tree said g
 still untracked, and `git grep` does not see untracked files. Stage-then-verify (`git add -A` before
 running a `git grep`-based checker) or you are testing a different tree than CI will.
 
+## 47. An EXEMPTION MARKER must be a token nobody writes by accident — namespace it, and test the negative direction (#313 / #318 round 1)
+
+The de-branding guard (`scripts/check_no_pii.sh` check B) bans the maintainer's domain on
+guidance surfaces *unless the line is annotated*. Round 1 spelled the annotations as three bare
+words matched case-insensitively against the whole `git grep -in` output line:
+
+```sh
+GUIDANCE_ANNOTATIONS='canonical|historical|ghcr\.io/…'
+git grep -inE 'mavrov\.de' -- <scope> | grep -ivE "$GUIDANCE_ANNOTATIONS"
+```
+
+Three independent failures fell out of that one decision, and the review caught all three:
+
+1. **The marker words are ordinary English here.** 21 lines already inside the guard's own scope
+   say "canonical" innocently ("preserves the canonical behavior", "the canonical URL for every
+   page"). The decisive reproduction was a **revert of the very README row the change had just
+   fixed** — it sailed through green because the restored cell contained the word "canonical". A
+   guard that cannot protect the line it just fixed protects nothing.
+2. **Matching the `path:line:` prefix moves the exemption into the filesystem.** Any file under a
+   `docs/canonical-urls/`-style directory was exempt forever. Note the obvious repair — strip the
+   prefix with `sub(/^[^:]*:[0-9]+:/, …)` — is *also* wrong: a path may itself contain `:`, and
+   then the anchor does not match and the whole line is tested again. The only formulation with no
+   prefix to parse is: ask git for the **file list** (`git grep -zil`), then let `awk` read each
+   file and judge its own lines, re-creating `path:line:content` for the report.
+3. **The prose bends to the matcher.** Two documentation lines had the word "historical" inserted
+   into them purely so the regex would pass. An annotation mechanism that rewrites the
+   documentation to appease itself has inverted the relationship.
+
+**The rule: an exemption marker is an API, not a word.** Namespace it (`de-brand:historical`),
+require exact case, match it against **content only**, and prefer a form that renders invisibly so
+the annotation never distorts the text it annotates — in markdown, `<!-- de-brand:historical: why -->`.
+
+**And the reason none of this was caught by 23 green self-test cases: every case tested the
+PERMISSIVE direction.** "An annotated line passes" was pinned six ways; "an unrelated line that
+merely *contains* the word does NOT pass" was pinned zero ways. For any allowlist, exemption,
+`# noqa`, `eslint-disable`, or skip-marker you introduce, **the load-bearing test is the negative
+one** — the near-miss that must still fail. Measured on the fix: restoring the round-1 matcher
+turns **7 of 35** cases red, and every one of them is a case added *after* the review.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,
