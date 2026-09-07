@@ -22,10 +22,11 @@ All notable changes to this project will be documented in this file.
     12 self-test cases, failing-first.
   - `scripts/run_frontend_suites.sh` (pre-push gate only) — runs the three Vitest projects
     independently instead of `npm test`'s `&&` chain, and retries a project **once** only when its output carries the
-    Vitest 4 worker-teardown signature *and* reports zero failed tests. That race hard-failed the
+    Vitest worker-teardown signature *and* reports zero failed tests. That race hard-failed the
     whole pre-push gate twice this cycle with 337/337 tests passing — once while pushing the release
     tag — and the chain meant `admin` never ran either time. A real failure is never retried;
-    14 self-test cases.
+    14 self-test cases. (It is **not** a 4.x-only problem: the Vitest 5 bump later in this release
+    reproduced it on 5.0.0, so the harness stays — see the Changed entry below.)
 
 ### Fixed
 - **Merge gate could accept an author's fix report as a review verdict (rule 13).**
@@ -71,6 +72,20 @@ All notable changes to this project will be documented in this file.
   `clearMocks` now defaults to `true`; re-running all three suites with `clearMocks: false`
   restored gives an identical 837/837, so nothing here depends on the new default. Playwright
   E2E is untouched (separate runner, `@playwright/test` unchanged in the lock).
+  Two changes ride along, both from the PR review:
+  - **The 100% coverage standard is now an ENFORCED floor, not a convention.** All three configs
+    gain `coverage.thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 }`.
+    Until now no `thresholds` block existed anywhere: a coverage drop printed a smaller number and
+    the run still exited 0 — only the CI job *names* claimed "100% coverage". Proven to gate:
+    dropping one spec per project fails each run non-zero **with every remaining test passing**
+    (`public` denies at 99.69% branches), and the same runs with the thresholds neutralised exit 0.
+  - **`frontend/.npmrc` sets `legacy-peer-deps=true`.** `@angular/build@22.1.7` still declares
+    `peerOptional vitest ^4.0.8` for its `@angular/build:unit-test` builder — which this repo
+    configures but never invokes — so on Vitest 5 a plain `npm install` exits 1, breaking the
+    onboarding command documented in `README.md` / `README_TESTING.md`. Every install path here
+    already passed `--legacy-peer-deps`; this makes it the project default. Trade-off recorded in
+    the file and in lessons §44: it silences genuine peer conflicts too, so the one-pass
+    lockfile regeneration + programmatic lock review remain the real guard.
 - `agents/PLAYBOOK.md` gains five discipline rules measured from this release (verify by observable
   not by construction; your verification's scope is a claim too; a new setting is three edits;
   `git push` rides alone; a verdict states itself in line 1); `release-manager` must trace a changed

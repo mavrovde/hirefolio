@@ -1052,6 +1052,23 @@ bump, both worth keeping: `clearMocks` now defaults to `true`, and running all t
 `clearMocks: false` restored gave **837/837 identical** — so no test in this repo passes *because of*
 the auto-clear; and the worker-teardown race did **not** go away with the major (see `env-gotchas`).
 
+**And the reason this was invisible for so long: there was no threshold to trip.** Not one of the
+three configs carried a `coverage.thresholds` block — the "100% gate" was the CI *job names* plus
+habit, so a drop would have printed a smaller number and still exited 0. The review of #314 closed
+it: all three now declare `{ statements: 100, branches: 100, functions: 100, lines: 100 }`, proven
+to gate by dropping one spec per project (each run denies **with every remaining test passing**;
+`public` denies at 99.69% branches) with the thresholds-off control exiting 0. **A convention that
+nothing executes is not a gate** — the same lesson as §35, arriving from the coverage side.
+
+**Related, and the honest half of it: `frontend/.npmrc` now pins `legacy-peer-deps=true`.** A stale
+`peerOptional vitest ^4.0.8` on `@angular/build` — for the `@angular/build:unit-test` builder this
+repo configures but never invokes — makes a plain `npm install` exit 1 on Vitest 5, which broke the
+onboarding command in `README.md`. Every install path already passed the flag, so this only makes the
+posture the default. **It buys that at the price of silencing genuine peer conflicts**, and it does
+NOT fix everything: `npm ls` still exits 1 (its validity check reads the installed tree, and
+`legacy-peer-deps` is a *resolver* setting) — use `npm ls <pkgs> --depth=0`, which exits 0 and prints
+the coherent set. Delete the file when `@angular/build` widens the range.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,
