@@ -43,6 +43,17 @@ Facts about THIS repo's environments that keep costing cycles. Check here before
   `/deploy-status`, #120).
 - **Repo renames don't move GHCR packages** (lessons-learned §20): container packages keep the old
   visibility/links until touched.
+- **`gh api -f` does NOT read `@file`; `-F` does.** `-f body=@notes.md` sends the literal string
+  `@notes.md`. Editing an issue comment that way (#318, round 2) **replaced a 5 KB public comment
+  with a local filesystem path** — silent success, wrong content, and internal path information
+  published to a PUBLIC repo. Use `-F body=@file` (or `--input -` with JSON on stdin), and for
+  issue/PR/comment bodies prefer the porcelain that takes a file directly: `gh pr edit
+  --body-file`, `gh pr comment --body-file`, `gh issue comment --body-file`. **Always read the
+  edited surface back** — `gh api … --jq '.body|length'` next to `wc -c` on the source file is a
+  two-second check that catches it.
+- **A large heredoc in a `Bash` call can be refused by the destructive-command guard** (it blocks
+  what it cannot finish analysing). Write the body with the `Write` tool to a scratch file, then
+  run a short `gh … --body-file` command — which is also the shape that avoids the `-f`/`-F` trap.
 
 ## Local test databases (shared state)
 - Backend pytest needs `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio`
