@@ -147,5 +147,8 @@ else
   echo "  Admin password: (unchanged, from your .env)"
 fi
 echo
+echo "Phone pings: set HIREFOLIO_TELEGRAM_BOT_TOKEN + _CHAT_ID for instant Telegram"
+echo "notifications (2 minutes with @BotFather; see README). Slack/ntfy: HIREFOLIO_NOTIFY_WEBHOOK_URL."
+echo
 echo "Make it yours: edit the identity block in .env (OWNER_NAME, SITE_URL, ...)"
 echo "and upload your own profile data + CV in the admin panel — no code edits."

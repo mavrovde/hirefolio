@@ -43,6 +43,20 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+
+    # Messenger notification channels (#263). Credentials follow the
+    # HIREFOLIO_* namespace (#141 — the generic names bit us once). Empty =
+    # that channel simply does not exist in the registry; zero requests.
+    telegram_bot_token: str = Field(
+        default="", validation_alias="HIREFOLIO_TELEGRAM_BOT_TOKEN"
+    )
+    telegram_chat_id: str = Field(
+        default="", validation_alias="HIREFOLIO_TELEGRAM_CHAT_ID"
+    )
+    notify_webhook_url: str = Field(
+        default="", validation_alias="HIREFOLIO_NOTIFY_WEBHOOK_URL"
+    )
+    notify_timeout_seconds: int = 10
     admin_email: str = "admin@mavrov.de"
     api_prefix: str = "/api/app"
     # Read from HIREFOLIO_GEMINI_API_KEY, deliberately NOT the generic

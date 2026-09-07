@@ -1,0 +1,237 @@
+"""Pluggable notification channels (#263), pinned criterion by criterion.
+
+Rule 10 throughout: every HTTP boundary is mocked; no test can reach Telegram
+or any webhook — empty config disables a channel exactly like SMTP, and the
+empty-config tests assert ZERO requests, not just "no failure".
+"""
+
+from unittest.mock import MagicMock, patch
+
+import pytest
+from httpx import AsyncClient
+
+from app.config import settings
+from app.services.notifications import (
+    OwnerNotification,
+    configured_channels,
+    notify_owner,
+)
+
+EVENT = OwnerNotification(
+    source="contact_form",
+    name="Rita Recruiter",
+    email="rita@agency.example",
+    company="Agency GmbH",
+    message="Are you available for a Staff role?",
+)
+
+
+def _cfg(**overrides):
+    defaults = {
+        "smtp_host": "",
+        "telegram_bot_token": "",
+        "telegram_chat_id": "",
+        "notify_webhook_url": "",
+    }
+    defaults.update(overrides)
+    return [patch(f"app.config.settings.{k}", v) for k, v in defaults.items()]
+
+
+def _with(patches, fn):
+    for c in patches:
+        c.start()
+    try:
+        return fn()
+    finally:
+        for c in patches:
+            c.stop()
+
+
+# ---------------------------------------------------------------- registry --
+
+
+def test_empty_config_means_empty_registry_and_zero_requests():
+    with patch("app.services.notifications.httpx.post") as post:
+        result = _with(_cfg(), lambda: notify_owner(EVENT))
+        assert result == {}
+        post.assert_not_called()
+
+
+def test_channels_register_exactly_when_their_config_is_present():
+    assert _with(
+        _cfg(smtp_host="mailpit"), lambda: [c.name for c in configured_channels()]
+    ) == ["email"]
+    assert _with(
+        _cfg(telegram_bot_token="t", telegram_chat_id="c"),
+        lambda: [c.name for c in configured_channels()],
+    ) == ["telegram"]
+    assert _with(
+        _cfg(notify_webhook_url="https://hooks.example/x"),
+        lambda: [c.name for c in configured_channels()],
+    ) == ["webhook"]
+    # Half a Telegram config is NO Telegram config.
+    assert (
+        _with(
+            _cfg(telegram_bot_token="t"),
+            lambda: [c.name for c in configured_channels()],
+        )
+        == []
+    )
+
+
+# ---------------------------------------------------------------- telegram --
+
+
+def test_telegram_posts_the_bot_api_with_chat_id_and_summary():
+    with patch("app.services.notifications.httpx.post") as post:
+        post.return_value = MagicMock(raise_for_status=lambda: None)
+        result = _with(
+            _cfg(telegram_bot_token="123:abc", telegram_chat_id="42"),
+            lambda: notify_owner(EVENT),
+        )
+    assert result == {"telegram": True}
+    url = post.call_args.args[0]
+    assert url == "https://api.telegram.org/bot123:abc/sendMessage"
+    payload = post.call_args.kwargs["json"]
+    assert payload["chat_id"] == "42"
+    assert "[contact_form] New interaction from Rita Recruiter" in payload["text"]
+    assert "admin" in payload["text"]  # the deep link back to the inbox
+    assert post.call_args.kwargs["timeout"] == settings.notify_timeout_seconds
+
+
+def test_telegram_failure_is_false_and_never_leaks_the_token_into_logs():
+    import httpx as real_httpx
+
+    with patch("app.services.notifications.httpx.post") as post:
+        post.side_effect = real_httpx.ConnectError(
+            "boom https://api.telegram.org/botSECRET-TOKEN/sendMessage"
+        )
+        with patch("app.services.notifications.logger") as log:
+            result = _with(
+                _cfg(telegram_bot_token="SECRET-TOKEN", telegram_chat_id="42"),
+                lambda: notify_owner(EVENT),
+            )
+    assert result == {"telegram": False}
+    # The token is part of the URL; the log line must carry the exception TYPE
+    # only, never its message (pinned — this is why the except logs __name__).
+    logged = " ".join(str(c) for c in log.error.call_args_list)
+    assert "SECRET-TOKEN" not in logged
+
+
+# ----------------------------------------------------------------- webhook --
+
+
+def test_webhook_posts_slack_style_text_plus_structured_fields():
+    with patch("app.services.notifications.httpx.post") as post:
+        post.return_value = MagicMock(raise_for_status=lambda: None)
+        result = _with(
+            _cfg(notify_webhook_url="https://hooks.slack.example/T/B/x"),
+            lambda: notify_owner(EVENT),
+        )
+    assert result == {"webhook": True}
+    assert post.call_args.args[0] == "https://hooks.slack.example/T/B/x"
+    payload = post.call_args.kwargs["json"]
+    assert "New interaction from Rita Recruiter" in payload["text"]
+    assert payload["source"] == "contact_form"
+    assert payload["email"] == "rita@agency.example"
+
+
+def test_webhook_failure_is_false_and_logs_the_type_only():
+    import httpx as real_httpx
+
+    with patch("app.services.notifications.httpx.post") as post:
+        post.side_effect = real_httpx.ConnectError("refused")
+        result = _with(
+            _cfg(notify_webhook_url="https://hooks.example/x"),
+            lambda: notify_owner(EVENT),
+        )
+    assert result == {"webhook": False}
+
+
+# ---------------------------------------------------------------- fan-out ---
+
+
+def test_one_dead_channel_never_blocks_another():
+    """Telegram 500s; the webhook must still fire and succeed."""
+    import httpx as real_httpx
+
+    calls = []
+
+    def post(url, **kwargs):
+        calls.append(url)
+        if "telegram" in url:
+            raise real_httpx.HTTPStatusError(
+                "500", request=MagicMock(), response=MagicMock()
+            )
+        return MagicMock(raise_for_status=lambda: None)
+
+    with patch("app.services.notifications.httpx.post", side_effect=post):
+        result = _with(
+            _cfg(
+                telegram_bot_token="t",
+                telegram_chat_id="c",
+                notify_webhook_url="https://hooks.example/x",
+            ),
+            lambda: notify_owner(EVENT),
+        )
+    assert result == {"telegram": False, "webhook": True}
+    assert len(calls) == 2
+
+
+def test_a_channel_that_raises_outside_its_own_handling_is_isolated():
+    """Even a channel whose send() itself raises (not just fails) must not
+    stop the fan-out — the registry's own belt to the channels' braces."""
+    from app.services import notifications as n
+
+    class Bomb:
+        name = "bomb"
+
+        def send(self, event):
+            raise RuntimeError("kaboom")
+
+    ok = MagicMock()
+    ok.name = "ok"
+    ok.send.return_value = True
+    with patch.object(n, "configured_channels", return_value=[Bomb(), ok]):
+        result = n.notify_owner(EVENT)
+    assert result == {"bomb": False, "ok": True}
+    ok.send.assert_called_once()
+
+
+# ------------------------------------------------------------- end to end ---
+
+
+@pytest.mark.asyncio
+async def test_contact_form_fans_out_through_the_registry(client: AsyncClient):
+    """The #69 call site goes through the registry: with Telegram AND email
+    configured, one submission produces both — through mocked boundaries."""
+    sent = {"email": 0, "telegram": 0}
+
+    def fake_email(self, **kwargs):
+        sent["email"] += 1
+        return True
+
+    def fake_post(url, **kwargs):
+        assert "api.telegram.org" in url
+        sent["telegram"] += 1
+        return MagicMock(raise_for_status=lambda: None)
+
+    from app.services.email import EmailService
+
+    with (
+        patch.object(EmailService, "send_interaction_notification", fake_email),
+        patch("app.services.notifications.httpx.post", side_effect=fake_post),
+        patch("app.config.settings.smtp_host", "mailpit"),
+        patch("app.config.settings.telegram_bot_token", "t"),
+        patch("app.config.settings.telegram_chat_id", "c"),
+    ):
+        r = await client.post(
+            f"{settings.api_prefix}/interactions/contact",
+            json={
+                "name": "Fanout Probe",
+                "email": "probe@example.com",
+                "message": "Testing the notification registry fan-out.",
+            },
+        )
+        assert r.status_code == 201
+    assert sent == {"email": 1, "telegram": 1}

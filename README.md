@@ -498,6 +498,23 @@ export const environment = {
 };
 ```
 
+## 📣 Owner notifications — channels (#263)
+
+Every new inbox interaction fans out to **all configured channels**; a channel exists exactly
+when its config does, and one dead channel never blocks another (nor intake).
+
+| Channel | Config | Notes |
+|---|---|---|
+| Email | `SMTP_*` | the pre-existing path, unchanged |
+| **Telegram** | `HIREFOLIO_TELEGRAM_BOT_TOKEN` + `HIREFOLIO_TELEGRAM_CHAT_ID` | **2-minute setup**: message [@BotFather](https://t.me/botfather) → `/newbot` → copy the token; then message your bot once and read your chat id from `https://api.telegram.org/bot<token>/getUpdates`. Free; lands on your phone in seconds. |
+| Webhook | `HIREFOLIO_NOTIFY_WEBHOOK_URL` | provider-agnostic JSON POST (`text` + structured fields) — works as-is with Slack/Mattermost incoming webhooks and ntfy |
+
+**WhatsApp — a documented decision, not a missing feature:** the Business Cloud API requires a
+Meta-verified business account, pre-approved message templates, and bills per conversation.
+That cost/approval model makes it a deliberate later adapter; the channel seam
+(`NotificationChannel` in `backend/app/services/notifications.py`) makes it one small class the
+day an owner actually needs it. No stub pretends otherwise.
+
 ## 🌐 API Endpoints
 
 ### Blog Posts
