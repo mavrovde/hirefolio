@@ -111,7 +111,7 @@ Three ways to make notifications flow, in order of recommendation:
    inbox at `http://localhost:8025` — every notification is captured there and **nothing ever
    leaves the machine**. The integration tier asserts the contact-form notification through
    Mailpit's API, so the mail path is CI-tested end to end.
-3. **Self-hosted outbound relay (opt-in, eyes open).** `docker compose --profile mail up` adds a
+3. **Self-hosted outbound relay (opt-in, eyes open).** `docker compose -f docker-compose.prod.yml --profile mail up` adds a
    send-only postfix (`mailer`) on the private network; set `SMTP_HOST=mailer`, `SMTP_PORT=587`,
    `SMTP_STARTTLS=false`, and `MAIL_SENDER_DOMAIN=yourdomain`. **This does NOT make delivery
    work by itself**: receiving servers will junk or refuse mail unless you set up **SPF** (an

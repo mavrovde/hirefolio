@@ -44,7 +44,9 @@ def test_contact_form_notification_lands_in_mailpit(client: httpx.Client):
         )
         if submitted.status_code != 429:
             break
-        time.sleep(21)  # a third of the window frees a slot
+        # The SLIDING window frees a slot 60s after the hit that took it —
+        # a partial wait cannot clear a saturated window (#296 round 3).
+        time.sleep(61)
     assert submitted is not None and submitted.status_code == 201, submitted.text
 
     # The notification rides a background task + real SMTP hop; poll briefly
