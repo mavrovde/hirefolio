@@ -1,7 +1,20 @@
+# Shared defaults (#310). LOGGING ONLY here, deliberately: the json-file driver
+# is unbounded, and an all-day dev stack fills a laptop disk exactly like it
+# fills a server one. Memory CEILINGS live in docker-compose.prod.yml only —
+# their rationale is "do not OOM a NEIGHBOURING project on a shared host", which
+# a developer machine does not have, and a too-tight ceiling here would only
+# break local runs. Override with DOCKER_LOG_MAX_SIZE / DOCKER_LOG_MAX_FILE.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
+    max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+
 services:
   db:
     image: pgvector/pgvector:pg16
     restart: always
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -22,6 +35,7 @@ services:
   ollama:
     image: ollama/ollama:latest
     restart: always
+    logging: *default-logging
     ports:
       - "11434:11434"
     volumes:
@@ -57,6 +71,7 @@ services:
     image: ${IMAGE_REPO:-mavrovde}-backend:${IMAGE_TAG:-latest}
     build: ./backend
     restart: always
+    logging: *default-logging
     ports:
       - "8000:8000"
     volumes:
@@ -162,6 +177,7 @@ services:
   mailpit:
     image: axllent/mailpit:v1.21
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "127.0.0.1:8025:8025"   # web UI + REST API (the integration tier asserts via it)
     networks:
@@ -173,6 +189,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: always
+    logging: *default-logging
     expose:
       - "80"
       - "4000"
@@ -189,6 +206,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.admin
     restart: always
+    logging: *default-logging
     expose:
       - "80"
     environment:
@@ -200,8 +218,10 @@ services:
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:v0.11.0
-    container_name: open-webui
+    # NO fixed container name (#310) — host-global, bypasses project scoping.
+    # The service name remains a network alias, which is what nginx resolves.
     restart: always
+    logging: *default-logging
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
 
@@ -215,8 +235,10 @@ services:
   proxy:
     build: ./proxy
     image: ${IMAGE_REPO:-mavrovde}-proxy:${IMAGE_TAG:-latest}
-    container_name: global_proxy
+    # NO fixed container name (#310) — resolve it with
+    # `docker compose ps -q proxy` instead of the literal `global_proxy`.
     restart: always
+    logging: *default-logging
     environment:
       # Owner-configurable proxy identity (see .env.example). Defaults preserve
       # the canonical mavrov.de behavior; a forker overrides these in the root .env.

@@ -26,7 +26,14 @@ server {
     listen 443 ssl;
     server_name ${PUBLIC_SERVER_NAME} localhost 127.0.0.1;
 
-    # SSL Certificates (Provided by 1panel in prod or dummy certs in CI/local)
+    # SSL certificates. In CI/local, entrypoint.sh self-signs a dummy /CN=localhost
+    # pair. In prod they come from whatever terminates TLS for this container:
+    #   * shared-edge host (the documented topology) — the HOST edge terminates TLS
+    #     and this hop is internal, so the dummy cert here is CORRECT, not a bug;
+    #   * this proxy terminates — mount the real fullchain.pem/privkey.pem into
+    #     /etc/nginx/ssl and publish 443.
+    # Both blocks below read the SAME files, so one certificate must cover the
+    # public AND the admin hostname (SAN). See docs/wiki/production-deployment.md.
     ssl_certificate /etc/nginx/ssl/fullchain.pem;
     ssl_certificate_key /etc/nginx/ssl/privkey.pem;
 

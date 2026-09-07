@@ -657,12 +657,26 @@ jobs:
       # Nginx logged its start banner, preserving the old job's exact guarantee.
       - name: Verify Proxy Startup (Smoke)
         run: |
-          if [ "$(docker inspect -f '{{.State.Running}}' global_proxy)" != "true" ]; then
-            echo "❌ Proxy container died!"
-            docker logs global_proxy
+          # Resolve the container through compose, not by a literal name: #310
+          # removed `container_name: global_proxy` because container_name is
+          # HOST-GLOBAL and collides between projects on a shared host.
+          # `-a` is hardening, not a bug fix: plain `ps -q` was measured to list
+          # a restarting container, so the check already worked — but a proxy
+          # that has EXITED is exactly the failure this step exists to report,
+          # and without -a that case resolves to an empty id and the diagnosis
+          # degrades from "died, here are its logs" to "not found".
+          PROXY_CID=$(docker compose -f docker-compose.prod.yml ps -aq proxy)
+          if [ -z "$PROXY_CID" ]; then
+            echo "❌ Proxy container not found (compose ps -aq proxy returned nothing)"
+            docker compose -f docker-compose.prod.yml ps
             exit 1
           fi
-          LOGS=$(docker logs global_proxy 2>&1)
+          if [ "$(docker inspect -f '{{.State.Running}}' "$PROXY_CID")" != "true" ]; then
+            echo "❌ Proxy container died!"
+            docker logs "$PROXY_CID"
+            exit 1
+          fi
+          LOGS=$(docker logs "$PROXY_CID" 2>&1)
           echo "=== PROXY LOGS ==="
           echo "$LOGS"
           if echo "$LOGS" | grep -q "Starting Nginx..."; then
@@ -932,6 +946,14 @@ jobs:
   # running containers by image digest, health-gates, freshness-probes (#169),
   # and rolls back to the previously recorded sha tag on failure. No-op until
   # the owner adds DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY (docs/DEPLOYMENT.md).
+  #
+  # DEPLOY_DIR default is /opt/hirefolio (the PRODUCT, #310 — it was a
+  # maintainer-specific path). Continuity, same shape as the #288 POSTGRES_DB
+  # rename: this default is only ever reached when the DEPLOY_DIR secret is
+  # UNSET, and the rollout has never run on any host (the three secrets are
+  # absent), so nothing can be pointed at a wrong directory by this change. A
+  # deployment that already lives elsewhere sets the DEPLOY_DIR secret to its own
+  # path — which is exactly what that secret is for.
   deploy:
     name: Roll Out To Prod Host
     # Build/publish/deploy: push to `main` only, never on a pull request (#208).
@@ -1012,7 +1034,7 @@ jobs:
         if: steps.gate.outputs.enabled == 'true'
         id: rollout
         env:
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/hirefolio' }}
           SHA_TAG: sha-${{ github.sha }}
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
@@ -1079,7 +1101,7 @@ jobs:
           # setting (shared with the Live Freshness workflow); the old
           # DEPLOY_PUBLIC_URL secret stays honoured for back-compat.
           PUBLIC_URL: ${{ vars.PUBLIC_URL || secrets.DEPLOY_PUBLIC_URL || 'https://mavrov.de' }}
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/hirefolio' }}
         run: |
           echo "Waiting for $PUBLIC_URL to become healthy..."
           ok=false
@@ -1104,12 +1126,12 @@ jobs:
           echo "Freshness gate OK."
           # Deploy succeeded: drop the rollback marker so nothing later can
           # roll this healthy release backwards.
-          ssh prod "rm -f '${DEPLOY_DIR:-/opt/mavrov.de}/.env.rollback'" || true
+          ssh prod "rm -f '${DEPLOY_DIR:-/opt/hirefolio}/.env.rollback'" || true
 
       - name: Roll back on failure
         if: failure() && steps.rollout.outputs.mutated == 'true'
         env:
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/hirefolio' }}
         run: |
           echo "Rolling back to previous image coordinates..."
           ssh prod "DEPLOY_DIR='$DEPLOY_DIR' APP_SERVICES='$APP_SERVICES' bash -s" <<'REMOTE'

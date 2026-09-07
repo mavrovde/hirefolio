@@ -235,7 +235,8 @@ rule 13**, enforced via the `pr-reviewer` agent.
 
 ## 12. Admin IP allowlist is meaningless without `real_ip` — and don't gate startup on the FULL `nginx -t`
 
-**Trap.** In the containerized prod topology the admin subdomain sits behind a front proxy (1panel)
+**Trap.** In the containerized prod topology the admin subdomain sits behind whatever terminates TLS
+at the edge (a host-level edge proxy — see `.claude/skills/ssh-deploy/`)
 + Docker NAT, so nginx sees the **Docker bridge gateway** as `$remote_addr` for *every* external
 client. An `allow/deny` allowlist on `$remote_addr` therefore can't distinguish operators — and
 flipping it to `deny all;` locks the owner out too (#86, split from #60, which is exactly why the
@@ -1014,6 +1015,44 @@ incident is the posture this repo argues against. Revisit on **the first fix rep
 marker posted while the standing verdict is NEGATIVE**: that instance is decision-*changing*, and it
 is the cheap signal that arrives before the damage.
 
+## 44. On a SHARED host, the host is not yours — and three defaults assume it is (#310)
+
+Every item below was measured on the tree at 2026-09-07, when the owner moved hirefolio onto a
+**multi-project** box with **no server panel**. Each default is harmless on a dedicated machine and a
+cross-project outage on a shared one.
+
+- **`ufw` does NOT filter Docker-published ports.** Docker publishes with a DNAT rule in
+  `PREROUTING`; the packet then traverses `FORWARD` and never enters the `INPUT` chain `ufw`
+  filters. `ufw deny 5433` leaves a published Postgres **reachable from the internet** while the
+  operator believes it is closed. The fix is a **`127.0.0.1` bind** (the kernel drops any off-host
+  packet claiming loopback as destination, before any firewall rule) — or rules in `DOCKER-USER`,
+  which Docker evaluates before its own. Verify from OFF the host (`nmap -Pn`); a loopback test
+  proves nothing. Prod compose now defaults `POSTGRES_BIND_HOST=127.0.0.1`.
+- **`container_name` is host-global and bypasses compose project scoping.** Two projects each
+  running Open WebUI collide on the literal name and one refuses to start. Removing it is safe:
+  Compose keeps the **service name as a network alias**, which is what nginx resolves — measured,
+  `getent hosts open-webui` inside the proxy still answered after removal, and nginx (which refuses
+  to start on an unresolvable upstream) started. Resolve containers with
+  `docker compose ps -q <svc>`, never a literal name.
+- **An unset `COMPOSE_PROJECT_NAME` makes your data addressable by an accident of pathing.**
+  Compose derives it from the deploy directory basename — a directory named `example.com` becomes
+  the prefix `examplecom`, and the §8 incident volume carried exactly such a directory-derived
+  prefix. Move or rename that directory and the
+  stack comes up against **new, empty volumes**: the data is intact under the old prefix, but it
+  looks exactly like total loss. Pin it explicitly, and on an existing host pin **the name already
+  in use**, read off the host first — the same continuity rule as the #288 `POSTGRES_DB` pin.
+- **Do not put a shared edge in the rolled service list.** `proxy` is in `APP_SERVICES`
+  (`deploy.yml:934`), so every hirefolio rollout — and every rollback — recreates it. That is fine
+  while the proxy serves only hirefolio, and an outage for every tenant the moment it is shared.
+
+Also measured, and the reason the edge must forward to the tenant's **443** and not its 80:
+`proxy/default.conf.template` has an unconditional `return 301 https://` block that `listen 80` and
+matches the public name **before** the application block, so an edge forwarding on port 80 with the
+real `Host` gets `301 https://…` — a redirect loop. Measured: the configured `PUBLIC_SERVER_NAME`
+against `:80` = `301`, against `:443` = `200`.
+
+Full design: `docs/wiki/production-deployment.md`. Operational loop: `.claude/skills/ssh-deploy/`.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,
@@ -1025,6 +1064,9 @@ is the cheap signal that arrives before the damage.
 - **`.claude/agents/*.md`** + **`agents/common/roster.py`** (`PROJECT_PLAYBOOK`) — the agent charters;
   keep the two in sync (they restate overlapping lessons).
 - **`.claude/skills/issue-workflow/`** — the issue/PR/milestone/label operational flow.
+- **`.claude/skills/ssh-deploy/`** — the panel-free rollout loop on the shared prod host
+  (failure→diagnosis per rollout step, cert renewal, multi-tenant do-not-touch); its design
+  companion is `docs/wiki/production-deployment.md`.
 - **`.claude/hooks/`** — `pre-push-tests.sh` (test gate), `guard-destructive.sh` (destruction guard),
   `pre-merge-gate.sh` (rule-13 + Closes/AC merge gate), `hook-parse-lib.sh` (the ONE parsing model
   all three source, #237), plus a `*.test.sh` self-test beside each hook — the merge gate's carries
