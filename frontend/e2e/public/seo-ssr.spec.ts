@@ -8,7 +8,11 @@ import { test, expect, APIRequestContext } from '@playwright/test';
 async function siteConfig(request: APIRequestContext) {
     const response = await request.get('/api/app/config/site');
     expect(response.ok()).toBe(true);
-    return (await response.json()) as { site_url: string; owner_name: string };
+    return (await response.json()) as {
+        site_url: string;
+        owner_name: string;
+        availability: string;
+    };
 }
 
 test.describe('SEO & SSR Verification', () => {
@@ -72,7 +76,7 @@ test.describe('SEO & SSR Verification', () => {
 
     // 4. The enriched Person node crawlers actually read, in the SERVER HTML (#71)
     test('should server-render enriched Person structured data', async ({ request }) => {
-        const { site_url } = await siteConfig(request);
+        const { site_url, availability } = await siteConfig(request);
         const html = await (await request.get('/')).text();
 
         const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
@@ -88,8 +92,15 @@ test.describe('SEO & SSR Verification', () => {
         expect(person['hasOccupation']).toMatchObject({ '@type': 'Occupation' });
         expect(person['address']).toMatchObject({ '@type': 'PostalAddress' });
         expect(person['worksFor']).toMatchObject({ '@type': 'Organization' });
-        // Open-to-work signal: emitted unless the owner is not looking (#71 AC5).
-        expect(person['seeks']).toMatchObject({ '@type': 'Demand' });
+        // Open-to-work signal (#71 AC5). Availability is admin-editable (#271), so
+        // the expectation is READ FROM CONFIG like the identity above: asserting
+        // `seeks` unconditionally reddens this spec on a stack set to `not_looking`,
+        // where its absence is the correct output.
+        if (availability === 'not_looking') {
+            expect(person['seeks'], 'seeks must be omitted when not looking').toBeUndefined();
+        } else {
+            expect(person['seeks']).toMatchObject({ '@type': 'Demand' });
+        }
     });
 
     // 5. Every public route: unique title + description + canonical + OG/Twitter (#71 AC2)

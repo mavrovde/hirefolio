@@ -11,6 +11,7 @@ import {
     requestOrigin,
     resolveSiteUrl,
     SSR_BACKEND_ORIGIN,
+    SSR_FETCH_TIMEOUT_MS,
     stripTrailingSlash,
 } from './sitemap';
 
@@ -42,10 +43,14 @@ describe('requestOrigin', () => {
     it('prefers the forwarded proto/host injected by the proxy', () => {
         expect(
             requestOrigin(
-                { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'mavrov.de', host: 'frontend' },
+                {
+                    'x-forwarded-proto': 'https',
+                    'x-forwarded-host': 'proxied.example',
+                    host: 'frontend',
+                },
                 'http',
             ),
-        ).toBe('https://mavrov.de');
+        ).toBe('https://proxied.example');
     });
 
     it('takes the first hop when a header carries a chain', () => {
@@ -73,7 +78,10 @@ describe('requestOrigin', () => {
 });
 
 describe('createJsonFetcher', () => {
-    afterEach(() => vi.unstubAllGlobals());
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
 
     it('requests the backend origin and returns the parsed body', async () => {
         const json = vi.fn().mockResolvedValue({ site_url: 'https://example.com' });
@@ -85,6 +93,7 @@ describe('createJsonFetcher', () => {
         });
         expect(fetchSpy).toHaveBeenCalledWith(`${SSR_BACKEND_ORIGIN}${CONFIG_PATH}`, {
             headers: { accept: 'application/json' },
+            signal: expect.any(AbortSignal),
         });
     });
 
@@ -92,6 +101,36 @@ describe('createJsonFetcher', () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: vi.fn() }));
 
         await expect(createJsonFetcher('http://other:9000')(CONFIG_PATH)).rejects.toThrow('503');
+    });
+
+    // A HUNG backend (as opposed to a refused one) is the case with no natural
+    // bound: without this signal the request would sit until nginx's 300s
+    // instead of degrading. Fake timers cannot drive `AbortSignal.timeout` — it
+    // runs on a Node-internal timer — so the bound is pinned at the call.
+    it('bounds every request with the 5s SSR fetch timeout', async () => {
+        const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+        const json = vi.fn().mockResolvedValue({});
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json }));
+
+        await createJsonFetcher()(CONFIG_PATH);
+
+        expect(timeoutSpy).toHaveBeenCalledWith(SSR_FETCH_TIMEOUT_MS);
+        expect(SSR_FETCH_TIMEOUT_MS).toBe(5000);
+    });
+
+    it('surfaces a timed-out request as a rejection the callers degrade on', async () => {
+        const aborted = Object.assign(new Error('The operation was aborted due to timeout'), {
+            name: 'TimeoutError',
+        });
+        vi.stubGlobal('fetch', vi.fn().mockRejectedValue(aborted));
+        const fetchJson = createJsonFetcher();
+
+        await expect(fetchJson(CONFIG_PATH)).rejects.toThrow('timeout');
+        // Both consumers turn that into the graceful degrade, not a 500.
+        await expect(resolveSiteUrl(fetchJson, 'https://forked.example')).resolves.toBe(
+            'https://forked.example',
+        );
+        await expect(fetchPublishedPosts(fetchJson)).resolves.toEqual([]);
     });
 });
 

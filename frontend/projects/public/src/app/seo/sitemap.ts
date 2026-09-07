@@ -17,11 +17,13 @@
  * framework-generated bootstrap entry point.
  */
 
+import { SSR_BACKEND_ORIGIN } from '../ssr-backend-origin';
+
 /** Injected JSON fetcher, so the render functions are testable without network. */
 export type JsonFetcher = (path: string) => Promise<unknown>;
 
 /** Container-internal backend origin during SSR — same address `SsrHttpBackend` rewrites to. */
-export const SSR_BACKEND_ORIGIN = 'http://backend:8000';
+export { SSR_BACKEND_ORIGIN };
 
 const API_PREFIX = '/api/app';
 /** `page_size` is capped at 100 by the backend (`backend/app/api/posts.py`). */
@@ -89,10 +91,32 @@ export function requestOrigin(
     return `${proto}://${host}`;
 }
 
+/**
+ * Per-request bound on the SSR→backend reads below.
+ *
+ * A REFUSED backend rejects instantly, but a HUNG one has no bound of its own:
+ * `/robots.txt` and `/sitemap.xml` would then block until nginx's
+ * `proxy_read_timeout 300` (`frontend/nginx.conf`) instead of degrading to the
+ * routes-only file that `resolveSiteUrl`/`fetchPublishedPosts` already fall back
+ * to — the module's "degrade, never 500" contract would hold in principle and
+ * fail in practice.
+ *
+ * 5s matches the house convention for the mirror-image call: the backend reads
+ * profile JSON out of the frontend container with
+ * `profile_data_timeout_seconds` (`backend/app/config.py:238`, default 5.0,
+ * applied at `backend/app/api/years.py:57`). Kept a module constant rather than
+ * an env knob because it bounds a container-to-container hop on the compose
+ * network, where the deployment has no reason to tune it per-host.
+ */
+export const SSR_FETCH_TIMEOUT_MS = 5000;
+
 /** A `fetch`-backed JSON fetcher for API paths (`/api/app/...`). */
 export function createJsonFetcher(origin: string = SSR_BACKEND_ORIGIN): JsonFetcher {
     return async (path: string) => {
-        const response = await fetch(`${origin}${path}`, { headers: { accept: 'application/json' } });
+        const response = await fetch(`${origin}${path}`, {
+            headers: { accept: 'application/json' },
+            signal: AbortSignal.timeout(SSR_FETCH_TIMEOUT_MS),
+        });
         if (!response.ok) {
             throw new Error(`GET ${path} failed with ${response.status}`);
         }

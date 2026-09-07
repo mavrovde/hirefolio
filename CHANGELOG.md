@@ -25,6 +25,11 @@ All notable changes to this project will be documented in this file.
     were deleted deliberately: the frontend nginx does `try_files $uri @ssr`, so a bundled file
     would have shadowed the route forever. When the backend is unreachable the files still render
     against the request's own origin — a sitemap needs absolute URLs, so degrading beats 500ing.
+    Each SSR→backend read is bounded at 5s (`AbortSignal.timeout`), matching the backend's own
+    `PROFILE_DATA_TIMEOUT_SECONDS` for the mirror-image call: a *refused* backend rejects at once,
+    but a *hung* one would otherwise hold the request until nginx's 300s. Measured against a
+    paused backend: 45s+ and still hanging before, HTTP 200 with the routes-only sitemap in 5.02s
+    after.
   - **The canonical link is now in the server-rendered HTML.** It was written only in the browser
     (`isPlatformBrowser` guard around the ambient `document`), so the HTML crawlers actually read
     carried none. `SeoService` now writes into the **injected `DOCUMENT`**, which is the

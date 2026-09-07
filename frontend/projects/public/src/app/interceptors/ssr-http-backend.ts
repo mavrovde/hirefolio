@@ -2,6 +2,7 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformServer } from '@angular/common';
 import { HttpBackend, HttpEvent, HttpRequest, HttpXhrBackend } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { SSR_BACKEND_ORIGIN } from '../ssr-backend-origin';
 
 /**
  * Rewrites relative API/asset URLs to absolute, container-internal addresses
@@ -52,9 +53,9 @@ export class SsrHttpBackend implements HttpBackend {
     if (isPlatformServer(this.platformId) && !req.url.startsWith('http')) {
       let absoluteUrl = req.url;
       if (req.url.startsWith('/api')) {
-        absoluteUrl = `http://backend:8000${req.url}`;
+        absoluteUrl = `${SSR_BACKEND_ORIGIN}${req.url}`;
       } else if (req.url.startsWith('api/')) {
-        absoluteUrl = `http://backend:8000/${req.url}`;
+        absoluteUrl = `${SSR_BACKEND_ORIGIN}/${req.url}`;
       } else {
         // Assets / other non-API routes are served by the Angular SSR server itself.
         const prefix = req.url.startsWith('/') ? '' : '/';
