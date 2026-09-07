@@ -27,14 +27,15 @@ the next retrospective checks.
 
 Update this when you add a retro. These are the numbers worth watching; everything else is context.
 
-| Release | PRs merged | Verdicts (loose / heading-anchored) | Mean rounds | Approved r1 | Rework share of verdicts | "Claim not measured" findings | Median files/PR | Tokens | Agent-time |
+| Release | PRs merged | Verdicts (loose / canonical-heading) | Mean rounds | Approved r1 | Rework share of verdicts | "Claim not measured" findings | Median files/PR | Tokens | Agent-time |
 |---|---|---|---|---|---|---|---|---|---|
 | [v1.12.0](v1.12.0.md) | 10 | 24 / n-a¹ | **2.4** | 20% (2/10) | 58% | **9** | 17 | 9.07M² | 28.1h² |
-| [v1.13.0](v1.13.0.md) | 16 | 52 / **48** | **3.00** | 6% (1/16) | 67% | **12** | 14 | not recorded³ | 23.5h tag→tag |
+| [v1.13.0](v1.13.0.md) | 16 | 52 / **50** | **3.13** | **0% (0/16)** | 68% | **12** | 14 | not recorded³ | 23.5h tag→tag |
 
-¹ v1.12.0's verdict headings predate the mandated form, so the heading-anchored matcher undercounts
-that window (15). From v1.13.0 the heading is charter-mandated **and** gate-enforced, so the
-heading-anchored column is exact and becomes the primary one at v1.14.0.
+¹ v1.12.0's verdict headings predate the mandated form, so a canonical-heading re-count undercounts
+that window (15). From v1.13.0 the heading is charter-mandated **and** gate-enforced, so this column
+is exact and becomes the primary one at v1.14.0. v1.13.0's 50 includes #293's two `⛔ REJECTED`
+verdicts, which BOTH published matchers missed — see "How to count consistently".
 ² Console session estimates, not Project 3 fields — labelled as estimates.
 ³ **Project 3's `Tokens (k)` and `Time of processing (min)` are empty for every item in the repo**,
 and `Review rounds` is unset for all six issues v1.13.0 shipped. Inventing a comparable number would
@@ -43,16 +44,16 @@ instead (PR count, verdicts, rounds, PR size, wall clock). Either the fields get
 close-the-loop or the columns should be dropped — decide it at v1.14.
 
 **v1.12.0's prediction: FAILED.** It asked for mean rounds < 2.0 and ≥40% round-1 approvals;
-measured 3.00 and 6%. Its own falsification test (PR size) was also refuted — median size FELL 17→14
+measured **3.13** and **0%** — no PR in the release was approved on its first round. Its own falsification test (PR size) was also refuted — median size FELL 17→14
 while rounds rose. See [v1.13.0.md §5](v1.13.0.md) for the diagnosis (the release's material changed:
 credential-, billing- and container-configuration-shaped features produced 9 blockers in classes that
 barely existed at v1.12.0), and note the counter-evidence to a "churn" reading: **zero review rounds
 found nothing**.
 
 **Standing prediction (set by v1.13.0, checked at v1.14):** zero class-A findings ("a documented knob
-never reaches the container"); zero merges on a stale approval (newest heading-anchored verdict at
-merge time is an APPROVE, for every merged PR); round-1 approvals **≥20%**; mean rounds **≤2.7**
-heading-anchored.
+never reaches the container"); zero merges on a stale approval (newest canonical-heading verdict at
+merge time is an APPROVE, for every merged PR); round-1 approvals **≥20%**; mean rounds **≤2.8**
+canonical-heading.
 
 **Falsification stated up front:** if classes A, C and D go to zero while mean rounds stay ≥3.0, then
 author-side discipline was never the constraint — the next retro should look at reviewer scope
@@ -102,6 +103,23 @@ So the series stays comparable, count the same way every time:
                              | test(\"REQUEST CHANGES|APPROVED?\"))) | length)
           | add"
   ```
+
+  **…and it also UNDER-counts, which is the half that actually changed a headline number.** Always
+  run the widened sweep once — print every first line that matched NEITHER marker and read them:
+
+  ```bash
+  # every heading the matcher rejected — read these, don't trust the count
+  gh pr view <n> --json reviews,comments --jq '
+    [((.reviews//[])[]|{t:.submittedAt,b:.body}),((.comments//[])[]|{t:.createdAt,b:.body})]
+    | sort_by(.t) | map(.b|split("\n")|map(select(test("\\S")))|(.[0]//"")|.[0:60]) | .[]' \
+    | grep -viE "APPROVE|REQUEST CHANGES"
+  ```
+
+  On v1.13.0 that sweep found one class of miss and it mattered: **#293's two `## ⛔ REJECTED`
+  verdicts** — the heading `pr-reviewer.md` prescribed until v1.13.0, containing neither marker. It
+  hid two real REQUEST-CHANGES rounds and made #293 look like the release's only round-1 approval,
+  when the true figure is **0 of 16**. For any window before v1.13.0, add `|REJECTED` to the
+  matcher. From v1.13.0 the charter prescribes only the two canonical headings.
 
   Do NOT retro-fit the heading-anchored number onto pre-v1.13.0 releases: it returns 15 for v1.12.0's
   24, an undercount caused by format drift, not a correction.

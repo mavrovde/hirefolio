@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **v1.13.0 release retrospective (#265)** — `docs/retrospectives/v1.13.0.md` plus the trend row,
-  from 16 merged PRs and 48 reviewer verdicts read in full. Two new repo-contract lints, both wired
+  from 16 merged PRs and 50 reviewer verdicts read in full. Two new repo-contract lints, both wired
   into the pre-push gate **and** CI, each with a self-test that runs beside it:
   - `scripts/check_compose_env.sh` — every `Settings` key the documentation promises must appear in
     the backend `environment:` allowlist of **both** compose files. Three blocker-level review
@@ -35,8 +35,10 @@ All notable changes to this project will be documented in this file.
   state its marker in the **first non-empty line**. 8 new cases (3 of which fail against the
   previous hook) and a new mutation in the contract, now 18 killed.
 - **`pr-reviewer` charter told reviewers to write `⛔ REJECTED`**, a heading containing neither
-  marker — the merge gate could not have read it. Canonical headings are now
-  `## ✅ APPROVE — round N` / `## ⛔ REQUEST CHANGES — round N`.
+  marker. Three costs, all measured: the merge gate could not have read it; the retrospective's
+  verdict count silently lost #293's two real REQUEST-CHANGES rounds; and #293 therefore read as the
+  release's only round-1 approval when it took three rounds (the true figure is 0 of 16). Canonical
+  headings are now `## ✅ APPROVE — round N` / `## ⛔ REQUEST CHANGES — round N`.
 - **`backend-dev` / `frontend-dev` charters prescribed a chained push**
   (`… && git commit … && git push … && gh pr create`). The pre-push hook is a PreToolUse hook: it
   judges the whole command before any of it runs, so the chain fails on the un-fixed tree and on
