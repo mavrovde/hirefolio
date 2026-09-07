@@ -195,6 +195,12 @@ All notable changes to this project will be documented in this file.
   model, fails closed on a deadline or an unreadable verdict, bypass with `PR_MERGE_GATE=0`.
 
 ### Changed
+- **Dependency refresh (owner-directed into this release; Dependabot #301–#305 superseded)**:
+  backend `ruff` 0.16.5→0.16.6, `google-genai` 2.20.0→2.22.0, `pydantic` floor →2.13.5; frontend
+  Angular group 22.1.2/22.1.4→22.1.5 (CLI/build 22.1.7) + `zone.js` 0.16.3 + `@types/node` 26.4.1
+  (lockfile regenerated in one pass per the exact-peer lesson); CI `actions/setup-python` v6→v7.
+  All within current majors (rule 6). The vitest 4→5 trio (#306–#308) is a breaking major of the
+  test runner and ships as its own deliberate effort after this release.
 - **BREAKING for existing deployments — default database name is the product, not the maintainer (#288)**: every default that said
   `mavrov` now says `hirefolio` — compose (`${POSTGRES_DB:-hirefolio}`), the backend
   `database_url` default, CI's test/migration databases (`test_hirefolio`,

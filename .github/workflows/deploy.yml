@@ -750,7 +750,7 @@ jobs:
         run: docker compose -f docker-compose.prod.yml -f docker-compose.inttest.yml exec -T backend python scripts/seed_e2e_user.py
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
