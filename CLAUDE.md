@@ -13,7 +13,7 @@ Personal portfolio + blog with semantic search and local AI. A LinkedIn → mavr
 pipeline moves posts (and profile data) into the site.
 
 - **Frontend**: Angular 22 (standalone components, **RxJS Observables + `async` pipe** for state,
-  native SSR via `server.ts`), TailwindCSS 4, Vitest 4 (unit), Playwright (E2E).
+  native SSR via `server.ts`), TailwindCSS 4, Vitest 5 (unit), Playwright (E2E).
 - **Backend**: FastAPI (runs on **Python 3.12** in prod/CI; local dev venv may be 3.13),
   SQLAlchemy 2 async, PostgreSQL 16 + `pgvector`, Ollama (local LLM/embeddings).
 - **Infra**: Docker Compose (`db`, `ollama`, `backend`, `frontend`, `proxy`, `open-webui`),
@@ -102,7 +102,7 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 | hook | `pre-merge-gate.sh` | PreToolUse Bash: refuses `gh pr merge` without an APPROVE verdict, or with `Closes #NN` against unticked criteria (rule 13 enforced, not asked) |
 | hook | `hook-parse-lib.sh` | the ONE quote-aware command-parsing model, sourced by all three hooks (#237) |
 | lint | `scripts/check_compose_env.sh` | every documented `Settings` knob must reach the backend container in BOTH compose files — pre-push + CI (v1.13.0 retro; #296/#297/#298 each shipped this bug) |
-| lint | `scripts/run_frontend_suites.sh` | runs all three Vitest projects independently and retries ONCE on the Vitest 4 worker-teardown race; replaces `npm test` in the pre-push gate |
+| lint | `scripts/run_frontend_suites.sh` | runs all three Vitest projects independently and retries ONCE on the Vitest worker-teardown race (present on 4.x AND 5.x, #309); replaces `npm test` in the pre-push gate |
 | plugin | `frontend-design`, `context7`, `pyright-lsp`, `typescript-lsp`, `security-guidance` | per-plugin keep-rationale in "Plugins" below (#122) |
 | MCP | `postgres`, `playwright`, `github` | read-only SQL / browser automation / PRs+issues |
 

@@ -22,7 +22,7 @@ by fixing the real cause — never by weakening tests or checks.
 ## Stack & local environment
 - Angular 22 **workspace** with three projects under `frontend/projects/`:
   `public` (SSR visitor app), `admin` (CSR-only SPA), `shared` (`@mavrov/shared`
-  ng-packagr lib). Standalone components, native SSR, Vitest 4, Playwright, Tailwind 4.
+  ng-packagr lib). Standalone components, native SSR, Vitest 5, Playwright, Tailwind 4.
 - Install deps if needed: `cd frontend && npm ci`.
 - **Coverage must stay at 100%** per project (statements/branches/functions/lines).
   New code needs tests; genuinely unreachable branches may use `/* v8 ignore next */`.

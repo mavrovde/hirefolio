@@ -53,6 +53,24 @@ All notable changes to this project will be documented in this file.
   Both recipes are now unchained.
 
 ### Changed
+- **Dependency modernization — frontend test runner on Vitest 5** (#309, supersedes Dependabot
+  #306/#307/#308): `vitest`, `@vitest/coverage-v8` and `@vitest/browser-playwright` all move
+  `4.1.11 → 5.0.0` in one lockfile pass. `@analogjs/vite-plugin-angular` needed no bump — it
+  declares **no `vitest` peer at all** (only `vite` and `@angular/build`), and the installed
+  `vite 8.1.5` satisfies Vitest 5's `vite >= 6.4.0`. All three projects stay at **100%
+  statements/branches/functions/lines with unchanged thresholds** (837 tests, 103 files).
+  Two behaviours changed and are recorded rather than papered over:
+  - Vitest 5 matches `coverage.include`/`exclude` **relative to the project root without
+    picomatch `contains`**, so `shared`'s `exclude: ['testing/**']` no longer accidentally
+    swallows `src/lib/testing/**`. That project now measures **20 more statements, 4 more
+    branches, 6 more functions, 17 more lines** (194/105/47/175 → 214/109/53/192) — all already
+    covered, hence still 100%. `public` and `admin` are byte-identical. (lessons §44)
+  - The worker-teardown race that `scripts/run_frontend_suites.sh` tolerates is **not fixed by
+    the major**: measured 1 occurrence in 25 consecutive `npm run test:public` runs on 5.0.0,
+    same signature. The harness stays; its comment, `env-gotchas` and `/verify` now say so.
+  `clearMocks` now defaults to `true`; re-running all three suites with `clearMocks: false`
+  restored gives an identical 837/837, so nothing here depends on the new default. Playwright
+  E2E is untouched (separate runner, `@playwright/test` unchanged in the lock).
 - `agents/PLAYBOOK.md` gains five discipline rules measured from this release (verify by observable
   not by construction; your verification's scope is a claim too; a new setting is three edits;
   `git push` rides alone; a verdict states itself in line 1); `release-manager` must trace a changed

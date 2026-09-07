@@ -23,7 +23,7 @@ Against Postgres on `127.0.0.1:5433` (a `test_*` DB via `TEST_DATABASE_URL`/`DAT
    coverage is produced at all** — the annotation in this file claimed 100% coverage for a command
    that measured none (found in the v1.13.0 retrospective).
    If a run dies at teardown with `Closing rpc while …` while every test passed, that is the
-   upstream Vitest 4 race, not your change: `bash scripts/run_frontend_suites.sh` runs the three
+   upstream Vitest race (still present on 5.x, #309), not your change: `bash scripts/run_frontend_suites.sh` runs the three
    projects independently and retries that signature exactly once (see `env-gotchas`).
 8. `npm run build`
 

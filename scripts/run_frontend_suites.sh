@@ -3,12 +3,15 @@
 # survive one specific upstream flake without ever weakening the gate.
 #
 # WHY THIS EXISTS (v1.13.0 retrospective, two occurrences):
-#   Vitest 4.x can end a fully passing run with an unhandled WORKER-TEARDOWN
+#   Vitest can end a fully passing run with an unhandled WORKER-TEARDOWN
 #   error — `[vitest-worker]: Closing rpc while "onUserConsoleLog" is pending`
 #   (upstream vitest-dev/vitest#8649 / #9872: "Closing rpc while 'fetch' was
 #   pending", EnvironmentTeardownError). Measured here: `337/337 tests passed`
 #   and a non-zero exit. It hard-failed the whole pre-push gate — once while
 #   pushing the v1.13.0 release tag.
+#   STILL PRESENT ON VITEST 5.0.0 (#309, measured): 1 occurrence in 25
+#   consecutive `npm run test:public` runs, byte-identical signature. The
+#   runner bump did NOT fix the race — this harness stays.
 #   Worse, `npm test` is `test:shared && test:public && test:admin`, so the
 #   teardown flake in `public` meant `admin` NEVER RAN. One upstream race hid
 #   two entire suites.
@@ -22,7 +25,8 @@
 #     still fails. This is not "retry until green": a genuine failure never
 #     matches the signature, and a genuinely flaky TEST does not either.
 #   * a survived flake is reported LOUDLY (`⚠ FLAKE`), never silently absorbed.
-#   Bumping the runner is #309; do not loosen the gate instead.
+#   The runner was bumped to Vitest 5 in #309 and the race survived it; do not
+#   loosen the gate instead.
 #
 # Usage: bash scripts/run_frontend_suites.sh [--coverage]
 set -u
