@@ -13,7 +13,7 @@ pipeline. **Public repo** (`github.com/mavrovde/hirefolio`) — never commit or 
 
 - `backend/` — FastAPI (Python 3.12 in prod/CI), SQLAlchemy 2 async, PostgreSQL 16 + pgvector, Ollama.
 - `frontend/` — Angular 22 workspace: `projects/public` (SSR), `projects/admin` (CSR), `projects/shared`
-  (`@mavrov/shared` lib). TailwindCSS 4, Vitest 4, Playwright E2E.
+  (`@mavrov/shared` lib). TailwindCSS 4, Vitest 5, Playwright E2E.
 - `scraper/`, `importer/` — LinkedIn scraping + import pipeline. `agents/` — A2A multi-agent team.
 - `proxy/` — reverse proxy config. Infra: Docker Compose; deploy via `.github/workflows/deploy.yml`.
 

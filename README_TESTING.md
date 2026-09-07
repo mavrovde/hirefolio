@@ -70,7 +70,7 @@ open htmlcov/index.html  # macOS
 xdg-open htmlcov/index.html  # Linux
 ```
 
-## Frontend Tests (Angular/Vitest v4+)
+## Frontend Tests (Angular/Vitest v5+)
 
 The frontend is a 3-project workspace (`shared`, `public`, `admin`), each with
 its own Vitest config under `projects/<name>/vitest.config.ts`.

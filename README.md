@@ -53,7 +53,7 @@ own name and domain.
 - **Framework**: Angular 22 (Standalone Components, RxJS + `async` pipe for state — Signals only for local component state, Native SSR `server.mjs`)
 - **Styling**: TailwindCSS 4.x, Dark/Light mode
 - **State Management**: RxJS 7.8 Observables
-- **Testing**: Vitest 4.1 (Unit, replaced Jasmine/Karma), Playwright 1.62 (E2E)
+- **Testing**: Vitest 5.0 (Unit, replaced Jasmine/Karma), Playwright 1.63 (E2E)
 - **i18n**: Custom translation service
 
 ### Backend

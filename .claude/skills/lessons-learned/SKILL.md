@@ -12,7 +12,8 @@ description: >-
   independent-review-gate-before-merge rule, the bisect-gate-failures-against-a-clean-main-build
   triage method, the @angular/* exact-peer single-pass-update/lockfile-regeneration rule, the
   mutation-check-your-tests discipline, the run-the-suite-as-CI-runs-it (`-n auto`) rule, the
-  verify-that-gates-actually-gate habit, and the repo-rename/GHCR-package-visibility trap.
+  verify-that-gates-actually-gate habit, the diff-the-coverage-FILE-SET-across-a-runner-major rule,
+  and the repo-rename/GHCR-package-visibility trap.
   Grep it or load it when a task matches — it exists so
   fresh contexts and teammates don't re-research answers we already have.
 ---
@@ -1052,6 +1053,59 @@ real `Host` gets `301 https://…` — a redirect loop. Measured: the configured
 against `:80` = `301`, against `:443` = `200`.
 
 Full design: `docs/wiki/production-deployment.md`. Operational loop: `.claude/skills/ssh-deploy/`.
+## 45. A runner major moves the COVERAGE DENOMINATOR — diff the file set, never the percentage (#309)
+
+Vitest 5 changed how `coverage.include`/`coverage.exclude` are matched: v4 matched them against
+**absolute** paths with picomatch's `contains` option; v5 matches the path **relative to the project
+root, without `contains`** (a pattern with no wildcard now means "that directory"). The migration to
+5.0.0 held at 100% × 4 on all three projects — and `shared` still silently gained **20 statements,
+4 branches, 6 functions, 17 lines**:
+
+| project | v4.1.11 stmts/branches/funcs/lines | v5.0.0 |
+|---|---|---|
+| shared | 194 / 105 / 47 / 175 | **214 / 109 / 53 / 192** |
+| public | 844 / 331 / 185 / 782 | unchanged |
+| admin | 1315 / 438 / 347 / 1246 | unchanged |
+
+Root cause, found by diffing the **file keys of `coverage-final.json`** before vs after (not by
+reading percentages): `exclude: ['testing/**']` was written for `projects/shared/testing/**` (the
+`@mavrov/shared/testing` entry point). Under v4's `contains` matching it *also* silently swallowed
+`src/lib/testing/**`, so `mock-language.service.ts` and `mock-translate.pipe.ts` were never measured.
+v5 matches precisely, so those two files entered the report — and they were already at 100%, which is
+exactly why nothing went red.
+
+**The lesson: `100% → 100%` proves nothing about the denominator.** A coverage percentage is a ratio;
+a runner upgrade can move numerator and denominator together and a whole directory can enter or
+*leave* the report invisibly. The direction that hurts is the mirror image of this one — files
+dropping out of `include` — and it presents identically: still 100%, still green, silently less
+measured. Whenever a coverage provider, runner, or its glob engine changes major:
+
+```bash
+# before and after, per project — compare FILE SETS, not the summary line
+python3 -c "import json;print('\n'.join(sorted(json.load(open('coverage/<proj>/coverage-final.json')))))"
+```
+
+Never reconcile that drift by touching thresholds (rule 1). Two related measurements from the same
+bump, both worth keeping: `clearMocks` now defaults to `true`, and running all three suites with
+`clearMocks: false` restored gave **837/837 identical** — so no test in this repo passes *because of*
+the auto-clear; and the worker-teardown race did **not** go away with the major (see `env-gotchas`).
+
+**And the reason this was invisible for so long: there was no threshold to trip.** Not one of the
+three configs carried a `coverage.thresholds` block — the "100% gate" was the CI *job names* plus
+habit, so a drop would have printed a smaller number and still exited 0. The review of #314 closed
+it: all three now declare `{ statements: 100, branches: 100, functions: 100, lines: 100 }`, proven
+to gate by dropping one spec per project (each run denies **with every remaining test passing**;
+`public` denies at 99.69% branches) with the thresholds-off control exiting 0. **A convention that
+nothing executes is not a gate** — the same lesson as §35, arriving from the coverage side.
+
+**Related, and the honest half of it: `frontend/.npmrc` now pins `legacy-peer-deps=true`.** A stale
+`peerOptional vitest ^4.0.8` on `@angular/build` — for the `@angular/build:unit-test` builder this
+repo configures but never invokes — makes a plain `npm install` exit 1 on Vitest 5, which broke the
+onboarding command in `README.md`. Every install path already passed the flag, so this only makes the
+posture the default. **It buys that at the price of silencing genuine peer conflicts**, and it does
+NOT fix everything: `npm ls` still exits 1 (its validity check reads the installed tree, and
+`legacy-peer-deps` is a *resolver* setting) — use `npm ls <pkgs> --depth=0`, which exits 0 and prints
+the coherent set. Delete the file when `@angular/build` widens the range.
 
 ## Where the rules live (AI-config map)
 

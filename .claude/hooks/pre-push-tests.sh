@@ -371,7 +371,7 @@ run_checks() {
     ( cd "$ROOT/frontend" && node scripts/check-cd-safety.mjs ) || return 1
     echo "== frontend tests (shared + public + admin) =="
     # NOT `npm test`: that chains the three projects with `&&`, so ONE project's
-    # failure hides the other two — and twice in v1.13.0 a Vitest 4 worker-
+    # failure hides the other two — and twice in v1.13.0 a Vitest worker-
     # teardown race (`Closing rpc while "onUserConsoleLog" is pending`, upstream
     # vitest-dev/vitest#8649/#9872) hard-failed this gate with 337/337 tests
     # PASSING, aborting before `admin` ran at all — once while pushing a release

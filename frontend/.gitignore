@@ -35,6 +35,8 @@ yarn-error.log
 /connect.lock
 # Coverage output — any project, any depth (v8/istanbul reports must never be committed)
 coverage/
+# Vitest 5 artifact root (blob/html/json/junit reports, attachments, failure screenshots)
+.vitest/
 /libpeerconnection.log
 testem.log
 /typings

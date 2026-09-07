@@ -61,8 +61,8 @@ Facts about THIS repo's environments that keep costing cycles. Check here before
   disagrees with the compose file. Fix: `docker compose up -d --force-recreate <service>` once the
   port is free — **never** `down -v` (rule 9). Free the port first (`lsof -nP -iTCP:<port> -sTCP:LISTEN`).
 
-## Vitest 4 worker teardown (frontend gate)
-- Vitest 4.x can end a **fully passing** run with an unhandled worker-teardown error —
+## Vitest worker teardown (frontend gate) — 4.x **and** 5.x
+- Vitest can end a **fully passing** run with an unhandled worker-teardown error —
   `[vitest-worker]: Closing rpc while "onUserConsoleLog" is pending` (same family as upstream
   [#8649](https://github.com/vitest-dev/vitest/issues/8649) / [#9872](https://github.com/vitest-dev/vitest/issues/9872),
   "Closing rpc while 'fetch' was pending" / `EnvironmentTeardownError`). The process exits non-zero
@@ -72,7 +72,9 @@ Facts about THIS repo's environments that keep costing cycles. Check here before
   suites and hard-failed the pre-push gate. `scripts/run_frontend_suites.sh` now runs each project
   independently and retries a project **once** when — and only when — the output carries that
   teardown signature with zero failed tests; a second occurrence, or any real failure, still denies.
-  Bumping the runner is tracked in #309; do not "fix" it by loosening the gate.
+- **The Vitest 5 bump (#309) did NOT fix it** — measured on 5.0.0: 1 occurrence in 25 consecutive
+  `npm run test:public` runs, byte-identical signature. Do not delete the harness on the assumption
+  that a runner major fixed the upstream race, and do not "fix" it by loosening the gate.
 
 ## Hooks
 - The pre-push hook runs the full docs+backend+frontend gate on every `git push` — from worktrees
