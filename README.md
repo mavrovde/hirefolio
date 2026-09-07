@@ -44,6 +44,11 @@ own name and domain.
 - **Demo persona by default** (#66): the repo ships fictional content, never a real résumé; a PII
   guard fails the pipeline if personal identifiers reappear. **Set your identity in the host
   `.env` before deploying** — see `docs/DEPLOYMENT.md`.
+- **Recruiter-discovery SEO** (#71): schema.org `Person` structured data (`hasOccupation`,
+  `knowsAbout`, `alumniOf`, `worksFor`, `address`, `sameAs`, plus a `seeks` open-to-work signal),
+  a unique title/description/canonical + Open Graph/Twitter card per route, and `sitemap.xml` /
+  `robots.txt` **rendered per request** from your `SITE_URL` and your published posts — all
+  server-rendered, so crawlers read them without executing JavaScript.
 - **Type-Safe**: Full TypeScript/Python type coverage
 
 ## 🏗️ Architecture
