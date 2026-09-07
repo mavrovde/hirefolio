@@ -284,6 +284,20 @@ run_checks() {
         return 1
       }
     fi
+    # Documented-knob contract (#296/#297/#298 all shipped this bug in round 1):
+    # a Settings key the docs promise must reach the backend container in BOTH
+    # compose files. Self-test runs too — a checker nobody proved can fail is
+    # indistinguishable from no checker (lessons §18).
+    if [ -f "$ROOT/scripts/check_compose_env.sh" ]; then
+      ( cd "$ROOT" && bash scripts/check_compose_env.sh >/dev/null ) || {
+        echo "  ✗ check_compose_env.sh failed — run 'bash scripts/check_compose_env.sh' to see which knob never reaches the container"
+        return 1
+      }
+      ( cd "$ROOT" && bash scripts/check_compose_env.test.sh >/dev/null ) || {
+        echo "  ✗ check_compose_env.test.sh failed — the compose-env checker itself is broken"
+        return 1
+      }
+    fi
     if [ -f "$ROOT/setup.test.sh" ]; then
       ( cd "$ROOT" && bash setup.test.sh >/dev/null ) || {
         echo "  ✗ setup.test.sh failed — run 'bash setup.test.sh' to see which case"
@@ -356,7 +370,19 @@ run_checks() {
     echo "== frontend cd-safety (zoneless repaint hazards, #118) =="
     ( cd "$ROOT/frontend" && node scripts/check-cd-safety.mjs ) || return 1
     echo "== frontend tests (shared + public + admin) =="
-    ( cd "$ROOT/frontend" && npm test ) || return 1
+    # NOT `npm test`: that chains the three projects with `&&`, so ONE project's
+    # failure hides the other two — and twice in v1.13.0 a Vitest 4 worker-
+    # teardown race (`Closing rpc while "onUserConsoleLog" is pending`, upstream
+    # vitest-dev/vitest#8649/#9872) hard-failed this gate with 337/337 tests
+    # PASSING, aborting before `admin` ran at all — once while pushing a release
+    # tag. The runner below runs every project, and retries a project exactly
+    # ONCE when the output carries that signature AND reports zero failed tests.
+    # A real failure is never retried and always denies (see its self-test).
+    ( cd "$ROOT" && bash scripts/run_frontend_suites.sh ) || return 1
+    ( cd "$ROOT" && bash scripts/run_frontend_suites.test.sh >/dev/null ) || {
+      echo "  ✗ run_frontend_suites.test.sh failed — the frontend runner's own retry contract is broken"
+      return 1
+    }
   fi
 }
 

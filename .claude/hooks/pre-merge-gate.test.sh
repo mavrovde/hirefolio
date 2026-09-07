@@ -7,7 +7,7 @@
 # Only 4 of 10 mutations bit. That is the exact fake-green class the retrospective
 # this hook came from is about, so every case here now asserts the DECISION
 # (parsed out of the JSON) and the mutation list below is part of the contract:
-# `bash pre-merge-gate.test.sh --mutations` re-runs them and must report 17 killed.
+# `bash pre-merge-gate.test.sh --mutations` re-runs them and must report 18 killed.
 set -u
 
 HOOK="${HOOK:-$(cd "$(dirname "$0")" && pwd)/pre-merge-gate.sh}"
@@ -97,6 +97,33 @@ GH_STUB_PR_JSON="$(both 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES' 2026-09-06
   run "later APPROVE comment overrides REQUEST CHANGES" allow "gh pr merge 284 --squash"
 GH_STUB_PR_JSON='{"reviews":[],"comments":[{"createdAt":"2026-09-06T10:00:00Z","body":"## ✅ APPROVED"}],"body":"Refs #1"}' \
   run "APPROVE posted as a COMMENT (the sanctioned path)" allow "gh pr merge 284 --squash"
+
+# 2b. A verdict states itself in its FIRST LINE (v1.13.0 retrospective).
+# EVIDENCE: on #291 the author posted two fix-report comments — "## Round 4 — the
+# three blockers, each measured against the unfixed hook" and "## Round 7 —
+# blocker and all four majors closed" — each newer than the reviewer's standing
+# REQUEST CHANGES, and the first marker inside each body is APPROVED/APPROVE.
+# Under the old body-wide filter each was "the newest verdict" and the gate would
+# have ALLOWED the merge. Reviewer and author post under the SAME identity here,
+# so only the marker's POSITION can tell them apart. The first case below FAILS
+# against the pre-v1.13.0 hook.
+AUTHOR_FIXUP='## Round 4 — the three blockers, each measured against the unfixed hook\n\n**Blocker 1** is closed; the reviewer APPROVED this approach in round 3.'
+GH_STUB_PR_JSON="$(both 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES' 2026-09-06T11:00:00Z "$AUTHOR_FIXUP")" \
+  run "author fix-report with APPROVE in the BODY is not a verdict" deny "gh pr merge 284 --squash"
+AUTHOR_NOTE='## Round 5 — what I changed\n\nThe REQUEST CHANGES findings from round 4 are all fixed in-PR.'
+GH_STUB_PR_JSON="$(both 2026-09-06T10:00:00Z '## ✅ APPROVED' 2026-09-06T11:00:00Z "$AUTHOR_NOTE")" \
+  run "author note quoting REQUEST CHANGES does not revoke an approval" allow "gh pr merge 284 --squash"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z 'Round 2 review — head abc1234\n\nI checked the migration.\n\nVerdict: APPROVE')" \
+  run "marker buried below the heading is not a verdict (fail CLOSED)" deny "gh pr merge 284 --squash"
+# Heading forms this repo has actually used must all still be recognised.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '⛔ **REQUEST CHANGES** (VERDICT: REQUEST CHANGES)')" \
+  run "heading form: bold marker with a parenthetical" deny "gh pr merge 284 --squash"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## VERDICT: APPROVE (round 2)')" \
+  run "heading form: ## VERDICT: APPROVE" allow "gh pr merge 284 --squash"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## Round 3 — ✅ APPROVED')" \
+  run "heading form: round number before the marker" allow "gh pr merge 284 --squash"
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '\n\n## ✅ APPROVED\n\nBody follows.')" \
+  run "leading blank lines before the heading" allow "gh pr merge 284 --squash"
 
 # 3. Closes vs unticked acceptance criteria — a blocker four times in v1.12.0.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED' 'Closes #279')" GH_STUB_ISSUE_BODY="$AC_UNTICKED" \
@@ -450,6 +477,16 @@ PY
   # case for it could not fail. Documented in the hook instead - the #240 answer.
   mutate die "newest-verdict selection reversed" \
     'replace::sort_by(.at) | last=>sort_by(.at) | first'
+  mutate die "verdict selection falls back to marker-anywhere-in-body" \
+    'replace::(heading | test("APPROVE|APPROVED|REQUEST CHANGES"; "i"))=>((.body // "") | test("APPROVE|APPROVED|REQUEST CHANGES"; "i"))'
+  # NOT a mutation: reading FIRST_MARKER from $VERDICT instead of $HEADING is
+  # behaviourally EQUIVALENT once the selection filter above requires a marker in
+  # the heading — the heading IS the body's first line, so the first marker in the
+  # whole body is the heading's marker for every input the filter admits. Tried it;
+  # it produced no behavioural difference, so a case for it could not fail. Same
+  # answer as the empty-verdict deny above (#240): document the equivalence, do not
+  # dress it up as a passing case. The load-bearing half is the SELECTION mutation
+  # directly above, which is killed.
   mutate die "comments stream dropped" \
     'replace::((.comments // [])[] | {at: .createdAt,   body: (.body // "")}) =>'
   mutate die "Closes/AC check removed" \

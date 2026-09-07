@@ -52,6 +52,28 @@ Facts about THIS repo's environments that keep costing cycles. Check here before
 - `seed_e2e_user.py` **obliterates all users and posts** in whatever DB it points at — only ever run
   it in-container against an E2E stack, never against the dev DB.
 
+## Docker on a shared dev box
+- **A container remembers the port binding it was CREATED with.** If another project held a port
+  when a service was first created, the broken binding survives `docker compose restart`, `stop`/
+  `start` and a reboot — the container is only re-created when the *spec* changes. v1.13.0 lost a
+  diagnosis cycle to this: the integration tier failed three different ways before anyone checked
+  the binding. Tell: `docker port <container>` (or `docker inspect -f '{{.HostConfig.PortBindings}}'`)
+  disagrees with the compose file. Fix: `docker compose up -d --force-recreate <service>` once the
+  port is free — **never** `down -v` (rule 9). Free the port first (`lsof -nP -iTCP:<port> -sTCP:LISTEN`).
+
+## Vitest 4 worker teardown (frontend gate)
+- Vitest 4.x can end a **fully passing** run with an unhandled worker-teardown error —
+  `[vitest-worker]: Closing rpc while "onUserConsoleLog" is pending` (same family as upstream
+  [#8649](https://github.com/vitest-dev/vitest/issues/8649) / [#9872](https://github.com/vitest-dev/vitest/issues/9872),
+  "Closing rpc while 'fetch' was pending" / `EnvironmentTeardownError`). The process exits non-zero
+  with e.g. `337/337 tests passed`. It is **not your change**.
+- It hit twice in v1.13.0, once while pushing the release tag. Because `npm test` chains the three
+  projects with `&&`, the admin project never ran either time — one flaky teardown hid two whole
+  suites and hard-failed the pre-push gate. `scripts/run_frontend_suites.sh` now runs each project
+  independently and retries a project **once** when — and only when — the output carries that
+  teardown signature with zero failed tests; a second occurrence, or any real failure, still denies.
+  Bumping the runner is tracked in #309; do not "fix" it by loosening the gate.
+
 ## Hooks
 - The pre-push hook runs the full docs+backend+frontend gate on every `git push` — from worktrees
   too (symlink `backend/venv` + `frontend/node_modules` into a fresh worktree or the backend leg

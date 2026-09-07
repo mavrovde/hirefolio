@@ -357,10 +357,27 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 # null (sort_by a no-op, "newest wins" unimplemented) and comments are never
 # read. That bug shipped once and made the gate deny the repo's own sanctioned
 # APPROVE path while allowing a later REQUEST CHANGES.
+# HEADING POSITION, not "anywhere in the body" (v1.13.0 retrospective). Measured
+# on #291: two of that thread's marker-bearing comments are the AUTHOR's
+# fix-reports ("## Round 4 — the three blockers, each measured against the
+# unfixed hook", "## Round 7 — blocker and all four majors closed"), and the
+# FIRST marker inside each is APPROVED / APPROVE. Under the old filter either one
+# was "the newest verdict" the moment it was posted, so a merge attempted then
+# would have been ALLOWED while the standing reviewer verdict was REQUEST
+# CHANGES. In this repo the reviewer and the author post under the SAME identity,
+# so no author-based filter can separate them — the position of the marker can.
+#
+# A verdict therefore states itself in its FIRST NON-EMPTY LINE. Decoration
+# around it is fine (`## ⛔ REQUEST CHANGES`, `✅ **APPROVED** — round 2`,
+# `## VERDICT: APPROVE (round 2)` all qualify); a marker buried in paragraph
+# three does not. This is fail-CLOSED in both directions: a reviewer who forgets
+# the heading gets "no posted review verdict" (deny), never a false allow.
+# `.claude/agents/pr-reviewer.md` mandates the heading form.
 VERDICT="$(printf '%s' "$PR_JSON" | jq -r '
+  def heading: (.body // "") | split("\n") | map(select(test("\\S"))) | (.[0] // "");
   [ ((.reviews // [])[]  | {at: .submittedAt, body: (.body // "")}),
     ((.comments // [])[] | {at: .createdAt,   body: (.body // "")}) ]
-  | map(select(.at != null and (.body | test("APPROVE|APPROVED|REQUEST CHANGES"; "i"))))
+  | map(select(.at != null and (heading | test("APPROVE|APPROVED|REQUEST CHANGES"; "i"))))
   | sort_by(.at) | last | .body // ""' 2>/dev/null)"
 
 # MESSAGE-ONLY, and deliberately so (#291 review round 2, the #240 answer). An
@@ -370,14 +387,16 @@ VERDICT="$(printf '%s' "$PR_JSON" | jq -r '
 # "no posted review verdict" tells the author what to DO, where "does not state
 # APPROVE" would not. It is therefore NOT in the mutation contract: writing a
 # case that cannot fail is worse than documenting the equivalence.
-[ -z "$VERDICT" ] && deny "PR #$PR_NUM has no posted review verdict — rule 13 requires an independent pr-reviewer APPROVE before merge"
+[ -z "$VERDICT" ] && deny "PR #$PR_NUM has no posted review verdict whose FIRST LINE states APPROVE or REQUEST CHANGES — rule 13 requires an independent pr-reviewer verdict, and the gate reads the heading (see .claude/agents/pr-reviewer.md)"
 
-# The verdict is whichever marker appears FIRST — that is the heading. A body
-# that approves and then quotes the round it supersedes ("the REQUEST CHANGES
-# findings are fixed") must not flip to deny; review threads do this routinely,
-# including the one that found this. A fixed head -N window got it wrong
-# whenever the quote landed inside the window.
-FIRST_MARKER="$(printf '%s' "$VERDICT" | grep -oiE 'REQUEST CHANGES|APPROVED?' | head -1)"
+# The verdict is the first marker IN THE HEADING (the first non-empty line). A
+# body that approves and then quotes the round it supersedes ("the REQUEST
+# CHANGES findings are fixed") must not flip to deny; review threads do this
+# routinely, including the one that found this. A fixed head -N window got it
+# wrong whenever the quote landed inside the window; reading the heading only is
+# the same fix as the selection filter above, applied to the decision.
+HEADING="$(printf '%s' "$VERDICT" | grep -m1 '[^[:space:]]')"
+FIRST_MARKER="$(printf '%s' "$HEADING" | grep -oiE 'REQUEST CHANGES|APPROVED?' | head -1)"
 
 # ONE check is load-bearing here: the APPROVE requirement below. The two denies
 # that precede it (empty verdict, explicit REQUEST CHANGES) are MESSAGE-ONLY —

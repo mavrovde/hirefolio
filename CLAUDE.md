@@ -101,6 +101,8 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 | hook | `guard-destructive.sh` | PreToolUse Bash: blocks irreversible local/infra destruction (rule 9) |
 | hook | `pre-merge-gate.sh` | PreToolUse Bash: refuses `gh pr merge` without an APPROVE verdict, or with `Closes #NN` against unticked criteria (rule 13 enforced, not asked) |
 | hook | `hook-parse-lib.sh` | the ONE quote-aware command-parsing model, sourced by all three hooks (#237) |
+| lint | `scripts/check_compose_env.sh` | every documented `Settings` knob must reach the backend container in BOTH compose files — pre-push + CI (v1.13.0 retro; #296/#297/#298 each shipped this bug) |
+| lint | `scripts/run_frontend_suites.sh` | runs all three Vitest projects independently and retries ONCE on the Vitest 4 worker-teardown race; replaces `npm test` in the pre-push gate |
 | plugin | `frontend-design`, `context7`, `pyright-lsp`, `typescript-lsp`, `security-guidance` | per-plugin keep-rationale in "Plugins" below (#122) |
 | MCP | `postgres`, `playwright`, `github` | read-only SQL / browser automation / PRs+issues |
 
@@ -118,7 +120,8 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
   local/infra destruction (rule 9) — bypass one command with `GUARD_DESTRUCTIVE=0`. All three hooks are
   **command-position aware** (quoted prose is data, #204/#237) and share ONE parsing model,
   `.claude/hooks/hook-parse-lib.sh`; each has a self-test (`*.test.sh`) beside it, and all three self-tests run inside the pre-push gate — `pre-merge-gate.test.sh` with its `--mutations` contract, because its first version passed every case against a gate whose blocking had been removed.
-  `pre-merge-gate.sh` blocks `gh pr merge` unless the newest posted verdict states APPROVE and every `Closes #NN` points at an issue with all acceptance criteria ticked; bypass one authorized command with `PR_MERGE_GATE=0`.
+  `pre-merge-gate.sh` blocks `gh pr merge` unless the newest posted verdict states APPROVE and every `Closes #NN` points at an issue with all acceptance criteria ticked; bypass one authorized command with `PR_MERGE_GATE=0`. **A verdict is a body whose FIRST NON-EMPTY LINE states `APPROVE` or `REQUEST CHANGES`** (v1.13.0 retro): reading the whole body let an author's fix-report on #291 count as the newest verdict and would have allowed a merge against a standing REQUEST CHANGES — reviewer and author share one identity here, so only the marker's position separates them. Fix reports must not open with a marker.
+  Two repo-contract lints run in the same pre-push gate and in CI: `scripts/check_compose_env.sh` (a documented knob must reach the container — #296/#297/#298) and `scripts/run_frontend_suites.sh` (all three Vitest projects, one signature-narrow retry for the upstream worker-teardown race). Each has a `*.test.sh` beside it that also runs in the gate.
 - **Plugins** (project scope; curation rationale + review cadence per #122 — re-review each
   release alongside the security check):
   - `context7` — KEEP: live library docs beat training-data recall for Angular 22 / FastAPI /

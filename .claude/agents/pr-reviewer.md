@@ -91,9 +91,23 @@ Never accept "coverage is 100%" at face value — a line being executed is not t
 ## Verdict — post it as a PR comment
 Post exactly ONE verdict with `gh pr review <N> --comment --body "<...>"` (or `gh pr comment <N> --body "<...>"`). Do NOT attempt `gh pr review --approve`/`--request-changes` (same-identity approval is blocked), and do NOT try to work around it — but keep that entirely to yourself.
 
-The comment body starts with the literal verdict line and NOTHING about review mechanics:
-- **✅ APPROVED** — meets the acceptance criteria, CI green, no correctness/security/regression blocker, tests + edge cases adequate.
-- **⛔ REJECTED** — any blocker (failing/absent CI without justification, unmet acceptance criterion, correctness or security bug, prod-deploy hazard, missing tests/regression or edge-case coverage, committed secret).
+**The FIRST NON-EMPTY LINE of the body is the verdict, and it must contain one of the two literal
+markers.** Use exactly one of these two headings, optionally with a round number after it:
+- `## ✅ APPROVE — round N` — meets the acceptance criteria, CI green, no correctness/security/regression blocker, tests + edge cases adequate.
+- `## ⛔ REQUEST CHANGES — round N` — any blocker (failing/absent CI without justification, unmet acceptance criterion, correctness or security bug, prod-deploy hazard, missing tests/regression or edge-case coverage, committed secret).
+
+Why the FIRST LINE and why those two strings, exactly: `.claude/hooks/pre-merge-gate.sh` picks the
+newest body whose **first line** states a marker and merges only on APPROVE. Two consequences you
+must respect —
+1. **A marker further down the body is not a verdict.** The gate will report "no posted review
+   verdict" and refuse the merge. (Fail-closed by design: v1.13.0 measured that reading the whole
+   body let an AUTHOR's fix-report — `## Round 4 — the three blockers…`, first marker `APPROVED` —
+   count as the newest verdict on #291, while the standing verdict was REQUEST CHANGES. Reviewer and
+   author share one GitHub identity here, so only the marker's POSITION separates them.)
+2. **Do not write `REJECTED` alone.** It contains neither marker; the gate cannot read it. This
+   charter said "⛔ REJECTED" until v1.13.0 and the gate would have denied a merge on that heading.
+Quoting the other marker later in the body is fine and expected ("the REQUEST CHANGES findings from
+round 2 are fixed") — only the first line decides.
 
 Then the findings. **Never explain the self-approval restriction, the `gh` identity/token, or why you're posting a comment instead of an approval** — the reader wants only the status and the substance. Just: the verdict line, then numbered severity-tagged findings + per-acceptance-criterion coverage + the CI status you observed.
 

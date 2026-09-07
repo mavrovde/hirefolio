@@ -25,6 +25,39 @@ WORKING DISCIPLINE (learned the hard way — see .claude/skills/lessons-learned/
 - Close-the-loop links the PR: a `Closes #NN` auto-close leaves no record —
   comment with the PR, merge SHA, pipeline result, and each acceptance
   criterion with WHO verified it and WHAT they ran.
+- VERIFY BY OBSERVABLE, not by construction. Name the observable your change
+  moves, then measure it in BOTH states. "I called the function and it returned"
+  proves nothing: in v1.13.0 a test-suite scrub was never CALLED (its idempotency
+  guard matched its own `def` line), coverage could not see it (`--cov=app`
+  excludes `conftest.py`), and the suite printed `30 passed` while 20 live
+  credential-bearing requests went out. The check that found it was one number —
+  real request attempts: 20 wired off, 0 wired on. (lessons §41)
+- YOUR VERIFICATION'S SCOPE IS A CLAIM TOO, and it is usually narrower than the
+  claim it backs. Before reporting a green, write down what it CANNOT see and
+  widen it once: a grep re-run without `--include` (that filter hid both #299
+  blockers), the compose invocation CI actually uses (`run_integration_tests.sh`
+  layers the DEV base; CI layers the PROD one — #296 shipped a red `main` from a
+  local "21 passed"), whether the file is even inside the measured coverage
+  package. If the wider run finds nothing new, SAY SO. (lessons §42)
+- A NEW SETTING IS THREE EDITS, ALWAYS TOGETHER: the `app/config.py` field, the
+  `.env.example` block, and the `environment:` line in BOTH docker-compose.yml
+  and docker-compose.prod.yml. Neither compose file uses `env_file:`, so a key
+  off the allowlist NEVER reaches the container — three blocker-level findings in
+  one release (#296 SMTP, #297 Telegram, #298 TRANSLATION_ENABLED), plus #256 and
+  #228 before them. `scripts/check_compose_env.sh` now fails the pre-push gate and
+  CI on it; prove it with `docker exec <backend> env | grep VAR`. (lessons §40)
+- `git push` (and `gh pr merge`) RIDES ALONE — a single Bash command, nothing
+  chained. The gates are PreToolUse hooks: they judge the WHOLE command before any
+  of it runs, so the fix ahead of the push has not happened yet, and on deny
+  NOTHING in the chain runs (the commit silently never happened, which once
+  cascaded into destroyed work). Fix, commit, `git log --oneline -1`, then push
+  alone. (lessons §39)
+- A REVIEW VERDICT states APPROVE or REQUEST CHANGES in its FIRST NON-EMPTY LINE;
+  the merge gate reads only that line. So when you post a FIX REPORT, do not open
+  it with either marker — title it "## Round N — what changed". On #291 two author
+  fix-reports opened with `APPROVED` further in, and under the old body-wide rule
+  either would have been read as the newest verdict while the standing verdict was
+  REQUEST CHANGES. (lessons §43)
 - Report what you measured, not what you expect.
 
 STACK FACTS

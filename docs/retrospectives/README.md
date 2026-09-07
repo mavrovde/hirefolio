@@ -27,19 +27,36 @@ the next retrospective checks.
 
 Update this when you add a retro. These are the numbers worth watching; everything else is context.
 
-| Release | PRs merged | Verdicts | Mean rounds | Approved r1 | Rework share of review tokens | Blocker-level "claim not measured" | Tokens | Agent-time |
-|---|---|---|---|---|---|---|---|---|
-| [v1.12.0](v1.12.0.md) | 10 | 24 | **2.4** | 20% (2/10) | **75%** | **9** | 9.07M | 28.1h |
+| Release | PRs merged | Verdicts (loose / heading-anchored) | Mean rounds | Approved r1 | Rework share of verdicts | "Claim not measured" findings | Median files/PR | Tokens | Agent-time |
+|---|---|---|---|---|---|---|---|---|---|
+| [v1.12.0](v1.12.0.md) | 10 | 24 / n-a¹ | **2.4** | 20% (2/10) | 58% | **9** | 17 | 9.07M² | 28.1h² |
+| [v1.13.0](v1.13.0.md) | 16 | 52 / **48** | **3.00** | 6% (1/16) | 67% | **12** | 14 | not recorded³ | 23.5h tag→tag |
 
-**Standing prediction (set by v1.12.0, checked at v1.13):** mean rounds below **2.0**, ≥40%
-approved on round 1 — both restated against the CORRECTED baseline (2.4 rounds, 20% r1 — #275 and #281 both
-opened with an APPROVE; the
-original 2.5/17% came from the wrong corpus), zero blocker-level "claim asserted rather than measured", zero "the fix has no
-failing-first test" blockers.
+¹ v1.12.0's verdict headings predate the mandated form, so the heading-anchored matcher undercounts
+that window (15). From v1.13.0 the heading is charter-mandated **and** gate-enforced, so the
+heading-anchored column is exact and becomes the primary one at v1.14.0.
+² Console session estimates, not Project 3 fields — labelled as estimates.
+³ **Project 3's `Tokens (k)` and `Time of processing (min)` are empty for every item in the repo**,
+and `Review rounds` is unset for all six issues v1.13.0 shipped. Inventing a comparable number would
+be the exact defect these retros keep finding; the measurable GitHub-side proxies are in the table
+instead (PR count, verdicts, rounds, PR size, wall clock). Either the fields get filled at
+close-the-loop or the columns should be dropped — decide it at v1.14.
 
-**Falsification stated up front:** if rounds stay near 2.5 while claim-discipline blockers go to
-zero, the bottleneck was never author discipline — it is PR size (v1.12.0 median: 17 changed files),
-and the next retro should look there instead.
+**v1.12.0's prediction: FAILED.** It asked for mean rounds < 2.0 and ≥40% round-1 approvals;
+measured 3.00 and 6%. Its own falsification test (PR size) was also refuted — median size FELL 17→14
+while rounds rose. See [v1.13.0.md §5](v1.13.0.md) for the diagnosis (the release's material changed:
+credential-, billing- and container-configuration-shaped features produced 9 blockers in classes that
+barely existed at v1.12.0), and note the counter-evidence to a "churn" reading: **zero review rounds
+found nothing**.
+
+**Standing prediction (set by v1.13.0, checked at v1.14):** zero class-A findings ("a documented knob
+never reaches the container"); zero merges on a stale approval (newest heading-anchored verdict at
+merge time is an APPROVE, for every merged PR); round-1 approvals **≥20%**; mean rounds **≤2.7**
+heading-anchored.
+
+**Falsification stated up front:** if classes A, C and D go to zero while mean rounds stay ≥3.0, then
+author-side discipline was never the constraint — the next retro should look at reviewer scope
+(a single reviewer serialising four rounds on security-shaped PRs) instead of editing charters.
 
 ## How to count consistently
 
@@ -66,6 +83,28 @@ So the series stays comparable, count the same way every time:
 
   Case matters: a lowercase "approve" in prose is not a verdict, and matching case-insensitively
   inflated the v1.12.0 count by one.
+
+  **The loose matcher over-counts, measurably, and v1.13.0 quantified it.** A body containing a
+  marker is not necessarily a verdict: on #291 it returns 11 where the thread holds **8** reviewer
+  verdicts, because three of the marker-bearing comments are the AUTHOR's fix reports (`## Round 4 —
+  the three blockers, each measured against the unfixed hook`, whose first marker is `APPROVED`);
+  #282 returns 5 for 4. Reviewer and author post under the SAME identity here, so no author filter
+  can separate them — only the marker's POSITION can. Since v1.13.0 `pr-reviewer` MUST state the
+  verdict in the body's first non-empty line and `pre-merge-gate.sh` reads exactly that line, so
+  count with the heading-anchored filter and report the loose number alongside it while the series
+  still contains pre-mandate releases:
+
+  ```bash
+  gh pr list --state merged --limit 100 --json number,mergedAt,reviews,comments \
+    --jq "[.[] | select(.mergedAt > \"$PREV\" and .mergedAt <= \"$CUR\")]
+          | map([(.reviews[]?.body),(.comments[]?.body)]
+                | map(select(split(\"\n\") | map(select(test(\"\\\\S\"))) | (.[0]//\"\")
+                             | test(\"REQUEST CHANGES|APPROVED?\"))) | length)
+          | add"
+  ```
+
+  Do NOT retro-fit the heading-anchored number onto pre-v1.13.0 releases: it returns 15 for v1.12.0's
+  24, an undercount caused by format drift, not a correction.
 - **Rework share** = tokens spent in rounds 2+ ÷ total measured review tokens. Only rounds with
   real telemetry count; estimates are excluded and the sample size is stated.
 - **Release attribution** = the tag the work actually **shipped in**, not the one it was planned

@@ -40,7 +40,24 @@ gh pr view <n> --repo mavrovde/hirefolio --json reviews,comments \
 
 # Effort telemetry (recorded at close-the-loop; not retrievable later)
 # GitHub Project 3: Tokens (k), Time of processing (min), Review rounds, Agent, Model
+gh project item-list 3 --owner mavrovde --limit 200 --format json
 ```
+
+**If a telemetry field is empty, SAY IT IS EMPTY.** At v1.13.0 `Tokens (k)` and
+`Time of processing (min)` were unset for every item in the repository and `Review rounds` for every
+issue the release shipped; the previous retro's token/time figures were console session estimates.
+Publishing an estimate in a column headed "Tokens" makes the series a fiction — the very defect these
+retros keep finding in PR bodies. Label estimates as estimates, and prefer the proxies GitHub
+actually holds and that anyone can re-derive: PR count, verdict count, rounds, `changedFiles`
+(median PR size), and open→merge wall clock:
+
+```bash
+gh pr list --state merged --limit 100 --json number,createdAt,mergedAt,changedFiles \
+  --jq '.[] | [.number, .changedFiles, (((.mergedAt|fromdate)-(.createdAt|fromdate))/60|floor)] | @tsv'
+```
+
+**Count verdicts with the heading-anchored filter** (this directory's README carries the command and
+the reason): a marker anywhere in a body also matches the AUTHOR's fix reports — 11 vs 8 on #291.
 
 ## The five questions
 
@@ -89,6 +106,12 @@ should have caught first.
 - Model mix per item, once recorded — cost per delivered issue by model.
 - **Action shape:** rework share is the number to drive down; name the single change most likely
   to move it and record the prediction so the NEXT retro can check it.
+- **Before calling rounds "churn", check whether any round found NOTHING.** v1.13.0's mean rose
+  2.4 → 3.00 while **zero** of its 32 REQUEST CHANGES verdicts came back empty — every one
+  reproduced a defect. Rounds that all find real blockers are the gate working on harder material,
+  and the right target is then "the same defect, one layer earlier" (a lint, a stated observable),
+  not "fewer rounds". Check the material too: v1.13.0's features were credential-, billing- and
+  container-config-shaped, and produced 9 blockers in classes v1.12.0 barely had.
 
 ## Turning findings into changes
 

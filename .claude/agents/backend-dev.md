@@ -69,13 +69,47 @@ the real cause — never by weakening tests or checks.
 4. Deliver via a **feature branch + pull request** — never push to `main` directly:
    - message ends with:
      `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
-   - `git checkout -b fix/<slug> && git add -A && git commit -m "fix(backend): ..." && git push -u origin fix/<slug> && gh pr create --fill --base main`
+   - **`git push` rides ALONE** — one Bash command, nothing chained before or after it. The
+     pre-push hook is a *PreToolUse* hook: it evaluates the WHOLE command before the first
+     character runs, so in `fix && commit && push` the gate sees the un-fixed tree, and on deny
+     **nothing** in the chain runs — the commit you thought you made never happened (lessons §39;
+     three denied pushes in one evening, and once it cascaded into destroyed work via §36). Run
+     them as separate commands, and confirm with `git log --oneline -1` before pushing:
+     ```
+     git checkout -b fix/<slug>
+     git add -A && git commit -m "fix(backend): ..."
+     git log --oneline -1
+     git push -u origin fix/<slug>          # alone
+     gh pr create --fill --base main --label bug --label backend
+     ```
    - a shared pre-push hook (`.claude/hooks/pre-push-tests.sh`) runs docs + backend + frontend
      tests before the push completes; if it blocks, fix what it reports.
    - **Your validation is NOT the merge gate.** However green your suite is, the PR still requires an
      **independent `pr-reviewer` APPROVAL** before anyone merges it (CLAUDE.md rule 13). Deliver the
      PR; do not merge it and do not treat "tests pass" as sign-off.
 5. Report: what was wrong, the fix, verification output, and the PR URL.
+
+## Backend gotchas that cost review rounds in v1.13.0
+- **An `await` in a request handler is a hand-off to your own background task.** #298's re-run
+  endpoint wrote `pending`, `commit()`ed, then `await db.refresh(...)` — and the refresh SELECT
+  read back `done`, because the intake task runs in the SAME event loop and commits during that
+  await. The composed test failed **1 run in 9**, and the one failure was the cold-boot run — i.e.
+  exactly CI's configuration. **Diagnosis method:** list every `await` between the write and the
+  read, and ask which other coroutine on this loop can commit to that row in that window. **Fix
+  the boundary, not the flake:** let the concurrent writer settle (poll) or delete the round-trip;
+  a retry is a band-aid. Frequency counting comes AFTER the mechanism — "it passed 8× warm" would
+  have shipped this.
+- **The integration tier shares one rate-limit budget.** `/interactions/contact` allows 5/60s and
+  every tier request hits one limiter key. #298 grew the tier to exactly 5 posters and left zero
+  headroom — a re-run failed on `429` instead of the path under test. Post contacts through
+  `backend/tests_integration/conftest.py`'s shared `post_contact()` helper (it absorbs the 429 with
+  a wait); never hand-roll the loop, and update the budget note when you add a poster. An invariant
+  that lives only in a comment drifts between PRs — that is how it drifted from #296 to #298.
+- **Background tasks BYPASS the `get_db` override.** They build their own session from the
+  module-level factory, so a test's dependency override does not reach them and the task writes to
+  the DEV database (#298 found this the hard way). `backend/tests/conftest.py` now redirects
+  `app.database.async_session` to the test engine for every test — keep any new session factory
+  behind that redirect.
 
 ## Issue workflow
 When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, milestones & labels*):

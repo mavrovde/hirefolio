@@ -63,7 +63,18 @@ by fixing the real cause — never by weakening tests or checks.
 4. Deliver via a **feature branch + pull request** — never push to `main` directly:
    - message ends with:
      `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
-   - `git checkout -b fix/<slug> && git add -A && git commit -m "fix(frontend): ..." && git push -u origin fix/<slug> && gh pr create --fill --base main`
+   - **`git push` rides ALONE** — one Bash command, nothing chained before or after it. The
+     pre-push hook is a *PreToolUse* hook: it evaluates the WHOLE command before the first
+     character runs, so in `fix && commit && push` the gate sees the un-fixed tree, and on deny
+     **nothing** in the chain runs — the commit you thought you made never happened (lessons §39;
+     three denied pushes in one evening, and once it cascaded into destroyed work via §36):
+     ```
+     git checkout -b fix/<slug>
+     git add -A && git commit -m "fix(frontend): ..."
+     git log --oneline -1
+     git push -u origin fix/<slug>          # alone
+     gh pr create --fill --base main --label bug --label frontend
+     ```
    - a shared pre-push hook (`.claude/hooks/pre-push-tests.sh`) runs docs + backend +
      frontend tests before the push completes; if it blocks, fix what it reports.
    - **before pushing, `pgrep -f pytest` and wait until it returns nothing** — the hook runs
