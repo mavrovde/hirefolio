@@ -1,3 +1,19 @@
+<section class="mb-6 p-4 border rounded bg-white" data-testid="availability-panel">
+  <h2 class="font-semibold mb-2">Public availability</h2>
+  <p class="text-sm text-gray-500 mb-3">Shown on the public hero next to the hire-me CTA. Takes effect immediately — no redeploy.</p>
+  <div class="flex gap-2 items-center flex-wrap">
+    <button *ngFor="let state of availabilityStates" type="button"
+      class="px-3 py-1 border rounded font-mono text-sm"
+      [class.bg-black]="availability === state"
+      [class.text-white]="availability === state"
+      [disabled]="availabilitySaving"
+      (click)="setAvailability(state)">
+      {{ state }}
+    </button>
+    <span class="text-sm text-red-600" *ngIf="availabilityError">{{ availabilityError }}</span>
+  </div>
+</section>
+
 <div class="dashboard">
   <h1 class="page-title">&gt; Dashboard</h1>
 

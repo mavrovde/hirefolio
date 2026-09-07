@@ -25,7 +25,25 @@
         // {{ profile.headline }}
       </p>
 
+      <div *ngIf="availability$ | async as availability" class="mb-6" data-testid="availability">
+        <span class="inline-flex items-center gap-2 px-3 py-1 border font-mono text-sm"
+          [class.border-primary]="availability.state === 'open'"
+          [class.text-primary]="availability.state === 'open'"
+          [class.border-secondary]="availability.state !== 'open'"
+          [class.text-secondary]="availability.state !== 'open'">
+          <span class="w-2 h-2 rounded-full"
+            [class.bg-primary]="availability.state === 'open'"
+            [class.bg-secondary]="availability.state === 'listening'"
+            [class.bg-gray-500]="availability.state === 'not_looking'"></span>
+          {{ availability.key | translate }}
+        </span>
+      </div>
+
       <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="#contact" (click)="scrollTo('#contact', $event)" data-testid="hire-me-cta"
+          class="px-6 py-2 bg-primary text-black border-2 border-primary hover:bg-transparent hover:text-primary transition-all font-bold font-mono">
+          {{ 'SECTION.HIRE_ME' | translate }}
+        </a>
         <a href="#about" (click)="scrollTo('#about', $event)"
           class="px-6 py-2 border-2 border-primary text-primary hover:bg-primary hover:text-black transition-all font-bold font-mono">
           {{ 'SECTION.READ_MORE' | translate }}

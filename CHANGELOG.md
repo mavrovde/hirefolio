@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Hire-me CTA + availability indicator (#271 — AC5 of #69, split by review)**: the public hero
+  now renders the owner's **job-search state** ("open to offers / listening / not looking",
+  EN + DE) beside a prominent **Hire me** CTA that scrolls to the contact form. The state lives in
+  a new runtime `site_settings` KV table (migration `avail0008`) — **admin-editable with no
+  redeploy** via `PUT /admin/site-settings/availability` (vocabulary validated server-side) and a
+  one-click toggle on the admin dashboard (optimistic with rollback, so the control never lies
+  about persisted state). `/config/site` serves it publicly; the frontend service **normalizes an
+  absent field from an older backend to the default** — deploy-window skew made the whole
+  availability stream error and the indicator silently vanish (measured against the running v1.12
+  container) — and a test pins the old-shape wire response. A vocabulary-sync test fails the
+  backend suite if a new state ships without its EN/DE translations. 6 backend tests
+  (suite 955 → 962 at this head, 100.00%), public 337 @ 100% / admin 398 @ 100% on all four metrics, and a
+  3-test Playwright spec: indicator + CTA render translated, the CTA reaches the contact form,
+  and **flipping the state through the real admin API changes the public hero** (route-mocking is
+  impossible here — /config/site is fetched server-side and transfer-cached; measured).
 - **CV variants on opportunities (#247 criterion 4 — the pipeline's last phase)**: the admin
   pipeline detail panel records **which CV variant went to which company, and when**. Backend:
   `POST /admin/opportunities/{id}/cv-sent` sets a `SET NULL` FK + timestamp (migration
