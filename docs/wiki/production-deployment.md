@@ -28,6 +28,13 @@ Two documents, one split — keep them that way or they drift:
 | **`docs/DEPLOYMENT.md`** | The compose project runbook: environment variables, image coordinates, rollout secrets, per-release operator actions. |
 | **`.claude/skills/ssh-deploy/`** | The agent-executable operational loop distilled from this article (deploy, verify, roll back, read logs, the traps). |
 
+**Who this is written for.** Hirefolio is an open project, and this article is
+written for **anyone deploying it**, not for one installation. Hostnames appear as
+`<your-domain>` / `admin.<your-domain>` where you substitute your own, and as
+`example.com` in configuration samples; the deploy directory is `/opt/hirefolio`
+and the compose project is `hirefolio`. (`mavrov.de` is simply the canonical
+deployment instance of this product — nothing here is specific to it.)
+
 Assumed distro: **Ubuntu LTS**. 24.04 LTS "Noble Numbat" is the conservative
 choice (standard support to April 2029); 26.04 LTS "Resolute Raccoon" shipped
 2026-04-23 and is the choice for a brand-new box wanting the longest runway. On
@@ -81,15 +88,16 @@ rotate or disable it once key-only access is confirmed working.
 
 ### 2. Domain and DNS
 
-- [ ] **[owner]** **Decision: keep `mavrov.de` or move to a new domain.** This is
+- [ ] **[owner]** **Decision: which domain this deployment answers on.** This is
       the one choice that is expensive to reverse — it is baked into `SITE_URL`,
       the certificate names, `CORS_ORIGINS` and every published link.
 - [ ] **[owner]** **Access to the DNS zone** for that domain (registrar or DNS
       provider login). Needed to create records, and — if DNS-01 were ever chosen
       over the recommended HTTP-01 — to mint an API token. HTTP-01 needs no token.
 - [ ] **[owner]** Decide the hostnames. The stack serves **two** roles, and the
-      defaults are `PUBLIC_SERVER_NAME=mavrov.de www.mavrov.de` and
-      `ADMIN_SERVER_NAME=admin.mavrov.de admin.localhost` (`.env.example`):
+      committed defaults point at the canonical deployment instance, so a new
+      deployment MUST override `PUBLIC_SERVER_NAME` and `ADMIN_SERVER_NAME`
+      (`.env.example`):
   - the **public site** — apex (`example.com`) and/or `www`;
   - the **admin console** — a separate subdomain (`admin.example.com`), never a
     path on the public site.
@@ -180,7 +188,7 @@ signing key is an open admin door that looks completely normal in the logs.
 
   ```bash
   # on the server, appending straight into the .env — the value is never displayed
-  printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> /opt/mavrov.de/.env
+  printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> /opt/hirefolio/.env
   ```
 
 - **Nobody memorizes it or needs a copy.** It lives in the host `.env` (mode 600)
@@ -219,8 +227,9 @@ signing key is an open admin door that looks completely normal in the logs.
 - [ ] **[agent-at-cutover]** `PROXY_HTTP_PUBLISH` / `PROXY_HTTPS_PUBLISH` —
       loopback high ports from the port registry.
 - [ ] **`POSTGRES_DB` needs NO pin on a fresh server.** A new volume initializes
-      as `hirefolio` and everything matches (#288). The `POSTGRES_DB=mavrov` pin
-      applies **only** to a host whose volume predates that rename.
+      as `hirefolio` and everything matches (#288). A `POSTGRES_DB` pin applies
+      **only** to a host whose volume predates that rename, and its value is that
+      host's pre-existing database name.
 
 ### 5. Provider-side checks
 
@@ -349,14 +358,15 @@ application block (`:24-31`). nginx selects the first matching block, so a
 request arriving on port 80 carrying the real public `Host` is redirected —
 straight back to the edge, which forwards it again.
 
-Measured against a running stack (2026-09-07):
+Measured against a running stack (2026-09-07), sending each `Host` through the
+tenant proxy. `<public>` is whatever `PUBLIC_SERVER_NAME` is set to:
 
 ```
-Host: mavrov.de      -> :80   =>  301  https://mavrov.de/     # redirect loop
-Host: localhost      -> :80   =>  200                          # wrong: breaks admin routing
-Host: admin.localhost-> :80   =>  403                          # admin block matches BY NAME
-Host: mavrov.de      -> :443  =>  200                          # correct upstream
-Host: nope.example   -> :80   =>  444 (connection closed)
+Host: <public>        -> :80   =>  301  https://<public>/   # THE REDIRECT LOOP
+Host: localhost       -> :80   =>  200                       # wrong: breaks admin routing
+Host: admin.localhost -> :80   =>  403                       # admin block matches BY NAME
+Host: <public>        -> :443  =>  200                       # correct upstream
+Host: nope.example    -> :80   =>  444 (connection closed)
 ```
 
 Therefore the edge proxies to the tenant's **443** (`PROXY_HTTPS_PUBLISH`), with
@@ -387,14 +397,14 @@ not needed for the topology to work.
     }
 }
 
-mavrov.de, www.mavrov.de {
+example.com, www.example.com {
     reverse_proxy https://127.0.0.1:18443 {
         import tenant_tls
         header_up X-Forwarded-For {remote_host}
     }
 }
 
-admin.mavrov.de {
+admin.example.com {
     reverse_proxy https://127.0.0.1:18443 {
         import tenant_tls
         header_up X-Forwarded-For {remote_host}
@@ -435,8 +445,9 @@ Two consequences for hirefolio's own configuration:
 
 `COMPOSE_PROJECT_NAME` appeared **nowhere** in this repository before #310. Unset,
 Compose derives the project name from the deploy **directory basename**:
-`/opt/mavrov.de` normalizes to `mavrovde`, which is why the volume destroyed in
-the #91 incident was named `mavrovde_open-webui_data` (lessons-learned §8).
+a directory named `example.com` normalizes to `examplecom`, and the volume
+destroyed in the #91 incident carried exactly such a directory-derived prefix
+(lessons-learned §8).
 
 Rename or move that directory and every container, network and volume name
 changes with it — the stack comes up against **new, empty volumes**. The database
@@ -451,8 +462,8 @@ docker compose -f docker-compose.prod.yml ps --format '{{.Project}}' | head -1
 docker volume ls --filter name=postgres_data      # -> <project>_postgres_data
 ```
 
-Canonical host: `COMPOSE_PROJECT_NAME=mavrovde`. Fresh install: any stable,
-project-unique value (`hirefolio`). `.env.example` ships it **commented out** on
+Fresh install: any stable, project-unique value — `hirefolio` is the obvious one.
+Existing host: whatever the two commands above report, character for character. `.env.example` ships it **commented out** on
 purpose — a default here would silently orphan the volumes of every host whose
 directory basename differs.
 
@@ -657,7 +668,7 @@ project proxy never sees one.
 **Within hirefolio: one SAN certificate, not a wildcard.**
 `proxy/default.conf.template:30-31` (public) and `:91-92` (admin) point at the
 *same* `fullchain.pem`/`privkey.pem`, so a single certificate must cover
-`mavrov.de`, `www.mavrov.de` **and** `admin.mavrov.de`. A SAN certificate listing
+`<your-domain>`, `www.<your-domain>` **and** `admin.<your-domain>`. A SAN certificate listing
 those three names does that with HTTP-01 and no DNS credential. A wildcard would
 also work but costs a DNS-01 credential and puts every present and future
 subdomain behind one key — more blast radius for no benefit at three names.
@@ -761,7 +772,7 @@ also that **Let's Encrypt stopped sending expiration notification emails on
 
 ```bash
 # Days remaining for every hostname the box serves — run from cron, alarm under 21
-for host in mavrov.de admin.mavrov.de other-project.example; do
+for host in <your-domain> admin.<your-domain> other-project.example; do
   end=$(echo | openssl s_client -servername "$host" -connect "$host:443" 2>/dev/null \
         | openssl x509 -noout -enddate | cut -d= -f2)
   days=$(( ( $(date -d "$end" +%s) - $(date +%s) ) / 86400 ))
@@ -775,7 +786,7 @@ already has (`HIREFOLIO_TELEGRAM_*`, `HIREFOLIO_NOTIFY_WEBHOOK_URL`, #263) are a
 reasonable target. Verify names and expiry by hand at any time:
 
 ```bash
-echo | openssl s_client -servername mavrov.de -connect mavrov.de:443 2>/dev/null \
+echo | openssl s_client -servername <your-domain> -connect <your-domain>:443 2>/dev/null \
   | openssl x509 -noout -subject -dates -ext subjectAltName
 ```
 
@@ -995,9 +1006,9 @@ certificate request — an ACME challenge against a name that does not resolve t
 this box fails, and repeated failures burn rate limit.
 
 ```bash
-dig +short A mavrov.de
-dig +short A www.mavrov.de
-dig +short A admin.mavrov.de
+dig +short A <your-domain>
+dig +short A www.<your-domain>
+dig +short A admin.<your-domain>
 # each must return the host's public IP; check from off-host, not via /etc/hosts
 ```
 
@@ -1014,17 +1025,18 @@ Follow `docs/DEPLOYMENT.md` § First deploy for the environment variables; this
 section adds only the host and tenancy context.
 
 ```bash
-sudo mkdir -p /opt/mavrov.de && sudo chown deploy:deploy /opt/mavrov.de
-sudo -u deploy git clone https://github.com/mavrovde/hirefolio.git /opt/mavrov.de
-cd /opt/mavrov.de
+sudo mkdir -p /opt/hirefolio && sudo chown deploy:deploy /opt/hirefolio
+sudo -u deploy git clone https://github.com/mavrovde/hirefolio.git /opt/hirefolio
+cd /opt/hirefolio
 cp .env.example .env && chmod 600 .env
 ```
 
 Before the first `up`, set in `.env`:
 
 - **`COMPOSE_PROJECT_NAME`** — decided now, never changed later (above).
-- **`POSTGRES_DB`** — on a host created before the #288 rename, pin
-  `POSTGRES_DB=mavrov`; a fresh volume needs nothing.
+- **`POSTGRES_DB`** — on a host created before the #288 rename, pin that host's
+  **existing** database name; a fresh volume needs nothing (it initializes as
+  `hirefolio`).
 - **Tenancy bindings** — `PROXY_HTTP_PUBLISH=127.0.0.1:18080:80`,
   `PROXY_HTTPS_PUBLISH=127.0.0.1:18443:443`; leave `POSTGRES_BIND_HOST` at its
   loopback default.
@@ -1053,9 +1065,9 @@ until its healthcheck passes. Then add the tenant to the edge (§ Edge
 configuration), `sudo systemctl reload caddy`, and verify **without `-k`**:
 
 ```bash
-curl -sS -o /dev/null -w 'public %{http_code}\n' https://mavrov.de/
-curl -sS -o /dev/null -w 'health %{http_code}\n' https://mavrov.de/api/app/health
-curl -sS -o /dev/null -w 'http->%{http_code} %{redirect_url}\n' http://mavrov.de/
+curl -sS -o /dev/null -w 'public %{http_code}\n' https://<your-domain>/
+curl -sS -o /dev/null -w 'health %{http_code}\n' https://<your-domain>/api/app/health
+curl -sS -o /dev/null -w 'http->%{http_code} %{redirect_url}\n' http://<your-domain>/
 ```
 
 `curl` exits **60** on an untrusted certificate, so a `200` here *is* the
@@ -1083,7 +1095,7 @@ ssh-keygen -t ed25519 -f ./hirefolio_deploy -C 'github-actions rollout' -N ''
 | `DEPLOY_HOST` | yes | Host to SSH to |
 | `DEPLOY_USER` | yes | The `deploy` user |
 | `DEPLOY_SSH_KEY` | yes | Private half of the pair above — used nowhere else |
-| `DEPLOY_DIR` | no | Compose project dir (default `/opt/mavrov.de`) |
+| `DEPLOY_DIR` | no | Compose project dir (default `/opt/hirefolio`; set it if your host uses another path) |
 | `DEPLOY_SSH_PORT` | no | Default 22 |
 | `PUBLIC_URL` (**variable**) | forks: yes | Health-gate + Live Freshness URL |
 
@@ -1119,7 +1131,7 @@ restores the previous `IMAGE_REPO`/`IMAGE_TAG` and re-runs `up -d --no-deps`.
 **Manual equivalent**, when the job cannot (network died mid-run):
 
 ```bash
-cd /opt/mavrov.de
+cd /opt/hirefolio
 cat .env.rollback                      # the previous coordinates, nothing else
 grep -E '^IMAGE_(REPO|TAG)=' .env      # what is deployed now
 
@@ -1127,7 +1139,7 @@ grep -E '^IMAGE_(REPO|TAG)=' .env      # what is deployed now
 sudo -u deploy sed -i 's|^IMAGE_TAG=.*|IMAGE_TAG=sha-<previous>|' .env
 docker compose -f docker-compose.prod.yml pull backend frontend admin-frontend proxy
 docker compose -f docker-compose.prod.yml up -d --no-deps backend frontend admin-frontend proxy
-curl -sS https://mavrov.de/api/app/health
+curl -sS https://<your-domain>/api/app/health
 ```
 
 **Rollback restores images, not schema.** `alembic upgrade head` runs at backend
@@ -1243,7 +1255,7 @@ are **not** authorization to run one.
 
 ```bash
 # Backup — no downtime; write outside /var/lib/docker
-cd /opt/mavrov.de
+cd /opt/hirefolio
 docker compose -f docker-compose.prod.yml exec -T db \
   pg_dump -U "${POSTGRES_USER:-postgres}" -p "${POSTGRES_PORT:-5433}" \
           -d "${POSTGRES_DB:-hirefolio}" -Fc \
@@ -1300,7 +1312,7 @@ everyone's); `/etc/letsencrypt` or `/var/lib/caddy`; another tenant's `.env`.
 | 15 | **GHCR private-package trap** — new packages default to private, visibility does not follow a rename | One-time visibility change for all four packages; the rollout preflight fails with the package name before touching the host (lessons-learned §20). |
 | 16 | **Port-25 egress blocked** by most VPS providers (self-hosted mail) | Use an external SMTP provider (`docs/DEPLOYMENT.md` § Email options). The bundled `mailer` profile is opt-in and promises nothing about deliverability. |
 | 17 | **Failed Alembic migration mid-rollout** — rollback restores images, not schema | Back up before a migration-bearing release; fix forward from the recorded error; never reset the database to "unstick" it (rule 9). |
-| 18 | **#288 `POSTGRES_DB` default rename** on a pre-rename host | Pin `POSTGRES_DB=mavrov` in that host's `.env` **before** pulling a post-rename compose file; data is untouched either way. |
+| 18 | **#288 `POSTGRES_DB` default rename** on a pre-rename host | Pin that host's **existing** database name in its `.env` **before** pulling a post-rename compose file; data is untouched either way. Fresh volumes need no pin. |
 | 19 | **Host `.env` secret hygiene** on a shared box | Mode 600, owned by the deploy user; audit `getent group docker` — every member can read any file on the host through a container, so `docker` group membership *is* the access list. |
 | 20 | **Provider firewall / security group** silently overrides `ufw` | Verify from **off the host** with `nmap -Pn`; reconcile the provider's rules with the port registry as part of adding a tenant. |
 | 21 | **Ollama first-boot model pull** — time and disk | Multi-GB and slow; the healthcheck gates readiness. Pre-pull before announcing the deploy; ensure free disk before starting. |

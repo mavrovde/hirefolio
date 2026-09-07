@@ -941,6 +941,14 @@ jobs:
   # running containers by image digest, health-gates, freshness-probes (#169),
   # and rolls back to the previously recorded sha tag on failure. No-op until
   # the owner adds DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY (docs/DEPLOYMENT.md).
+  #
+  # DEPLOY_DIR default is /opt/hirefolio (the PRODUCT, #310 — it was a
+  # maintainer-specific path). Continuity, same shape as the #288 POSTGRES_DB
+  # rename: this default is only ever reached when the DEPLOY_DIR secret is
+  # UNSET, and the rollout has never run on any host (the three secrets are
+  # absent), so nothing can be pointed at a wrong directory by this change. A
+  # deployment that already lives elsewhere sets the DEPLOY_DIR secret to its own
+  # path — which is exactly what that secret is for.
   deploy:
     name: Roll Out To Prod Host
     # Build/publish/deploy: push to `main` only, never on a pull request (#208).
@@ -1021,7 +1029,7 @@ jobs:
         if: steps.gate.outputs.enabled == 'true'
         id: rollout
         env:
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/hirefolio' }}
           SHA_TAG: sha-${{ github.sha }}
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
@@ -1088,7 +1096,7 @@ jobs:
           # setting (shared with the Live Freshness workflow); the old
           # DEPLOY_PUBLIC_URL secret stays honoured for back-compat.
           PUBLIC_URL: ${{ vars.PUBLIC_URL || secrets.DEPLOY_PUBLIC_URL || 'https://mavrov.de' }}
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/hirefolio' }}
         run: |
           echo "Waiting for $PUBLIC_URL to become healthy..."
           ok=false
@@ -1113,12 +1121,12 @@ jobs:
           echo "Freshness gate OK."
           # Deploy succeeded: drop the rollback marker so nothing later can
           # roll this healthy release backwards.
-          ssh prod "rm -f '${DEPLOY_DIR:-/opt/mavrov.de}/.env.rollback'" || true
+          ssh prod "rm -f '${DEPLOY_DIR:-/opt/hirefolio}/.env.rollback'" || true
 
       - name: Roll back on failure
         if: failure() && steps.rollout.outputs.mutated == 'true'
         env:
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/mavrov.de' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/hirefolio' }}
         run: |
           echo "Rolling back to previous image coordinates..."
           ssh prod "DEPLOY_DIR='$DEPLOY_DIR' APP_SERVICES='$APP_SERVICES' bash -s" <<'REMOTE'

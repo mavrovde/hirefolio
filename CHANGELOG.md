@@ -29,8 +29,8 @@ All notable changes to this project will be documented in this file.
     hirefolio's own `proxy` was rejected as the edge because it is in `APP_SERVICES`
     (`deploy.yml:934`), so every hirefolio rollout *and rollback* would recreate every tenant's
     traffic path. Includes a measured finding: the edge must forward to the tenant's **443**, not its
-    80 — `Host: mavrov.de` on `:80` returns `301 https://mavrov.de/` (a redirect loop through the
-    edge), on `:443` returns `200`.
+    80 — a request carrying the configured `PUBLIC_SERVER_NAME` returns `301` to its own HTTPS URL
+    on `:80` (a redirect loop through the edge) and `200` on `:443`.
   - **Fixed container names removed** (`open-webui`, `global_proxy`) from both compose files —
     `container_name` is host-global and collides between projects. The service name remains a network
     alias, verified on a live stack (`getent hosts open-webui` → resolved; nginx, which refuses to
@@ -60,6 +60,16 @@ All notable changes to this project will be documented in this file.
   Compose defaults are byte-identical to the previous published bindings (`80:80`, `10443:443`), so
   CI, the Docker E2E and the WireMock integration tier are unchanged; the shared-edge remap is a host
   `.env` setting applied at cutover.
+
+  **Product-oriented docs.** The article, the `ssh-deploy` skill and the `docs/DEPLOYMENT.md`
+  sections this touches speak as **Hirefolio**, not as one installation: hostnames are
+  `<your-domain>` / `admin.<your-domain>` (or `example.com` in config samples), the deploy directory
+  is `/opt/hirefolio`, and the maintainer's domain appears once, as the canonical deployment
+  instance. `DEPLOY_DIR`'s default follows: **`/opt/mavrov.de` → `/opt/hirefolio`**. That default is
+  reached only when the `DEPLOY_DIR` secret is unset, and the rollout has never run on any host (the
+  three `DEPLOY_*` secrets are absent), so no existing deployment is repointed — a host that lives
+  elsewhere sets the secret, which is what it is for. Repo-wide de-branding of files outside this
+  PR's scope is tracked separately.
 - **v1.13.0 release retrospective (#265)** — `docs/retrospectives/v1.13.0.md` plus the trend row,
   from 16 merged PRs and 50 reviewer verdicts read in full. Two new repo-contract lints, each with a
   self-test that runs beside it in the pre-push gate; the first also runs in CI, the second is

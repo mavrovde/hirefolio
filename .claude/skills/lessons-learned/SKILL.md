@@ -1035,8 +1035,9 @@ cross-project outage on a shared one.
   to start on an unresolvable upstream) started. Resolve containers with
   `docker compose ps -q <svc>`, never a literal name.
 - **An unset `COMPOSE_PROJECT_NAME` makes your data addressable by an accident of pathing.**
-  Compose derives it from the deploy directory basename — `/opt/mavrov.de` → `mavrovde`, which is
-  why the §8 incident volume was `mavrovde_open-webui_data`. Move or rename that directory and the
+  Compose derives it from the deploy directory basename — a directory named `example.com` becomes
+  the prefix `examplecom`, and the §8 incident volume carried exactly such a directory-derived
+  prefix. Move or rename that directory and the
   stack comes up against **new, empty volumes**: the data is intact under the old prefix, but it
   looks exactly like total loss. Pin it explicitly, and on an existing host pin **the name already
   in use**, read off the host first — the same continuity rule as the #288 `POSTGRES_DB` pin.
@@ -1047,8 +1048,8 @@ cross-project outage on a shared one.
 Also measured, and the reason the edge must forward to the tenant's **443** and not its 80:
 `proxy/default.conf.template` has an unconditional `return 301 https://` block that `listen 80` and
 matches the public name **before** the application block, so an edge forwarding on port 80 with the
-real `Host` gets `301 https://…` — a redirect loop. `Host: mavrov.de` → `:80` = `301`, → `:443` =
-`200`.
+real `Host` gets `301 https://…` — a redirect loop. Measured: the configured `PUBLIC_SERVER_NAME`
+against `:80` = `301`, against `:443` = `200`.
 
 Full design: `docs/wiki/production-deployment.md`. Operational loop: `.claude/skills/ssh-deploy/`.
 
