@@ -182,7 +182,8 @@ def _test_database_url() -> URL:
     # HARD GUARD (lessons-learned §4, now ENFORCED): the suite drops/creates
     # tables on every run — pointed at a non-test database it silently
     # destroys dev data. This happened in practice: with TEST_DATABASE_URL
-    # unset, resolution fell through to the app default (`.../hirefolio`) and
+    # unset, resolution fell through to the app default (then `.../mavrov`,
+    # `.../hirefolio` since #288) and
     # single-process runs clobbered the dev DB all day before a lock made it
     # visible. Only `test_*` databases may ever be the target (CLAUDE.md
     # rule 9 allows dropping test_* only).

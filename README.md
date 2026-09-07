@@ -354,7 +354,7 @@ hirefolio/
 │   │   └── main.py              # FastAPI app
 │   ├── migrations/              # Alembic migrations (the schema authority)
 │   ├── tests/                   # Backend tests
-│   ├── scripts/                 # Utility scripts (incl. create_test_db.py)
+│   ├── scripts/                 # Utility scripts
 │   └── requirements.txt         # Python dependencies
 ├── frontend/                    # Angular 22 workspace (3 projects)
 │   ├── projects/
