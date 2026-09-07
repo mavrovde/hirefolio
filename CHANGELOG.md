@@ -5,6 +5,77 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Production deploy process: panel-free SSH flow on a multi-project host (#310)** — the researched
+  runbook `docs/wiki/production-deployment.md` (21 `##` sections; held in-repo until the owner
+  initializes the repository wiki, then moved verbatim — `docs/wiki/README.md`), plus the compose
+  hardening its design requires. hirefolio becomes **one tenant** on a shared box instead of its
+  owner:
+  - **"What the owner must prepare — cutover checklist"** (owner directive) — 36 checkable items,
+    each tagged `[owner]` or `[agent-at-cutover]`, covering the server and its **measured** minimum
+    sizing, domain/DNS, TLS ("nothing to buy" on the Let's Encrypt path), every secret to generate,
+    provider firewall and the port-25 reality, the GitHub-side actions, first-import content, and a
+    cutover-day running order. Sizing is measured on a live warm stack, not estimated: `ollama`
+    **4.195 GiB** resident with all three models, whole stack **≈ 5.4 GiB**, images **≈ 15.9 GB**
+    for one copy (of which `ollama` 7.29 GB and `open-webui` 6.51 GB), `ollama_data` **3.6 GB** ⇒
+    **8 GB RAM / 40 GB disk / 2 vCPU** minimum for hirefolio alone, 16 GB / 60–80 GB on a shared
+    host. Includes an owner-facing, plain-language explainer of **`JWT_SECRET_KEY`** (stateless
+    admin logins; knowing the key forges an admin token without a password — hence #177's startup
+    refusal; generate it *on the host* so it never transits chat; rotation invalidates all sessions
+    and is the right answer to suspected leakage; it is not the admin password), and an **SSH
+    authentication** section covering ed25519 key pairs, the test-before-you-lock-yourself-out
+    order, and **SSH certificates** as the honest scale-up path (expiring credentials, no
+    `authorized_keys` sprawl — overkill for one owner and one host today).
+  - **Shared edge chosen and argued.** A host-level Caddy edge owns 80/443 for every project;
+    hirefolio's own `proxy` was rejected as the edge because it is in `APP_SERVICES`
+    (`deploy.yml:934`), so every hirefolio rollout *and rollback* would recreate every tenant's
+    traffic path. Includes a measured finding: the edge must forward to the tenant's **443**, not its
+    80 — a request carrying the configured `PUBLIC_SERVER_NAME` returns `301` to its own HTTPS URL
+    on `:80` (a redirect loop through the edge) and `200` on `:443`.
+  - **Fixed container names removed** (`open-webui`, `global_proxy`) from both compose files —
+    `container_name` is host-global and collides between projects. The service name remains a network
+    alias, verified on a live stack (`getent hosts open-webui` → resolved; nginx, which refuses to
+    start on an unresolvable upstream, started). `deploy.yml`'s proxy smoke check now resolves the
+    container with `docker compose ps -q proxy` instead of a literal name.
+  - **Bounded logging** on every service in both compose files (`json-file`, `max-size=10m`,
+    `max-file=3`, overridable) — the default driver is unbounded, so one chatty tenant fills the disk
+    for everyone; a daemon-wide `/etc/docker/daemon.json` equivalent is documented.
+  - **Memory ceilings** on every prod service, all parameterized, Ollama named as the hog
+    (`OLLAMA_MEM_LIMIT=8g`). Ceilings, not reservations: a healthy stack is unaffected.
+  - **Operator action on an EXISTING host, once:** both `logging:` and `mem_limit:` bind at
+    container *create*, and the rollout recreates only `backend frontend admin-frontend proxy`
+    (`--no-deps`) — so `db`, `ollama` and `open-webui` keep their old unbounded configuration
+    until a one-time `docker compose -f docker-compose.prod.yml up -d` (no `--no-deps`) on the
+    host. That includes `ollama`, the hog the ceiling exists for. Volumes untouched; a fresh
+    install needs nothing.
+  - **`COMPOSE_PROJECT_NAME` guidance** in `.env.example`, shipped **unset** with a #288-style
+    continuity warning — Compose derives the name from the deploy directory basename, so pinning the
+    wrong value re-points the stack at new, empty volumes.
+  - **Postgres is no longer internet-facing**: `POSTGRES_BIND_HOST` defaults to `127.0.0.1`. Note
+    `ufw` does **not** filter Docker-published ports (DNAT in `PREROUTING`, never reaches `INPUT`), so
+    a firewall rule was never the fix.
+  - **`ssh-deploy` skill** (`.claude/skills/ssh-deploy/`) — failure→diagnosis for every step of
+    `Roll Out To Prod Host`, the certificate-renewal runbook and the multi-tenant do-not-touch list;
+    referenced from the `devops-pipeline` and `release-manager` charters and the CLAUDE.md AI-config
+    map. Lessons-learned §44 records the four shared-host defaults that assume a dedicated machine.
+  - Residual **1Panel/panel references removed** from `docs/`, `.env.example`, `proxy/` and
+    `.claude/` (5 → 0), generalized to "whatever terminates TLS at the edge"; the product's own
+    "admin panel" wording is untouched. `docs/DEPLOYMENT.md` now states the canonical split (compose
+    runbook here, host lifecycle in the wiki) and warns that the `DEPLOY_*` secrets must not be added
+    before 443 serves a real certificate — the health gate polls 443 while the stack self-signs.
+
+  Compose defaults are byte-identical to the previous published bindings (`80:80`, `10443:443`), so
+  CI, the Docker E2E and the WireMock integration tier are unchanged; the shared-edge remap is a host
+  `.env` setting applied at cutover.
+
+  **Product-oriented docs.** The article, the `ssh-deploy` skill and the `docs/DEPLOYMENT.md`
+  sections this touches speak as **Hirefolio**, not as one installation: hostnames are
+  `<your-domain>` / `admin.<your-domain>` (or `example.com` in config samples), the deploy directory
+  is `/opt/hirefolio`, and the maintainer's domain appears once, as the canonical deployment
+  instance. `DEPLOY_DIR`'s default follows: **`/opt/mavrov.de` → `/opt/hirefolio`**. That default is
+  reached only when the `DEPLOY_DIR` secret is unset, and the rollout has never run on any host (the
+  three `DEPLOY_*` secrets are absent), so no existing deployment is repointed — a host that lives
+  elsewhere sets the secret, which is what it is for. Repo-wide de-branding of files outside this
+  PR's scope is tracked separately.
 - **v1.13.0 release retrospective (#265)** — `docs/retrospectives/v1.13.0.md` plus the trend row,
   from 16 merged PRs and 50 reviewer verdicts read in full. Two new repo-contract lints, each with a
   self-test that runs beside it in the pre-push gate; the first also runs in CI, the second is
@@ -65,7 +136,7 @@ All notable changes to this project will be documented in this file.
     picomatch `contains`**, so `shared`'s `exclude: ['testing/**']` no longer accidentally
     swallows `src/lib/testing/**`. That project now measures **20 more statements, 4 more
     branches, 6 more functions, 17 more lines** (194/105/47/175 → 214/109/53/192) — all already
-    covered, hence still 100%. `public` and `admin` are byte-identical. (lessons §44)
+    covered, hence still 100%. `public` and `admin` are byte-identical. (lessons §45)
   - The worker-teardown race that `scripts/run_frontend_suites.sh` tolerates is **not fixed by
     the major**: measured 1 occurrence in 25 consecutive `npm run test:public` runs on 5.0.0,
     same signature. The harness stays; its comment, `env-gotchas` and `/verify` now say so.
@@ -84,7 +155,7 @@ All notable changes to this project will be documented in this file.
     configures but never invokes — so on Vitest 5 a plain `npm install` exits 1, breaking the
     onboarding command documented in `README.md` / `README_TESTING.md`. Every install path here
     already passed `--legacy-peer-deps`; this makes it the project default. Trade-off recorded in
-    the file and in lessons §44: it silences genuine peer conflicts too, so the one-pass
+    the file and in lessons §45: it silences genuine peer conflicts too, so the one-pass
     lockfile regeneration + programmatic lock review remain the real guard.
 - `agents/PLAYBOOK.md` gains five discipline rules measured from this release (verify by observable
   not by construction; your verification's scope is a claim too; a new setting is three edits;

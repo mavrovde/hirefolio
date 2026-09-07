@@ -74,6 +74,22 @@ When a pipeline E2E job is red and you need a local repro, load the `e2e-validat
 (`/e2e`) — the known-good bring-up + readiness gate + seed + run loop with the recurring traps
 (open-webui volume, pre-schema 500 race) documented (#117). Never re-derive it.
 
+## Anything host-side: load the `ssh-deploy` skill first (#310)
+The prod host is **shared by several projects and has no server panel** (owner
+constraints, 2026-09-07). Before any host action — reading host logs, diagnosing a
+failed `Roll Out To Prod Host` step, a rollback, a TLS/health-gate failure, or
+advising on the `DEPLOY_*` secrets — load `.claude/skills/ssh-deploy/`. It carries
+the **failure→diagnosis table keyed to each step of the rollout job**, the
+certificate-renewal runbook, and the multi-tenant do-not-touch list. Do not
+re-derive any of it, and never run a command that is not scoped to hirefolio's
+compose project: `docker volume rm/prune`, `down -v`, `system prune` and
+`image prune -a` are **host-wide** and destroy neighbours' data (rule 9).
+Two traps worth knowing before you read: the health gate polls **443** while the
+stack self-signs `/CN=localhost`, so a TLS error there is the most likely
+panel-free failure; and containers must be resolved with
+`docker compose ps -q <svc>`, never by literal name (#310 removed the fixed ones).
+Host lifecycle and design: `docs/wiki/production-deployment.md`.
+
 ## Green pipeline ≠ live on the host (#112 / #156)
 **A green `deploy.yml` run always means the images were PUBLISHED to the registry; it means the
 prod host was updated only if the secrets-gated `deploy` job actually ran.** Since #175 the pipeline

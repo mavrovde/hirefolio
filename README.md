@@ -689,9 +689,15 @@ curl "http://localhost:8000/api/posts/search/semantic?q=ollama+embeddings&lang=e
 
 ## 🚢 Deployment
 
-> **Full runbook:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — clean-server first deploy, the
+> **Compose runbook:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — clean-server first deploy, the
 > `DEPLOY_*` secrets that arm the automated rollout, and the required host `.env` values
 > (`ADMIN_PASSWORD`, `JWT_SECRET_KEY`).
+>
+> **Host runbook:** [`docs/wiki/production-deployment.md`](docs/wiki/production-deployment.md) —
+> the panel-free SSH flow on a **host shared by several projects** (#310): OS hardening, Docker from
+> the vendor APT repo, the shared edge and host port registry, TLS issuance + auto-renewal, resource
+> limits and log rotation, rollback, backup/restore and a risk register. Read it **before** the first
+> deploy; it moves to the repository wiki verbatim once that wiki is initialized.
 
 ### What CI publishes
 

@@ -94,6 +94,7 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 | skill | `issue-workflow` | issue/PR/milestone/label flow with copy-paste `gh` commands |
 | skill | `lessons-learned` | committed do-not-repeat KB — consult before SSR/pytest/CI-cache/release/destructive work |
 | skill | `release-retro` | the retrospective method: five questions, finding→action classification, the no-change-must-say-why rule |
+| skill | `ssh-deploy` | panel-free rollout loop on the SHARED prod host: failure→diagnosis per rollout step, cert renewal, multi-tenant do-not-touch (#310) |
 | skill | `e2e-validation` | the E2E loop + its traps, for agents (#117) |
 | skill | `env-gotchas` | macOS/BSD/gh platform pitfalls (#119) |
 | skill | `ssr-cd-safety` | zoneless repaint + SSR HTTP contract (#118) |
@@ -150,7 +151,11 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
     template product (#61/#88), but today every consumer of this config is this repo itself —
     packaging would add a version-sync surface with zero second consumers. Tracked as follow-up
     issue **#244**; trigger = the first real fork/template user (milestone #2).
-- **Skills** (`.claude/skills/`): all six — `issue-workflow` (issue/PR/milestone/label flow),
+- **Skills** (`.claude/skills/`): all seven — `issue-workflow` (issue/PR/milestone/label flow),
+  **`ssh-deploy`** (#310 — the panel-free deployment loop on the **shared, multi-project** prod host:
+  failure→diagnosis for every `Roll Out To Prod Host` step, the certificate-renewal runbook, and the
+  multi-tenant do-not-touch list; consult before ANY host-side action, and see
+  `docs/wiki/production-deployment.md` for the host lifecycle + shared-edge/TLS design),
   `release-retro` (the release retrospective method — rule 8's mandatory step),
   `e2e-validation` (#117), `env-gotchas` (#119), `ssr-cd-safety` (#118), and
   **`lessons-learned`** — the committed "do-not-repeat" knowledge base (zoneless-CD + SSR-HttpBackend
