@@ -48,9 +48,7 @@ def _target_language() -> str:
     untranslated-into-target (and re-translate forever): compare and store
     the normalized code, whatever casing/region the env var carries.
     """
-    return (
-        settings.owner_language.strip().lower().split("-")[0].split("_")[0] or "en"
-    )
+    return settings.owner_language.strip().lower().split("-")[0].split("_")[0] or "en"
 
 
 def _parse(response_text: str) -> tuple[str, str] | None:
