@@ -1,7 +1,7 @@
 ---
 name: lessons-learned
 description: >-
-  The committed "do-not-repeat" knowledge base for mavrov.de — hard-won operational lessons
+  The committed "do-not-repeat" knowledge base for Hirefolio — hard-won operational lessons
   and footguns that unit tests and PR CI do NOT catch. Consult BEFORE touching the frontend
   SSR/HTTP/change-detection path, running backend pytest locally, adding a GitHub Actions
   cache, deciding a release SemVer bump, running destructive local/infra commands, writing any
@@ -18,7 +18,7 @@ description: >-
   fresh contexts and teammates don't re-research answers we already have.
 ---
 
-# Lessons learned — mavrov.de (do not repeat)
+# Lessons learned — Hirefolio (do not repeat)
 
 This is the **in-repo** home for durable, hard-won lessons — the things that cost us a revert, a red
 pipeline, or a wasted research loop. It complements `CLAUDE.md` (the rules) with the *why* and the
@@ -170,7 +170,7 @@ pre-existing vs introduced. Caveat: a green publish updates the host only when t
 `skipped` — it runs and reports `success` as a guarded no-op**, logging the notice
 `DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY not configured — images are published but NOT rolled onto a
 host`. So the job *status* is a false positive here: read the job's **log** (or probe the live
-footer / `curl https://mavrov.de`) before ever saying "prod is on vX.Y.Z" ("published ≠ live", #112).
+footer / `curl https://<your-domain>`) before ever saying "prod is on vX.Y.Z" ("published ≠ live", #112).
 Confirmed again at the v1.10.0 release: run 33326238612 was 21/21 green with the rollout job
 `success`, while live prod still served v1.2.27.
 
@@ -278,7 +278,7 @@ dummy `server{}` including `admin_allowlist.conf`), and keep the check non-abort
 ## 13. A failing local gate is NOT proof your change broke it — bisect against a clean `main` build first
 
 **The trap (2026-08-29, the #170 dep sweep):** `./verify_all.sh` failed its proxy-route check
-(`mavrov.de/admin/login` expected 200, got 404) right after the Angular/SSR bump — which
+(`mavrov.de/admin/login` expected 200, got 404) right after the Angular/SSR bump — which <!-- de-brand:historical: verbatim incident record, #313 -->
 pattern-matches perfectly to "the SSR upgrade changed unmatched-route handling." It hadn't.
 Building the frontend from an **unmodified `main` worktree with the committed lockfile**
 (`git worktree add … main && npm ci && npm run build:public`, serve `dist/public/server/server.mjs`,
@@ -420,7 +420,7 @@ is the bug**: extract it, or the next fix will miss a branch too (rule 1, applie
 
 ## 20. Renaming a repo does not carry the container packages with it
 
-Renaming `mavrovde/mavrov.de` → `mavrovde/hirefolio` changed CI's publish target, because it derives
+Renaming `mavrovde/mavrov.de` → `mavrovde/hirefolio` changed CI's publish target, because it derives <!-- de-brand:historical: verbatim rename record, #313 -->
 from `${{ github.repository }}`. The consequences are not obvious: **new GHCR packages are created
 private, and package visibility does not follow a repository rename**, while the prod host pulls
 anonymously with no `docker login`. Previously published tags stay at the *old* path forever, so
@@ -1106,6 +1106,34 @@ posture the default. **It buys that at the price of silencing genuine peer confl
 NOT fix everything: `npm ls` still exits 1 (its validity check reads the installed tree, and
 `legacy-peer-deps` is a *resolver* setting) — use `npm ls <pkgs> --depth=0`, which exits 0 and prints
 the coherent set. Delete the file when `@angular/build` widens the range.
+
+## 46. A guard's SELF-TEST is scanned by the guard — assemble the fixture, don't exempt the file (#313)
+
+`scripts/check_no_pii.test.sh` was written with the former owner's real email spelled out literally
+as its failing-first fixture. Both checks passed when run by hand, then the **pre-push gate refused
+the push**: the moment the new file was `git add`ed it became a tracked source, and check A — which
+greps tracked sources for exactly that identifier — matched its own test data. The gate was right.
+(Note this very paragraph had to be written the same way, and for the same reason.)
+
+Two fixes were available and they are not equivalent:
+
+- **Exempt the test file** (`:(exclude)scripts/check_no_pii.test.sh`, the shape the script already
+  uses for itself) — one line, and it permanently blinds the guard to a whole file that lives beside
+  the guard. Real PII pasted there afterwards would never be seen.
+- **Assemble the fixture so the source never contains the pattern** — split the identifier across
+  two adjacent bash string literals (`pii="ser""g.…"`), which the shell concatenates at runtime while
+  the bytes on disk carry a quote in the middle and cannot match the pattern.
+
+The second was taken. **Generalise it: any checker whose own tests must contain the thing it
+forbids — secret scanners, PII guards, banned-API linters, the de-branding check here — should
+construct the forbidden string at runtime rather than widen its own exclusion list.** An exclusion is
+permanent and invisible; a concatenation is local and self-documenting. This is the same instinct as
+"never weaken a gate to make it pass" (§35, rule 3), applied to the gate's own fixtures.
+
+Corollary worth keeping: **the failure was only found because the gate ran on push, not because
+anyone reasoned about it.** Running the checker by hand from a clean tree said green — the file was
+still untracked, and `git grep` does not see untracked files. Stage-then-verify (`git add -A` before
+running a `git grep`-based checker) or you are testing a different tree than CI will.
 
 ## Where the rules live (AI-config map)
 

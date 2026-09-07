@@ -1,7 +1,7 @@
 ---
 name: e2e-validation
 description: >-
-  The known-good full Docker E2E loop for mavrov.de — prod-topology bring-up, REAL readiness
+  The known-good full Docker E2E loop for Hirefolio — prod-topology bring-up, REAL readiness
   gating (not just container health), E2E seeding, Playwright run, and the recurring traps
   (open-webui volume/schema crash-loop, pre-schema 500 race, shared test-DB clobbering). Consult
   before running or debugging the Docker E2E — it is the only gate that catches SSR/zoneless
