@@ -31,7 +31,16 @@ All notable changes to this project will be documented in this file.
   session redirect they write to the DEV database — the conftest now redirects the module-level
   factory for every test (lessons §4's failure mode, one layer deeper). 11 backend tests
   (suite 967 → 978, 100.00%), 7 admin unit specs (398 → 404, 100% all four), and the inbox
-  browser E2E drives label → toggle-to-original → re-translate end-to-end.
+  browser E2E drives label → toggle-to-original → re-translate end-to-end. Review round 1
+  hardened all four of its blockers at the root: the re-run endpoint now requires admin auth
+  (anonymous 401 pinned at unit AND composed layers); the whole test suite is hermetic at the
+  LLM boundary (autouse `_generate` mock + Gemini-key scrub — no test reaches a real LLM or a
+  paid API, guard-mutation-verified); failed/pending translations are visible and recoverable
+  in the UI (the backend's exact failure shape covered at unit + browser layers); and
+  `TRANSLATION_ENABLED`/`OWNER_LANGUAGE` are forwarded by both compose files so the knobs
+  actually reach the container. CV-request messages get the same background translation, the
+  WireMock tier gains the composed intake→task→LLM→row test, visitor text is delimited as
+  data in the prompt, and the owner language is normalized (`EN`/`en-US` safe).
 - **Bundled email capability (#262)**: the dev stack now ships **Mailpit** — every notification
   lands in a web inbox at `localhost:8025` with ZERO configuration and nothing ever leaves the
   machine (rule 10 by construction). The integration tier gains the repo's **first true

@@ -348,7 +348,9 @@ async def test_cv_request_message_is_translated_in_the_inbox(
         "app.services.translation._generate",
         new=AsyncMock(return_value=GERMAN_JSON),
     ):
-        resp = await client.post(f"{settings.api_prefix}/cv/request", json=_cv_payload())
+        resp = await client.post(
+            f"{settings.api_prefix}/cv/request", json=_cv_payload()
+        )
     assert resp.status_code == 200
     page = (await client.get(f"{ADMIN}?source=cv_request&page_size=50")).json()
     row = page["items"][0]
@@ -358,9 +360,7 @@ async def test_cv_request_message_is_translated_in_the_inbox(
 
 
 @pytest.mark.asyncio
-async def test_flag_off_cv_request_schedules_nothing(
-    client: AsyncClient, db_session
-):
+async def test_flag_off_cv_request_schedules_nothing(client: AsyncClient, db_session):
     """Same scheduling pin as the contact form: deleting cv.py's flag guard
     must fail this test."""
     db_session.add(
@@ -371,6 +371,8 @@ async def test_flag_off_cv_request_schedules_nothing(
         patch("app.config.settings.translation_enabled", False),
         patch("app.services.translation.translate_interaction") as task,
     ):
-        resp = await client.post(f"{settings.api_prefix}/cv/request", json=_cv_payload())
+        resp = await client.post(
+            f"{settings.api_prefix}/cv/request", json=_cv_payload()
+        )
         assert resp.status_code == 200
         task.assert_not_called()

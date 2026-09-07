@@ -134,4 +134,6 @@ async def translate_interaction(interaction_id: uuid.UUID) -> None:
     except Exception as e:
         # The DB itself failing mid-task (commit included) must ALSO stay
         # inside the task — "never surfaces anywhere" is literal.
-        logger.error(f"Translation task aborted for {interaction_id}: {type(e).__name__}")
+        logger.error(
+            f"Translation task aborted for {interaction_id}: {type(e).__name__}"
+        )
