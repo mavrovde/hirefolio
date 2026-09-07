@@ -52,6 +52,14 @@ Before writing, investigate the real repo with `Read`/`Grep`/`Glob`:
      two spellings indistinguishable. The same shape was handled CORRECTLY in #240 by documenting
      the equivalence in the test file instead of writing a case that cannot fail. When the states
      are equivalent, the honest criterion is "the idiom is consistent, audited file-wide".
+   - **A criterion that embeds a command embeds that command's SCOPE — state both, and make the
+     scope match the intent.** #288's AC2 was `grep -rn 'mavrov' --include='*.yml' --include='*.py'`
+     → "0 hits", and it was literally MET while the intent ("no personal identifier in any committed
+     config") was not: both of #299's round-1 blockers lived in `.mcp.json` and
+     `backend/.env.example`, file types the filter excluded. Either widen the command until it
+     covers the intent, or write the intent as the criterion and the command as *one* piece of
+     evidence for it. Same trap one layer out: an AC satisfied by `./run_integration_tests.sh`
+     (dev compose base) is not satisfied for CI (prod base) — #296.
    - **Name the layer on any criterion that crosses one.** #279 mixed a frontend criterion (button
      latch + spec) and a backend one (idempotent promote) in a single list; only the backend half
      shipped and review had to block on the missing half. Write "**frontend:** …" / "**backend:** …"

@@ -382,6 +382,14 @@ jobs:
         run: bash setup.test.sh
       - name: PII guard (demo persona stays anonymous)
         run: bash scripts/check_no_pii.sh
+      # Documented-knob contract (v1.13.0 retrospective): a Settings key the docs
+      # promise must actually reach the backend container in BOTH compose files.
+      # Three blocker-level review findings in one release (#296, #297, #298) were
+      # this exact bug; the checker reproduces all three at their round-1 heads.
+      - name: Compose env contract (documented knobs reach the container)
+        run: bash scripts/check_compose_env.sh
+      - name: Self-test the compose-env checker itself
+        run: bash scripts/check_compose_env.test.sh
 
   # ============================================
   # PROXY QA

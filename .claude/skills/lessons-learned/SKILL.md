@@ -890,6 +890,130 @@ steps ahead of it, because "before the push" in your plan is "never" in a denied
 blocked by dirt in the MAIN checkout. Before pushing from a worktree, the main checkout must be
 lint-clean too (or the in-progress work there stashed).
 
+## 40. A knob the docs PROMISE is not a knob the container RECEIVES (v1.13.0)
+
+Neither compose file uses `env_file:`; each service carries an explicit `environment:` **allowlist**.
+A key that is not on that list never reaches the container — and `app/config.py`'s own
+`env_file=".env"` does **not** save you, because it resolves *inside* the container (`/app/.env`),
+not against the repo root. So the whole feature is configured, documented, and inert.
+
+Three blocker-level review findings in ONE release, plus two priors:
+
+| PR | What the docs promised | What was measured |
+|---|---|---|
+| #296 | prod `--profile mail` + `SMTP_*` in `.env` | `docker compose -f docker-compose.prod.yml config` → backend has 35 env keys, **none** SMTP/MAIL |
+| #297 | `setup.sh:150` + `README.md:509`: set `HIREFOLIO_TELEGRAM_BOT_TOKEN`… | `TELEGRAM present: []  NOTIFY present: []  env_file: None` — a "2-minute setup" that could not work |
+| #298 | `.env.example:190-195`: `TRANSLATION_ENABLED=false` | `docker exec … env \| grep -c` → **0**; AC5 undeliverable |
+| #256 (prior) | `setup.sh` printed admin credentials | `ADMIN_PASSWORD` never reached the container; backend took the refuse-to-seed branch |
+| #228 (prior) | LinkedIn importer token | dev stack never forwarded it; a configured token silently 401'd |
+
+**The rule:** adding a `Settings` field is THREE edits, always together — the field, the
+`.env.example` block, and the `environment:` line in **both** `docker-compose.yml` and
+`docker-compose.prod.yml` (`${VAR:-<the same default as config.py>}`, so an unchanged `.env`
+reproduces today's behaviour). Then prove it the only way that counts:
+`VAR=x docker compose config | grep VAR` and `docker exec <backend> env | grep VAR`.
+
+**Now mechanical:** `scripts/check_compose_env.sh` derives the contract from `app/config.py` +
+the files that promise the knob (`.env.example`, `README.md`, `docs/DEPLOYMENT.md`, `setup.sh`) and
+fails if either compose file omits it. It runs in the pre-push gate and in CI, and it reproduces
+all three round-1 blockers above at their real commits. Exemptions live in the script WITH A REASON.
+It found two more instances the release shipped: `IMPORT_MAX_IMAGE_MB` forwarded in prod but not dev,
+and `LINKEDIN_COOKIES_DIR` advertised as settable while being the target of a volume mount.
+
+## 41. Verify by OBSERVABLE, not by construction (#297 rounds 2–4)
+
+A settings scrub was inserted into `backend/conftest.py` behind an idempotency guard that searched
+the file for the function's own name — which its `def` line contained. The guard therefore always
+matched, the call was never written, and `_scrub_notification_settings` sat in the tree as **dead
+code**. Three things hid it:
+
+1. **Coverage could not see it.** `--cov=app` does not cover `backend/conftest.py`, so an uncalled
+   function there costs nothing against `--cov-fail-under=100`.
+2. **The suite was green either way** — every notification channel swallows its own exception, so
+   20 live credential-bearing POSTs and 0 both print `30 passed`.
+3. **The author "verified" by calling the function by hand** instead of observing the effect the
+   function exists to produce.
+
+The reviewer's check was one line of a different kind: *count real `httpx.post` attempts*. Wired →
+**0**. Call commented out → **20**. Same 30 passed both ways.
+
+**The rule:** state the OBSERVABLE your fix changes before you claim it works, and measure that
+observable in both states. "I called the function and it returned" is construction; "requests went
+from 20 to 0, and back to 20 when I disable it" is evidence. Corollary: a function whose only
+caller is a guard *cannot* be proven by reading the guard — `git grep -n <name>` and count the
+call sites (one hit = the `def` = dead code).
+
+## 42. Your VERIFICATION's scope is a claim too — and it is usually narrower than the claim it backs
+
+Three shapes of the same defect in one release, each producing a false green:
+
+- **A grep filter narrower than the criterion.** #288's AC2 was
+  `grep -rn 'mavrov' --include='*.yml' --include='*.py'` → "0 hits". Both of #299's round-1
+  blockers lived in `.mcp.json` and `backend/.env.example` — file types the filter excluded. The
+  criterion's *intent* was "no personal identifier in any committed config".
+- **A stack topology narrower than the claim.** #296's tier evidence came from
+  `run_integration_tests.sh`, which layers `docker-compose.yml`; CI layers
+  `docker-compose.prod.yml`. Mailpit existed only in the dev base, so "21 passed" locally meant a
+  red `main` on push.
+- **A coverage tool that cannot see the file.** §41's dead code, invisible to `--cov=app`.
+
+**The rule:** before reporting a verification, write down what it CANNOT see, and widen it once.
+For a grep: re-run without `--include`. For a stack: run the exact compose invocation CI runs
+(`grep -n 'docker compose' .github/workflows/deploy.yml`). For coverage: ask whether the file is
+inside the measured package. If the widened run finds nothing new, say so — that sentence is worth
+more than the original number.
+
+## 43. A review VERDICT states itself in its first line — the merge gate reads the heading
+
+`pre-merge-gate.sh` selects "the newest body containing a verdict marker". On #291 two of the
+marker-bearing comments were the AUTHOR's fix reports (`## Round 4 — the three blockers, each
+measured against the unfixed hook`), and the first marker inside each body is `APPROVED`. Reviewer
+and author post under the SAME GitHub identity in this repo, so no author filter can separate them:
+either comment was "the newest verdict" the moment it was posted, and a merge attempted then would
+have been **allowed while the standing verdict was REQUEST CHANGES**.
+
+**The rule, now enforced:** a verdict states `APPROVE` or `REQUEST CHANGES` in its **first non-empty
+line** (decoration around it is fine: `## ⛔ REQUEST CHANGES`, `✅ **APPROVED** — round 2`,
+`## VERDICT: APPROVE (round 2)`). Anything else is not a verdict — including a marker in paragraph
+three, which now denies rather than allows. **Fix reports must not open with a marker**: title them
+`## Round N — what changed`. This also makes the retrospective's verdict count exact instead of
+regex-guessed (see `docs/retrospectives/README.md`).
+
+**A second false-allow the same change closes, found by the REVIEWER of the fix, not its author.**
+#293's second `## ⛔ REJECTED` body carries no marker in its heading and exactly one anywhere: the
+prose *"Ping me on the new head; I will re-run the mutation and the suite and expect to approve
+immediately"* (line 108). The old filter matched case-insensitively **anywhere in the body**, so that
+sentence became the verdict and the gate allowed the merge. Two independent false-allows from one
+matcher is the tell that the defect was the *rule*, not the wording of any one review.
+
+**KNOWN RESIDUAL — say it out loud, because a gate whose limit is unwritten gets trusted past it.**
+The heading rule cannot tell a verdict from a fix report whose **first line itself** contains a
+marker. **This shape IS posted here — it is the repo's own habit, not a hypothetical.** Sweeping all
+**145 merged PRs** (179 marker-bearing headings across 92 of them) finds two author fix reports that
+the gate selects *over the reviewer's verdict*:
+
+| PR | The author's first line | Posted after |
+|---|---|---|
+| **#281** (2026-09-06) | ``Round-1 APPROVE findings applied on `1abb0fe` (wording only…)`` | the reviewer's `## ✅ APPROVED`, 6 min earlier |
+| **#181** (2026-08-30) | `Approved-with-findings applied before merge:` | the reviewer's `**✅ APPROVED** — …`, 2 min earlier |
+
+Both were **decision-neutral** — the standing verdict was itself APPROVE — so no false-allow has
+happened. Flip the standing verdict and the same sentence allows a merge against REQUEST CHANGES:
+the #291 hole, one line up.
+
+**It stays unpinned anyway, and the reason is measurable:** no lexical rule separates it from a REAL
+reviewer heading that also puts prose **before** the marker — `## Round 3 — ✅ APPROVED` and
+`## Round 2 — ⛔ REJECTED (…)` (#255), `PR-REVIEWER VERDICT: APPROVE` (#171). The first is already
+pinned as a case in `pre-merge-gate.test.sh`. Tightening buys the residual at the price of rejecting
+those three. So the **guard is the convention** — `pr-reviewer.md` and the playbook both require a
+fix report to open `## Round N — what changed`, never with a marker — and the residual is documented
+rather than tested, because a case asserting it could never fail (the #240 answer).
+
+**Revisit trigger — deliberately NOT "an actual bad merge".** The shape exists, so waiting for the
+incident is the posture this repo argues against. Revisit on **the first fix report with a leading
+marker posted while the standing verdict is NEGATIVE**: that instance is decision-*changing*, and it
+is the cheap signal that arrives before the damage.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,

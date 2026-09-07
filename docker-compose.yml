@@ -119,6 +119,12 @@ services:
       # configured in .env silently 401'd locally (#228). Empty default = token
       # auth disabled, admin-session imports only (same semantics as prod).
       - LINKEDIN_IMPORT_TOKEN=${LINKEDIN_IMPORT_TOKEN:-}
+      # README:408 documents IMPORT_MAX_IMAGE_MB as a backend knob and the PROD
+      # compose has always forwarded it (docker-compose.prod.yml:116) — the dev
+      # stack never did, so the same .env behaved differently on the two stacks.
+      # Found by scripts/check_compose_env.sh (v1.13.0 retrospective); default
+      # equals config.py's, so nothing changes for anyone who sets nothing.
+      - IMPORT_MAX_IMAGE_MB=${IMPORT_MAX_IMAGE_MB:-10}
       # Operational tuning knobs (#207) — same pattern as IMPORT_MAX_IMAGE_MB:
       # forwarded explicitly, defaulting to the literals they replaced, so an
       # unchanged .env reproduces the previous behaviour inside the container.

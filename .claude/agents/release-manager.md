@@ -59,6 +59,24 @@ about versioning, changelog accuracy, and not breaking prod.
 Read the assembled `[Unreleased]` and justify the choice in one line. A pre-release
 suffix (`-rc.1`) is allowed when explicitly requested.
 
+**A CHANGED DEFAULT IS A BREAKING CHANGE UNTIL YOU TRACE IT.** Never argue compatibility from the
+shape of the diff ("a pin, not an incompatibility"; "fresh installs need nothing" — true of nearly
+every breaking change, since the definition concerns EXISTING ones). Trace the default from the
+compose interpolation → the connection string/entrypoint → what an existing deployment actually
+does on upgrade, and write the trace into the PR. v1.13.0's release PR spent a round on exactly
+this: #288 changed `${POSTGRES_DB:-mavrov}` to `:-hirefolio`; `.env.example` had shipped that key
+**commented out**, so an existing host had no pin, Postgres skips initdb on an existing volume,
+and `backend/docker-entrypoint.sh` (`set -e`, `db_probe.py`) crash-loops — a fact the repo's own
+`docs/DEPLOYMENT.md` stated in the same PR. Two things follow:
+- If the trace shows an existing deployment breaks, it is MAJOR by lessons §6 ("stop at the first
+  that matches"), **or** a deliberate, **owner-confirmed** exception — the rule itself says "Rare;
+  confirm first". Record the owner's decision in the PR, delete the false claim, and prefix the
+  CHANGELOG bullet with `BREAKING (existing deployments)` so a reader meets the hazard with the
+  release. What is never acceptable is shipping the number with a rationale you did not check.
+- "The only real host is about to be replaced" is a deployment-plan argument, not a versioning one.
+  This repo publishes public GHCR images and courts forkers (#61/#66/#88); versioning is a contract
+  with every consumer, not just the maintainer's host.
+
 ## Workflow
 1. **Scope.** Confirm which issues/PRs are in this release (given to you, or infer
    from merged PRs since the last tag: `gh pr list --state merged`, `git log <lastTag>..main`).
