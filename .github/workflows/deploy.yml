@@ -110,7 +110,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_mavrov
+          POSTGRES_DB: test_hirefolio
         ports:
           - 5432:5432
         options: >-
@@ -134,7 +134,7 @@ jobs:
       - name: Run tests with coverage
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_mavrov
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_hirefolio
           SECRET_KEY: test-secret-key-for-ci
           OLLAMA_BASE_URL: http://localhost:11434
           # Rule 10 (#141): explicit, not safe-by-absence. The job was relying on
@@ -167,7 +167,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: mavrov_migrations
+          POSTGRES_DB: hirefolio_migrations
         ports:
           - 5432:5432
         options: >-
@@ -197,9 +197,9 @@ jobs:
 
           async def main():
               conn = await asyncpg.connect(
-                  'postgresql://postgres:postgres@localhost:5432/mavrov_migrations'
+                  'postgresql://postgres:postgres@localhost:5432/hirefolio_migrations'
               )
-              await conn.execute('CREATE DATABASE mavrov_migrations_pre')
+              await conn.execute('CREATE DATABASE hirefolio_migrations_pre')
               await conn.close()
 
           asyncio.run(main())
@@ -207,7 +207,7 @@ jobs:
       - name: Simulate today's prod DB (tables via create_all, no alembic_version)
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations_pre
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations_pre
           SECRET_KEY: test-secret-key-for-ci
         run: |
           python -c "
@@ -227,37 +227,37 @@ jobs:
       - name: Self-adopt the pre-Alembic DB via the real entrypoint (must NOT crash)
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations_pre
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations_pre
           SECRET_KEY: test-secret-key-for-ci
         run: ./docker-entrypoint.sh true
       - name: Verify the pre-Alembic DB is now stamped at head
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations_pre
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations_pre
           SECRET_KEY: test-secret-key-for-ci
         run: alembic current | grep -q "(head)"
       - name: Re-run entrypoint on the now-managed pre-Alembic DB (idempotent)
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations_pre
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations_pre
           SECRET_KEY: test-secret-key-for-ci
         run: ./docker-entrypoint.sh true
       - name: Self-adopt a fresh, empty DB via the real entrypoint
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations
           SECRET_KEY: test-secret-key-for-ci
         run: ./docker-entrypoint.sh true
       - name: Re-run entrypoint on the now-managed fresh DB (idempotent)
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations
           SECRET_KEY: test-secret-key-for-ci
         run: ./docker-entrypoint.sh true
       - name: Drift guard (models vs. migrations must match exactly)
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov_migrations
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations
           SECRET_KEY: test-secret-key-for-ci
         run: alembic check
   # ============================================
@@ -566,7 +566,7 @@ jobs:
         env:
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: mavrov
+          POSTGRES_DB: hirefolio
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: sha-${{ github.sha }}
           # SECURITY / COST: never inject the real Gemini key into the ephemeral E2E
@@ -717,7 +717,7 @@ jobs:
         env:
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: mavrov
+          POSTGRES_DB: hirefolio
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: sha-${{ github.sha }}
           # Rule 10: identical posture to the E2E job — empty paid key, an

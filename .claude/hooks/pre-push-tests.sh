@@ -40,8 +40,8 @@ set -uo pipefail
 #   PREPUSH_MAX_CMD_LEN    input-size bound (default 24000, matching the
 #                          guard's measured budget); above it: GATE.
 # ---------------------------------------------------------------------------
-: "${TEST_DATABASE_URL:=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov}"
-: "${PREPUSH_LOG:=/tmp/mavrov-prepush-tests.log}"
+: "${TEST_DATABASE_URL:=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio}"
+: "${PREPUSH_LOG:=/tmp/hirefolio-prepush-tests.log}"
 : "${PREPUSH_CHECK_DOCS:=1}"
 : "${PREPUSH_RUN_GUARDTEST:=1}"
 : "${PREPUSH_RUN_BACKEND:=1}"
@@ -311,15 +311,15 @@ run_checks() {
   if [ "$PREPUSH_RUN_BACKEND" = "1" ]; then
     echo "== backend pytest =="
     # ISOLATION, not arbitration (2026-09-06). This gate used to run SERIALLY against
-    # the shared `test_mavrov` and refuse to start whenever any other pytest was
+    # the shared `test_hirefolio` and refuse to start whenever any other pytest was
     # alive. That guard only sampled at start, so an agent beginning a suite one
     # second later still clobbered the run: drop_all/create_all from two suites on
     # one database produces dozens of spurious ERRORs that read like real failures,
     # and it cost several blind retries before anyone read the log.
     #
     # Remove the common collision instead of merely detecting it:
-    #   * this gate gets a database of its own (`test_mavrov_prepush`), so parallel
-    #     agents on `test_mavrov` cannot touch it — conftest creates it on demand;
+    #   * this gate gets a database of its own (`test_hirefolio_prepush`), so parallel
+    #     agents on `test_hirefolio` cannot touch it — conftest creates it on demand;
     #     note it drops TABLES per test and, under xdist, DROPS the per-worker
     #     `_gwN` databases at teardown. Two concurrent pre-push runs would still
     #     share this name, which is acceptable because only one push runs at a
@@ -330,7 +330,7 @@ run_checks() {
     # --cov-fail-under=100 matches deploy.yml's Backend Tests job exactly — without it
     # this gate prints a coverage number and passes regardless, letting a red-CI push
     # through green locally (#69 review round 2: "verify that gates actually gate").
-    PREPUSH_DB="${PREPUSH_TEST_DATABASE_URL:-postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov_prepush}"
+    PREPUSH_DB="${PREPUSH_TEST_DATABASE_URL:-postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio_prepush}"
     ( cd "$ROOT/backend" && HIREFOLIO_GEMINI_API_KEY="" TEST_DATABASE_URL="$PREPUSH_DB" \
         ./venv/bin/pytest -q -n auto --cov-fail-under=100 ) || return 1
     echo "== agent-playbook drift check (#115) =="

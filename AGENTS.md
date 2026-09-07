@@ -16,7 +16,7 @@ LinkedIn → site content pipeline (`scraper/`, `importer/`).
 
 Backend (`cd backend`; venv at `backend/venv`):
 ```
-TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov \
+TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio \
 HIREFOLIO_GEMINI_API_KEY="" venv/bin/pytest          # needs Postgres on 127.0.0.1:5433; 100% coverage
 venv/bin/ruff check . && venv/bin/ruff format --check .
 venv/bin/mypy app --ignore-missing-imports --no-error-summary
@@ -58,7 +58,7 @@ Full stack: `./manage.sh start|stop|logs` · full verification incl. Docker E2E:
 11. Every PR needs an independent `pr-reviewer` verdict before merge — no exceptions.
 
 Operational rule (not a numbered CLAUDE.md rule, but non-negotiable in practice): **never run
-backend pytest while another suite is running** (`pgrep -f pytest` first — the shared `test_mavrov`
+backend pytest while another suite is running** (`pgrep -f pytest` first — the shared `test_hirefolio`
 DB clobbers concurrent suites).
 
 ### Working discipline

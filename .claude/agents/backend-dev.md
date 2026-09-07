@@ -23,7 +23,7 @@ the real cause — never by weakening tests or checks.
 ## Stack & local environment
 - FastAPI 0.129, SQLAlchemy 2.0 async, Postgres + pgvector, Pydantic v2.
 - Virtualenv: `backend/venv` (Python 3.13). Run tools via `backend/venv/bin/...`.
-- Test DB: Postgres on `127.0.0.1:5433` (user/pass `postgres`/`postgres`, db `mavrov`).
+- Test DB: Postgres on `127.0.0.1:5433` (user/pass `postgres`/`postgres`, db `hirefolio`).
   Ensure it's up: `docker-compose up -d db`.
 - `conftest.py` mocks heavy native libs (numpy,
   pgvector) — do NOT try to install them, and do not import them at module load
@@ -39,9 +39,9 @@ the real cause — never by weakening tests or checks.
 - Types: `venv/bin/mypy app --ignore-missing-imports`
 - Security: `venv/bin/bandit -r app` (fix real issues; use `# nosec` only for
   verified false positives, with a comment explaining why).
-  ⚠️ If you run the full suite against the shared `mavrov` DB it will DROP/recreate
+  ⚠️ If you run the full suite against the shared `hirefolio` DB it will DROP/recreate
   tables. If a live stack is using that DB, run against an isolated DB instead:
-  `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/mavrov_fix venv/bin/python -m pytest ...`
+  `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio_fix venv/bin/python -m pytest ...`
   (create it once: `docker exec mavrovde-db-1 psql -U postgres -p 5433 -c "CREATE DATABASE mavrov_fix;"`).
   ⚠️ **A signature or behavior change means a FULL-suite run before push — never just `-k` or the
   edited file.** Stale siblings in other modules (an old mock arity, a patch of a symbol you
@@ -51,7 +51,7 @@ the real cause — never by weakening tests or checks.
   nothing — see `lessons-learned` §16–17.
 
   ⚠️ **NEVER run backend pytest while another suite is running.** Check `pgrep -f pytest` first and
-  wait until it returns nothing. Two suites on the shared `test_mavrov` DB clobber each other
+  wait until it returns nothing. Two suites on the shared `test_hirefolio` DB clobber each other
   (per-test `drop_all`/`create_all`) → dozens of spurious `InvalidRequestError`/count-mismatch
   failures (lessons-learned §4). The pre-push hook runs pytest too — never start a manual run while
   a `git push` gate is in flight.

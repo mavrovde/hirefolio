@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Default database name is the product, not the maintainer (#288)**: every default that said
+  `mavrov` now says `hirefolio` — compose (`${POSTGRES_DB:-hirefolio}`), the backend
+  `database_url` default, CI's test/migration databases (`test_hirefolio`,
+  `hirefolio_migrations`), the local test convention (`test_hirefolio`, `_gwN`, `_prepush` —
+  pre-push hook, conftest guard message, docs and agent charters all follow), the admin SQL
+  backup filename (`backup_hirefolio_*.sql`) and the agent worktree prefix. Completes the
+  identifier half of #66: a forker no longer inherits anyone's name in their infrastructure.
+  **Upgrade note (existing deployments only)**: Postgres reads `POSTGRES_DB` at volume init, so
+  existing volumes keep their `mavrov` database — pin `POSTGRES_DB=mavrov` in that host's
+  `.env` (documented in `.env.example` and `docs/DEPLOYMENT.md`); fresh installs need nothing.
+
 ### Added
 - **Messenger notification channels (#263)**: owner notifications become a **pluggable channel
   registry** — every inbox interaction fans out to all configured channels, email now one among

@@ -67,7 +67,7 @@ by fixing the real cause — never by weakening tests or checks.
    - a shared pre-push hook (`.claude/hooks/pre-push-tests.sh`) runs docs + backend +
      frontend tests before the push completes; if it blocks, fix what it reports.
    - **before pushing, `pgrep -f pytest` and wait until it returns nothing** — the hook runs
-     backend pytest on the shared `test_mavrov` DB, and two concurrent suites clobber each other
+     backend pytest on the shared `test_hirefolio` DB, and two concurrent suites clobber each other
      (lessons-learned §4).
    - **Your validation is NOT the merge gate.** However green your suite is, the PR still requires an
      **independent `pr-reviewer` APPROVAL** before anyone merges it (CLAUDE.md rule 13). Deliver the

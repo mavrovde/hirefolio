@@ -99,7 +99,7 @@ VERIFY, DON'T ASSUME
 - Use isolated resources (e.g. a separate test DB) so you never clobber shared
   state that another step depends on.
 - NEVER run backend pytest while another suite is running: check `pgrep -f pytest`
-  and wait until it is empty. Two suites on the shared test_mavrov DB clobber each
+  and wait until it is empty. Two suites on the shared test_hirefolio DB clobber each
   other (per-test drop_all/create_all) into dozens of spurious failures.
 - Before blaming your own diff for a local gate failure, reproduce it on an
   UNMODIFIED main build (git worktree of main, same gate). If main fails too, it

@@ -18,10 +18,10 @@ applyTo: "backend/**"
 - `pytest` with **100% coverage** (`--cov=app`); cover error paths (400/401/404/409/429/500,
   timeouts, rollbacks), not just happy paths. Regression test for every bug fixed.
 - Needs Postgres on `127.0.0.1:5433` and
-  `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov` plus
+  `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio` plus
   `HIREFOLIO_GEMINI_API_KEY=""`. Without `TEST_DATABASE_URL` the suite targets the live dev DB and hangs.
 - **Never run pytest while another suite is active** — `pgrep -f pytest` first and wait; two
-  suites clobber the shared `test_mavrov` DB.
+  suites clobber the shared `test_hirefolio` DB.
 - `conftest.py` mocks heavy native libs (numpy, pgvector) — do not
   install them or bypass the mocks with module-load imports.
 - Lint/format: `ruff check .` && `ruff format --check .` · Types: `mypy app

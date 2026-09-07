@@ -9,7 +9,7 @@ affected stage on failure.
 
 Preconditions:
 - `pgrep -f pytest` must return nothing — never run backend pytest while another suite is active
-  (the shared `test_mavrov` DB clobbers concurrent suites). Wait if needed.
+  (the shared `test_hirefolio` DB clobbers concurrent suites). Wait if needed.
 - If a gate fails, reproduce it on an unmodified `main` build (git worktree) before blaming the
   current diff — it may be a latent gate bug.
 

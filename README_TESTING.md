@@ -17,7 +17,7 @@ dedicated `test_*` database first — otherwise it can hang on (or write into)
 the live dev DB:
 
 ```bash
-export TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov
+export TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio
 ```
 
 > **Ports:** the integration overlay publishes the stack's Postgres on **5533**, not 5433, so a
