@@ -118,6 +118,54 @@ def test_telegram_failure_is_false_and_never_leaks_the_token_into_logs():
     assert "SECRET-TOKEN" not in logged
 
 
+def test_httpx_success_logging_never_carries_the_token(caplog):
+    """#297 review blocker 2: httpx logs every request URL at INFO — and the
+    Bot API URL CONTAINS the token, so a SUCCESSFUL send printed the
+    credential into container logs. The first leak test was structurally
+    blind: it mocked httpx.post (so httpx never logged) and asserted a mocked
+    logger. This one routes through a REAL httpx client over MockTransport,
+    so httpx's own logging pipeline runs for real."""
+    import logging
+
+    import httpx as real_httpx
+
+    def through_real_client(url, **kwargs):
+        transport = real_httpx.MockTransport(
+            lambda request: real_httpx.Response(200, json={"ok": True})
+        )
+        with real_httpx.Client(transport=transport) as c:
+            return c.post(url, json=kwargs.get("json"))
+
+    with (
+        patch("app.services.notifications.httpx.post", side_effect=through_real_client),
+        caplog.at_level(logging.DEBUG),
+    ):
+        result = _with(
+            _cfg(telegram_bot_token="SECRET-TOKEN-42", telegram_chat_id="7"),
+            lambda: notify_owner(EVENT),
+        )
+    assert result == {"telegram": True}
+    assert "SECRET-TOKEN-42" not in caplog.text
+
+
+def test_telegram_http_500_is_a_failure_not_a_success():
+    """AC2's own words. raise_for_status is the ONLY thing turning a 4xx/5xx
+    into False here — deleting it left the suite green (#297 review major 5),
+    so this pins it: a well-formed 500 response, no exception from post()."""
+    import httpx as real_httpx
+
+    response = real_httpx.Response(
+        500,
+        request=real_httpx.Request("POST", "https://api.telegram.org/botX/sendMessage"),
+    )
+    with patch("app.services.notifications.httpx.post", return_value=response):
+        result = _with(
+            _cfg(telegram_bot_token="t", telegram_chat_id="c"),
+            lambda: notify_owner(EVENT),
+        )
+    assert result == {"telegram": False}
+
+
 # ----------------------------------------------------------------- webhook --
 
 
@@ -130,10 +178,27 @@ def test_webhook_posts_slack_style_text_plus_structured_fields():
         )
     assert result == {"webhook": True}
     assert post.call_args.args[0] == "https://hooks.slack.example/T/B/x"
+    # The timeout is load-bearing (#207): deleting it left the suite green
+    # (#297 review major 6).
+    assert post.call_args.kwargs["timeout"] == settings.notify_timeout_seconds
     payload = post.call_args.kwargs["json"]
     assert "New interaction from Rita Recruiter" in payload["text"]
     assert payload["source"] == "contact_form"
     assert payload["email"] == "rita@agency.example"
+
+
+def test_webhook_http_500_is_a_failure_not_a_success():
+    import httpx as real_httpx
+
+    response = real_httpx.Response(
+        500, request=real_httpx.Request("POST", "https://hooks.example/x")
+    )
+    with patch("app.services.notifications.httpx.post", return_value=response):
+        result = _with(
+            _cfg(notify_webhook_url="https://hooks.example/x"),
+            lambda: notify_owner(EVENT),
+        )
+    assert result == {"webhook": False}
 
 
 def test_webhook_failure_is_false_and_logs_the_type_only():
@@ -212,7 +277,7 @@ async def test_contact_form_fans_out_through_the_registry(client: AsyncClient):
         return True
 
     def fake_post(url, **kwargs):
-        assert "api.telegram.org" in url
+        assert url.startswith("https://api.telegram.org/bot")
         sent["telegram"] += 1
         return MagicMock(raise_for_status=lambda: None)
 
@@ -235,3 +300,24 @@ async def test_contact_form_fans_out_through_the_registry(client: AsyncClient):
         )
         assert r.status_code == 201
     assert sent == {"email": 1, "telegram": 1}
+
+
+# -------------------------------------------------------------- namespacing --
+
+
+def test_hirefolio_namespaced_env_binds_and_generic_does_not(monkeypatch):
+    """#141's contract, tested per the gemini-env precedent: the credential
+    binds ONLY through its HIREFOLIO_* name; the generic name is ignored."""
+    from app.config import Settings
+
+    monkeypatch.setenv("HIREFOLIO_TELEGRAM_BOT_TOKEN", "ns-token")
+    monkeypatch.setenv("HIREFOLIO_TELEGRAM_CHAT_ID", "ns-chat")
+    monkeypatch.setenv("HIREFOLIO_NOTIFY_WEBHOOK_URL", "https://ns.example/w")
+    fresh = Settings()
+    assert fresh.telegram_bot_token == "ns-token"
+    assert fresh.telegram_chat_id == "ns-chat"
+    assert fresh.notify_webhook_url == "https://ns.example/w"
+
+    monkeypatch.delenv("HIREFOLIO_TELEGRAM_BOT_TOKEN")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "generic-must-not-bind")
+    assert Settings().telegram_bot_token == ""

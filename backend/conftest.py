@@ -30,6 +30,23 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-only-jwt-signing-secret")
 # a module here when the real one genuinely cannot be imported in tests.
 
 
+# RULE 10 (#297 review): with a real HIREFOLIO_TELEGRAM_* token (or webhook
+# URL, or SMTP host) in the developer's environment, the suite would make REAL
+# outbound calls — silently, because every channel swallows its failures
+# (measured: 10 live Telegram POSTs from one green test file). Scrub the
+# notification env BEFORE app.config builds Settings; individual tests opt
+# back in by patching settings explicitly.
+for _notify_var in (
+    "HIREFOLIO_TELEGRAM_BOT_TOKEN",
+    "HIREFOLIO_TELEGRAM_CHAT_ID",
+    "HIREFOLIO_NOTIFY_WEBHOOK_URL",
+    "SMTP_HOST",
+    "SMTP_USER",
+    "SMTP_PASSWORD",
+):
+    os.environ.pop(_notify_var, None)
+
+
 def mock_module(name):
     # Use a fresh MagicMock for each module to avoid shared side_effect exhaustion
     m = MagicMock()

@@ -66,6 +66,11 @@ services:
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
       - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY}
+      # Notification channels (#263): empty = channel off, exactly like SMTP.
+      - HIREFOLIO_TELEGRAM_BOT_TOKEN=${HIREFOLIO_TELEGRAM_BOT_TOKEN:-}
+      - HIREFOLIO_TELEGRAM_CHAT_ID=${HIREFOLIO_TELEGRAM_CHAT_ID:-}
+      - HIREFOLIO_NOTIFY_WEBHOOK_URL=${HIREFOLIO_NOTIFY_WEBHOOK_URL:-}
+      - NOTIFY_TIMEOUT_SECONDS=${NOTIFY_TIMEOUT_SECONDS:-10}
       # Names ONLY (never values) of pre-#141 variables still set on the host, so
       # the backend can warn that they are ignored (#141). A credential never
       # enters the container through this.
