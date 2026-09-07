@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { of } from 'rxjs';
-import { SeoService } from './seo.service';
-import { SiteConfigService } from './site-config.service';
+import { OG_IMAGE_PATH, SeoService } from './seo.service';
+import { DEFAULT_SITE_CONFIG, SiteConfigService } from './site-config.service';
 import { Title, Meta } from '@angular/platform-browser';
-import { PLATFORM_ID } from '@angular/core';
+
+/** The neutral fallback identity — notably `siteUrl: ''`. */
+const NEUTRAL_CONFIG = DEFAULT_SITE_CONFIG;
 
 const MOCK_SITE_CONFIG_PROVIDER = {
   provide: SiteConfigService,
@@ -27,9 +29,9 @@ describe('SeoService canonical URL handling', () => {
     document.querySelectorAll("link[rel='canonical']").forEach((l) => l.remove());
   });
 
-  it('creates then reuses the canonical link on browser platform (line 71-77)', () => {
+  it('creates then reuses the canonical link', () => {
     TestBed.configureTestingModule({
-      providers: [SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER, { provide: PLATFORM_ID, useValue: 'browser' }],
+      providers: [SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER],
     });
     const service = TestBed.inject(SeoService);
 
@@ -45,15 +47,69 @@ describe('SeoService canonical URL handling', () => {
     expect((links[0] as HTMLLinkElement).getAttribute('href')).toBe('https://mavrov.de/second');
   });
 
-  it('skips canonical update on server platform (line 61 false branch)', () => {
+  /**
+   * REPLACES "skips canonical update on server platform" (#71): the platform is
+   * no longer what decides. What decides is whether an ABSOLUTE URL can be
+   * built at all — before the runtime config arrives (or when the backend is
+   * unreachable) `siteUrl` is empty, and a canonical/og:url of "" is worse than
+   * none.
+   */
+  it('emits no canonical, og:url or og:image while the site URL is unknown', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER, { provide: PLATFORM_ID, useValue: 'server' }],
+      providers: [
+        SeoService,
+        Title,
+        Meta,
+        { provide: SiteConfigService, useValue: { config$: of({ ...NEUTRAL_CONFIG }) } },
+      ],
     });
-    const service = TestBed.inject(SeoService);
+    const meta = TestBed.inject(Meta);
+    const updateTag = vi.spyOn(meta, 'updateTag');
 
-    service.updateSeo({ url: '/server' });
-    const link = document.querySelector("link[rel='canonical']");
-    expect(link).toBeNull();
+    TestBed.inject(SeoService).updateSeo({ url: '/anything' });
+
+    expect(document.querySelector("link[rel='canonical']")).toBeNull();
+    for (const selector of [
+      { property: 'og:url' },
+      { property: 'og:image' },
+      { name: 'twitter:image' },
+    ]) {
+      expect(updateTag).not.toHaveBeenCalledWith(expect.objectContaining(selector));
+    }
+    // The identity-only tags still go out — only the URL-derived ones wait.
+    expect(updateTag).toHaveBeenCalledWith({ property: 'og:type', content: 'website' });
+  });
+
+  it('derives og:image and twitter:image from the configured site URL', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER],
+    });
+    const meta = TestBed.inject(Meta);
+    const updateTag = vi.spyOn(meta, 'updateTag');
+
+    TestBed.inject(SeoService).updateSeo({});
+
+    const card = `https://mavrov.de${OG_IMAGE_PATH}`;
+    expect(updateTag).toHaveBeenCalledWith({ property: 'og:image', content: card });
+    expect(updateTag).toHaveBeenCalledWith({ name: 'twitter:image', content: card });
+    expect(updateTag).toHaveBeenCalledWith({ property: 'og:url', content: 'https://mavrov.de/' });
+  });
+
+  it('prefers an explicitly supplied image over the default card', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER],
+    });
+    const meta = TestBed.inject(Meta);
+    const updateTag = vi.spyOn(meta, 'updateTag');
+
+    TestBed.inject(SeoService).updateSeo({ image: '/assets/images/post.png' });
+
+    expect(updateTag).toHaveBeenCalledWith({
+      property: 'og:image',
+      content: 'https://mavrov.de/assets/images/post.png',
+    });
   });
 });

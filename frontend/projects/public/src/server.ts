@@ -6,6 +6,12 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import { join } from 'node:path';
+import {
+  createJsonFetcher,
+  renderRobotsTxt,
+  renderSitemapXml,
+  requestOrigin,
+} from './app/seo/sitemap';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -67,6 +73,27 @@ const angularApp = new AngularNodeAppEngine({
  * });
  * ```
  */
+
+/**
+ * Discoverability files, rendered per request from the runtime site config
+ * (`SITE_URL`) and the live published-post list instead of shipping a static
+ * copy hardcoded to one domain (#71). All the logic — and its tests — live in
+ * `app/seo/sitemap.ts`; this file is only the wiring. Registered BEFORE the
+ * static handler so a stale bundled copy could never shadow them.
+ */
+const fetchJson = createJsonFetcher();
+
+app.get('/robots.txt', (req, res, next) => {
+  renderRobotsTxt(fetchJson, requestOrigin(req.headers, req.protocol))
+    .then((body) => res.type('text/plain; charset=utf-8').send(body))
+    .catch(next);
+});
+
+app.get('/sitemap.xml', (req, res, next) => {
+  renderSitemapXml(fetchJson, requestOrigin(req.headers, req.protocol))
+    .then((body) => res.type('application/xml; charset=utf-8').send(body))
+    .catch(next);
+});
 
 /**
  * Serve static files from /browser

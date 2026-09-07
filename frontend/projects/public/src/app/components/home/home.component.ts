@@ -17,6 +17,7 @@ import { ContactComponent } from '../contact/contact.component';
 import { ProfileService, Profile } from '../../services/profile.service';
 import { SeoService } from '../../services/seo.service';
 import { SiteConfigService } from '../../services/site-config.service';
+import { buildPersonSchema } from '../../seo/person-schema';
 
 @Component({
   selector: 'app-home',
@@ -98,18 +99,11 @@ export class HomeComponent implements OnInit {
         }
 
         // JSON-LD url/sameAs come from the runtime site config (#65), never
-        // hardcoded; one-shot stream, bounded with take(1).
+        // hardcoded; one-shot stream, bounded with take(1). The mapping —
+        // hasOccupation / worksFor / alumniOf / address / seeks (#71) — lives
+        // in the pure `buildPersonSchema`, so the component stays dumb.
         this.siteConfig.config$.pipe(take(1)).subscribe((site) => {
-          this.seoService.setJsonLd({
-            "@context": "https://schema.org",
-            "@type": "Person",
-            "name": profile.name,
-            "jobTitle": profile.headline,
-            "url": site.siteUrl,
-            "description": profile.about,
-            "sameAs": site.socialLinks,
-            "knowsAbout": profile.skills
-          });
+          this.seoService.setJsonLd(buildPersonSchema(profile, site));
         });
       }
     });

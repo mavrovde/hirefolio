@@ -81,6 +81,9 @@ export class LlmComponent implements OnInit, AfterViewChecked {
       this.seoService.updateSeo({
         title: 'Intelligent Multi-Agent Debate',
         description: 'Watch AI agents with distinct personas debate any topic in real-time.',
+        // Without an explicit url this route inherited the site root as its
+        // canonical/og:url, telling crawlers /llm was a duplicate of / (#71).
+        url: '/llm',
         keywords: 'AI Debate, Multi-Agent, LLM'
       });
     }

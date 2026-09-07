@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { PLATFORM_ID } from '@angular/core';
+import { DOCUMENT } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
 import { of, Subject } from 'rxjs';
 import { SeoService } from './seo.service';
@@ -79,19 +79,27 @@ describe('SeoService', () => {
         });
     });
 
-    it('should not update canonical url in server environment', () => {
-        document.head.innerHTML = ''; // reset DOM
+    /**
+     * REPLACES "should not update canonical url in server environment" (#71).
+     * That test pinned the bug: the canonical link was written only on the
+     * browser, so the SERVER-rendered HTML that crawlers actually read carried
+     * none — an AC2 violation. The service now writes into the INJECTED
+     * document, which under SSR is the per-request server document; this test
+     * proves it by handing it a document that is not the ambient global.
+     */
+    it('writes the canonical link into the INJECTED document (so SSR HTML carries it)', () => {
+        const ssrDocument = document.implementation.createHTMLDocument('ssr');
         TestBed.resetTestingModule();
         TestBed.configureTestingModule({
             providers: [
                 SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER,
-                { provide: PLATFORM_ID, useValue: 'server' }
+                { provide: DOCUMENT, useValue: ssrDocument }
             ]
         });
-        const serverService = TestBed.inject(SeoService);
-        serverService.updateSeo({ url: '/server-test' });
-        
-        expect(document.querySelector("link[rel='canonical']")).toBeNull();
+        TestBed.inject(SeoService).updateSeo({ url: '/server-test' });
+
+        const link = ssrDocument.querySelector("link[rel='canonical']");
+        expect(link?.getAttribute('href')).toBe('https://mavrov.de/server-test');
     });
 });
 
