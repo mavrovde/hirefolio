@@ -279,5 +279,43 @@ describe('InboxComponent — transparent translation (#248)', () => {
         component.retranslate(component.items[0]);
         expect(serviceSpy.rerunTranslation).toHaveBeenCalledTimes(1);
     });
+
+    // #298 review blocker 3: the backend's failure paths produce
+    // {detected_language: null, translation_status: 'failed'} — the state the
+    // first round's template could not render at all. Pin what the operator
+    // actually sees for the states the backend actually produces.
+    it('a failed row (null language) shows the error and the re-translate affordance', () => {
+        component.items = [
+            makeInteraction({ translation_status: 'failed' }),
+        ];
+        const i = component.items[0];
+        expect(component.displayedMessage(i)).toBe(i.message); // original shown
+        component.expandedId = i.id;
+        fixture.detectChanges();
+        const host = fixture.nativeElement as HTMLElement;
+        const bar = host.querySelector('[data-testid="translation-bar"]');
+        expect(bar).not.toBeNull();
+        expect(bar?.textContent).toContain('translation failed');
+        const retryBtn = Array.from(bar?.querySelectorAll('button') ?? []).find(
+            (b) => b.textContent?.includes('re-translate'),
+        );
+        expect(retryBtn).toBeTruthy();
+        // No badge chrome for a language that was never detected.
+        expect(bar?.querySelector('.font-mono')).toBeNull();
+    });
+
+    it('a pending row shows progress without translation chrome', () => {
+        component.items = [
+            makeInteraction({ translation_status: 'pending' }),
+        ];
+        const i = component.items[0];
+        component.expandedId = i.id;
+        fixture.detectChanges();
+        const bar = (fixture.nativeElement as HTMLElement).querySelector(
+            '[data-testid="translation-bar"]',
+        );
+        expect(bar?.textContent).toContain('translating…');
+        expect(component.displayedMessage(i)).toBe(i.message);
+    });
 });
 

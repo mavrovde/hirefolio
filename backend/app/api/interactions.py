@@ -247,6 +247,7 @@ async def rerun_translation(
     interaction_id: uuid.UUID,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin_user),
 ) -> InteractionOut:
     """Re-run translation on demand (#248: translated_* are separate and
     re-runnable — e.g. after fixing the model config, or for rows that predate

@@ -427,6 +427,10 @@ PROFILE_DATA_TIMEOUT_SECONDS=5             # default: 5
 DB_RESTORE_TIMEOUT_SECONDS=300             # default: 300 — psql restore ceiling
 IMPORT_MAX_POSTS_JSON_MB=10                # default: 10 MB
 IMPORT_MAX_POSTS_PER_REQUEST=500           # default: 500 entries
+
+# Transparent translation (#248) — forwarded by both compose files.
+TRANSLATION_ENABLED=true                   # default: true — false disables cleanly
+OWNER_LANGUAGE=en                          # default: en — ISO 639-1; casing/region normalized
 ```
 
 ### Root Environment (Docker Compose)

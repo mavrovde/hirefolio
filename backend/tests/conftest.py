@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -62,6 +63,30 @@ def mock_embedding_global(mocker):
     mocker.patch("app.api.linkedin.get_embedding", side_effect=mock_get_embedding)
 
     return mock_get_embedding
+
+
+@pytest.fixture(autouse=True)
+def _mock_translation_llm(request, monkeypatch):
+    """Rule 10, suite-wide: EVERY contact/CV POST now schedules the #248
+    translation task, so without this default mock every existing test that
+    submits a form runs a REAL LLM generation — seconds of live Ollama per
+    POST, and real billable Gemini requests the moment a developer has a key
+    in the environment (#298 round 1, measured: 8 outbound calls to
+    generativelanguage.googleapis.com from unrelated tests).
+
+    The canned reply is 'already the owner's language' so unrelated tests see
+    a quiet not_needed and no translated fields. Tests that exercise the real
+    fallback fork opt out with @pytest.mark.real_llm_seam and mock the
+    transports themselves; tests that mock `_generate` with `patch(...)`
+    simply layer over this and need no marker."""
+    if request.node.get_closest_marker("real_llm_seam"):
+        yield
+        return
+    monkeypatch.setattr(
+        "app.services.translation._generate",
+        AsyncMock(return_value='{"language": "en", "translation": ""}'),
+    )
+    yield
 
 
 @pytest.fixture(autouse=True)

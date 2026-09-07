@@ -53,8 +53,12 @@
           </tr>
           <tr *ngIf="expandedId === i.id">
             <td colspan="5" class="px-4 py-3 bg-gray-50 text-sm">
-              <div *ngIf="i.detected_language" class="mb-2 flex items-center gap-2 flex-wrap" data-testid="translation-bar">
-                <span class="rounded bg-gray-200 px-2 py-0.5 text-xs font-mono uppercase"
+<!-- #298 review blocker 3: both backend failure paths leave detected_language
+     NULL, so gating the bar on it alone hid "translation failed" AND the only
+     re-translate affordance. Any translation signal shows the bar. -->
+              <div *ngIf="i.detected_language || i.translation_status || i.translated_message"
+                class="mb-2 flex items-center gap-2 flex-wrap" data-testid="translation-bar">
+                <span *ngIf="i.detected_language" class="rounded bg-gray-200 px-2 py-0.5 text-xs font-mono uppercase"
                   [attr.aria-label]="'detected language ' + i.detected_language">{{ i.detected_language }}</span>
                 <span *ngIf="showingTranslation(i)" class="text-xs text-gray-500 italic">
                   machine-translated to {{ i.translated_to }} — original in {{ i.detected_language }}

@@ -193,4 +193,42 @@ test.describe('Admin Inbox', () => {
         await page.getByRole('button', { name: /re-run translation/ }).click();
         await expect(text).toContainText('Hello — open to a new role?');
     });
+
+    test('a failed translation is visible and recoverable in the browser (#248 verify step 2)', async ({ page }) => {
+        // The exact shape the backend's failure paths produce: NO detected
+        // language, only the status — the state #298's first template hid.
+        const FAILED = {
+            ...INTERACTION,
+            message: 'Hallo, sind Sie offen für eine neue Stelle?',
+            detected_language: null,
+            translated_message: null,
+            translated_to: null,
+            translation_status: 'failed',
+        };
+        const RECOVERED = {
+            ...FAILED,
+            detected_language: 'de',
+            translated_message: 'Hello, are you open to a new role?',
+            translated_to: 'en',
+            translation_status: 'done',
+        };
+        await page.route(`**${API_PREFIX}/admin/interactions/*/translate`, (route) =>
+            route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(RECOVERED) })
+        );
+        await page.route(`**${API_PREFIX}/admin/interactions*`, (route) =>
+            route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(page1([FAILED])) })
+        );
+
+        await page.goto('/inbox');
+        await page.getByText(FAILED.name).click();
+
+        // The failure is stated, the original is what the operator reads…
+        await expect(page.getByTestId('translation-bar')).toContainText('translation failed');
+        await expect(page.getByTestId('message-text')).toContainText('Hallo, sind Sie offen');
+
+        // …and a re-translate later succeeds, in place (zoneless repaint).
+        await page.getByRole('button', { name: /re-run translation/ }).click();
+        await expect(page.getByTestId('message-text')).toContainText('Hello, are you open to a new role?');
+        await expect(page.getByTestId('translation-bar')).toContainText('machine-translated to en');
+    });
 });
