@@ -35,8 +35,9 @@ All notable changes to this project will be documented in this file.
   hardened all four of its blockers at the root: the re-run endpoint now requires admin auth
   (anonymous 401 pinned at unit AND composed layers); the whole test suite is hermetic at the
   LLM boundary (autouse `_generate` mock + Gemini-key scrub — no test in the default unit
-  suite reaches a real LLM, and no test anywhere reaches a paid API; the explicitly opt-in
-  live-Ollama tests under `tests/integration/` are unchanged); failed/pending translations
+  suite reaches a real LLM through the TRANSLATION path, and no test anywhere reaches a paid
+  API; the pre-existing live-Ollama test `tests/integration/test_multi_chat_real.py`, which
+  the default run does collect, is unchanged by this PR); failed/pending translations
   are visible and recoverable
   in the UI (the backend's exact failure shape covered at unit + browser layers); and
   `TRANSLATION_ENABLED`/`OWNER_LANGUAGE` are forwarded by both compose files so the knobs

@@ -260,6 +260,10 @@ async def rerun_translation(
         raise HTTPException(status_code=404, detail="Interaction not found")
     interaction.translation_status = "pending"
     await db.commit()
-    await db.refresh(interaction)
+    # No refresh on purpose (#298 round 3): the docstring promises this
+    # response says 'pending', but a refresh SELECT after the commit can read
+    # back a CONCURRENT task's write (intake translation finishing on the same
+    # event loop) — the await boundary handed it the loop. expire_on_commit=
+    # False keeps the in-memory 'pending' valid without a round-trip.
     background_tasks.add_task(translate_interaction, interaction.id)
     return InteractionOut.from_model(interaction)

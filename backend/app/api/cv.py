@@ -82,10 +82,11 @@ async def request_cv(
                 },
             )
             db.add(interaction)
-            # Flush assigns the PK; captured before commit so the id survives
-            # the rollback path below, where the object is gone. (Post-commit
-            # access would also work — expire_on_commit=False — but only on
-            # the happy path.)
+            # Flush assigns the PK; captured here simply because this is the
+            # earliest point it exists. (Post-commit access would also work —
+            # expire_on_commit=False — and the except path below discards the
+            # id anyway; this is convention with cv_request_id above, not a
+            # correctness requirement.)
             await db.flush()
             inbox_interaction_id = interaction.id
             await db.commit()

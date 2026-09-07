@@ -66,6 +66,14 @@ def test_rerun_endpoint_requires_admin_and_works_with_it(client, admin_headers):
     assert created.status_code == 201, created.text
     interaction_id = created.json()["id"]
 
+    # Round-3 determinism: the intake POST above scheduled its own translation
+    # task on the same backend event loop. Let it FINISH before exercising the
+    # re-run, or the rerun response races it (measured: 1 in 9 runs read the
+    # intake task's 'done' through the old refresh — an await-boundary race,
+    # not flake luck).
+    settled = _poll_translated(client, admin_headers, interaction_id)
+    assert settled["translation_status"] == "done", settled
+
     # #298 review blocker 1, verified at the composed layer: anonymous rerun
     # is refused before the handler can act as an id oracle or spend tokens.
     anon = client.post(f"{API}/admin/interactions/{interaction_id}/translate")
