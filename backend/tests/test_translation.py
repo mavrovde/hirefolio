@@ -160,6 +160,11 @@ async def test_rerun_overwrites_only_translated_fields(client: AsyncClient):
     ):
         r = await client.post(f"{ADMIN}/{created['id']}/translate")
         assert r.status_code == 200
+        # The endpoint's documented contract: it answers with the row reset to
+        # 'pending' so the UI can show progress (app/api/interactions.py — no
+        # refresh after the commit, deliberately). Pinned HERE, on the
+        # PR-gating unit tier; the push-gated integration tier pins it too.
+        assert r.json()["translation_status"] == "pending"
 
     row = await _row(client, created["id"])
     assert row["message"] == "Hallo, sind Sie offen?"  # STILL untouched

@@ -4,17 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Changed
-- **Default database name is the product, not the maintainer (#288)**: every default that said
-  `mavrov` now says `hirefolio` — compose (`${POSTGRES_DB:-hirefolio}`), the backend
-  `database_url` default, CI's test/migration databases (`test_hirefolio`,
-  `hirefolio_migrations`), the local test convention (`test_hirefolio`, `_gwN`, `_prepush` —
-  pre-push hook, conftest guard message, docs and agent charters all follow), the admin SQL
-  backup filename (`backup_hirefolio_*.sql`) and the agent worktree prefix. Completes the
-  identifier half of #66: a forker no longer inherits anyone's name in their infrastructure.
-  **Upgrade note (existing deployments only)**: Postgres reads `POSTGRES_DB` at volume init, so
-  existing volumes keep their `mavrov` database — pin `POSTGRES_DB=mavrov` in that host's
-  `.env` (documented in `.env.example` and `docs/DEPLOYMENT.md`); fresh installs need nothing.
+### Added
+- Placeholder for next release.
+
+## [1.13.0] - 2026-09-07
 
 ### Added
 - **Messenger notification channels (#263)**: owner notifications become a **pluggable channel
@@ -202,6 +195,16 @@ All notable changes to this project will be documented in this file.
   model, fails closed on a deadline or an unreadable verdict, bypass with `PR_MERGE_GATE=0`.
 
 ### Changed
+- **Default database name is the product, not the maintainer (#288)**: every default that said
+  `mavrov` now says `hirefolio` — compose (`${POSTGRES_DB:-hirefolio}`), the backend
+  `database_url` default, CI's test/migration databases (`test_hirefolio`,
+  `hirefolio_migrations`), the local test convention (`test_hirefolio`, `_gwN`, `_prepush` —
+  pre-push hook, conftest guard message, docs and agent charters all follow), the admin SQL
+  backup filename (`backup_hirefolio_*.sql`) and the agent worktree prefix. Completes the
+  identifier half of #66: a forker no longer inherits anyone's name in their infrastructure.
+  **Upgrade note (existing deployments only)**: Postgres reads `POSTGRES_DB` at volume init, so
+  existing volumes keep their `mavrov` database — pin `POSTGRES_DB=mavrov` in that host's
+  `.env` (documented in `.env.example` and `docs/DEPLOYMENT.md`); fresh installs need nothing.
 - **The v1.12.0 retrospective's findings applied to the toolkit** — measured over 24 review
   verdicts: `issue-author` learns four rules for writing an acceptance criterion that can actually
   be met (one AC last release was unachievable as written; six of eight feature PRs shipped with a
@@ -215,15 +218,6 @@ All notable changes to this project will be documented in this file.
   the assert-the-guarantee-where-it-can-be-enforced class and the shared-session fixture that hides
   races. Two duplicated rule restatements deleted from the playbook and a drifted second copy of
   the config map deleted from lessons-learned — duplication is how the renumber drift happened.
-
-### Security
-- **Internal AI-tooling session identifiers must never reach public surfaces** (owner directive)
-  — CLAUDE.md's issue-flow rule 8 (no secrets in public issues/PRs) and `agents/PLAYBOOK.md` now
-  forbid writing `Claude-Session:` trailers or
-  `claude.ai/code/session_…` URLs into commits, PR bodies, issues or the changelog on this PUBLIC
-  repo (`Co-authored-by:` attribution stays). All 17 affected PR bodies were scrubbed; the
-  repo-wide search now returns zero editable occurrences.
-
 - **Two engineering rules added, one renumbered** (owner directives 2026-09-06) — **rule 11: fix
   review findings IN the PR** rather than converting them into issues (a follow-up issue is for
   genuinely out-of-scope work only; backlog growth is not progress), and **rule 12: a merged PR
@@ -240,6 +234,15 @@ All notable changes to this project will be documented in this file.
 - **Effort reports now record the MODEL per step** and Project 3 gains a `Model` field
   (`fable-5`/`opus-5`/`sonnet-5`/`haiku-4.5`/`mixed`), so cost, review rounds and defects caught
   can be compared per model rather than only per agent.
+
+### Security
+- **Internal AI-tooling session identifiers must never reach public surfaces** (owner directive)
+  — CLAUDE.md's issue-flow rule 8 (no secrets in public issues/PRs) and `agents/PLAYBOOK.md` now
+  forbid writing `Claude-Session:` trailers or
+  `claude.ai/code/session_…` URLs into commits, PR bodies, issues or the changelog on this PUBLIC
+  repo (`Co-authored-by:` attribution stays). All 17 affected PR bodies were scrubbed; the
+  repo-wide search now returns zero editable occurrences.
+
 ### Fixed
 - **The zoneless change-detection lint now guards the ADMIN app too — and it immediately found
   five frozen-UI bugs** (#276). `frontend/scripts/check-cd-safety.mjs` scoped itself to
