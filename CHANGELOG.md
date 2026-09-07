@@ -18,7 +18,13 @@ All notable changes to this project will be documented in this file.
     **4.195 GiB** resident with all three models, whole stack **≈ 5.4 GiB**, images **≈ 15.9 GB**
     for one copy (of which `ollama` 7.29 GB and `open-webui` 6.51 GB), `ollama_data` **3.6 GB** ⇒
     **8 GB RAM / 40 GB disk / 2 vCPU** minimum for hirefolio alone, 16 GB / 60–80 GB on a shared
-    host.
+    host. Includes an owner-facing, plain-language explainer of **`JWT_SECRET_KEY`** (stateless
+    admin logins; knowing the key forges an admin token without a password — hence #177's startup
+    refusal; generate it *on the host* so it never transits chat; rotation invalidates all sessions
+    and is the right answer to suspected leakage; it is not the admin password), and an **SSH
+    authentication** section covering ed25519 key pairs, the test-before-you-lock-yourself-out
+    order, and **SSH certificates** as the honest scale-up path (expiring credentials, no
+    `authorized_keys` sprawl — overkill for one owner and one host today).
   - **Shared edge chosen and argued.** A host-level Caddy edge owns 80/443 for every project;
     hirefolio's own `proxy` was rejected as the edge because it is in `APP_SERVICES`
     (`deploy.yml:934`), so every hirefolio rollout *and rollback* would recreate every tenant's

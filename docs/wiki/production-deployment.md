@@ -134,7 +134,7 @@ a log, PR, issue or commit.
       `admin/admin`). Generate: `openssl rand -base64 24`.
 - [ ] **[owner]** `JWT_SECRET_KEY` — signs admin tokens; the backend **refuses to
       start** when empty or left at the historical placeholder.
-      Generate: `openssl rand -hex 32`.
+      Generate: `openssl rand -hex 32`. Plain-language explainer below.
 - [ ] **[owner]** `POSTGRES_PASSWORD` — `openssl rand -base64 24`. Set it before
       the **first** `up`: it is written into the volume at initialization.
 - [ ] **[owner]** `LINKEDIN_IMPORT_TOKEN` — shared secret the importer presents.
@@ -148,6 +148,55 @@ a log, PR, issue or commit.
       `OWNER_HEADLINE`, `OWNER_DESCRIPTION`, `SOCIAL_LINKS`. **The committed
       defaults are the "Jane Doe" demo persona**, so unset values ship a demo site
       and make SSR advertise `example.com` as the canonical URL.
+
+#### What `JWT_SECRET_KEY` actually is (and why it is not your password)
+
+Admin logins here are **stateless**: the server keeps no session list. When you
+log in successfully, the backend hands your browser a small signed ticket — a
+**JWT** — that says, in effect, *"the bearer of this is the admin, valid until
+14:35"*. Your browser sends that ticket with every subsequent request, and the
+backend re-checks the **signature** each time instead of looking you up in a
+session table. That is what makes it stateless, and it is why the signature has
+to be trustworthy.
+
+`JWT_SECRET_KEY` is **the key the server signs those tickets with**. Its only job
+is to make a ticket unforgeable.
+
+The consequence is the whole point: **anyone who knows this value can write their
+own admin ticket and skip the login entirely.** No password needed, no brute
+force, nothing to detect — a forged ticket is indistinguishable from a real one,
+because it *is* validly signed. That is why (issue #177) there is deliberately no
+default value and the backend **refuses to start** on an empty key or the
+historical `your-secret-key-change-in-production` placeholder: a publicly-known
+signing key is an open admin door that looks completely normal in the logs.
+
+- **It is not the admin password.** `ADMIN_PASSWORD` is what *you type* to prove
+  who you are. `JWT_SECRET_KEY` is what lets the *server trust that a login
+  already happened*, on every later request. Changing one has nothing to do with
+  the other.
+- **Generate it once, on the host.** Best practice: run the command **on the
+  server during setup** so the value never travels through chat, email, a file
+  you edit locally, or a notes app:
+
+  ```bash
+  # on the server, appending straight into the .env — the value is never displayed
+  printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> /opt/mavrov.de/.env
+  ```
+
+- **Nobody memorizes it or needs a copy.** It lives in the host `.env` (mode 600)
+  and nowhere else. It is not a GitHub secret, not a password-manager entry you
+  must be able to read back, and not something to paste into an issue or PR.
+- **Rotating it logs everyone out — and that is the feature.** Replace the value,
+  recreate the backend, and every previously issued ticket stops verifying. The
+  cost is one re-login; the benefit is that a leaked key is instantly worthless.
+  **If you ever suspect it was exposed, rotate it — that is the correct and
+  complete response**, and it is far cheaper than the alternative:
+
+  ```bash
+  # rotate: edit the value, then RECREATE (not `restart` — see docs/DEPLOYMENT.md:
+  # compose reads the environment when it CREATES a container)
+  docker compose -f docker-compose.prod.yml up -d backend
+  ```
 
 **Optional — each is off when empty, by design:**
 
@@ -751,11 +800,37 @@ Membership of the `docker` group is **equivalent to root** — the group can mou
 the host filesystem into a container. That is precisely why the deploy user has
 no sudo and no interactive password, and why its key is used for nothing else.
 
+### SSH authentication: keys now, certificates as the scale-up path
+
+The host is reached with **SSH key pairs**, and **password authentication is
+switched off immediately after the first login**. A password that survives on an
+internet-facing host is a permanent, guessable credential; a key is not
+guessable, and it is the only thing the automated rollout can use anyway.
+
+**Use ed25519.** It is the modern default: small keys, fast, no parameter choices
+to get wrong. (RSA still works — if you must, use `-b 4096` — but there is no
+reason to choose it for a new host.)
+
+```bash
+# 1. On your WORKSTATION — generate a pair. Use a passphrase for your personal key.
+ssh-keygen -t ed25519 -C 'you@workstation'                 # -> ~/.ssh/id_ed25519{,.pub}
+
+# 2. Install the PUBLIC half on the host (never the private half — it never leaves
+#    your machine). While password auth is still on, this does it in one step:
+ssh-copy-id -i ~/.ssh/id_ed25519.pub deploy@<host>
+#    Or by hand, appending to /home/deploy/.ssh/authorized_keys (mode 600, dir 700).
+
+# 3. TEST THE KEY LOGIN IN A SECOND TERMINAL — before changing anything:
+ssh -o PasswordAuthentication=no deploy@<host> 'echo key login OK'
+```
+
+Only once that prints `key login OK` do you disable passwords:
+
 ```bash
 # /etc/ssh/sshd_config.d/99-hardening.conf
-PermitRootLogin no
-PasswordAuthentication no
-KbdInteractiveAuthentication no
+PermitRootLogin no                 # root never logs in directly; use sudo from a user
+PasswordAuthentication no          # keys only — the whole point of this section
+KbdInteractiveAuthentication no    # otherwise a password prompt sneaks back in
 PubkeyAuthentication yes
 X11Forwarding no
 AllowUsers deploy <your-admin-user>
@@ -765,9 +840,55 @@ AllowUsers deploy <your-admin-user>
 sudo sshd -t && sudo systemctl reload ssh     # validate BEFORE reloading
 ```
 
-Keep the current session open and confirm a **new** session logs in before
-closing it. A syntax error plus a closed session is a locked-out host that only
-the provider's console can recover.
+> **The classic lockout, and how to not have it.** Keep your current session
+> **open**, and confirm a **brand-new** session logs in before you close it. A
+> syntax error plus a closed session is a host only the provider's serial console
+> can recover. `sshd -t` catches the syntax error; the second session catches
+> everything else. Risk register row 26.
+
+The **rollout key is a separate pair** (§ Activating the automated rollout): a
+dedicated, passphrase-less ed25519 key used by GitHub Actions and nowhere else,
+so it can be revoked by deleting one line from `authorized_keys` without
+affecting your own access. Your personal key keeps its passphrase; the CI key
+cannot have one, which is exactly why it must be single-purpose.
+
+**Rotation, with keys:** add the new public key to `authorized_keys`, verify a
+login with it, then delete the old line. `authorized_keys` is the access list —
+audit it (`wc -l`, and know who owns every entry).
+
+#### SSH certificates — what they would buy, and why not yet
+
+There is a more advanced option, worth knowing exists. Instead of listing every
+public key on every host, you run a small **SSH certificate authority**: the CA
+signs a user's public key into a **short-lived certificate** (say, 8 hours), and
+`sshd` is told to trust *the CA* rather than individual keys:
+
+```bash
+# On the host — trust the CA, and stop maintaining per-key authorized_keys:
+#   /etc/ssh/sshd_config.d/99-hardening.conf
+#   TrustedUserCAKeys /etc/ssh/ca_user_key.pub
+#
+# Issuing a cert (on the CA, offline/protected):
+ssh-keygen -s ca_user_key -I 'you@workstation' -n deploy -V +8h id_ed25519.pub
+#   -> id_ed25519-cert.pub, which the client presents alongside its key
+```
+
+What it buys:
+
+- **Credentials that expire by themselves.** Access ends when the certificate
+  does. Offboarding or a lost laptop stops being an urgent edit on every host.
+- **No `authorized_keys` sprawl.** One trusted CA instead of N keys × M hosts,
+  which is where stale access actually accumulates.
+- **Attributable, constrained access** — the certificate records who it was
+  issued to, which usernames it may assume, and which options are permitted.
+
+**Recommendation: plain ed25519 keys for now.** With one owner and one host,
+`authorized_keys` has two lines and is trivially auditable, while a CA adds a new
+component that must itself be protected, backed up and kept available — if the CA
+key is lost or compromised, that is a worse day than a stale `authorized_keys`
+entry. Certificates start paying for themselves at **several hosts or several
+people**, and that is the moment to revisit this — not before. Named here so the
+option is a known choice rather than a discovery.
 
 ### Firewall — and what it does not do
 
@@ -1187,6 +1308,9 @@ everyone's); `/etc/letsencrypt` or `/var/lib/caddy`; another tenant's `.env`.
 | 23 | **`ufw` does not filter Docker-published ports** — an operator believes the DB is firewalled when it is not | Loopback binds by default (`POSTGRES_BIND_HOST`, `PROXY_*_PUBLISH`); `DOCKER-USER` chain if filtering is genuinely required; verify from off-host with `nmap`. |
 | 24 | **Edge → tenant port-80 redirect loop** (measured) | Edge forwards to the tenant's **443** with verification disabled. Verify during rehearsal that the public URL returns 200, not a redirect chain. Conditional-redirect fix deferred to cutover. |
 | 25 | **`docker` group membership is root-equivalent** | The deploy user has no sudo; the group is minimal and audited; nobody who should not have root on the box is added to it. |
+| 26 | **SSH lockout** when disabling password auth — a bad `sshd_config` plus a closed session leaves only the provider's serial console | `sudo sshd -t` before every reload; prove a **new** key session works while the current one is still open; keep `AllowUsers` in sync when adding a user. Recovery path (provider console) identified **before** the change, not during it. |
+| 27 | **Loss of the only SSH key** (lost laptop, wiped disk) | Two authorized keys from different machines, or a provider console/recovery mode known to work. SSH certificates (§ SSH authentication) solve this class properly, at the cost of a CA to protect — the scale-up path, not today's. |
+| 28 | **`JWT_SECRET_KEY` disclosure** — a forged admin token needs no password and looks legitimate | No default and a startup refusal on empty/placeholder (#177); generated **on the host** so it never transits chat or a file; lives only in `.env` (mode 600), never a GitHub secret. On any suspicion, **rotate** — one re-login invalidates every issued token. |
 
 ---
 
