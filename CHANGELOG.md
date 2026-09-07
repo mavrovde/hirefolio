@@ -195,7 +195,7 @@ All notable changes to this project will be documented in this file.
   model, fails closed on a deadline or an unreadable verdict, bypass with `PR_MERGE_GATE=0`.
 
 ### Changed
-- **Default database name is the product, not the maintainer (#288)**: every default that said
+- **BREAKING for existing deployments — default database name is the product, not the maintainer (#288)**: every default that said
   `mavrov` now says `hirefolio` — compose (`${POSTGRES_DB:-hirefolio}`), the backend
   `database_url` default, CI's test/migration databases (`test_hirefolio`,
   `hirefolio_migrations`), the local test convention (`test_hirefolio`, `_gwN`, `_prepush` —
@@ -234,14 +234,6 @@ All notable changes to this project will be documented in this file.
 - **Effort reports now record the MODEL per step** and Project 3 gains a `Model` field
   (`fable-5`/`opus-5`/`sonnet-5`/`haiku-4.5`/`mixed`), so cost, review rounds and defects caught
   can be compared per model rather than only per agent.
-
-### Security
-- **Internal AI-tooling session identifiers must never reach public surfaces** (owner directive)
-  — CLAUDE.md's issue-flow rule 8 (no secrets in public issues/PRs) and `agents/PLAYBOOK.md` now
-  forbid writing `Claude-Session:` trailers or
-  `claude.ai/code/session_…` URLs into commits, PR bodies, issues or the changelog on this PUBLIC
-  repo (`Co-authored-by:` attribution stays). All 17 affected PR bodies were scrubbed; the
-  repo-wide search now returns zero editable occurrences.
 
 ### Fixed
 - **The zoneless change-detection lint now guards the ADMIN app too — and it immediately found
@@ -305,6 +297,14 @@ All notable changes to this project will be documented in this file.
   integration tier (idempotency and cv_request-origin over real HTTP through the proxy), and a
   new browser journey spec — inbox → promote → pipeline with the original message surviving as
   the first timeline note, plus double-click-yields-one-card and cv_request-keeps-its-origin.
+
+### Security
+- **Internal AI-tooling session identifiers must never reach public surfaces** (owner directive)
+  — CLAUDE.md's issue-flow rule 8 (no secrets in public issues/PRs) and `agents/PLAYBOOK.md` now
+  forbid writing `Claude-Session:` trailers or
+  `claude.ai/code/session_…` URLs into commits, PR bodies, issues or the changelog on this PUBLIC
+  repo (`Co-authored-by:` attribution stays). All 17 affected PR bodies were scrubbed; the
+  repo-wide search now returns zero editable occurrences.
 
 ### Documentation
 - **Docs re-synced with what v1.12.0 actually ships** — README's feature list now names the
