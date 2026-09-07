@@ -305,11 +305,9 @@ async def test_contact_form_fans_out_through_the_registry(client: AsyncClient):
 # ---------------------------------------------------------------- summary ----
 
 
-def test_summary_truncates_long_messages_and_escapes_mrkdwn():
-    """The two executed-but-unasserted branches (#297 review minors) plus the
-    injection fix: 500-char truncation, the empty-company arm, and Slack
-    mrkdwn escaping — a visitor must not be able to smuggle <!channel> into
-    the owner's Slack."""
+def test_summary_truncates_and_renders_company_raw():
+    """summary() is RAW by design (escaping is per-channel); it still pins the
+    truncation and empty-company branches."""
     long_event = OwnerNotification.build(
         source="contact_form",
         name="N",
@@ -319,19 +317,68 @@ def test_summary_truncates_long_messages_and_escapes_mrkdwn():
     )
     text = long_event.summary()
     assert "x" * 500 in text and "x" * 501 not in text
-    assert "(" not in text.split("\n")[0]  # empty company renders no parens
-
-    inject = OwnerNotification.build(
+    assert "(" not in text.split("\n")[0]
+    with_company = OwnerNotification.build(
         source="contact_form",
         name="N",
         email="n@example.com",
         company="ACME",
-        message="hi <!channel> & <http://evil.example|click>",
+        message="hi",
     )
-    text = inject.summary()
-    assert "<!channel>" not in text
-    assert "&lt;!channel&gt;" in text
-    assert "&amp;" in text
+    assert "(ACME)" in with_company.summary()
+
+
+def test_webhook_escapes_every_attacker_reachable_field():
+    """#297 round 3: name, company AND message all come off the PUBLIC
+    contact form and all ride the mrkdwn-parsed `text` — escaping message
+    alone delivered `<!channel>` via `name` verbatim. The whole rendered
+    string is escaped at the ONE channel that parses entities."""
+    event = OwnerNotification.build(
+        source="contact_form",
+        name="<!channel> Eve",
+        email="eve@example.com",
+        company="<!here> Corp",
+        message="We pay > 100k & need C++ <urgent> <http://evil.example|click>",
+    )
+    with patch("app.services.notifications.httpx.post") as post:
+        post.return_value = MagicMock(raise_for_status=lambda: None)
+        result = _with(
+            _cfg(notify_webhook_url="https://hooks.example/x"),
+            lambda: notify_owner(event),
+        )
+    assert result == {"webhook": True}
+    text = post.call_args.kwargs["json"]["text"]
+    assert "<!channel>" not in text and "<!here>" not in text
+    assert "&lt;!channel&gt; Eve" in text and "(&lt;!here&gt; Corp)" in text
+    assert "&amp; need C++ &lt;urgent&gt;" in text
+
+
+def test_telegram_text_stays_raw_for_the_owner():
+    """Telegram's plain sendMessage parses NO entities: the owner must read
+    `We pay > 100k`, not `&gt;`-noise (#297 round 3, measured)."""
+    event = OwnerNotification.build(
+        source="contact_form",
+        name="N",
+        email="n@example.com",
+        company=None,
+        message="We pay > 100k & need C++ <urgent>",
+    )
+    with patch("app.services.notifications.httpx.post") as post:
+        post.return_value = MagicMock(raise_for_status=lambda: None)
+        _with(
+            _cfg(telegram_bot_token="t", telegram_chat_id="c"),
+            lambda: notify_owner(event),
+        )
+    text = post.call_args.kwargs["json"]["text"]
+    assert "We pay > 100k & need C++ <urgent>" in text
+    assert "&amp;" not in text
+
+
+def test_build_normalizes_missing_company_to_empty_string():
+    e = OwnerNotification.build(
+        source="s", name="n", email="e@x", company=None, message="m"
+    )
+    assert e.company == ""
 
 
 # -------------------------------------------------------------- namespacing --
@@ -345,11 +392,11 @@ def test_hirefolio_namespaced_env_binds_and_generic_does_not(monkeypatch):
     monkeypatch.setenv("HIREFOLIO_TELEGRAM_BOT_TOKEN", "ns-token")
     monkeypatch.setenv("HIREFOLIO_TELEGRAM_CHAT_ID", "ns-chat")
     monkeypatch.setenv("HIREFOLIO_NOTIFY_WEBHOOK_URL", "https://ns.example/w")
-    fresh = Settings()
+    fresh = Settings(_env_file=None)
     assert fresh.telegram_bot_token == "ns-token"
     assert fresh.telegram_chat_id == "ns-chat"
     assert fresh.notify_webhook_url == "https://ns.example/w"
 
     monkeypatch.delenv("HIREFOLIO_TELEGRAM_BOT_TOKEN")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "generic-must-not-bind")
-    assert Settings().telegram_bot_token == ""
+    assert Settings(_env_file=None).telegram_bot_token == ""

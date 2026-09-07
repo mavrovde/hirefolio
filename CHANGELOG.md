@@ -16,8 +16,7 @@ All notable changes to this project will be documented in this file.
   exception TYPE only — **the token is part of the URL and a test asserts it never reaches the
   logs**. WhatsApp is a documented decision, not a stub (Meta verification, template approval,
   per-conversation pricing — recorded in README with the adapter seam). Rule 10 by construction:
-  mocked HTTP boundary, CI never sees a token. 9 channel tests + the #69 call-site tests
-  migrated to the registry seam (suite 975 → 980 at the merged head, 100.00%).
+  mocked HTTP boundary, CI never sees a token. 16 channel tests + the #69 call-site tests migrated to the registry seam.
 - **Bundled email capability (#262)**: the dev stack now ships **Mailpit** — every notification
   lands in a web inbox at `localhost:8025` with ZERO configuration and nothing ever leaves the
   machine (rule 10 by construction). The integration tier gains the repo's **first true

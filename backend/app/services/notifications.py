@@ -57,18 +57,13 @@ class OwnerNotification:
         )
 
     def summary(self) -> str:
-        """Compact single-message rendering for chat-shaped channels.
-
-        Submitter-controlled text lands in Slack's mrkdwn-parsed `text`
-        (#297 review): escape the three characters mrkdwn assigns meaning
-        to, per Slack's own escaping rules — visitors must not be able to
-        inject channel-notification sequences like <!channel>."""
-        safe = (
-            self.message[:500]
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
+        """Compact single-message rendering for chat-shaped channels — RAW.
+        Escaping is a PER-CHANNEL concern: Slack parses mrkdwn, Telegram's
+        plain sendMessage parses nothing, so escaping here showed the owner
+        `&amp;`-noise on Telegram while STILL leaking via name/company on
+        Slack (#297 round 3 — the escape lived at the wrong layer AND only
+        covered one of three attacker-reachable fields)."""
+        safe = self.message[:500]
         company = f" ({self.company})" if self.company else ""
         return (
             f"[{self.source}] New interaction from {self.name}{company}\n"
@@ -138,6 +133,16 @@ class WebhookChannel:
 
     name = "webhook"
 
+    @staticmethod
+    def _escape_mrkdwn(text: str) -> str:
+        """Slack's documented escaping (&, <, > — & first): submitter text
+        from the PUBLIC contact form lands in the mrkdwn-parsed `text`, and
+        every field the visitor controls — name, company, message — rides in
+        the rendered summary, so the WHOLE string is escaped at this one
+        point (#297 round 3: escaping message alone left `<!channel>` in
+        `name` delivered verbatim)."""
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
     def send(self, event: OwnerNotification) -> bool:
         try:
             response = httpx.post(
@@ -146,7 +151,7 @@ class WebhookChannel:
                     # `text` is the lingua franca (Slack/Mattermost render it
                     # directly); the structured fields ride alongside for
                     # anything smarter.
-                    "text": event.summary(),
+                    "text": self._escape_mrkdwn(event.summary()),
                     "source": event.source,
                     "name": event.name,
                     "email": event.email,

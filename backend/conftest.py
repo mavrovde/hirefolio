@@ -258,6 +258,12 @@ def pytest_configure(config):
     already set in the worker environment at this point, so each worker
     provisions its own isolated database.
     """
+    # SECURITY / rule 10 (#297 rounds 2-3): the settings-object scrub MUST run
+    # here. Round 2 shipped it as dead code — the insertion guard checked for
+    # the function NAME, which its own `def` already contained — and coverage
+    # could not catch it because conftest.py sits outside --cov=app. The
+    # observable that proves it working is REQUEST COUNT, not a passing test.
+    _scrub_notification_settings()
     asyncio.run(_create_database_if_missing(_test_database_url()))
 
 

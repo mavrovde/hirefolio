@@ -35,8 +35,6 @@ cp .env.example .env
 #    PUBLIC_SERVER_NAME / ADMIN_SERVER_NAME, ADMIN_ALLOWED_CIDRS (keep empty =
 #    loopback-only admin until you add your operator IPs).
 #    Optional: HIREFOLIO_GEMINI_API_KEY (+ HIREFOLIO_GEMINI_ENCRYPTION_KEY) — without it the AI
-- `HIREFOLIO_TELEGRAM_BOT_TOKEN` / `HIREFOLIO_TELEGRAM_CHAT_ID` — optional Telegram owner notifications (#263)
-- `HIREFOLIO_NOTIFY_WEBHOOK_URL` — optional Slack/Mattermost/ntfy webhook notifications (#263)
 #    features fall back to the in-stack Ollama.
 #    Identity (#65/#66 — the committed DEFAULTS are the Jane Doe demo persona):
 #    set SITE_URL, SITE_NAME, OWNER_NAME, OWNER_HEADLINE, OWNER_DESCRIPTION,
@@ -56,6 +54,8 @@ curl -s https://<public-host>/api/app/health          # -> healthy
 curl -s https://<public-host>/api/app/stats/public    # backend_version == IMAGE_TAG
 curl -s -o /dev/null -w '%{http_code}' https://<public-host>/admin/login  # -> 404 (freshness probe)
 ```
+
+Optional notification channels (#263): `HIREFOLIO_TELEGRAM_BOT_TOKEN` + `HIREFOLIO_TELEGRAM_CHAT_ID` (Telegram) and `HIREFOLIO_NOTIFY_WEBHOOK_URL` (Slack/Mattermost/ntfy) — empty = channel off.
 
 The backend runs `alembic upgrade head` on start (schema is created on first
 boot) and seeds the admin user from `ADMIN_PASSWORD`. Ollama pulls its models on
