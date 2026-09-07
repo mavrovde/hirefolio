@@ -17,6 +17,33 @@ All notable changes to this project will be documented in this file.
   logs**. WhatsApp is a documented decision, not a stub (Meta verification, template approval,
   per-conversation pricing — recorded in README with the adapter seam). Rule 10 by construction:
   mocked HTTP boundary, CI never sees a token. 16 channel tests + the #69 call-site tests migrated to the registry seam.
+- **Transparent translation of recruiter messages (#248)**: every inbox interaction is
+  language-detected and translated into the owner's language by the AI stack the system already
+  runs — **local Ollama by default (private, free), Gemini when a key is configured**, the one
+  fallback pattern. TRANSPARENT is a contract, pinned test-by-test: the stored **original is
+  never mutated** (translation lives in separate, re-runnable columns; migration `trans0009`);
+  the admin inbox shows a detected-language badge and the translation **clearly labeled
+  machine-generated**, with the original one click away; translation runs as a background task
+  in its OWN session — intake never blocks or fails on it (LLM explosion ⇒ 201 + status=failed);
+  `POST /admin/interactions/{id}/translate` re-runs on demand; `TRANSLATION_ENABLED=false`
+  disables cleanly (no tasks scheduled, task-level belt, re-run 409s, zero UI remnants). Found
+  and fixed on the way: background tasks bypass the test suite's `get_db` override, so without a
+  session redirect they write to the DEV database — the conftest now redirects the module-level
+  factory for every test (lessons §4's failure mode, one layer deeper). Backend suite
+  984 → 1001 (100.00%), admin unit 398 → 406 (100% all four), and the inbox
+  browser E2E drives label → toggle-to-original → re-translate end-to-end. Review round 1
+  hardened all four of its blockers at the root: the re-run endpoint now requires admin auth
+  (anonymous 401 pinned at unit AND composed layers); the whole test suite is hermetic at the
+  LLM boundary (autouse `_generate` mock + Gemini-key scrub — no test in the default unit
+  suite reaches a real LLM through the TRANSLATION path, and no test anywhere reaches a paid
+  API; the pre-existing live-Ollama test `tests/integration/test_multi_chat_real.py`, which
+  the default run does collect, is unchanged by this PR); failed/pending translations
+  are visible and recoverable
+  in the UI (the backend's exact failure shape covered at unit + browser layers); and
+  `TRANSLATION_ENABLED`/`OWNER_LANGUAGE` are forwarded by both compose files so the knobs
+  actually reach the container. CV-request messages get the same background translation, the
+  WireMock tier gains the composed intake→task→LLM→row test, visitor text is delimited as
+  data in the prompt, and the owner language is normalized (`EN`/`en-US` safe).
 - **Bundled email capability (#262)**: the dev stack now ships **Mailpit** — every notification
   lands in a web inbox at `localhost:8025` with ZERO configuration and nothing ever leaves the
   machine (rule 10 by construction). The integration tier gains the repo's **first true

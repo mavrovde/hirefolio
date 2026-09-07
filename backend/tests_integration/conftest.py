@@ -13,6 +13,7 @@ Environment:
 """
 
 import os
+import time
 
 import httpx
 import pytest
@@ -45,3 +46,23 @@ def admin_token(client: httpx.Client) -> str:
 @pytest.fixture(scope="session")
 def admin_headers(admin_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {admin_token}"}
+
+
+def post_contact(client: httpx.Client, payload: dict) -> httpx.Response:
+    """POST the public contact form, absorbing the 5/60s rate limit.
+
+    RATE-LIMIT BUDGET (#296 round 2, re-hit by #298 round 2): the tier posts
+    FIVE contacts per full run — exactly the budget — so a back-to-back local
+    re-run starts inside a saturated window. Every contact-posting test rides
+    a 429 retry — this helper, or the equivalent loop the mailpit test keeps
+    inline (it asserts on the response between attempts): the sliding window
+    frees a slot 60s after the hit that took it, so a partial wait cannot
+    clear it.
+    """
+    resp = client.post(f"{API}/interactions/contact", json=payload)
+    for _ in range(3):
+        if resp.status_code != 429:
+            break
+        time.sleep(61)
+        resp = client.post(f"{API}/interactions/contact", json=payload)
+    return resp
