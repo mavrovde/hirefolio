@@ -90,7 +90,7 @@ class RunLog:
 # --- git worktree isolation -------------------------------------------------
 
 def create_worktree(branch: str) -> str:
-    path = os.path.join("/tmp", f"mavrov-wt-{branch.replace('/', '-')}")
+    path = os.path.join("/tmp", f"hirefolio-wt-{branch.replace('/', '-')}")
     sh(f"git worktree remove --force {path}")
     sh(f"git branch -D {branch}")
     r = sh(f"git worktree add -b {branch} {path} HEAD")

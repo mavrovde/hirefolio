@@ -8,7 +8,7 @@ def test_default_settings(monkeypatch):
     settings = Settings()
     assert (
         settings.database_url
-        == "postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/mavrov"
+        == "postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/hirefolio"
     )
     assert settings.ollama_url == "http://localhost:11434"
     assert settings.embedding_model == "nomic-embed-text"

@@ -245,7 +245,7 @@ A project-scoped `.mcp.json` configures Model Context Protocol servers to speed 
 ```bash
 # Optional overrides before launching Claude Code
 export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx        # for the github server
-export MCP_POSTGRES_URL=postgresql://user:pass@host:5433/mavrov  # non-default DB
+export MCP_POSTGRES_URL=postgresql://user:pass@host:5433/hirefolio  # non-default DB
 ```
 
 Secrets are supplied only via environment variables — `.mcp.json` contains no credentials.
@@ -354,7 +354,7 @@ hirefolio/
 │   │   └── main.py              # FastAPI app
 │   ├── migrations/              # Alembic migrations (the schema authority)
 │   ├── tests/                   # Backend tests
-│   ├── scripts/                 # Utility scripts (incl. create_test_db.py)
+│   ├── scripts/                 # Utility scripts
 │   └── requirements.txt         # Python dependencies
 ├── frontend/                    # Angular 22 workspace (3 projects)
 │   ├── projects/
@@ -384,7 +384,7 @@ The Docker stack takes everything from the ROOT `.env` (created by
 A `backend/.env` is only for running the backend BARE-METAL outside compose:
 
 ```bash
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/mavrov
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio
 OLLAMA_URL=http://localhost:11434
 EMBEDDING_MODEL=nomic-embed-text
 HIREFOLIO_GEMINI_API_KEY=your_api_key_here

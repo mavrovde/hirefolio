@@ -17,7 +17,7 @@ dedicated `test_*` database first — otherwise it can hang on (or write into)
 the live dev DB:
 
 ```bash
-export TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov
+export TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio
 ```
 
 > **Ports:** the integration overlay publishes the stack's Postgres on **5533**, not 5433, so a
@@ -30,8 +30,7 @@ and then HARD-REFUSES to run (pytest.exit) unless the resolved database name
 starts with `test_`: the suite drop/creates tables, so any other target would
 be destroyed (lesson §4, enforced in code and pinned by
 `tests/test_conftest_db_guard.py`). It also auto-creates the database if it is missing (per-worker `<db>_gwN` copies
-under `pytest -n`). `backend/scripts/create_test_db.py` can also create a test
-DB (with the `vector` extension) up front. Only `test_*` databases are ever
+under `pytest -n`). Only `test_*` databases are ever
 dropped by the suite. Do not run two pytest suites at the same time — they
 share the test database.
 

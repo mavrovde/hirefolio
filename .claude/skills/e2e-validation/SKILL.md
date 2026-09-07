@@ -16,7 +16,7 @@ This is the exact sequence; `/e2e` runs it.
 
 ## 0. Preconditions
 - `pgrep -f pytest` → empty. Never run alongside a backend pytest suite: both reset the shared
-  `test_mavrov` DB and clobber each other (lessons-learned §4).
+  `test_hirefolio` DB and clobber each other (lessons-learned §4).
 - Docker daemon up; ~4 GB free (images + ollama models; models persist in `ollama_data`, so only
   the first run pays the pull).
 

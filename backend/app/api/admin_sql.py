@@ -77,7 +77,7 @@ async def backup_database(current_user: User = Depends(get_current_admin_user)):
 
     # Generate backup filename
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-    filename = f"backup_mavrov_{timestamp}.sql"
+    filename = f"backup_hirefolio_{timestamp}.sql"
 
     cmd = ["pg_dump", db_url]
 

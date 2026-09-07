@@ -6,7 +6,7 @@ Run the repo's full Docker E2E loop exactly as codified in the **`e2e-validation
 (`.claude/skills/e2e-validation/SKILL.md`) — load it first and follow it precisely; do not
 re-derive the steps. Summary of the loop it defines:
 
-1. Precondition: `pgrep -f pytest` is empty (shared `test_mavrov` DB — lessons-learned §4).
+1. Precondition: `pgrep -f pytest` is empty (shared `test_hirefolio` DB — lessons-learned §4).
 2. `docker compose -f docker-compose.prod.yml -f docker-compose.e2e.yml up -d --build backend frontend admin-frontend proxy open-webui`
 3. **Readiness gate** (retry up to ~120 s; the third check is what prevents the pre-schema
    `relation "profile_snapshots" does not exist` 500 race):

@@ -189,6 +189,24 @@ docker compose -f docker-compose.prod.yml logs backend | grep 'CONFIG WARNING'
 # any line names a variable still set under its old name on the host
 ```
 
+## Database-name default (#288)
+
+The default database name is **`hirefolio`** (the product) since #288; before that it was
+`mavrov`. Postgres reads `POSTGRES_DB` only at **volume initialization**, so this changes
+nothing for existing data — but the backend's connection string is interpolated from the
+same variable on every boot:
+
+- **Fresh server (the intended moment for this rename):** nothing to do — the volume
+  initializes as `hirefolio` and everything matches.
+- **Host created before the rename** (including the current canonical host and any dev
+  machine with an existing volume): pin the old name in that host's `.env` **before**
+  pulling a post-rename compose file: `POSTGRES_DB=mavrov`. Without the pin the backend
+  looks for a `hirefolio` database that does not exist in the old volume and fails at
+  startup — the data itself is untouched either way.
+- Renaming an existing volume's database instead of pinning is a deliberate manual
+  migration (`ALTER DATABASE mavrov RENAME TO hirefolio` with the stack stopped except
+  `db`, then drop the pin); do it only if you want the old host to match the product name.
+
 ## Registry notes
 
 - **One-time action after the rename to `hirefolio` (#88/#189):** CI publishes to

@@ -37,7 +37,7 @@ Notes / caveats:
 - The proxy's HTTPS is published on host port **10443** (`https://localhost:10443`; `PROXY_SSL_PORT`
   in `verify_proxy_routes.py`) — a plain `https://localhost/` curl returns `000`.
 - Never start this while another pytest suite is running — `pgrep -f pytest` first; two suites on
-  the shared `test_mavrov` DB clobber each other (lessons-learned §4).
+  the shared `test_hirefolio` DB clobber each other (lessons-learned §4).
 - A failing gate is not proof the current diff broke it — reproduce on an unmodified `main` build
   before root-causing inside the diff (lessons-learned §13).
 - `verify_all.sh` orchestrates all of the above. It runs backend pytest with a portable interpreter

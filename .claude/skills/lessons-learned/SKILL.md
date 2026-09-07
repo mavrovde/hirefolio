@@ -91,13 +91,15 @@ change to ship the rest, then redo it properly (never leave `main` red).
 
 ## 4. Backend pytest local DB — isolation rules (or it hangs / wipes the dev DB)
 
-- **Always** export `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_mavrov`
+- **Always** export `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio`
+  (`test_mavrov` before the #288 rename)
   and `HIREFOLIO_GEMINI_API_KEY=""` before `./venv/bin/pytest`. This is exactly what
   `.claude/hooks/pre-push-tests.sh` sets. Without it, `conftest.get_test_engine()` falls back to the
   **live `mavrov` dev DB**, and the per-test `Base.metadata.drop_all` **hangs** on the running backend
   container's table locks (and would wipe the dev DB if it didn't block).
-- The `test_mavrov` DB lives in the `mavrovde-db-1` container. Create if missing:
-  `docker exec mavrovde-db-1 psql -U postgres -p 5433 -c "CREATE DATABASE test_mavrov"`.
+- The `test_hirefolio` DB lives in the db container. Create if missing:
+  `docker exec hirefolio-db-1 psql -U postgres -p 5433 -c "CREATE DATABASE test_hirefolio"`
+  (conftest also creates it on demand).
 - **2026-09-06 addendum — the rule is now ENFORCED IN CODE, because documentation did not stop
   the recurrence.** This exact lesson was on record, and an agent still ran ad-hoc
   `./venv/bin/pytest` without the export during the #65/#69 work: single-process runs silently
@@ -108,7 +110,7 @@ change to ship the rest, then redo it properly (never leave `main` red).
   refuses (`pytest.exit`) any resolved DB whose name doesn't start with `test_` (#260/#261).
   Meta-lesson: when a footgun recurs despite being documented, the fix is a GUARD, not a louder
   paragraph — same class as items 18 (gates must gate) and the #142/#177 startup refusals.
-- **Never run two full pytest suites against `test_mavrov` at once** (e.g. a manual run while the
+- **Never run two full pytest suites against the shared `test_hirefolio` at once** (e.g. a manual run while the
   pre-push hook fires). Both do `drop_all`/`create_all` per test on the same DB and clobber each other
   → dozens of spurious `InvalidRequestError: Could not refresh instance` / count-mismatch failures.
   Serialize them.
@@ -707,7 +709,7 @@ failures. With agents working in parallel it blocked four pushes in one session,
 temptation was to retry rather than read the log.
 
 **The rule:** when two workers contend for a resource, give each its own instead of taking turns.
-The gate now uses `test_mavrov_prepush` (conftest creates databases on demand and only drops
+The gate now uses `test_hirefolio_prepush` (`test_mavrov_prepush` before the #288 rename) (conftest creates databases on demand and only drops
 TABLES, so nothing accumulates) and runs `-n auto`, which is how CI runs it and additionally gives
 every xdist worker its own `_gwN` database. A detector that samples at a point in time cannot prevent a race;
 separate namespaces can. (Two concurrent pre-push runs would still share the gate's own name —

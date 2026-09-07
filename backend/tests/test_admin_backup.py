@@ -56,7 +56,7 @@ async def test_backup_database_success(client: AsyncClient):
         assert response.status_code == 200
         assert "application/sql" in response.headers["content-type"]
         assert (
-            "attachment; filename=backup_mavrov_"
+            "attachment; filename=backup_hirefolio_"
             in response.headers["content-disposition"]
         )
         assert b"dump_chunk_1dump_chunk_2" in response.content

@@ -15,7 +15,9 @@ INSECURE_JWT_SECRET_KEYS = frozenset(
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/mavrov"
+    database_url: str = (
+        "postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/hirefolio"
+    )
     ollama_url: str = "http://localhost:11434"
     embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = 768  # nomic-embed-text uses 768 dimensions

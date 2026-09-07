@@ -14,7 +14,7 @@ from conftest import _test_database_url
 
 def test_refuses_non_test_database(monkeypatch):
     monkeypatch.setenv(
-        "TEST_DATABASE_URL", "postgresql+asyncpg://p:p@127.0.0.1:5433/mavrov"
+        "TEST_DATABASE_URL", "postgresql+asyncpg://p:p@127.0.0.1:5433/devdb"
     )
     with pytest.raises(Exit) as exc:
         _test_database_url()
@@ -25,7 +25,7 @@ def test_refuses_the_app_default_fallthrough(monkeypatch):
     """The historical incident shape: TEST_DATABASE_URL unset, resolution falls
     through to a dev-looking DATABASE_URL — must refuse, not clobber."""
     monkeypatch.delenv("TEST_DATABASE_URL", raising=False)
-    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://p:p@127.0.0.1:5433/mavrov")
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://p:p@127.0.0.1:5433/devdb")
     with pytest.raises(Exit):
         _test_database_url()
 

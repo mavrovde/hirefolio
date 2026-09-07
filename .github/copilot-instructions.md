@@ -21,7 +21,7 @@ pipeline. **Public repo** (`github.com/mavrovde/hirefolio`) — never commit or 
 
 Backend (`cd backend`, venv at `backend/venv`):
 - `pytest` — needs Postgres on `127.0.0.1:5433` and `TEST_DATABASE_URL` pointing at a `test_*` DB
-  (e.g. `test_mavrov`) plus `HIREFOLIO_GEMINI_API_KEY=""`. Without those it hangs on / would wipe the live dev DB.
+  (e.g. `test_hirefolio`) plus `HIREFOLIO_GEMINI_API_KEY=""`. Without those it hangs on / would wipe the live dev DB.
 - `ruff check .` && `ruff format --check .` · `mypy app --ignore-missing-imports --no-error-summary`
   · `bandit -r app -ll --skip B101`
 
@@ -68,7 +68,7 @@ Full stack: `./manage.sh start|stop|logs` · `./verify_all.sh` (full suite incl.
 ## Operational lessons (hard-won — do not re-learn)
 
 - **Never run backend pytest while another suite runs.** `pgrep -f pytest` first and wait; two
-  suites on the shared `test_mavrov` DB clobber each other into spurious failures.
+  suites on the shared `test_hirefolio` DB clobber each other into spurious failures.
 - **Before blaming your diff for a local gate failure, reproduce it on an unmodified `main` build**
   (git worktree of `main`, same gate). If `main` fails too, it's a latent gate bug.
 - **Local proxy HTTPS is on host port 10443** (`https://localhost:10443`); `https://localhost/`
