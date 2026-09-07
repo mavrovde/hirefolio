@@ -17,6 +17,7 @@ the adapter is deferred until an owner actually wants it. The seam makes it
 one class implementing `NotificationChannel`; nothing here pretends it exists.
 """
 
+from dataclasses import dataclass
 from typing import Protocol
 
 import httpx
@@ -26,31 +27,53 @@ from app.logger import logger
 from app.services.email import EmailService
 
 
+@dataclass(frozen=True)
 class OwnerNotification:
-    """One owner-facing event, channel-agnostic."""
+    """One owner-facing event, channel-agnostic. Frozen: an event that has
+    fanned out must read identically on every channel."""
 
-    def __init__(
-        self,
+    source: str
+    name: str
+    email: str
+    company: str
+    message: str
+
+    @classmethod
+    def build(
+        cls,
         *,
         source: str,
         name: str,
         email: str,
         company: str | None,
         message: str,
-    ) -> None:
-        self.source = source
-        self.name = name
-        self.email = email
-        self.company = company or ""
-        self.message = message
+    ) -> "OwnerNotification":
+        return cls(
+            source=source,
+            name=name,
+            email=email,
+            company=company or "",
+            message=message,
+        )
 
     def summary(self) -> str:
-        """Compact single-message rendering for chat-shaped channels."""
+        """Compact single-message rendering for chat-shaped channels.
+
+        Submitter-controlled text lands in Slack's mrkdwn-parsed `text`
+        (#297 review): escape the three characters mrkdwn assigns meaning
+        to, per Slack's own escaping rules — visitors must not be able to
+        inject channel-notification sequences like <!channel>."""
+        safe = (
+            self.message[:500]
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
         company = f" ({self.company})" if self.company else ""
         return (
             f"[{self.source}] New interaction from {self.name}{company}\n"
             f"{self.email}\n\n"
-            f"{self.message[:500]}\n\n"
+            f"{safe}\n\n"
             f"Review: {settings.site_url.rstrip('/')}/admin → Inbox"
         )
 

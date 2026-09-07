@@ -47,6 +47,22 @@ for _notify_var in (
     os.environ.pop(_notify_var, None)
 
 
+def _scrub_notification_settings() -> None:
+    """The env-pop above is NOT enough (#297 round 2, measured): Settings also
+    reads `env_file=".env"` against the CWD, and backend/.env is the
+    documented bare-metal dev config — a token there produced 20 real Telegram
+    POSTs from a green suite with nothing exported. Scrubbing the SETTINGS
+    OBJECT covers every source at once; it runs after app.config imports."""
+    from app.config import settings as _settings
+
+    _settings.telegram_bot_token = ""
+    _settings.telegram_chat_id = ""
+    _settings.notify_webhook_url = ""
+    _settings.smtp_host = ""
+    _settings.smtp_user = ""
+    _settings.smtp_password = ""
+
+
 def mock_module(name):
     # Use a fresh MagicMock for each module to avoid shared side_effect exhaustion
     m = MagicMock()

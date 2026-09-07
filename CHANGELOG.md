@@ -17,7 +17,19 @@ All notable changes to this project will be documented in this file.
   logs**. WhatsApp is a documented decision, not a stub (Meta verification, template approval,
   per-conversation pricing — recorded in README with the adapter seam). Rule 10 by construction:
   mocked HTTP boundary, CI never sees a token. 9 channel tests + the #69 call-site tests
-  migrated to the registry seam (suite 962 → 971, 100.00%).
+  migrated to the registry seam (suite 975 → 980 at the merged head, 100.00%).
+- **Bundled email capability (#262)**: the dev stack now ships **Mailpit** — every notification
+  lands in a web inbox at `localhost:8025` with ZERO configuration and nothing ever leaves the
+  machine (rule 10 by construction). The integration tier gains the repo's **first true
+  end-to-end email assertion**: contact form → background task → real SMTP hop over the compose
+  network → message asserted through Mailpit's API (tier 20 → 21 tests). `EmailService`'s
+  quadruplicated SMTP block collapsed into ONE `_send` transport where **STARTTLS and login are
+  independent and each optional** — sending is gated on `SMTP_HOST` alone, so the no-credential
+  relay shape works while external providers keep auth+TLS by default (new `SMTP_STARTTLS`,
+  `SMTP_FROM` settings; 4 transport-mode tests). Prod compose gains an **opt-in** `mail` profile
+  (send-only postfix on the private network, absent from a default `up` — verified via
+  `config --services`); `docs/DEPLOYMENT.md` documents self-hosted deliverability honestly —
+  SPF/DKIM/rDNS and the port-25 egress reality — and recommends an external provider.
 - **Hire-me CTA + availability indicator (#271 — AC5 of #69, split by review)**: the public hero
   now renders the owner's **job-search state** ("open to offers / listening / not looking",
   EN + DE) beside a prominent **Hire me** CTA that scrolls to the contact form. The state lives in

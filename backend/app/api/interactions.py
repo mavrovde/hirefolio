@@ -121,7 +121,7 @@ class StatusPatch(BaseModel):
 def _notify(name: str, email: str, company: str | None, message: str) -> None:
     try:
         notify_owner(
-            OwnerNotification(
+            OwnerNotification.build(
                 source="contact_form",
                 name=name,
                 email=email,
@@ -130,7 +130,7 @@ def _notify(name: str, email: str, company: str | None, message: str) -> None:
             )
         )
     except Exception as e:  # never let notification failures surface anywhere
-        logger.error(f"Interaction notification failed: {e}")
+        logger.error(f"Interaction notification failed: {type(e).__name__}")
 
 
 @router.post(

@@ -732,7 +732,7 @@ jobs:
           # Name the services WITH --no-deps: open-webui is multi-GB, unused by
           # this suite, and would be dragged in via proxy's depends_on otherwise
           # (measured locally — every real dependency is in the explicit list).
-          docker compose -f docker-compose.prod.yml -f docker-compose.inttest.yml up -d --no-deps db ollama backend frontend admin-frontend proxy
+          docker compose -f docker-compose.prod.yml -f docker-compose.inttest.yml up -d --no-deps db ollama mailpit backend frontend admin-frontend proxy
 
       - name: Wait for real readiness
         run: |

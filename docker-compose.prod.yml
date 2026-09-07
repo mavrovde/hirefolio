@@ -71,6 +71,16 @@ services:
       - HIREFOLIO_TELEGRAM_CHAT_ID=${HIREFOLIO_TELEGRAM_CHAT_ID:-}
       - HIREFOLIO_NOTIFY_WEBHOOK_URL=${HIREFOLIO_NOTIFY_WEBHOOK_URL:-}
       - NOTIFY_TIMEOUT_SECONDS=${NOTIFY_TIMEOUT_SECONDS:-10}
+      # Email (#262): pass-through from .env. Empty SMTP_HOST = sending
+      # disabled (the graceful-skip contract). Without these lines the whole
+      # DEPLOYMENT.md email section was inert on prod — the settings never
+      # reached the app (measured in review: 35 env keys, none SMTP).
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_STARTTLS=${SMTP_STARTTLS:-true}
+      - SMTP_FROM=${SMTP_FROM:-}
       # Names ONLY (never values) of pre-#141 variables still set on the host, so
       # the backend can warn that they are ignored (#141). A credential never
       # enters the container through this.
@@ -201,6 +211,27 @@ services:
       - admin-frontend
       - backend
       - open-webui
+    networks:
+      - app-network
+
+  # OPTIONAL self-hosted outbound relay (#262) — OFF by default; enable with
+  # `docker compose --profile mail up`. When enabled, set SMTP_HOST=mailer,
+  # SMTP_PORT=587, SMTP_STARTTLS=false in .env (the relay is reached over the
+  # private compose network only; it is NOT exposed on the host).
+  # Deliverability is the owner's problem to solve, not this file's to promise:
+  # see docs/DEPLOYMENT.md "Self-hosted outbound mail" for the SPF/DKIM/rDNS
+  # requirements and the port-25 egress reality on most VPS providers. Most
+  # owners should point SMTP_* at an external provider instead.
+  mailer:
+    image: boky/postfix:v4.2.0
+    profiles: ["mail"]
+    # No restart policy ON PURPOSE: with an empty MAIL_SENDER_DOMAIN postfix
+    # exits at startup, and unless-stopped would crash-loop it silently
+    # forever (#296 round 2). Fail once, visibly.
+    environment:
+      # Empty => postfix refuses to start, which is the honest failure: the
+      # profile without a sender domain cannot deliver anything anyway.
+      - ALLOWED_SENDER_DOMAINS=${MAIL_SENDER_DOMAIN:-}
     networks:
       - app-network
 

@@ -302,6 +302,38 @@ async def test_contact_form_fans_out_through_the_registry(client: AsyncClient):
     assert sent == {"email": 1, "telegram": 1}
 
 
+# ---------------------------------------------------------------- summary ----
+
+
+def test_summary_truncates_long_messages_and_escapes_mrkdwn():
+    """The two executed-but-unasserted branches (#297 review minors) plus the
+    injection fix: 500-char truncation, the empty-company arm, and Slack
+    mrkdwn escaping — a visitor must not be able to smuggle <!channel> into
+    the owner's Slack."""
+    long_event = OwnerNotification.build(
+        source="contact_form",
+        name="N",
+        email="n@example.com",
+        company=None,
+        message="x" * 600,
+    )
+    text = long_event.summary()
+    assert "x" * 500 in text and "x" * 501 not in text
+    assert "(" not in text.split("\n")[0]  # empty company renders no parens
+
+    inject = OwnerNotification.build(
+        source="contact_form",
+        name="N",
+        email="n@example.com",
+        company="ACME",
+        message="hi <!channel> & <http://evil.example|click>",
+    )
+    text = inject.summary()
+    assert "<!channel>" not in text
+    assert "&lt;!channel&gt;" in text
+    assert "&amp;" in text
+
+
 # -------------------------------------------------------------- namespacing --
 
 
