@@ -55,6 +55,8 @@ curl -s https://<public-host>/api/app/stats/public    # backend_version == IMAGE
 curl -s -o /dev/null -w '%{http_code}' https://<public-host>/admin/login  # -> 404 (freshness probe)
 ```
 
+Optional notification channels (#263): `HIREFOLIO_TELEGRAM_BOT_TOKEN` + `HIREFOLIO_TELEGRAM_CHAT_ID` (Telegram) and `HIREFOLIO_NOTIFY_WEBHOOK_URL` (Slack/Mattermost/ntfy) — empty = channel off.
+
 The backend runs `alembic upgrade head` on start (schema is created on first
 boot) and seeds the admin user from `ADMIN_PASSWORD`. Ollama pulls its models on
 first use; the first AI request is slow.

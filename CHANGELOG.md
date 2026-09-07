@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Messenger notification channels (#263)**: owner notifications become a **pluggable channel
+  registry** — every inbox interaction fans out to all configured channels, email now one among
+  several. **Telegram** ships first (free Bot API, two `HIREFOLIO_*` env vars, 2-minute
+  @BotFather setup) plus a **provider-agnostic webhook** channel (one implementation covers
+  Slack/Mattermost/ntfy). Contracts pinned test-by-test: empty config = the channel does not
+  exist and **zero requests are attempted**; half a Telegram config is no config; one dead
+  channel never blocks another (Telegram 500 → webhook still fires) nor intake; a channel that
+  *raises* is isolated by the registry's own belt; and the Telegram failure log carries the
+  exception TYPE only — **the token is part of the URL and a test asserts it never reaches the
+  logs**. WhatsApp is a documented decision, not a stub (Meta verification, template approval,
+  per-conversation pricing — recorded in README with the adapter seam). Rule 10 by construction:
+  mocked HTTP boundary, CI never sees a token. 16 channel tests + the #69 call-site tests migrated to the registry seam.
 - **Bundled email capability (#262)**: the dev stack now ships **Mailpit** — every notification
   lands in a web inbox at `localhost:8025` with ZERO configuration and nothing ever leaves the
   machine (rule 10 by construction). The integration tier gains the repo's **first true

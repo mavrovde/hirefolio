@@ -30,6 +30,39 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-only-jwt-signing-secret")
 # a module here when the real one genuinely cannot be imported in tests.
 
 
+# RULE 10 (#297 review): with a real HIREFOLIO_TELEGRAM_* token (or webhook
+# URL, or SMTP host) in the developer's environment, the suite would make REAL
+# outbound calls — silently, because every channel swallows its failures
+# (measured: 10 live Telegram POSTs from one green test file). Scrub the
+# notification env BEFORE app.config builds Settings; individual tests opt
+# back in by patching settings explicitly.
+for _notify_var in (
+    "HIREFOLIO_TELEGRAM_BOT_TOKEN",
+    "HIREFOLIO_TELEGRAM_CHAT_ID",
+    "HIREFOLIO_NOTIFY_WEBHOOK_URL",
+    "SMTP_HOST",
+    "SMTP_USER",
+    "SMTP_PASSWORD",
+):
+    os.environ.pop(_notify_var, None)
+
+
+def _scrub_notification_settings() -> None:
+    """The env-pop above is NOT enough (#297 round 2, measured): Settings also
+    reads `env_file=".env"` against the CWD, and backend/.env is the
+    documented bare-metal dev config — a token there produced 20 real Telegram
+    POSTs from a green suite with nothing exported. Scrubbing the SETTINGS
+    OBJECT covers every source at once; it runs after app.config imports."""
+    from app.config import settings as _settings
+
+    _settings.telegram_bot_token = ""
+    _settings.telegram_chat_id = ""
+    _settings.notify_webhook_url = ""
+    _settings.smtp_host = ""
+    _settings.smtp_user = ""
+    _settings.smtp_password = ""
+
+
 def mock_module(name):
     # Use a fresh MagicMock for each module to avoid shared side_effect exhaustion
     m = MagicMock()
@@ -225,6 +258,12 @@ def pytest_configure(config):
     already set in the worker environment at this point, so each worker
     provisions its own isolated database.
     """
+    # SECURITY / rule 10 (#297 rounds 2-3): the settings-object scrub MUST run
+    # here. Round 2 shipped it as dead code — the insertion guard checked for
+    # the function NAME, which its own `def` already contained — and coverage
+    # could not catch it because conftest.py sits outside --cov=app. The
+    # observable that proves it working is REQUEST COUNT, not a passing test.
+    _scrub_notification_settings()
     asyncio.run(_create_database_if_missing(_test_database_url()))
 
 

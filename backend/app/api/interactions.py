@@ -30,7 +30,7 @@ from app.models.interaction import (
 )
 from app.models.user import User
 from app.services.auth import get_current_admin_user
-from app.services.email import EmailService
+from app.services.notifications import OwnerNotification, notify_owner
 from app.services.rate_limit import SlidingWindowRateLimiter, rate_limit_dependency
 
 router = APIRouter(prefix="/interactions", tags=["interactions"])
@@ -120,15 +120,17 @@ class StatusPatch(BaseModel):
 
 def _notify(name: str, email: str, company: str | None, message: str) -> None:
     try:
-        EmailService().send_interaction_notification(
-            source="contact_form",
-            name=name,
-            email=email,
-            company=company or "",
-            message=message,
+        notify_owner(
+            OwnerNotification.build(
+                source="contact_form",
+                name=name,
+                email=email,
+                company=company,
+                message=message,
+            )
         )
     except Exception as e:  # never let notification failures surface anywhere
-        logger.error(f"Interaction notification failed: {e}")
+        logger.error(f"Interaction notification failed: {type(e).__name__}")
 
 
 @router.post(

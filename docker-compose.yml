@@ -73,6 +73,11 @@ services:
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
       - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY}
+      # Notification channels (#263): empty = channel off, exactly like SMTP.
+      - HIREFOLIO_TELEGRAM_BOT_TOKEN=${HIREFOLIO_TELEGRAM_BOT_TOKEN:-}
+      - HIREFOLIO_TELEGRAM_CHAT_ID=${HIREFOLIO_TELEGRAM_CHAT_ID:-}
+      - HIREFOLIO_NOTIFY_WEBHOOK_URL=${HIREFOLIO_NOTIFY_WEBHOOK_URL:-}
+      - NOTIFY_TIMEOUT_SECONDS=${NOTIFY_TIMEOUT_SECONDS:-10}
       # Email (#262): the dev stack defaults to the bundled Mailpit catch-all —
       # every notification is visible at http://localhost:8025 with ZERO
       # config, and nothing ever leaves the machine (rule 10). Point SMTP_* at

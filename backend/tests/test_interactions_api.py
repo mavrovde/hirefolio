@@ -44,9 +44,11 @@ async def test_contact_creates_interaction(client: AsyncClient, db_session):
 
 @pytest.mark.asyncio
 async def test_contact_sends_notification_in_background(client: AsyncClient):
-    with patch(
-        "app.api.interactions.EmailService.send_interaction_notification"
-    ) as send:
+    with (
+        patch("app.services.email.EmailService.send_interaction_notification") as send,
+        # Post-#263 the email path exists only when its channel is configured.
+        patch("app.config.settings.smtp_host", "mailpit"),
+    ):
         resp = await _post_contact(client)
         assert resp.status_code == 201
     send.assert_called_once()
@@ -56,8 +58,8 @@ async def test_contact_sends_notification_in_background(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_contact_notification_failure_never_breaks_intake(client: AsyncClient):
     with patch(
-        "app.api.interactions.EmailService.send_interaction_notification",
-        side_effect=RuntimeError("smtp down"),
+        "app.api.interactions.notify_owner",
+        side_effect=RuntimeError("every channel down"),
     ):
         resp = await _post_contact(client)
     assert resp.status_code == 201
@@ -125,9 +127,10 @@ async def test_contact_folds_line_breaks_in_header_bound_fields(client: AsyncCli
     """A line break in `name` reaches the notification's Subject header, where the
     stdlib refuses the whole email — the API folds it to spaces BEFORE storage and
     notification, so the owner still gets notified (review finding, #69 round 1)."""
-    with patch(
-        "app.api.interactions.EmailService.send_interaction_notification"
-    ) as send:
+    with (
+        patch("app.services.email.EmailService.send_interaction_notification") as send,
+        patch("app.config.settings.smtp_host", "mailpit"),
+    ):
         resp = await _post_contact(
             client,
             name="Eve\r\nBcc: spam@x",
@@ -148,9 +151,7 @@ async def test_contact_rate_limited_after_limit(client: AsyncClient, monkeypatch
     from app.api import interactions as interactions_module
 
     monkeypatch.setattr(interactions_module.contact_rate_limiter, "max_requests", 3)
-    with patch(
-        "app.api.interactions.EmailService.send_interaction_notification"
-    ) as send:
+    with patch("app.api.interactions.notify_owner") as send:
         for _ in range(3):
             assert (await _post_contact(client)).status_code == 201
         resp = await _post_contact(client)
