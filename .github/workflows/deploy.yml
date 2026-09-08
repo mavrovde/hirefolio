@@ -380,8 +380,10 @@ jobs:
         run: bash test-bump-version.sh
       - name: Self-test the setup wizard's .env helpers
         run: bash setup.test.sh
-      - name: PII guard (demo persona stays anonymous)
+      - name: PII guard (demo persona anonymous) + de-brand guard (#313)
         run: bash scripts/check_no_pii.sh
+      - name: Self-test the PII/de-brand checker itself
+        run: bash scripts/check_no_pii.test.sh
       # Documented-knob contract (v1.13.0 retrospective): a Settings key the docs
       # promise must actually reach the backend container in BOTH compose files.
       # Three blocker-level review findings in one release (#296, #297, #298) were

@@ -8,9 +8,10 @@ own name and domain.
 
 > **Name change (#88):** the project is now **Hirefolio** and the repository is
 > [`mavrovde/hirefolio`](https://github.com/mavrovde/hirefolio) (GitHub redirects the old
-> `mavrovde/mavrov.de` URLs, and `git remote` keeps working — but update your remote when convenient:
-> `git remote set-url origin https://github.com/mavrovde/hirefolio.git`).
-> `mavrov.de` remains the maintainer's own deployment of it, not the product name.
+> `mavrovde/mavrov.de` URLs, and `git remote` keeps working — but update your remote <!-- de-brand:historical: the pre-#88 repository name -->
+> when convenient: `git remote set-url origin https://github.com/mavrovde/hirefolio.git`).
+> **Hirefolio is the product**; any single deployment of it — including the maintainer's — is just
+> one instance, and this documentation is written for *yours*.
 > Container images publish to `ghcr.io/mavrovde/hirefolio-*` from the first build after the rename;
 > images published earlier still live at `ghcr.io/mavrovde/mavrov.de-*`, so pin `IMAGE_REPO`
 > explicitly when deploying a pre-rename tag. **One-time owner action:** those four new GHCR
@@ -336,7 +337,9 @@ bash setup.test.sh                             # the onboarding wizard's guards 
 bash .claude/hooks/guard-destructive.test.sh   # destructive-command guard (#116/#188)
 bash .claude/hooks/pre-push-tests.test.sh      # the pre-push gate's own parsing (#237)
 sh proxy/test-generate-admin-config.sh         # admin allowlist / real_ip generator (#86)
-bash scripts/check_no_pii.sh                   # no personal identifiers in tracked sources (#66)
+bash scripts/check_no_pii.sh                   # no personal identifiers (#66) + no maintainer-domain
+                                               #   branding on guidance surfaces (#313)
+bash scripts/check_no_pii.test.sh              # that checker's own 60 cases, both directions (#313)
 ```
 
 `scripts/check_live_freshness.sh <url> <version>` is the same family — it powers the daily
@@ -459,8 +462,8 @@ identifies you. Every knob has a safe default that preserves the canonical behav
 | `IMAGE_REPO` | `.env` (compose) | `ghcr.io/mavrovde/hirefolio` (prod), `mavrovde` (dev) | Registry/org/name the compose files pull `-backend/-frontend/-admin-frontend/-proxy` images from |
 | `IMAGE_TAG` | `.env` (compose) | repo `VERSION` | Pinned image tag to run |
 | `REGISTRY`, `IMAGE_NAME` | GitHub **repository variables** | `ghcr.io`, `${{ github.repository }}` | Where `deploy.yml` publishes images (override to retarget the CI publish) |
-| `PUBLIC_SERVER_NAME` | `.env` (proxy) | `mavrov.de www.mavrov.de` | Public site hostname(s) the reverse proxy answers on |
-| `ADMIN_SERVER_NAME` | `.env` (proxy) | `admin.mavrov.de admin.localhost` | Admin console hostname(s) |
+| `PUBLIC_SERVER_NAME` | `.env` (proxy) | the canonical instance's hostnames | Public site hostname(s) the reverse proxy answers on. **Set this** to `<your-domain> www.<your-domain>` — unlike the other rows, the built-in fallback is not neutral (#313) |
+| `ADMIN_SERVER_NAME` | `.env` (proxy) | the canonical instance's admin hostname + `admin.localhost` | Admin console hostname(s). **Set this** to `admin.<your-domain> admin.localhost` — same caveat |
 | `ADMIN_ALLOWED_CIDRS` | `.env` (proxy) | *empty → CLOSED (loopback only)* | Trusted operator IPs/CIDRs allowed to reach the admin console. **Never `0.0.0.0/0` in prod.** |
 | `TRUSTED_PROXY_CIDRS` | `.env` (proxy) | `172.16.0.0/12` (Docker bridge) | Upstream CIDR(s) nginx trusts for the forwarded-for header (real client IP recovery) |
 | `REAL_IP_HEADER` | `.env` (proxy) | `X-Forwarded-For` | Header carrying the real client IP (set `X-Real-IP` if your front proxy uses it) |
@@ -856,7 +859,8 @@ maintainer's own profile data are *not* part of the license grant; bring your ow
 Your deployment shows **your** contact details — they come from the site config (#65) and your
 uploaded profile data, never from this repository.
 
-- **Reference deployment**: <https://mavrov.de> (the maintainer's own instance)
+- **Reference deployment**: <https://mavrov.de> — the **canonical instance** of Hirefolio (the <!-- de-brand:canonical: the one sanctioned instance aside in this file -->
+  maintainer's own install; one deployment of the product, not the product itself)
 - **Issues / questions about the project**: [GitHub issues](https://github.com/mavrovde/hirefolio/issues)
 
 ## 🗺️ Roadmap
