@@ -6,7 +6,7 @@ python-dotenv==1.2.3
 sqlalchemy[asyncio]==2.0.52
 asyncpg==0.31.0
 pgvector==0.5.0
-alembic==1.19.1
+alembic==1.19.2
 httpx==0.28.1
 python-jose[cryptography]==3.5.0
 # Direct dependency (issue #143): Fernet field-level encryption of the Gemini
