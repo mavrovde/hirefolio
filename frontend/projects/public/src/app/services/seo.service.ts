@@ -2,6 +2,7 @@ import { Injectable, Inject, DOCUMENT } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
 import { BehaviorSubject } from 'rxjs';
 import { SiteConfigService, SiteConfig, DEFAULT_SITE_CONFIG } from './site-config.service';
+import { environment } from '../../environments/environment';
 
 export interface SeoData {
     title?: string;
@@ -119,7 +120,34 @@ export class SeoService {
         if (url) {
             this.metaService.updateTag({ property: 'og:url', content: url });
             this.updateCanonicalUrl(url);
+            this.updateAgentLinks();
         }
+    }
+
+    /**
+     * Advertise the machine-readable surfaces from the HTML head (#252).
+     *
+     * An agent that already has the page does not need to guess a URL: `link
+     * rel="alternate" type="application/json"` points at the JSON Resume
+     * document, and `rel="describedby"` at `/llms.txt` — the two relations
+     * llmstxt.org names for exactly this. Emitted only once the runtime site
+     * URL is known, for the same reason as the canonical: a relative or empty
+     * `href` is worse than none. Both are written into the INJECTED document,
+     * so they are present in the SERVER-rendered HTML a crawler reads.
+     */
+    private updateAgentLinks(): void {
+        // The prefix comes from the browser layer's own config; the SSR copy of
+        // this path lives in `seo/sitemap.ts` (`RESUME_PATH`).
+        this.updateLink(
+            "link[rel='alternate'][type='application/json']",
+            { rel: 'alternate', type: 'application/json', title: 'JSON Resume' },
+            `${this.baseUrl}${environment.apiPrefix}/profile/resume.json`
+        );
+        this.updateLink(
+            "link[rel='describedby']",
+            { rel: 'describedby', type: 'text/plain' },
+            `${this.baseUrl}/llms.txt`
+        );
     }
 
     setJsonLd(schema: JsonLd): void {
@@ -150,12 +178,19 @@ export class SeoService {
      * was absent from the server-rendered HTML that crawlers actually read.
      */
     private updateCanonicalUrl(url: string): void {
-        let link: HTMLLinkElement | null = this.document.querySelector("link[rel='canonical']");
+        this.updateLink("link[rel='canonical']", { rel: 'canonical' }, url);
+    }
+
+    /** Upsert one `<link>` in the injected document's head, by selector. */
+    private updateLink(selector: string, attributes: Record<string, string>, href: string): void {
+        let link: HTMLLinkElement | null = this.document.querySelector(selector);
         if (!link) {
             link = this.document.createElement('link');
-            link.setAttribute('rel', 'canonical');
+            for (const [name, value] of Object.entries(attributes)) {
+                link.setAttribute(name, value);
+            }
             this.document.head.appendChild(link);
         }
-        link.setAttribute('href', url);
+        link.setAttribute('href', href);
     }
 }

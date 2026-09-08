@@ -6,6 +6,7 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import { join } from 'node:path';
+import { renderLlmsTxt } from './app/seo/llms-txt';
 import {
   createJsonFetcher,
   renderRobotsTxt,
@@ -77,14 +78,25 @@ const angularApp = new AngularNodeAppEngine({
 /**
  * Discoverability files, rendered per request from the runtime site config
  * (`SITE_URL`) and the live published-post list instead of shipping a static
- * copy hardcoded to one domain (#71). All the logic — and its tests — live in
- * `app/seo/sitemap.ts`; this file is only the wiring. Registered BEFORE the
- * static handler so a stale bundled copy could never shadow them.
+ * copy hardcoded to one domain (#71) — `robots.txt` and `sitemap.xml` for
+ * classic crawlers, `llms.txt` for AI assistants (#252). All the logic — and
+ * its tests — lives in `app/seo/sitemap.ts` and `app/seo/llms-txt.ts`; this
+ * file is only the wiring. Registered BEFORE the static handler so a stale
+ * bundled copy could never shadow them.
  */
 const fetchJson = createJsonFetcher();
 
 app.get('/robots.txt', (req, res, next) => {
   renderRobotsTxt(fetchJson, requestOrigin(req.headers, req.protocol))
+    .then((body) => res.type('text/plain; charset=utf-8').send(body))
+    .catch(next);
+});
+
+app.get('/llms.txt', (req, res, next) => {
+  renderLlmsTxt(fetchJson, requestOrigin(req.headers, req.protocol))
+    // Markdown by content, `.txt` by convention (llmstxt.org). `text/plain`
+    // keeps it readable in a browser tab, which is what agents and humans both
+    // do with it first.
     .then((body) => res.type('text/plain; charset=utf-8').send(body))
     .catch(next);
 });

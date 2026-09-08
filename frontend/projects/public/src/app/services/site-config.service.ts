@@ -22,6 +22,9 @@ export interface SiteConfig {
     /** Owner's job-search state (#271): 'open' | 'listening' | 'not_looking'.
      *  GUARANTEED here — the projection normalizes an absent wire value. */
     availability: string;
+    /** AI-crawler policy (#252): 'allow' | 'deny'. Consumed by the SSR
+     *  robots.txt; exposed here so the browser app reads ONE config shape. */
+    aiCrawlerPolicy: string;
 }
 
 /** Backend wire shape (snake_case, see backend/app/api/site_config.py). */
@@ -37,6 +40,8 @@ interface SiteConfigDto {
      *  default in the projection, per this service's degrade-never-break
      *  contract. */
     availability?: string;
+    /** ABSENT on a pre-#252 backend — normalized to 'allow' in the projection. */
+    ai_crawler_policy?: string;
 }
 
 /**
@@ -52,6 +57,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     socialLinks: [],
     analyticsId: '',
     availability: 'listening',
+    aiCrawlerPolicy: 'allow',
 };
 
 @Injectable({
@@ -87,6 +93,12 @@ export class SiteConfigService {
                     (AVAILABILITY_STATES as readonly string[]).includes(dto.availability)
                         ? dto.availability
                         : DEFAULT_SITE_CONFIG.availability,
+                // Only 'deny' turns the AI crawlers away; absent/unknown means
+                // allow, matching the backend's own normalization (#252).
+                aiCrawlerPolicy:
+                    dto.ai_crawler_policy?.toLowerCase() === 'deny'
+                        ? 'deny'
+                        : DEFAULT_SITE_CONFIG.aiCrawlerPolicy,
             })),
             catchError(() => of(DEFAULT_SITE_CONFIG)),
             shareReplay(1)

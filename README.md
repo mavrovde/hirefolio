@@ -52,7 +52,29 @@ own name and domain.
   a unique title/description/canonical + Open Graph/Twitter card per route, and `sitemap.xml` /
   `robots.txt` **rendered per request** from your `SITE_URL` and your published posts — all
   server-rendered, so crawlers read them without executing JavaScript.
+- **Readable by AI assistants** (#252): recruiters increasingly ask an assistant instead of a
+  search engine, so the profile is published in a form agents can ingest — see below.
 - **Type-Safe**: Full TypeScript/Python type coverage
+
+### How AI assistants read this site (#252)
+
+Classic SEO wins the search result; these three surfaces win the *answer*. All of them are
+generated from your runtime config and your live data — there is nothing to author or rebuild.
+
+| Surface | What it is |
+|---|---|
+| `GET /llms.txt` | The [llmstxt.org](https://llmstxt.org) map of the site: who the owner is, the availability signal, and a curated link list (structured profile, CV, contact, blog posts) an assistant can follow. Rendered by SSR from `GET /api/app/config/site` + your published posts. |
+| `GET /api/app/profile/resume.json` | The whole candidate in ONE request as [JSON Resume](https://jsonresume.org) v1.0.0 — experience, education, skills, languages, certificates, references, plus `meta.availability` and `meta.contactUrl`. Built from the active profile version (admin → Profile Data), so an upload changes it immediately. It passes through the SAME public allowlist as the HTML profile, so it can never expose a field the site does not already show. |
+| `GET /robots.txt` | Names the AI crawlers explicitly (GPTBot, ClaudeBot, Google-Extended, PerplexityBot, Applebot-Extended, …). `AI_CRAWLER_POLICY=allow` (default) welcomes them; `deny` gives **only** those agents `Disallow: /` and leaves classic search untouched. `/for/` (tailored recruiter links) and `/admin` are excluded for everyone. |
+
+Every page's `<head>` also carries `<link rel="alternate" type="application/json">` to the JSON
+Resume and `<link rel="describedby">` to `/llms.txt`, server-rendered so an agent finds them
+without executing JavaScript.
+
+```bash
+curl https://<your-domain>/llms.txt
+curl https://<your-domain>/api/app/profile/resume.json | jq .meta
+```
 
 ## 🏗️ Architecture
 

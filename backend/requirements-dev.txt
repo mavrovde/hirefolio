@@ -7,6 +7,10 @@ pytest-asyncio==1.4.0
 pytest-cov==7.1.0
 pytest-mock==3.15.1
 pytest-xdist==3.8.0
+# Validates GET /profile/resume.json against the VENDORED JSON Resume v1.0.0
+# schema (tests/fixtures/jsonresume_schema_v1.json, #252). Test-only: the app
+# never validates at runtime, and the fixture keeps the check offline.
+jsonschema==4.26.0
 
 
 # Linting & Formatting

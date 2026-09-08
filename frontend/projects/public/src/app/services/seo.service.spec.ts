@@ -101,6 +101,36 @@ describe('SeoService', () => {
         const link = ssrDocument.querySelector("link[rel='canonical']");
         expect(link?.getAttribute('href')).toBe('https://mavrov.de/server-test');
     });
+
+    /**
+     * #252 AC4: an agent holding the page must not have to guess where the
+     * machine-readable profile lives. Asserted on the INJECTED document for the
+     * same reason as the canonical — it is the SERVER-rendered head that a
+     * crawler reads.
+     */
+    it('advertises the JSON Resume and llms.txt from the SSR head (#252)', () => {
+        const ssrDocument = document.implementation.createHTMLDocument('ssr');
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({
+            providers: [
+                SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER,
+                { provide: DOCUMENT, useValue: ssrDocument }
+            ]
+        });
+        const seo = TestBed.inject(SeoService);
+        seo.updateSeo({ url: '/blog' });
+
+        const resume = ssrDocument.querySelector("link[rel='alternate'][type='application/json']");
+        expect(resume?.getAttribute('href')).toBe('https://mavrov.de/api/app/profile/resume.json');
+        expect(resume?.getAttribute('title')).toBe('JSON Resume');
+        const llms = ssrDocument.querySelector("link[rel='describedby']");
+        expect(llms?.getAttribute('href')).toBe('https://mavrov.de/llms.txt');
+
+        // Navigating must UPDATE the links, never append a second copy.
+        seo.updateSeo({ url: '/cv' });
+        expect(ssrDocument.querySelectorAll("link[rel='alternate']")).toHaveLength(1);
+        expect(ssrDocument.querySelectorAll("link[rel='describedby']")).toHaveLength(1);
+    });
 });
 
 describe('SeoService config re-apply (#255 review pins)', () => {

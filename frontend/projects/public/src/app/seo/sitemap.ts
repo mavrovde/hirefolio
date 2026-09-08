@@ -26,6 +26,13 @@ export type JsonFetcher = (path: string) => Promise<unknown>;
 export { SSR_BACKEND_ORIGIN };
 
 const API_PREFIX = '/api/app';
+/**
+ * Path of the machine-readable profile (#252). One definition for every
+ * server-rendered artifact that advertises it (robots.txt, llms.txt); the
+ * BROWSER-side copy is built from `environment.apiPrefix` in `SeoService`,
+ * because that is the browser layer's own source of truth for the prefix.
+ */
+export const RESUME_PATH = `${API_PREFIX}/profile/resume.json`;
 /** `page_size` is capped at 100 by the backend (`backend/app/api/posts.py`). */
 const POSTS_PAGE_SIZE = 100;
 /** Hard bound so a mis-reported `total_pages` can never loop the request forever. */
@@ -42,15 +49,47 @@ export const STATIC_ROUTES: readonly { path: string; changefreq: string; priorit
 export interface SitemapPost {
     slug: string;
     lastmod?: string;
+    /** Only `llms.txt` uses it — a link list needs names, a sitemap does not. */
+    title?: string;
 }
+
+/**
+ * The runtime site identity the server-rendered files are built from (#65).
+ *
+ * Every string except `siteUrl` may legitimately be EMPTY: when the backend is
+ * unreachable during SSR the files must still render, and inventing an owner
+ * name would publish a lie. `siteUrl` always has a value because an absolute
+ * URL is structurally required (sitemap `<loc>`, llms.txt links) — it falls
+ * back to the origin the request arrived on.
+ */
+export interface SsrSiteConfig {
+    siteUrl: string;
+    siteName: string;
+    ownerName: string;
+    ownerHeadline: string;
+    ownerDescription: string;
+    availability: string;
+    aiCrawlerPolicy: AiCrawlerPolicy;
+}
+
+/** #252: `allow` (default) or `deny`, from the backend's `AI_CRAWLER_POLICY`. */
+export type AiCrawlerPolicy = 'allow' | 'deny';
 
 /** Only the fields we consume; anything else on the wire is ignored. */
 interface SiteConfigWire {
     site_url?: string;
+    site_name?: string;
+    owner_name?: string;
+    owner_headline?: string;
+    owner_description?: string;
+    availability?: string;
+    /** ABSENT on a pre-#252 backend during a deploy window — defaults to allow. */
+    ai_crawler_policy?: string;
 }
 interface PostWire {
     slug?: string;
     created_at?: string;
+    title?: string;
 }
 interface PostPageWire {
     items?: PostWire[];
@@ -124,21 +163,42 @@ export function createJsonFetcher(origin: string = SSR_BACKEND_ORIGIN): JsonFetc
     };
 }
 
+/**
+ * The runtime site config, normalized. A failure — or a field the backend does
+ * not send — degrades to an empty string, never to a hardcoded identity: the
+ * file still renders, it just claims less. Same contract as SiteConfigService.
+ */
+export async function resolveSiteConfig(
+    fetchJson: JsonFetcher,
+    fallbackOrigin: string,
+): Promise<SsrSiteConfig> {
+    let wire: SiteConfigWire | null = null;
+    try {
+        wire = (await fetchJson(`${API_PREFIX}/config/site`)) as SiteConfigWire | null;
+    } catch {
+        // Identity degrades, the file never 500s — same contract as SiteConfigService.
+    }
+    const text = (value: string | undefined): string => (value ?? '').trim();
+    return {
+        siteUrl: stripTrailingSlash(text(wire?.site_url) || fallbackOrigin),
+        siteName: text(wire?.site_name),
+        ownerName: text(wire?.owner_name),
+        ownerHeadline: text(wire?.owner_headline),
+        ownerDescription: text(wire?.owner_description),
+        availability: text(wire?.availability),
+        // Unknown/absent means allow: being read by recruiter-side AI is the
+        // product's purpose, and a deploy-window skew must never deindex a
+        // portfolio by accident (the backend normalizes the same way).
+        aiCrawlerPolicy: text(wire?.ai_crawler_policy).toLowerCase() === 'deny' ? 'deny' : 'allow',
+    };
+}
+
 /** Configured `SITE_URL`, falling back to the request's own origin. */
 export async function resolveSiteUrl(
     fetchJson: JsonFetcher,
     fallbackOrigin: string,
 ): Promise<string> {
-    try {
-        const config = (await fetchJson(`${API_PREFIX}/config/site`)) as SiteConfigWire | null;
-        const siteUrl = stripTrailingSlash(config?.site_url ?? '');
-        if (siteUrl) {
-            return siteUrl;
-        }
-    } catch {
-        // Identity degrades, the file never 500s — same contract as SiteConfigService.
-    }
-    return stripTrailingSlash(fallbackOrigin);
+    return (await resolveSiteConfig(fetchJson, fallbackOrigin)).siteUrl;
 }
 
 /** Every published post, paged. A failure yields the routes-only sitemap, never an error page. */
@@ -152,8 +212,16 @@ export async function fetchPublishedPosts(fetchJson: JsonFetcher): Promise<Sitem
             )) as PostPageWire | null;
             for (const item of wire?.items ?? []) {
                 if (item.slug) {
+                    const post: SitemapPost = { slug: item.slug };
                     const lastmod = (item.created_at ?? '').slice(0, 10);
-                    posts.push(lastmod ? { slug: item.slug, lastmod } : { slug: item.slug });
+                    if (lastmod) {
+                        post.lastmod = lastmod;
+                    }
+                    const title = (item.title ?? '').trim();
+                    if (title) {
+                        post.title = title;
+                    }
+                    posts.push(post);
                 }
             }
             totalPages = typeof wire?.total_pages === 'number' ? wire.total_pages : 1;
@@ -193,27 +261,66 @@ export function buildSitemapXml(siteUrl: string, posts: readonly SitemapPost[]):
     );
 }
 
-/** Crawlers we explicitly welcome — classic search plus the AI search crawlers. */
+/**
+ * The AI crawlers this file names EXPLICITLY (#252).
+ *
+ * Naming them is the whole point: `User-agent: *` already permits them, but an
+ * explicit block is what makes the policy legible — and what makes a `deny`
+ * switch expressible without also deindexing Google. The list is the set of
+ * agents that (a) publish a stable token and (b) feed an answer engine a
+ * recruiter might use.
+ */
 const AI_CRAWLERS = [
     'GPTBot',
+    'OAI-SearchBot',
     'ChatGPT-User',
-    'Google-Extended',
-    'CCBot',
-    'anthropic-ai',
+    'ClaudeBot',
     'Claude-Web',
+    'anthropic-ai',
+    'Google-Extended',
     'PerplexityBot',
+    'Applebot-Extended',
+    'meta-externalagent',
+    'CCBot',
     'YouBot',
 ];
 
-export function buildRobotsTxt(siteUrl: string): string {
-    const base = stripTrailingSlash(siteUrl);
+/**
+ * Paths no crawler may index, AI or classic (#252 AC3).
+ *
+ * `/for/` is the tailored-recruiter-link space reserved by #250: those URLs are
+ * shared with ONE recipient and must never surface in a search index or an
+ * answer engine, so the exclusion ships BEFORE the feature rather than after
+ * the first leak. `/admin` is the operator surface (its own app, also reachable
+ * on the admin host).
+ */
+const DISALLOWED_PATHS = ['/for/', '/admin'];
+
+export function buildRobotsTxt(site: SsrSiteConfig): string {
+    const base = stripTrailingSlash(site.siteUrl);
+    const deny = site.aiCrawlerPolicy === 'deny';
     const blocks = [
         'User-agent: *',
         'Allow: /',
+        ...DISALLOWED_PATHS.map((path) => `Disallow: ${path}`),
         '',
-        '# Specifically allow AI search crawlers',
-        ...AI_CRAWLERS.flatMap((agent) => [`User-agent: ${agent}`, 'Allow: /', '']),
+        deny
+            ? '# AI crawlers are DENIED by this deployment (AI_CRAWLER_POLICY=deny)'
+            : '# AI crawlers are explicitly welcome (AI_CRAWLER_POLICY=allow)',
+        ...AI_CRAWLERS.flatMap((agent) =>
+            deny
+                ? [`User-agent: ${agent}`, 'Disallow: /', '']
+                : [
+                      `User-agent: ${agent}`,
+                      'Allow: /',
+                      ...DISALLOWED_PATHS.map((path) => `Disallow: ${path}`),
+                      '',
+                  ],
+        ),
         `Sitemap: ${base}/sitemap.xml`,
+        // Not a robots.txt directive — a comment, which every parser ignores —
+        // but the conventional breadcrumb to the agent-facing site map (#252).
+        `# llms.txt: ${base}/llms.txt`,
     ];
     return `${blocks.join('\n')}\n`;
 }
@@ -222,7 +329,7 @@ export async function renderRobotsTxt(
     fetchJson: JsonFetcher,
     fallbackOrigin: string,
 ): Promise<string> {
-    return buildRobotsTxt(await resolveSiteUrl(fetchJson, fallbackOrigin));
+    return buildRobotsTxt(await resolveSiteConfig(fetchJson, fallbackOrigin));
 }
 
 export async function renderSitemapXml(

@@ -63,13 +63,15 @@ async def test_public_config_survives_a_db_failure_on_the_availability_read(
 ):
     """/config/site was DB-free before availability; a DB outage must degrade
     the field to the default, never 500 the public site's bootstrap
-    (#295 review). The failure is injected at the exact seam."""
-    from app.api import site_config
+    (#295 review). The failure is injected at the exact seam — which since #252
+    is the shared `read_availability_or_default` wrapper in `site_settings`,
+    used by /config/site AND by the machine-readable resume."""
+    from app.api import site_settings
 
     async def boom(db):
         raise RuntimeError("db down")
 
-    monkeypatch.setattr(site_config, "read_availability", boom)
+    monkeypatch.setattr(site_settings, "read_availability", boom)
     r = await client.get(PUBLIC)
     assert r.status_code == 200
     assert r.json()["availability"] == "listening"

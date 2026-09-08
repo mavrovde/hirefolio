@@ -11,14 +11,17 @@ async function siteConfig(request: APIRequestContext) {
     return (await response.json()) as {
         site_url: string;
         owner_name: string;
+        owner_headline: string;
+        site_name: string;
         availability: string;
+        ai_crawler_policy: string;
     };
 }
 
 test.describe('SEO & SSR Verification', () => {
     // 1. robots.txt — generated from SITE_URL, still welcoming the AI crawlers
     test('should serve a config-driven robots.txt with AI bot rules', async ({ request }) => {
-        const { site_url } = await siteConfig(request);
+        const { site_url, ai_crawler_policy } = await siteConfig(request);
         const response = await request.get('/robots.txt');
         expect(response.ok()).toBe(true);
         const text = await response.text();
@@ -26,6 +29,73 @@ test.describe('SEO & SSR Verification', () => {
         expect(text).toContain('User-agent: GPTBot');
         expect(text).toContain('Allow: /');
         expect(text).toContain(`Sitemap: ${site_url}/sitemap.xml`);
+
+        // #252: the AI section follows the deployment's own policy — asserting
+        // `Allow` unconditionally would redden this spec on a stack set to deny,
+        // where the opposite is the correct output.
+        const aiRule = ai_crawler_policy === 'deny' ? 'Disallow: /' : 'Allow: /';
+        for (const agent of ['GPTBot', 'ClaudeBot', 'Google-Extended', 'PerplexityBot']) {
+            expect(text, `AI rule for ${agent}`).toContain(`User-agent: ${agent}\n${aiRule}`);
+        }
+        // Tailored links (#250) and the admin surface stay out of every index.
+        expect(text).toContain('User-agent: *\nAllow: /\nDisallow: /for/\nDisallow: /admin');
+        expect(text).toContain(`# llms.txt: ${site_url}/llms.txt`);
+    });
+
+    // 1b. llms.txt — the agent-facing site map (#252)
+    test('should serve a config-driven llms.txt linking the structured profile', async ({
+        request,
+    }) => {
+        const { site_url, site_name, owner_name, owner_headline } = await siteConfig(request);
+        const response = await request.get('/llms.txt');
+        expect(response.ok()).toBe(true);
+        expect(response.headers()['content-type']).toContain('text/plain');
+        const text = await response.text();
+
+        // llmstxt.org format: the H1 is the only required section.
+        expect(text.startsWith(`# ${site_name}\n`)).toBe(true);
+        expect(text).toContain(`> ${owner_name} — ${owner_headline}`);
+        expect(text).toContain(
+            `- [Structured profile (JSON Resume v1.0.0)](${site_url}/api/app/profile/resume.json):`,
+        );
+        expect(text).toContain(`- [CV](${site_url}/cv):`);
+        expect(text).toContain(`- [All posts](${site_url}/blog):`);
+
+        // The blog list is the source of truth for what llms.txt must name.
+        const posts = await request.get('/api/app/posts?published_only=true&page=1&page_size=5');
+        const { items } = (await posts.json()) as { items: { slug: string }[] };
+        expect(items.length).toBeGreaterThan(0);
+        expect(text).toContain(`](${site_url}/blog/${items[0].slug})`);
+    });
+
+    // 1c. The machine-readable profile itself, over real HTTP (#252)
+    test('should serve a JSON Resume document consistent with the site config', async ({
+        request,
+    }) => {
+        const { site_url, availability } = await siteConfig(request);
+        const response = await request.get('/api/app/profile/resume.json');
+        expect(response.ok()).toBe(true);
+        expect(response.headers()['content-type']).toContain('application/json');
+        const resume = (await response.json()) as {
+            $schema: string;
+            basics: { name: string; url: string; label?: string };
+            work?: unknown[];
+            skills?: unknown[];
+            meta: { canonical: string; availability: string; contactUrl: string };
+        };
+
+        expect(resume.$schema).toContain('resume-schema/v1.0.0/schema.json');
+        expect(resume.basics.name).toBeTruthy();
+        expect(resume.basics.url).toBe(site_url);
+        expect(resume.work?.length).toBeGreaterThan(0);
+        expect(resume.skills?.length).toBeGreaterThan(0);
+        expect(resume.meta.canonical).toBe(`${site_url}/api/app/profile/resume.json`);
+        expect(resume.meta.availability).toBe(availability);
+        expect(resume.meta.contactUrl).toBe(`${site_url}/#contact`);
+
+        // "Omit, never invent": no empty string may reach a consumer.
+        const emptyStrings = JSON.stringify(resume).match(/:\s*""/g) ?? [];
+        expect(emptyStrings, 'empty values must be omitted, not emitted').toHaveLength(0);
     });
 
     // 2. sitemap.xml — generated from SITE_URL and the live published posts (#71)
@@ -123,6 +193,14 @@ test.describe('SEO & SSR Verification', () => {
                 `<meta name="twitter:image" content="${site_url}/assets/og-image.png">`,
             );
             expect(html).toMatch(/<meta name="description" content="[^"]+">/);
+            // #252 AC4: the machine-readable surfaces are advertised in the
+            // SERVER-rendered head, on every route.
+            expect(html).toContain(
+                `<link rel="alternate" type="application/json" title="JSON Resume" href="${site_url}/api/app/profile/resume.json">`,
+            );
+            expect(html).toContain(
+                `<link rel="describedby" type="text/plain" href="${site_url}/llms.txt">`,
+            );
         });
     }
 

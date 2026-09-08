@@ -9,7 +9,9 @@ import {
     renderRobotsTxt,
     renderSitemapXml,
     requestOrigin,
+    resolveSiteConfig,
     resolveSiteUrl,
+    SsrSiteConfig,
     SSR_BACKEND_ORIGIN,
     SSR_FETCH_TIMEOUT_MS,
     stripTrailingSlash,
@@ -27,6 +29,18 @@ const fetcherFor = (routes: Record<string, unknown>): JsonFetcher =>
         }
         return routes[path];
     });
+
+/** A resolved SSR site config, overridable per case. */
+const siteConfig = (overrides: Partial<SsrSiteConfig> = {}): SsrSiteConfig => ({
+    siteUrl: 'https://example.com',
+    siteName: '',
+    ownerName: '',
+    ownerHeadline: '',
+    ownerDescription: '',
+    availability: '',
+    aiCrawlerPolicy: 'allow',
+    ...overrides,
+});
 
 describe('escapeXml / stripTrailingSlash', () => {
     it('escapes every XML metacharacter', () => {
@@ -156,6 +170,53 @@ describe('resolveSiteUrl', () => {
     );
 });
 
+describe('resolveSiteConfig', () => {
+    it('normalizes the whole identity payload, trimming every field', async () => {
+        const fetchJson = fetcherFor({
+            [CONFIG_PATH]: {
+                site_url: ' https://forked.example/ ',
+                site_name: ' Forked Portfolio ',
+                owner_name: ' Forked Owner ',
+                owner_headline: ' Staff Engineer ',
+                owner_description: ' Description. ',
+                availability: 'open',
+                ai_crawler_policy: 'DENY',
+            },
+        });
+
+        await expect(resolveSiteConfig(fetchJson, 'http://localhost')).resolves.toEqual({
+            siteUrl: 'https://forked.example',
+            siteName: 'Forked Portfolio',
+            ownerName: 'Forked Owner',
+            ownerHeadline: 'Staff Engineer',
+            ownerDescription: 'Description.',
+            availability: 'open',
+            aiCrawlerPolicy: 'deny',
+        });
+    });
+
+    it('degrades to EMPTY identity — never an invented one — when the backend fails', async () => {
+        const fetchJson: JsonFetcher = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+
+        await expect(resolveSiteConfig(fetchJson, 'https://forked.example/')).resolves.toEqual({
+            siteUrl: 'https://forked.example',
+            siteName: '',
+            ownerName: '',
+            ownerHeadline: '',
+            ownerDescription: '',
+            availability: '',
+            // A backend we cannot reach must not be read as "deny".
+            aiCrawlerPolicy: 'allow',
+        });
+    });
+
+    it.each([[{}], [null]])('tolerates an empty payload (%#)', async (payload) => {
+        const config = await resolveSiteConfig(fetcherFor({ [CONFIG_PATH]: payload }), 'http://localhost');
+        expect(config.siteUrl).toBe('http://localhost');
+        expect(config.aiCrawlerPolicy).toBe('allow');
+    });
+});
+
 describe('fetchPublishedPosts', () => {
     it('collects slugs and lastmod dates across every page', async () => {
         const fetchJson = fetcherFor({
@@ -169,6 +230,22 @@ describe('fetchPublishedPosts', () => {
         await expect(fetchPublishedPosts(fetchJson)).resolves.toEqual([
             { slug: 'first', lastmod: '2026-01-02' },
             { slug: 'second', lastmod: '2026-02-03' },
+        ]);
+    });
+
+    it('carries the post title for llms.txt and drops a blank one', async () => {
+        const fetchJson = fetcherFor({
+            [postsPath(1)]: {
+                items: [
+                    { slug: 'named', title: '  Vector search in Postgres  ' },
+                    { slug: 'untitled', title: '   ' },
+                ],
+            },
+        });
+
+        await expect(fetchPublishedPosts(fetchJson)).resolves.toEqual([
+            { slug: 'named', title: 'Vector search in Postgres' },
+            { slug: 'untitled' },
         ]);
     });
 
@@ -237,17 +314,57 @@ describe('buildSitemapXml', () => {
 });
 
 describe('buildRobotsTxt', () => {
+    const AI_AGENTS = [
+        'GPTBot',
+        'OAI-SearchBot',
+        'ChatGPT-User',
+        'ClaudeBot',
+        'Claude-Web',
+        'anthropic-ai',
+        'Google-Extended',
+        'PerplexityBot',
+        'Applebot-Extended',
+        'meta-externalagent',
+        'CCBot',
+        'YouBot',
+    ];
+
     it('welcomes the AI crawlers and points at the configured sitemap', () => {
-        const txt = buildRobotsTxt('https://example.com/');
+        const txt = buildRobotsTxt(siteConfig({ siteUrl: 'https://example.com/' }));
 
         expect(txt).toContain('User-agent: *\nAllow: /');
-        for (const agent of ['GPTBot', 'ChatGPT-User', 'Google-Extended', 'CCBot', 'anthropic-ai',
-            'Claude-Web', 'PerplexityBot', 'YouBot']) {
-            expect(txt).toContain(`User-agent: ${agent}`);
+        for (const agent of AI_AGENTS) {
+            expect(txt).toContain(`User-agent: ${agent}\nAllow: /`);
         }
         expect(txt).toContain('Sitemap: https://example.com/sitemap.xml');
+        expect(txt).toContain('# llms.txt: https://example.com/llms.txt');
         expect(txt).not.toContain('mavrov.de');
     });
+
+    it('turns the AI crawlers away — and ONLY them — under the deny policy (#252)', () => {
+        const txt = buildRobotsTxt(
+            siteConfig({ siteUrl: 'https://example.com', aiCrawlerPolicy: 'deny' }),
+        );
+
+        // Classic search is untouched: the switch is about AI, not visibility.
+        expect(txt).toContain('User-agent: *\nAllow: /');
+        for (const agent of AI_AGENTS) {
+            expect(txt).toContain(`User-agent: ${agent}\nDisallow: /`);
+            expect(txt).not.toContain(`User-agent: ${agent}\nAllow: /`);
+        }
+        expect(txt).toContain('Sitemap: https://example.com/sitemap.xml');
+    });
+
+    it.each(['allow', 'deny'] as const)(
+        'keeps the tailored-link and admin surfaces out of every index (%s)',
+        (aiCrawlerPolicy) => {
+            const txt = buildRobotsTxt(siteConfig({ aiCrawlerPolicy }));
+            // #250's /for/* links are shared with ONE recipient; /admin is the
+            // operator surface. Under `deny` the AI blocks are already
+            // `Disallow: /`, so only the wildcard block needs the exclusions.
+            expect(txt).toContain('User-agent: *\nAllow: /\nDisallow: /for/\nDisallow: /admin');
+        },
+    );
 });
 
 describe('render* (the shape the Express routes serve)', () => {
