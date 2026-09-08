@@ -47,11 +47,30 @@ const AVAILABILITY_NOTE: Record<string, string | undefined> = {
     not_looking: 'Not currently looking for new opportunities.',
 };
 
-/** Markdown link-text escaping: `]` would otherwise truncate a link label. */
+/**
+ * Markdown link-text escaping: an unescaped `]` truncates a link label, and a
+ * post title is free text an admin controls.
+ *
+ * The BACKSLASH is escaped too, and it has to come first in the character
+ * class: escaping only the brackets makes the escaping itself forgeable — a
+ * title ending in `\` turns the emitted `\]` into `\\]`, which markdown reads
+ * as a literal backslash followed by an ACTIVE `]`, closing the label anyway.
+ * (`js/incomplete-sanitization`, flagged by CodeQL on the first push of this
+ * branch; the round-1 version escaped brackets alone.)
+ */
 export function escapeMarkdown(value: string): string {
-    return value.replace(/([[\]])/g, '\\$1');
+    return value.replace(/([\\[\]])/g, '\\$1');
 }
 
+/**
+ * One `- [name](url): notes` item.
+ *
+ * The URL is emitted verbatim, byte-identical to the same post's `<loc>` in
+ * `sitemap.xml` — two generated files must not disagree on a page's URL, and
+ * percent-encoding here alone would make them disagree (and would double-encode
+ * a slug that already carries an escape). Slug hygiene belongs to whoever
+ * accepts the slug, not to two independent renderers.
+ */
 function link(name: string, url: string, notes?: string): string {
     const item = `- [${escapeMarkdown(name)}](${url})`;
     return notes ? `${item}: ${notes}` : item;

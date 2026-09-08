@@ -150,6 +150,17 @@ describe('buildLlmsTxt', () => {
             buildLlmsTxt(siteConfig(), [{ slug: 's', title: 'Release [v2]' }]),
         ).toContain('- [Release \\[v2\\]](https://example.com/blog/s)');
     });
+
+    it('escapes the backslash too, so the escaping cannot be forged', () => {
+        // A title ending in `\` would otherwise emit `\\]`: markdown reads that
+        // as a literal backslash plus an ACTIVE `]`, closing the label
+        // (js/incomplete-sanitization, CodeQL on this branch's first push).
+        expect(escapeMarkdown('trailing\\')).toBe('trailing\\\\');
+        expect(escapeMarkdown('a\\]b')).toBe('a\\\\\\]b');
+        expect(buildLlmsTxt(siteConfig(), [{ slug: 's', title: 'a\\] (b)' }])).toContain(
+            '- [a\\\\\\] (b)](https://example.com/blog/s)',
+        );
+    });
 });
 
 describe('renderLlmsTxt (the shape the Express route serves)', () => {
