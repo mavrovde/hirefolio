@@ -1,7 +1,7 @@
 ---
 name: issue-workflow
 description: >-
-  Guides issue-driven development for mavrov.de — creating, triaging, labeling, and
+  Guides issue-driven development for Hirefolio — creating, triaging, labeling, and
   milestoning GitHub issues and linking PRs. Use when opening/triaging an issue, deciding
   its milestone/labels/priority, wiring `Closes #NN` into a PR, or closing-the-loop after
   work lands. Encodes the issue template, milestone taxonomy, label+priority scheme, the
@@ -9,7 +9,7 @@ description: >-
   no-secrets rule for this PUBLIC repo (`github.com/mavrovde/hirefolio`).
 ---
 
-# Issue workflow — mavrov.de
+# Issue workflow — Hirefolio
 
 Repo: `mavrovde/hirefolio` (**PUBLIC**). Issues are the project notebook: every idea, plan, bug,
 deferred fix, shipped milestone, and research decision lives as an issue — not in chat or personal

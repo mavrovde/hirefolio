@@ -167,6 +167,64 @@ All notable changes to this project will be documented in this file.
   Both recipes are now unchained.
 
 ### Changed
+- **De-branded the docs: product voice, not the maintainer's instance (#313)** — owner directive
+  2026-09-07 ("stop orienting all docs to mavrov and mavrov.de, it is an open project"). Completes
+  the arc #66 (content) → #288 (database identifiers) → this (documentation). Measured on the
+  issue's own acceptance grep — README.md, `docs/` minus `retrospectives/`+`agent-runs/`, `.claude/`,
+  `.env.example`: **37 hits → 9**, and every survivor is one of the three sanctioned kinds.
+  - **Guidance surfaces speak the product's voice.** All seven agent charters and the four skills /
+    commands that named the maintainer's domain now say **Hirefolio** (`backend-dev`, `frontend-dev`,
+    `devops-pipeline`, `pr-reviewer`, `release-manager`, `security-triage`, `issue-author`;
+    `lessons-learned`, `issue-workflow`, `e2e-validation`, `/linkedin-sync`, `/deploy-status`,
+    `agents/PLAYBOOK.md`, the pre-push hook header), joined in review round 2 by six surfaces the
+    acceptance grep never covered: `README_TESTING.md`, `.github/copilot-instructions.md`,
+    `.github/prompts/release-check.prompt.md`, `.github/dependabot.yml`, `importer/README.md`, and
+    `SECURITY.md` — whose vulnerability-report link still pointed at the **pre-rename**
+    `mavrovde/mavrov.de` advisory path and worked only through GitHub's redirect.
+    `/deploy-status` no longer curls a hardcoded host: it resolves `SITE_URL` from the environment or
+    an uncommented `SITE_URL=` in `.env` — never `.env.example`, whose placeholder would send it to
+    probe `example.com` — and **asks** rather than guessing.
+  - **`.env.example`** hostname examples become `example.com`-style placeholders matching the
+    existing Jane-Doe convention — a forker sees no maintainer domain to edit out — with an explicit
+    warning that these two knobs must be set, because the compose fallback is deliberately unchanged.
+  - **Historical records kept verbatim.** Incident narratives in `lessons-learned` (§13's proxy-route
+    404, §20's repo rename) are *annotated* with a trailing `<!-- de-brand:historical: … -->`
+    comment, never rewritten; `CHANGELOG.md`, `docs/retrospectives/` and `docs/agent-runs/` are out
+    of scope by design.
+  - **The stance is now enforced, not asked.** `scripts/check_no_pii.sh` grew a second contract that
+    **reverses its own former exemption** (its header excluded `mavrov.de` as "a legitimate infra
+    default"): the domain is still fine in runtime fallbacks and history, but on a current-guidance
+    surface the line must carry one of three **namespaced, case-sensitive** annotations —
+    `<!-- de-brand:canonical: … -->` (the one sanctioned instance aside),
+    `<!-- de-brand:historical: … -->`, or a literal `ghcr.io/mavrovde/mavrov.de` legacy image path —
+    matched against file **content only**. Its **scope is inverted**: everything tracked, minus a
+    named exclusion list that *is* the issue's deferred list made executable (history, the runtime
+    fallbacks that would repoint a live deployment, `CLAUDE.md`, application code). An include list
+    failed open twice in review — a file nobody listed was exempt forever, and a file created next
+    year was exempt before it existed; the exclusion list fails closed.
+    `scripts/check_no_pii.test.sh` pins both contracts with **60 cases**: the failing-first one, 21
+    in-scope surfaces individually, 13 out-of-scope surfaces that must *not* trip, six paths that
+    appear nowhere in the checker and must be **guarded from birth**, and — the part round 1 was
+    missing — the **negative direction**: prose that merely contains "canonical"/"historical", a
+    marker in the wrong case, and a marker living in a *directory name*. It runs in the pre-push
+    docs leg and in CI's Version Consistency job. Every contract is mutation-proved, one variable at
+    a time (all measured on the 60-case suite): bare-word markers **3** red, matching the
+    `path:line:` prefix **1**, neutering check B's `rc=1` **36**, restoring the include-list scope
+    **14**, dropping a history exclusion **1**, widening `agents/*.py` to `agents/*` **2**, widening
+    the two named workflow exclusions to `.github/workflows/*` **1**.
+  - **Three lessons banked, all found by a gate or a review rather than by reasoning.** **§46** —
+    the gate caught its own author on the first push: the self-test's fixture *was* the identifier
+    check A hunts, so the fixture is now assembled at runtime rather than the file exempted (never
+    widen a guard's exclusion list to accommodate the guard's own tests). **§47** — an exemption
+    marker is an API, not a word: bare `canonical|historical` matches 33 innocent in-scope lines
+    (measured), exempted every file under a `canonical`-named *path*, and even bent two doc
+    sentences into inserting the word "historical" for the matcher's benefit; for any allowlist,
+    **the load-bearing test is the negative one**. **§47b** — an include list of "surfaces we guard"
+    fails open; invert it, name exclusions file-by-file rather than by directory, and test the
+    fail-closed property directly.
+  - **No behaviour change.** `DEPLOY_DIR` was already `/opt/hirefolio` (#310); the compose /
+    `proxy/entrypoint.sh` `PUBLIC_SERVER_NAME`/`ADMIN_SERVER_NAME` fallbacks are untouched on
+    purpose, so no existing deployment is repointed.
 - **Dependency modernization — frontend test runner on Vitest 5** (#309, supersedes Dependabot
   #306/#307/#308): `vitest`, `@vitest/coverage-v8` and `@vitest/browser-playwright` all move
   `4.1.11 → 5.0.0` in one lockfile pass. `@analogjs/vite-plugin-angular` needed no bump — it

@@ -3,7 +3,7 @@ mode: agent
 description: Pre-release checklist — SemVer by content, changelog rotation, gates, and the published-vs-live doctrine
 ---
 
-Prepare and check a release of mavrov.de (see `.claude/commands/release.md` for the full runbook;
+Prepare and check a release of Hirefolio (see `.claude/commands/release.md` for the full runbook;
 `CLAUDE.md` rule 8 governs). Do not take irreversible steps (merge to `main`, tag push) without
 explicit user go-ahead.
 

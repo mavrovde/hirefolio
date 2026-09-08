@@ -32,7 +32,7 @@ Two documents, one split — keep them that way or they drift:
 written for **anyone deploying it**, not for one installation. Hostnames appear as
 `<your-domain>` / `admin.<your-domain>` where you substitute your own, and as
 `example.com` in configuration samples; the deploy directory is `/opt/hirefolio`
-and the compose project is `hirefolio`. (`mavrov.de` is simply the canonical
+and the compose project is `hirefolio`. (`mavrov.de` is simply the canonical <!-- de-brand:canonical: #315's instance aside, marker added by #313 -->
 deployment instance of this product — nothing here is specific to it.)
 
 Assumed distro: **Ubuntu LTS**. 24.04 LTS "Noble Numbat" is the conservative

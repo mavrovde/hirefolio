@@ -2,7 +2,7 @@
 description: Scrape latest LinkedIn profile + posts and import posts into the backend
 ---
 
-Drive the LinkedIn → mavrov.de pipeline end-to-end. The saved session lives in
+Drive the LinkedIn → Hirefolio pipeline end-to-end. The saved session lives in
 `scraper/.chrome-profile/` (gitignored); if it's expired, run with `HEADLESS=false` and let the
 user complete login/MFA. Prefer system Chrome via `PLAYWRIGHT_CHANNEL=chrome` if the bundled
 Chromium is unavailable.

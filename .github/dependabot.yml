@@ -1,4 +1,4 @@
-# Dependabot version updates for mavrov.de
+# Dependabot version updates for Hirefolio
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 #
 # Rationale: the Angular workspace must move as ONE unit. A previous run bumped only

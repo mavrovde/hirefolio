@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-push gate for mavrov.de.
+# Pre-push gate for Hirefolio.
 #
 # Runs a full local check round — docs + backend pytest + backend lint/type
 # (ruff + mypy) + frontend unit tests — and BLOCKS a `git push` if anything
@@ -277,12 +277,21 @@ run_checks() {
     }
     # setup.sh's .env helpers hold the user's secrets file to an idempotency
     # contract — pinned by its own self-test (#61/#256), same pattern.
-    # PII guard (#66): the demo-persona swap must never silently regress.
+    # PII guard (#66): the demo-persona swap must never silently regress — plus
+    # the #313 de-branding contract (the maintainer's domain must not creep back
+    # onto surfaces that instruct a forker). Its self-test runs too: check B is a
+    # new gate, and a gate nobody proved can fail is no gate (lessons §18).
     if [ -f "$ROOT/scripts/check_no_pii.sh" ]; then
       ( cd "$ROOT" && bash scripts/check_no_pii.sh >/dev/null ) || {
         echo "  ✗ check_no_pii.sh failed — run 'bash scripts/check_no_pii.sh' to see the hits"
         return 1
       }
+      if [ -f "$ROOT/scripts/check_no_pii.test.sh" ]; then
+        ( cd "$ROOT" && bash scripts/check_no_pii.test.sh >/dev/null ) || {
+          echo "  ✗ check_no_pii.test.sh failed — the PII/de-brand checker itself is broken"
+          return 1
+        }
+      fi
     fi
     # Documented-knob contract (#296/#297/#298 all shipped this bug in round 1):
     # a Settings key the docs promise must reach the backend container in BOTH

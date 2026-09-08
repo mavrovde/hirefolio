@@ -2,7 +2,7 @@
 description: True deploy state — pipeline, published images, live prod version, and a live/not-live verdict
 ---
 
-Report the TRUE deploy state of mavrov.de. The core doctrine (#112/#120): **a green `deploy.yml`
+Report the TRUE deploy state of your Hirefolio deployment. The core doctrine (#112/#120): **a green `deploy.yml`
 run means images were PUBLISHED to ghcr; the prod host is updated only if the secrets-gated
 `Roll Out To Prod Host` job actually ran** (it skips silently — still green — when
 `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` are unset). Never report "deployed" from pipeline
@@ -21,7 +21,13 @@ Gather all four facts, then give the verdict:
 2. **Repo version**: `cat VERSION` and the latest tag `git tag --sort=-v:refname | head -1`.
 3. **Published images**: the tags the green run pushed (`sha-<headSha>` + version tag) — cite the
    run's publish jobs rather than assuming.
-4. **Live prod version**: `curl -s --max-time 10 https://mavrov.de/api/app/stats/public | jq -r .backend_version`
+4. **Live prod version** — probe the deployment being reported on, not a hardcoded host. Take its
+   base URL from the environment (`SITE_URL`), falling back to an **uncommented** `SITE_URL=` in the
+   repo's own `.env`. Never read `.env.example` — its `SITE_URL` is the `example.com` placeholder,
+   and probing that would report a stranger's site as this deployment's live version. If neither is
+   set, ASK which deployment to probe rather than guessing:
+   `SITE_URL="${SITE_URL:-$(grep -m1 '^SITE_URL=' .env 2>/dev/null | cut -d= -f2-)}"`
+   `curl -s --max-time 10 "${SITE_URL:?no SITE_URL — ask which deployment to probe}/api/app/stats/public" | jq -r .backend_version`
    (cross-check the site footer `BE: vX.Y.Z` if the endpoint is unreachable).
 
 **Verdict — state it plainly, one of:**

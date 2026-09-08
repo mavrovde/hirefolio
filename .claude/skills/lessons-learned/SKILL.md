@@ -1,7 +1,7 @@
 ---
 name: lessons-learned
 description: >-
-  The committed "do-not-repeat" knowledge base for mavrov.de — hard-won operational lessons
+  The committed "do-not-repeat" knowledge base for Hirefolio — hard-won operational lessons
   and footguns that unit tests and PR CI do NOT catch. Consult BEFORE touching the frontend
   SSR/HTTP/change-detection path, running backend pytest locally, adding a GitHub Actions
   cache, deciding a release SemVer bump, running destructive local/infra commands, writing any
@@ -18,7 +18,7 @@ description: >-
   fresh contexts and teammates don't re-research answers we already have.
 ---
 
-# Lessons learned — mavrov.de (do not repeat)
+# Lessons learned — Hirefolio (do not repeat)
 
 This is the **in-repo** home for durable, hard-won lessons — the things that cost us a revert, a red
 pipeline, or a wasted research loop. It complements `CLAUDE.md` (the rules) with the *why* and the
@@ -170,7 +170,7 @@ pre-existing vs introduced. Caveat: a green publish updates the host only when t
 `skipped` — it runs and reports `success` as a guarded no-op**, logging the notice
 `DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY not configured — images are published but NOT rolled onto a
 host`. So the job *status* is a false positive here: read the job's **log** (or probe the live
-footer / `curl https://mavrov.de`) before ever saying "prod is on vX.Y.Z" ("published ≠ live", #112).
+footer / `curl https://<your-domain>`) before ever saying "prod is on vX.Y.Z" ("published ≠ live", #112).
 Confirmed again at the v1.10.0 release: run 33326238612 was 21/21 green with the rollout job
 `success`, while live prod still served v1.2.27.
 
@@ -278,7 +278,7 @@ dummy `server{}` including `admin_allowlist.conf`), and keep the check non-abort
 ## 13. A failing local gate is NOT proof your change broke it — bisect against a clean `main` build first
 
 **The trap (2026-08-29, the #170 dep sweep):** `./verify_all.sh` failed its proxy-route check
-(`mavrov.de/admin/login` expected 200, got 404) right after the Angular/SSR bump — which
+(`mavrov.de/admin/login` expected 200, got 404) right after the Angular/SSR bump — which <!-- de-brand:historical: verbatim incident record, #313 -->
 pattern-matches perfectly to "the SSR upgrade changed unmatched-route handling." It hadn't.
 Building the frontend from an **unmodified `main` worktree with the committed lockfile**
 (`git worktree add … main && npm ci && npm run build:public`, serve `dist/public/server/server.mjs`,
@@ -420,7 +420,7 @@ is the bug**: extract it, or the next fix will miss a branch too (rule 1, applie
 
 ## 20. Renaming a repo does not carry the container packages with it
 
-Renaming `mavrovde/mavrov.de` → `mavrovde/hirefolio` changed CI's publish target, because it derives
+Renaming `mavrovde/mavrov.de` → `mavrovde/hirefolio` changed CI's publish target, because it derives <!-- de-brand:historical: verbatim rename record, #313 -->
 from `${{ github.repository }}`. The consequences are not obvious: **new GHCR packages are created
 private, and package visibility does not follow a repository rename**, while the prod host pulls
 anonymously with no `docker login`. Previously published tags stay at the *old* path forever, so
@@ -1106,6 +1106,100 @@ posture the default. **It buys that at the price of silencing genuine peer confl
 NOT fix everything: `npm ls` still exits 1 (its validity check reads the installed tree, and
 `legacy-peer-deps` is a *resolver* setting) — use `npm ls <pkgs> --depth=0`, which exits 0 and prints
 the coherent set. Delete the file when `@angular/build` widens the range.
+
+## 46. A guard's SELF-TEST is scanned by the guard — assemble the fixture, don't exempt the file (#313)
+
+`scripts/check_no_pii.test.sh` was written with the former owner's real email spelled out literally
+as its failing-first fixture. Both checks passed when run by hand, then the **pre-push gate refused
+the push**: the moment the new file was `git add`ed it became a tracked source, and check A — which
+greps tracked sources for exactly that identifier — matched its own test data. The gate was right.
+(Note this very paragraph had to be written the same way, and for the same reason.)
+
+Two fixes were available and they are not equivalent:
+
+- **Exempt the test file** (`:(exclude)scripts/check_no_pii.test.sh`, the shape the script already
+  uses for itself) — one line, and it permanently blinds the guard to a whole file that lives beside
+  the guard. Real PII pasted there afterwards would never be seen.
+- **Assemble the fixture so the source never contains the pattern** — split the identifier across
+  two adjacent bash string literals (`pii="ser""g.…"`), which the shell concatenates at runtime while
+  the bytes on disk carry a quote in the middle and cannot match the pattern.
+
+The second was taken. **Generalise it: any checker whose own tests must contain the thing it
+forbids — secret scanners, PII guards, banned-API linters, the de-branding check here — should
+construct the forbidden string at runtime rather than widen its own exclusion list.** An exclusion is
+permanent and invisible; a concatenation is local and self-documenting. This is the same instinct as
+"never weaken a gate to make it pass" (§35, rule 3), applied to the gate's own fixtures.
+
+Corollary worth keeping: **the failure was only found because the gate ran on push, not because
+anyone reasoned about it.** Running the checker by hand from a clean tree said green — the file was
+still untracked, and `git grep` does not see untracked files. Stage-then-verify (`git add -A` before
+running a `git grep`-based checker) or you are testing a different tree than CI will.
+
+## 47. An EXEMPTION MARKER must be a token nobody writes by accident — namespace it, and test the negative direction (#313 / #318 round 1)
+
+The de-branding guard (`scripts/check_no_pii.sh` check B) bans the maintainer's domain on
+guidance surfaces *unless the line is annotated*. Round 1 spelled the annotations as three bare
+words matched case-insensitively against the whole `git grep -in` output line:
+
+```sh
+GUIDANCE_ANNOTATIONS='canonical|historical|ghcr\.io/…'
+git grep -inE 'mavrov\.de' -- <scope> | grep -ivE "$GUIDANCE_ANNOTATIONS"
+```
+
+Three independent failures fell out of that one decision, and the review caught all three:
+
+1. **The marker words are ordinary English here.** Measured inside the guard's own scope, excluding
+   real markers: **33 lines say "canonical"** innocently ("preserves the canonical behavior", "the
+   canonical URL for every page"), 9 say "historical", 41 say either. (That count is a moving
+   target — it was 21 when the guard's scope was narrower and 25 a review round later; quote it
+   with the scope you measured it against, per §42.) The decisive reproduction was a **revert of
+   the very README row the change had just
+   fixed** — it sailed through green because the restored cell contained the word "canonical". A
+   guard that cannot protect the line it just fixed protects nothing.
+2. **Matching the `path:line:` prefix moves the exemption into the filesystem.** Any file under a
+   `docs/canonical-urls/`-style directory was exempt forever. Note the obvious repair — strip the
+   prefix with `sub(/^[^:]*:[0-9]+:/, …)` — is *also* wrong: a path may itself contain `:`, and
+   then the anchor does not match and the whole line is tested again. The only formulation with no
+   prefix to parse is: ask git for the **file list** (`git grep -zil`), then let `awk` read each
+   file and judge its own lines, re-creating `path:line:content` for the report.
+3. **The prose bends to the matcher.** Two documentation lines had the word "historical" inserted
+   into them purely so the regex would pass. An annotation mechanism that rewrites the
+   documentation to appease itself has inverted the relationship.
+
+**The rule: an exemption marker is an API, not a word.** Namespace it (`de-brand:historical`),
+require exact case, match it against **content only**, and prefer a form that renders invisibly so
+the annotation never distorts the text it annotates — in markdown, `<!-- de-brand:historical: why -->`.
+
+**And the reason none of this was caught by 23 green self-test cases: every case tested the
+PERMISSIVE direction.** "An annotated line passes" was pinned six ways; "an unrelated line that
+merely *contains* the word does NOT pass" was pinned zero ways. For any allowlist, exemption,
+`# noqa`, `eslint-disable`, or skip-marker you introduce, **the load-bearing test is the negative
+one** — the near-miss that must still fail. Measured on the 60-case suite: swapping the namespaced
+markers back to bare words turns **3** cases red, and every one of them was added *after* the review.
+
+### 47b. An INCLUDE list of "surfaces we guard" fails open — invert it
+
+The same guard was rejected twice more for the same structural reason, and it had nothing to do
+with the matcher. Its scope was a hand-maintained **include list**, so the review found branded and
+unguarded surfaces both times: round 1 `README_TESTING.md`, `SECURITY.md`, the copilot/prompt files,
+`importer/README.md`; round 2 — by the right technique, a **positive control** (append the domain to
+a file and check the guard actually goes red) — `AGENTS.md`, `AI.md`, `.cline.md`,
+`.github/instructions/*`, `scraper/WORKFLOW.md`. Each round the fix was "add the missing five",
+which is a fix for the instances and not for the defect.
+
+**An include list fails OPEN: every file nobody thought of is silently exempt, forever, and a file
+created next year is exempt before it exists.** An exclude list fails CLOSED. Inverting it — scan
+everything tracked, minus a named exclusion list — cost the same number of lines, produced **zero**
+new findings on the real repo (proof the exclusions were exactly the already-documented deferrals),
+and turned the PR's prose "deferred list" into something the checker executes. Restoring the include
+list turns **14 of 60** cases red.
+
+Corollaries worth keeping: **name exclusions file-by-file, not by directory** (`.github/workflows/deploy.yml`,
+not `.github/workflows/*`) so a *new* file in a mostly-excluded directory is still guarded — and
+when an exclusion must be broad, pin the survivor: `agents/*.py` + `agents/common/*` are excluded
+while `agents/PLAYBOOK.md` stays in scope, with a case asserting exactly that. And test the
+fail-closed property directly: the suite creates files at paths that appear nowhere in the checker
+and asserts they are caught from birth.
 
 ## Where the rules live (AI-config map)
 
