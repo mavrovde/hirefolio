@@ -142,7 +142,10 @@ export async function renderLlmsTxt(
 ): Promise<string> {
     const [site, posts] = await Promise.all([
         resolveSiteConfig(fetchJson, fallbackOrigin),
-        fetchPublishedPosts(fetchJson),
+        // Bounded at what the file will actually print: one backend request of
+        // 25, not four requests of 100 whose surplus is discarded (#252 review,
+        // minor 1). `sitemap.xml` still reads every page — it must.
+        fetchPublishedPosts(fetchJson, LLMS_TXT_MAX_POSTS),
     ]);
     return buildLlmsTxt(site, posts);
 }

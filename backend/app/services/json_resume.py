@@ -18,7 +18,12 @@ Design rules this module follows:
 * **Omit, never invent.** Every optional field is dropped when the source has
   nothing to say (`response_model_exclude_none=True` at the endpoint). An empty
   string in `basics.email` or a `""` in a `format: uri` field is *invalid*
-  against the schema, while an absent key is simply not claimed.
+  against the schema, while an absent key is simply not claimed. The tests
+  assert this with a FORMAT-ASSERTING validator (`jsonschema.FormatChecker()`
+  plus `rfc3986-validator`, so `uri`, `email` and `date` are really checked, not
+  merely annotated) — the round-1 version used the draft-4 default checker,
+  which asserts neither `uri` nor `date` and therefore proved less than the
+  claim (#252 review, major 3).
 * **Defensive about types.** The source is an operator-uploaded blob: any node
   may be the wrong type. Every accessor coerces instead of trusting.
 """
@@ -157,6 +162,23 @@ def normalize_date(value: object) -> str | None:
         if month is not None:
             return f"{year.group()}-{month:02d}"
     return year.group()
+
+
+def full_date(value: object) -> str | None:
+    """A complete `YYYY-MM-DD`, or `None` — for `format: date` fields only.
+
+    `certificates[].date` is the one date in this schema declared with
+    `format: date` rather than the `iso8601` pattern, so — unlike a work
+    `startDate` — a year or a year-month there is INVALID under a
+    format-asserting validator, and the whole document fails over one
+    credential. Sources are routinely coarse ("2024", "Jun 2024"), and the
+    alternatives to dropping the field are worse: fabricate a day, or publish a
+    document a strict consumer rejects wholesale. So the standard field is
+    emitted only at full precision; a coarser credential date stays visible on
+    the HTML CV, which has no schema to satisfy (#252 review round 1, major 3).
+    """
+    text = normalize_date(value) or ""
+    return text if len(text) == 10 else None
 
 
 def year_range(value: object) -> tuple[str | None, str | None]:
@@ -419,7 +441,8 @@ def build_certificates(profile: dict) -> list[ResumeCertificate] | None:
         ResumeCertificate(
             name=_optional(entry.get("name")),
             issuer=_optional(entry.get("issuer")),
-            date=normalize_date(entry.get("date")),
+            # `format: date` — full precision or nothing, see `full_date`.
+            date=full_date(entry.get("date")),
             url=clean_url(entry.get("credentialUrl")),
         )
         for entry in _items(profile.get("certifications"))

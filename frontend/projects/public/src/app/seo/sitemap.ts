@@ -201,14 +201,27 @@ export async function resolveSiteUrl(
     return (await resolveSiteConfig(fetchJson, fallbackOrigin)).siteUrl;
 }
 
-/** Every published post, paged. A failure yields the routes-only sitemap, never an error page. */
-export async function fetchPublishedPosts(fetchJson: JsonFetcher): Promise<SitemapPost[]> {
+/**
+ * Published posts, paged. A failure yields the routes-only sitemap, never an
+ * error page.
+ *
+ * `limit` bounds the read for callers that only show the newest handful:
+ * `llms.txt` names 25 posts, and paging a 400-post blog in 100-post requests to
+ * throw 375 of them away is four SSR→backend round trips per request for
+ * nothing (#252 review, minor 1). `sitemap.xml` passes no limit — it must list
+ * everything — so its behaviour is unchanged.
+ */
+export async function fetchPublishedPosts(
+    fetchJson: JsonFetcher,
+    limit?: number,
+): Promise<SitemapPost[]> {
     const posts: SitemapPost[] = [];
+    const pageSize = limit && limit < POSTS_PAGE_SIZE ? limit : POSTS_PAGE_SIZE;
     try {
         let totalPages = 1;
         for (let page = 1; page <= totalPages && page <= MAX_POST_PAGES; page++) {
             const wire = (await fetchJson(
-                `${API_PREFIX}/posts?published_only=true&page=${page}&page_size=${POSTS_PAGE_SIZE}`,
+                `${API_PREFIX}/posts?published_only=true&page=${page}&page_size=${pageSize}`,
             )) as PostPageWire | null;
             for (const item of wire?.items ?? []) {
                 if (item.slug) {
@@ -223,6 +236,9 @@ export async function fetchPublishedPosts(fetchJson: JsonFetcher): Promise<Sitem
                     }
                     posts.push(post);
                 }
+            }
+            if (limit !== undefined && posts.length >= limit) {
+                return posts.slice(0, limit);
             }
             totalPages = typeof wire?.total_pages === 'number' ? wire.total_pages : 1;
         }
@@ -293,6 +309,13 @@ const AI_CRAWLERS = [
  * answer engine, so the exclusion ships BEFORE the feature rather than after
  * the first leak. `/admin` is the operator surface (its own app, also reachable
  * on the admin host).
+ *
+ * Both entries are PREFIXES — robots.txt has no exact-match form, so `/admin`
+ * also covers `/admin/`, `/admin-preview`, … and `/for/` covers every tailored
+ * link below it. That over-reach is deliberate: this app has no public route
+ * starting with either string, and for a surface whose failure mode is "a
+ * private link got indexed", excluding one route too many is the safe error
+ * (#252 review, minor 2).
  */
 const DISALLOWED_PATHS = ['/for/', '/admin'];
 
@@ -320,7 +343,15 @@ export function buildRobotsTxt(site: SsrSiteConfig): string {
         `Sitemap: ${base}/sitemap.xml`,
         // Not a robots.txt directive — a comment, which every parser ignores —
         // but the conventional breadcrumb to the agent-facing site map (#252).
-        `# llms.txt: ${base}/llms.txt`,
+        //
+        // Dropped under `deny`: robots.txt is the CRAWLER-facing document, and
+        // pointing crawlers at a map in the same breath as refusing them is
+        // incoherent. `/llms.txt` itself keeps being served either way — it is
+        // not a crawl permission but an on-demand map an assistant reads while
+        // helping a user, which llmstxt.org calls out as a different purpose
+        // from robots.txt, and which an owner who bars bulk training crawlers
+        // may still welcome (#252 review, minor 4).
+        ...(deny ? [] : [`# llms.txt: ${base}/llms.txt`]),
     ];
     return `${blocks.join('\n')}\n`;
 }

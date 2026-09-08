@@ -131,6 +131,38 @@ describe('SeoService', () => {
         expect(ssrDocument.querySelectorAll("link[rel='alternate']")).toHaveLength(1);
         expect(ssrDocument.querySelectorAll("link[rel='describedby']")).toHaveLength(1);
     });
+
+    /**
+     * #252 review, minor 3 — MEASURED, then decided. A not-found page DOES
+     * carry the agent links: the config subscription applies `updateSeo` as
+     * soon as identity arrives, before any component marks the route missing.
+     * That is the right outcome and is pinned here rather than "fixed": the
+     * `noindex` meta governs indexing of THIS page's body, while
+     * `rel="alternate"`/`rel="describedby"` point at other, perfectly
+     * indexable documents — so an agent that followed a dead recruiter link is
+     * still told, in the response it already has, where the real profile is.
+     * What must NOT happen is the not-found title being overwritten (#255).
+     */
+    it('keeps the agent links on a not-found page, alongside noindex (#109 + #252)', () => {
+        const ssrDocument = document.implementation.createHTMLDocument('ssr');
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({
+            providers: [
+                SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER,
+                { provide: DOCUMENT, useValue: ssrDocument }
+            ]
+        });
+        TestBed.inject(SeoService).setNotFound();
+
+        expect(
+            ssrDocument.querySelector("link[rel='alternate']")?.getAttribute('href'),
+        ).toBe('https://mavrov.de/api/app/profile/resume.json');
+        expect(
+            ssrDocument.querySelector("link[rel='describedby']")?.getAttribute('href'),
+        ).toBe('https://mavrov.de/llms.txt');
+        expect(TestBed.inject(Meta).getTag('name="robots"')?.content).toBe('noindex');
+        expect(TestBed.inject(Title).getTitle()).toContain('not found');
+    });
 });
 
 describe('SeoService config re-apply (#255 review pins)', () => {

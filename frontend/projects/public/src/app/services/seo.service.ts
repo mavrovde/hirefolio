@@ -159,6 +159,13 @@ export class SeoService {
      * `robots: noindex` meta so crawlers never index a 404 body. Rendered into the
      * SSR HTML (alongside the real 404 status set by the component) and kept after
      * hydration (#109).
+     *
+     * The #252 agent links stay on this page (they are applied by the config
+     * subscription before any route resolves). That is deliberate: `noindex`
+     * governs indexing of THIS page's body, while `rel="alternate"` and
+     * `rel="describedby"` point at other, perfectly indexable documents — so an
+     * agent that followed a dead link is still told where the real profile is,
+     * in the response it already has (#252 review, minor 3).
      */
     setNotFound(): void {
         this.notFound = true;

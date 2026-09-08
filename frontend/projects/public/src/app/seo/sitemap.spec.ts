@@ -279,6 +279,51 @@ describe('fetchPublishedPosts', () => {
         const fetchJson: JsonFetcher = vi.fn().mockRejectedValue(new Error('boom'));
         await expect(fetchPublishedPosts(fetchJson)).resolves.toEqual([]);
     });
+
+    // #252 review, minor 1: llms.txt prints 25 posts. Reading 4 pages of 100 to
+    // throw 375 away is 4 SSR→backend round trips per request for nothing.
+    it('asks the backend for only as many posts as the caller will use', async () => {
+        const fetchJson: JsonFetcher = vi
+            .fn()
+            .mockResolvedValue({ total_pages: 9, items: Array.from({ length: 25 }, (_, i) => ({ slug: `p${i}` })) });
+
+        await expect(fetchPublishedPosts(fetchJson, 25)).resolves.toHaveLength(25);
+
+        expect(fetchJson).toHaveBeenCalledTimes(1);
+        expect(fetchJson).toHaveBeenCalledWith(
+            '/api/app/posts?published_only=true&page=1&page_size=25',
+        );
+    });
+
+    it('keeps paging under a limit larger than one page, and trims the surplus', async () => {
+        const page = (n: number) => ({
+            total_pages: 3,
+            items: Array.from({ length: 100 }, (_, i) => ({ slug: `p${n}-${i}` })),
+        });
+        const fetchJson = fetcherFor({ [postsPath(1)]: page(1), [postsPath(2)]: page(2) });
+
+        await expect(fetchPublishedPosts(fetchJson, 150)).resolves.toHaveLength(150);
+        expect(fetchJson).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns fewer than the limit when the blog is smaller', async () => {
+        const fetchJson: JsonFetcher = vi
+            .fn()
+            .mockResolvedValue({ total_pages: 1, items: [{ slug: 'only' }] });
+
+        await expect(fetchPublishedPosts(fetchJson, 25)).resolves.toEqual([{ slug: 'only' }]);
+    });
+
+    it('is unbounded when no limit is given (the sitemap must list everything)', async () => {
+        const fetchJson: JsonFetcher = vi
+            .fn()
+            .mockResolvedValue({ total_pages: 3, items: [{ slug: 'p' }] });
+
+        await expect(fetchPublishedPosts(fetchJson)).resolves.toHaveLength(3);
+        expect(fetchJson).toHaveBeenCalledWith(
+            '/api/app/posts?published_only=true&page=1&page_size=100',
+        );
+    });
 });
 
 describe('buildSitemapXml', () => {
@@ -353,6 +398,10 @@ describe('buildRobotsTxt', () => {
             expect(txt).not.toContain(`User-agent: ${agent}\nAllow: /`);
         }
         expect(txt).toContain('Sitemap: https://example.com/sitemap.xml');
+        // The crawler-facing document must not point crawlers at a map in the
+        // same breath as refusing them (#252 review, minor 4). `/llms.txt` is
+        // still SERVED — it is an on-demand map, not a crawl permission.
+        expect(txt).not.toContain('llms.txt');
     });
 
     it.each(['allow', 'deny'] as const)(

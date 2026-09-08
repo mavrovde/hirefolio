@@ -19,18 +19,24 @@ All notable changes to this project will be documented in this file.
     `2022-03`/`2019-05`, `"Present"`/`"Heute"` → an **absent** `endDate` (the schema's
     convention for ongoing), `"2014 - 2016"` → start/end years. Every optional field is
     **omitted rather than emitted empty**, because `""` in a `format: uri`/`format: email`
-    field is invalid while an absent key simply claims nothing. Served through the SAME public
-    allowlist as the HTML profile (`public_profile_view`), so it can never become a back door
-    around it, and validated in CI against the **vendored** v1.0.0 schema
-    (`backend/tests/fixtures/jsonresume_schema_v1.json`) — including both shipped demo personas.
+    field is invalid while an absent key simply claims nothing. `certificates[].date` is the one
+    field the schema declares `format: date`, so a year-only credential date ("2024") omits it
+    rather than fabricating a day — the year stays on the HTML CV, which has no schema to
+    satisfy. Served through the SAME public allowlist as the HTML profile
+    (`public_profile_view`) — pinned by asserting the dict the mapper RECEIVES, since no input
+    can make the two paths differ observably today — and validated in CI against the
+    **vendored** v1.0.0 schema (`backend/tests/fixtures/jsonresume_schema_v1.json`) with
+    **format assertion armed** (`jsonschema.FormatChecker()` + `rfc3986-validator`, so `uri`,
+    `email` and `date` are really checked), including both shipped demo personas.
     With no profile uploaded yet it falls back to the frontend's bundled demo asset, the same
     source the public site renders, so the machine-readable document can never contradict the
     HTML.
   - **`GET /llms.txt`**, rendered per request by the SSR server
     (`projects/public/src/app/seo/llms-txt.ts`) in the [llmstxt.org](https://llmstxt.org)
     format: H1 + summary + availability sentence, then curated link lists — the structured
-    profile first, then home/CV/contact, the newest posts (capped, so the entry point stays
-    small enough to fit in context), and the sitemap/robots/AI-assistant links.
+    profile first, then home/CV/contact, the newest posts (capped at 25, so the entry point
+    stays small enough to fit in context — and the backend read is bounded to that same 25
+    rather than paging the whole blog to discard it), and the sitemap/robots/AI-assistant links.
   - **An explicit, switchable AI-crawler policy in `robots.txt`.** The AI user-agents are now
     named individually (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-Web,
     anthropic-ai, Google-Extended, PerplexityBot, Applebot-Extended, meta-externalagent, CCBot,
@@ -38,7 +44,10 @@ All notable changes to this project will be documented in this file.
     or `deny`, which gives **only** those agents `Disallow: /` and leaves classic search
     untouched. An unrecognized value normalizes to `allow` on both ends, so a typo can never
     silently deindex a portfolio. `/for/` (#250's tailored recruiter links) and `/admin` are
-    excluded for every crawler — shipped before the feature rather than after the first leak.
+    excluded for every crawler — as path prefixes, and shipped before the feature rather than
+    after the first leak. Under `deny`, robots.txt also stops advertising `/llms.txt`; the file
+    keeps being served, because it is an on-demand map an assistant reads while helping a
+    person, not a crawl permission (llmstxt.org draws the same distinction).
   - **The HTML head advertises both**: `<link rel="alternate" type="application/json">` to the
     JSON Resume and `<link rel="describedby">` to `/llms.txt`, written into the **injected**
     document so they are in the server-rendered HTML an agent reads.

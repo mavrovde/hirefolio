@@ -3,8 +3,9 @@ import { buildLlmsTxt, escapeMarkdown, LLMS_TXT_MAX_POSTS, renderLlmsTxt } from 
 import { JsonFetcher, SitemapPost, SsrSiteConfig } from './sitemap';
 
 const CONFIG_PATH = '/api/app/config/site';
+/** llms.txt reads ONE bounded page — `page_size` is the printed cap, not 100. */
 const postsPath = (page: number) =>
-    `/api/app/posts?published_only=true&page=${page}&page_size=100`;
+    `/api/app/posts?published_only=true&page=${page}&page_size=${LLMS_TXT_MAX_POSTS}`;
 
 const fetcherFor = (routes: Record<string, unknown>): JsonFetcher =>
     vi.fn(async (path: string) => {
@@ -104,6 +105,29 @@ describe('buildLlmsTxt', () => {
         expect(txt).toContain('- [All posts](https://example.com/blog): the complete index');
         expect(txt).toContain('- [Vector search](https://example.com/blog/vector-search): 2026-02-03');
         expect(txt).toContain('- [untitled-post](https://example.com/blog/untitled-post)');
+    });
+
+    it('asks the backend for only the posts it will print (#252 review, minor 1)', async () => {
+        // A blog far bigger than the cap: 9 pages exist, the file prints 25.
+        const fetchJson: JsonFetcher = vi.fn(async (path: string) =>
+            path.includes('/posts')
+                ? {
+                      total_pages: 9,
+                      items: Array.from({ length: LLMS_TXT_MAX_POSTS }, (_, i) => ({
+                          slug: `p${i}`,
+                          title: `P${i}`,
+                      })),
+                  }
+                : { site_url: 'https://example.com' },
+        );
+
+        await renderLlmsTxt(fetchJson, 'http://localhost');
+
+        expect(fetchJson).toHaveBeenCalledWith(
+            `/api/app/posts?published_only=true&page=1&page_size=${LLMS_TXT_MAX_POSTS}`,
+        );
+        // config + ONE post page, not one page per hundred posts in the blog.
+        expect(fetchJson).toHaveBeenCalledTimes(2);
     });
 
     it('caps the post list so the file still fits in a context window', () => {

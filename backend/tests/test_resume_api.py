@@ -11,6 +11,12 @@ import pytest
 import respx
 from httpx import AsyncClient
 
+from app.api import profile as profile_api
+from app.api.profile import (
+    PUBLIC_CONTACT_FIELDS,
+    PUBLIC_PROFILE_FIELDS,
+    public_profile_view,
+)
 from app.api.site_settings import AVAILABILITY_KEY
 from app.config import settings
 from app.models.profile_snapshot import ProfileSnapshot
@@ -123,31 +129,75 @@ async def test_resume_rejects_an_unsupported_language(client: AsyncClient):
     assert "Unsupported language" in response.json()["detail"]
 
 
+#: A snapshot as an uploaded LinkedIn export really arrives: portfolio fields
+#: mixed with contact PII the site never renders.
+PII_PROFILE = {
+    "name": "Jane",
+    "phone": "+49 30 000000",
+    "birthday": "1990-01-01",
+    "connections": ["Someone Private"],
+    "contact": {
+        "email": "jane@example.test",
+        "phone": "+49 30 000000",
+        "address": "Secret Street 1",
+    },
+}
+
+
+async def test_resume_is_built_from_the_projection_not_the_raw_snapshot(
+    client: AsyncClient, db_session, monkeypatch
+):
+    """The PII allowlist is pinned at the CALL, because it cannot be pinned at
+    the output.
+
+    Round 1 asserted only that the response body carried no PII — and the
+    reviewer deleted `public_profile_view(...)` from the endpoint with the suite
+    still 85/85 green. The reason is structural: every key the mapper reads is
+    already inside the allowlist, so today NO input can make the two paths
+    differ observably. The projection is therefore defense-in-depth against a
+    FUTURE mapper field (a `phone` in `basics`, an address in `location`) — and
+    a control whose only failure mode is future can only be pinned by asserting
+    the control RUNS. So: spy on the mapper and inspect the dict it receives.
+    (#252 review, blocker 2; lessons §16/§17 — a test that passes both ways
+    pins nothing.)
+    """
+    seen: list[object] = []
+    real = profile_api.build_json_resume
+
+    def spy(data, context):
+        seen.append(data)
+        return real(data, context)
+
+    monkeypatch.setattr(profile_api, "build_json_resume", spy)
+    await _seed(db_session, version="v1", language="en", data=PII_PROFILE)
+
+    response = await client.get(URL)
+
+    assert response.status_code == 200
+    assert len(seen) == 1
+    received = seen[0]
+    # The mapper must receive the PROJECTION, byte for byte.
+    assert received == public_profile_view(PII_PROFILE)
+    # …which is the invariant that matters, spelled out: nothing outside the
+    # allowlist reaches the mapper, at any depth it inspects.
+    assert isinstance(received, dict)
+    assert set(received) <= PUBLIC_PROFILE_FIELDS | {"contact"}
+    assert set(received["contact"]) <= PUBLIC_CONTACT_FIELDS
+    assert "phone" not in received and "birthday" not in received
+    assert "phone" not in received["contact"]
+
+
 async def test_resume_never_exposes_non_public_profile_fields(
     client: AsyncClient, db_session
 ):
-    """Same allowlist as the HTML profile: an uploaded LinkedIn export carries
-    phone/address/birthday, and the machine-readable view must not become the
-    back door around `public_profile_view`."""
-    await _seed(
-        db_session,
-        version="v1",
-        language="en",
-        data={
-            "name": "Jane",
-            "phone": "+49 30 000000",
-            "birthday": "1990-01-01",
-            "contact": {
-                "email": "jane@example.test",
-                "phone": "+49 30 000000",
-                "address": "Secret Street 1",
-            },
-        },
-    )
+    """The output-side companion to the spy test above: whatever the mapper
+    does with what it is given, no non-public value may reach the wire."""
+    await _seed(db_session, version="v1", language="en", data=PII_PROFILE)
     body = (await client.get(URL)).text
     assert "+49 30 000000" not in body
     assert "1990-01-01" not in body
     assert "Secret Street 1" not in body
+    assert "Someone Private" not in body
     assert "jane@example.test" in body  # the one contact field the site shows
 
 

@@ -10,7 +10,12 @@ pytest-xdist==3.8.0
 # Validates GET /profile/resume.json against the VENDORED JSON Resume v1.0.0
 # schema (tests/fixtures/jsonresume_schema_v1.json, #252). Test-only: the app
 # never validates at runtime, and the fixture keeps the check offline.
+# `rfc3986-validator` is what makes jsonschema register the `uri` format
+# checker at all — without it the gate silently skips every `format: uri`
+# field it claims to assert (#252 review, major 3); `tests/test_json_resume.py`
+# fails loudly if either is missing rather than validating less.
 jsonschema==4.26.0
+rfc3986-validator==0.1.1
 
 
 # Linting & Formatting

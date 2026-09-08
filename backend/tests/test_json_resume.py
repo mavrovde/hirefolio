@@ -12,8 +12,9 @@ import json
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft4Validator
+from jsonschema import Draft4Validator, FormatChecker
 
+from app.api.profile import public_profile_view
 from app.services.json_resume import (
     JSON_RESUME_SCHEMA_URL,
     ResumeContext,
@@ -22,6 +23,7 @@ from app.services.json_resume import (
     build_profiles,
     clean_email,
     clean_url,
+    full_date,
     network_for,
     normalize_date,
     username_for,
@@ -32,11 +34,26 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMO_PROFILE_DIR = REPO_ROOT / "frontend" / "projects" / "public" / "src" / "assets"
 SCHEMA_PATH = Path(__file__).resolve().parent / "fixtures" / "jsonresume_schema_v1.json"
 
+#: The `format` keywords this document actually depends on. Asserted to be
+#: ARMED before any validation runs: `jsonschema` registers a format checker
+#: only when its backing library is installed, and `Draft4Validator`'s own
+#: `FORMAT_CHECKER` carries just email/idn-email/ipv4/ipv6/regex — so the
+#: round-1 gate silently checked NEITHER `uri` NOR `date` while the docstring,
+#: the PR and the README all claimed it did (#252 review, major 3). A gate that
+#: can pass while disarmed is not a gate (lessons §16/§17).
+ASSERTED_FORMATS = ("uri", "email", "date")
+
 
 def jsonresume_validator() -> Draft4Validator:
-    """The pinned v1.0.0 schema; `$schema` in it is draft-04."""
+    """The pinned v1.0.0 schema (draft-04) with FORMAT ASSERTION turned on."""
+    checker = FormatChecker()
+    missing = [name for name in ASSERTED_FORMATS if name not in checker.checkers]
+    assert not missing, (
+        f"format checkers not installed: {missing} — the schema gate would pass "
+        "without checking them (install backend/requirements-dev.txt)"
+    )
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-    return Draft4Validator(schema, format_checker=Draft4Validator.FORMAT_CHECKER)
+    return Draft4Validator(schema, format_checker=checker)
 
 
 def assert_valid(document: dict) -> None:
@@ -45,6 +62,26 @@ def assert_valid(document: dict) -> None:
         for e in jsonresume_validator().iter_errors(document)
     ]
     assert not errors, "JSON Resume schema violations: " + "; ".join(errors)
+
+
+def test_the_schema_gate_rejects_what_it_claims_to_reject():
+    """Positive control for `assert_valid` itself.
+
+    Every other test in this file passes when `assert_valid` is a no-op, so the
+    validator needs its own proof: one violation per format keyword the module
+    relies on, plus a structural one. Without this the round-1 gate looked
+    identical to a correctly-armed one.
+    """
+    validator = jsonresume_validator()
+    for document, expected in (
+        ({"basics": {"url": ""}}, "empty string is not a uri"),
+        ({"basics": {"url": "not a url"}}, "junk is not a uri"),
+        ({"basics": {"email": "nope"}}, "junk is not an email"),
+        ({"certificates": [{"date": "2024"}]}, "a bare year is not a `format: date`"),
+        ({"work": [{"startDate": "March 2022"}]}, "prose is not an iso8601"),
+        ({"unexpected": 1}, "the root object forbids extra properties"),
+    ):
+        assert list(validator.iter_errors(document)), f"gate missed: {expected}"
 
 
 def serialize(profile: object, context: ResumeContext | None = None) -> dict:
@@ -80,6 +117,37 @@ def serialize(profile: object, context: ResumeContext | None = None) -> dict:
 )
 def test_normalize_date(raw, expected):
     assert normalize_date(raw) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("2024-06-15", "2024-06-15"),
+        ("15 Jun 2024", None),  # normalizes to 2024-06 — not full precision
+        ("Jun 2024", None),
+        ("2024", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_full_date_keeps_only_complete_dates(raw, expected):
+    """`certificates[].date` is `format: date`: a year there fails a
+    format-asserting validator and takes the WHOLE document with it."""
+    assert full_date(raw) == expected
+
+
+def test_a_year_only_certificate_date_is_omitted_not_faked():
+    document = serialize(
+        {"certifications": [{"name": "Cert", "issuer": "Body", "date": "2024"}]}
+    )
+    assert document["certificates"] == [{"name": "Cert", "issuer": "Body"}]
+    assert_valid(document)
+
+
+def test_a_full_certificate_date_survives():
+    document = serialize({"certifications": [{"name": "Cert", "date": "2024-06-15"}]})
+    assert document["certificates"] == [{"name": "Cert", "date": "2024-06-15"}]
+    assert_valid(document)
 
 
 @pytest.mark.parametrize(
@@ -382,12 +450,17 @@ def test_meta_omits_contact_url_without_a_configured_site_url():
 @pytest.mark.parametrize("language", ["en", "de"])
 def test_demo_profile_maps_to_a_schema_valid_resume(language):
     """The data a fresh stack actually serves (#66 demo persona) must produce a
-    complete, valid document — this is the fixture a forker sees first."""
+    complete, valid document — this is the fixture a forker sees first.
+
+    Fed through `public_profile_view` because that is what the ENDPOINT feeds
+    it; mapping the raw blob here would test a call that does not exist
+    (#252 review, blocker 2).
+    """
     raw = json.loads(
         (DEMO_PROFILE_DIR / f"profile_data_{language}.json").read_text(encoding="utf-8")
     )
     document = serialize(
-        raw,
+        public_profile_view(raw),
         ResumeContext(
             site_url="https://example.test",
             social_links=["https://github.com/example"],
