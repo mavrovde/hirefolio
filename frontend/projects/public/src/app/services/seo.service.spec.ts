@@ -101,6 +101,71 @@ describe('SeoService', () => {
         const link = ssrDocument.querySelector("link[rel='canonical']");
         expect(link?.getAttribute('href')).toBe('https://mavrov.de/server-test');
     });
+
+    /**
+     * #252 AC4: an agent holding the page must not have to guess where the
+     * machine-readable profile lives. Asserted on the INJECTED document for the
+     * same reason as the canonical — it is the SERVER-rendered head that a
+     * crawler reads.
+     */
+    it('advertises the JSON Resume and llms.txt from the SSR head (#252)', () => {
+        const ssrDocument = document.implementation.createHTMLDocument('ssr');
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({
+            providers: [
+                SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER,
+                { provide: DOCUMENT, useValue: ssrDocument }
+            ]
+        });
+        const seo = TestBed.inject(SeoService);
+        seo.updateSeo({ url: '/blog' });
+
+        const resume = ssrDocument.querySelector("link[rel='alternate'][type='application/json']");
+        expect(resume?.getAttribute('href')).toBe('https://mavrov.de/api/app/profile/resume.json');
+        expect(resume?.getAttribute('title')).toBe('JSON Resume');
+        const llms = ssrDocument.querySelector("link[rel='describedby']");
+        expect(llms?.getAttribute('href')).toBe('https://mavrov.de/llms.txt');
+
+        // Navigating must UPDATE the links, never append a second copy.
+        seo.updateSeo({ url: '/cv' });
+        expect(ssrDocument.querySelectorAll("link[rel='alternate']")).toHaveLength(1);
+        expect(ssrDocument.querySelectorAll("link[rel='describedby']")).toHaveLength(1);
+    });
+
+    /**
+     * #252 review, minor 3. The `noindex` meta governs indexing of THIS page's
+     * body, while `rel="alternate"`/`rel="describedby"` point at other,
+     * perfectly indexable documents — so an agent that followed a dead
+     * recruiter link is still told, in the response it already has, where the
+     * real profile is. What must NOT happen is the not-found title being
+     * overwritten (#255).
+     *
+     * NOTE: this case alone does not pin the behaviour — the mock config is
+     * `of(...)`, so it emits during construction and `updateSeo({})` has
+     * already written the links before `setNotFound()` runs. The pin that can
+     * fail is in the `config re-apply` block below, which reproduces the REAL
+     * SSR ordering (config after the 404).
+     */
+    it('keeps the agent links on a not-found page, alongside noindex (#109 + #252)', () => {
+        const ssrDocument = document.implementation.createHTMLDocument('ssr');
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({
+            providers: [
+                SeoService, Title, Meta, MOCK_SITE_CONFIG_PROVIDER,
+                { provide: DOCUMENT, useValue: ssrDocument }
+            ]
+        });
+        TestBed.inject(SeoService).setNotFound();
+
+        expect(
+            ssrDocument.querySelector("link[rel='alternate']")?.getAttribute('href'),
+        ).toBe('https://mavrov.de/api/app/profile/resume.json');
+        expect(
+            ssrDocument.querySelector("link[rel='describedby']")?.getAttribute('href'),
+        ).toBe('https://mavrov.de/llms.txt');
+        expect(TestBed.inject(Meta).getTag('name="robots"')?.content).toBe('noindex');
+        expect(TestBed.inject(Title).getTitle()).toContain('not found');
+    });
 });
 
 describe('SeoService config re-apply (#255 review pins)', () => {
@@ -144,6 +209,54 @@ describe('SeoService config re-apply (#255 review pins)', () => {
 
         subject.next(CFG);
         expect(titleService.getTitle()).toBe('Post not found | Real Owner');
+    });
+
+    /**
+     * #252 review, minor 3 — the pin that can actually fail.
+     *
+     * The ordering this pins: the component marks the route missing, and the
+     * runtime config HTTP response lands AFTER. The subscription then re-enters
+     * `setNotFound()`, so `updateSeo` never runs for this request and nothing
+     * else would write the links.
+     *
+     * Confirmed on a served stack, not just here: at `/blog/<unknown-slug>`
+     * with `/config/site` delayed 1.2s, the built app emitted NO
+     * `alternate`/`describedby` without `setNotFound()`'s write and both with
+     * it. Without the delay config wins the race, `updateSeo` writes them
+     * first, and the two builds are indistinguishable — so this ordering is the
+     * only one where the behaviour is observable.
+     *
+     * (The reviewer's round-1 note measured `/does-not-exist`, which is a
+     * different thing: no `**` route exists, so Express answers it and Angular
+     * never runs. See `seo.service.ts:setNotFound`.)
+     */
+    it('writes the agent links on a 404 whose config arrives after the route (#252)', () => {
+        const ssrDocument = document.implementation.createHTMLDocument('ssr');
+        const late = new Subject<any>();
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({
+            providers: [
+                SeoService, Title, Meta,
+                { provide: DOCUMENT, useValue: ssrDocument },
+                { provide: SiteConfigService, useValue: { config$: late.asObservable() } },
+            ],
+        });
+        const seo = TestBed.inject(SeoService);
+
+        seo.setNotFound();
+        // siteUrl is still unknown: no link is better than an empty href.
+        expect(ssrDocument.querySelector("link[rel='alternate']")).toBeNull();
+        expect(ssrDocument.querySelector("link[rel='describedby']")).toBeNull();
+
+        late.next(CFG);
+
+        expect(
+            ssrDocument.querySelector("link[rel='alternate']")?.getAttribute('href'),
+        ).toBe('https://real.example/api/app/profile/resume.json');
+        expect(
+            ssrDocument.querySelector("link[rel='describedby']")?.getAttribute('href'),
+        ).toBe('https://real.example/llms.txt');
+        expect(TestBed.inject(Title).getTitle()).toBe('Post not found | Real Owner');
     });
 
     it('updateSeo after a not-found clears the flag (normal navigation resumes)', () => {

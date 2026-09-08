@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.site_settings import AVAILABILITY_DEFAULT, read_availability
+from app.api.site_settings import read_availability_or_default
 from app.config import settings
 from app.database import get_db
 
@@ -33,13 +33,12 @@ class SiteConfig(BaseModel):
     # Runtime, admin-editable (#271) — the job-search state the hero renders.
     # Public by design: its whole purpose is to be shown to visitors.
     availability: str
-
-
-async def _availability_or_default(db: AsyncSession) -> str:
-    try:
-        return await read_availability(db)
-    except Exception:  # any DB failure degrades, never breaks
-        return AVAILABILITY_DEFAULT
+    # AI-crawler policy (#252): "allow" (default) or "deny". The SSR-generated
+    # robots.txt reads it from here, so flipping the switch is an env change on
+    # a prebuilt image — no rebuild. Being read by recruiter-side AI is the
+    # point of this product, hence allow-by-default; an owner who objects sets
+    # AI_CRAWLER_POLICY=deny.
+    ai_crawler_policy: str
 
 
 @router.get("/site", response_model=SiteConfig)
@@ -57,5 +56,6 @@ async def get_site_config(db: AsyncSession = Depends(get_db)) -> SiteConfig:
         # exactly as it survives an unreachable backend on the client side —
         # degrade to the default, never 500 the public site's bootstrap
         # (#295 review: this endpoint was DB-free before availability).
-        availability=await _availability_or_default(db),
+        availability=await read_availability_or_default(db),
+        ai_crawler_policy=settings.ai_crawler_policy,
     )

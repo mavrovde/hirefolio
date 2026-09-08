@@ -2,6 +2,7 @@ import { Injectable, Inject, DOCUMENT } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
 import { BehaviorSubject } from 'rxjs';
 import { SiteConfigService, SiteConfig, DEFAULT_SITE_CONFIG } from './site-config.service';
+import { environment } from '../../environments/environment';
 
 export interface SeoData {
     title?: string;
@@ -119,7 +120,34 @@ export class SeoService {
         if (url) {
             this.metaService.updateTag({ property: 'og:url', content: url });
             this.updateCanonicalUrl(url);
+            this.updateAgentLinks();
         }
+    }
+
+    /**
+     * Advertise the machine-readable surfaces from the HTML head (#252).
+     *
+     * An agent that already has the page does not need to guess a URL: `link
+     * rel="alternate" type="application/json"` points at the JSON Resume
+     * document, and `rel="describedby"` at `/llms.txt` — the two relations
+     * llmstxt.org names for exactly this. Emitted only once the runtime site
+     * URL is known, for the same reason as the canonical: a relative or empty
+     * `href` is worse than none. Both are written into the INJECTED document,
+     * so they are present in the SERVER-rendered HTML a crawler reads.
+     */
+    private updateAgentLinks(): void {
+        // The prefix comes from the browser layer's own config; the SSR copy of
+        // this path lives in `seo/sitemap.ts` (`RESUME_PATH`).
+        this.updateLink(
+            "link[rel='alternate'][type='application/json']",
+            { rel: 'alternate', type: 'application/json', title: 'JSON Resume' },
+            `${this.baseUrl}${environment.apiPrefix}/profile/resume.json`
+        );
+        this.updateLink(
+            "link[rel='describedby']",
+            { rel: 'describedby', type: 'text/plain' },
+            `${this.baseUrl}/llms.txt`
+        );
     }
 
     setJsonLd(schema: JsonLd): void {
@@ -131,11 +159,41 @@ export class SeoService {
      * `robots: noindex` meta so crawlers never index a 404 body. Rendered into the
      * SSR HTML (alongside the real 404 status set by the component) and kept after
      * hydration (#109).
+     *
+     * The #252 agent links are written here TOO, and deliberately so: `noindex`
+     * governs indexing of THIS page's body, while `rel="alternate"` and
+     * `rel="describedby"` point at other, perfectly indexable documents — so an
+     * agent that followed a dead recruiter link is still told where the real
+     * profile is, in the response it already has (#252 review, minor 3).
+     *
+     * It cannot be left to `updateSeo`'s call, because that call is ordering-
+     * dependent: when the component marks the route missing BEFORE the runtime
+     * config response lands, the subscription above re-enters this method and
+     * `updateSeo` never runs for the request. Measured on a served stack at
+     * `/blog/<unknown-slug>` (the route that actually reaches this code and
+     * returns a real 404), delaying `/config/site` by 1.2s so config lands
+     * last: WITHOUT this write the 404 carried no `alternate`/`describedby`
+     * and no canonical; WITH it, both links are present. When config wins the
+     * race instead — the common case — `updateSeo` has already written them and
+     * the two states are indistinguishable, so this is defence for the slow-
+     * config ordering, not for every 404.
+     *
+     * NOTE for the next reader: `/does-not-exist` is NOT this path. The public
+     * app declares no `**` route (`app.routes.ts`), so an unknown top-level URL
+     * never reaches Angular at all — the SSR engine declines it and Express
+     * answers its own `Cannot GET` page, which has no head links by
+     * construction. That absence cannot be fixed here.
+     *
+     * The links are still omitted while `siteUrl` is unknown, the same rule the
+     * canonical follows: a relative or empty `href` is worse than none.
      */
     setNotFound(): void {
         this.notFound = true;
         this.titleService.setTitle(`Post not found | ${this.site.ownerName}`);
         this.metaService.updateTag({ name: 'robots', content: 'noindex' });
+        if (this.baseUrl) {
+            this.updateAgentLinks();
+        }
     }
 
     /**
@@ -150,12 +208,19 @@ export class SeoService {
      * was absent from the server-rendered HTML that crawlers actually read.
      */
     private updateCanonicalUrl(url: string): void {
-        let link: HTMLLinkElement | null = this.document.querySelector("link[rel='canonical']");
+        this.updateLink("link[rel='canonical']", { rel: 'canonical' }, url);
+    }
+
+    /** Upsert one `<link>` in the injected document's head, by selector. */
+    private updateLink(selector: string, attributes: Record<string, string>, href: string): void {
+        let link: HTMLLinkElement | null = this.document.querySelector(selector);
         if (!link) {
             link = this.document.createElement('link');
-            link.setAttribute('rel', 'canonical');
+            for (const [name, value] of Object.entries(attributes)) {
+                link.setAttribute(name, value);
+            }
             this.document.head.appendChild(link);
         }
-        link.setAttribute('href', url);
+        link.setAttribute('href', href);
     }
 }

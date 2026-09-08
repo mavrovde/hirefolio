@@ -43,6 +43,20 @@ async def read_availability(db: AsyncSession) -> str:
     return row.value if row else AVAILABILITY_DEFAULT
 
 
+async def read_availability_or_default(db: AsyncSession) -> str:
+    """``read_availability`` for PUBLIC read paths: a DB failure degrades.
+
+    Both public consumers — the site config bootstrap (#65) and the machine-
+    readable resume (#252) — must survive a DB outage the way the client does:
+    identity degrades to the default, the endpoint never 500s. One definition,
+    because two copies of "and don't blow up" drift.
+    """
+    try:
+        return await read_availability(db)
+    except Exception:  # any DB failure degrades, never breaks
+        return AVAILABILITY_DEFAULT
+
+
 @router.get("/availability", response_model=AvailabilityOut)
 async def get_availability(db: AsyncSession = Depends(get_db)) -> AvailabilityOut:
     return AvailabilityOut(value=await read_availability(db))
