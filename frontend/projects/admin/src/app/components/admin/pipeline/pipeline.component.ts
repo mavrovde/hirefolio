@@ -8,6 +8,11 @@ import {
   OPPORTUNITY_SOURCES,
 } from '../../../services/opportunities.service';
 import { AdminCvService, CvVersion } from '../../../services/admin-cv.service';
+import {
+  TailoredLink,
+  TailoredLinksService,
+  parseHighlights,
+} from '../../../services/tailored-links.service';
 
 /**
  * Job-search pipeline board (#247): opportunities by stage, with a detail
@@ -41,9 +46,26 @@ export class PipelineComponent implements OnInit {
   cvChoice = '';
   sendingCv = false;
 
+  // Tailored application links (#250): minted from the opportunity, listed with
+  // their own signal (visits / CV downloads) so the operator sees whether the
+  // application was ever opened.
+  links: TailoredLink[] = [];
+  showLinkForm = false;
+  savingLink = false;
+  copiedLinkId: string | null = null;
+  linkDraft = {
+    slug: '',
+    cv_document_id: '',
+    headline_note: '',
+    highlighted_skills: '',
+    highlighted_projects: '',
+    expires_at: '',
+  };
+
   constructor(
     private opportunitiesService: OpportunitiesService,
     private adminCvService: AdminCvService,
+    private tailoredLinksService: TailoredLinksService,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -97,7 +119,14 @@ export class PipelineComponent implements OnInit {
     // one click records the wrong variant against the wrong company — the one
     // datum this feature exists to record (#294 review round 1, reproduced).
     this.cvChoice = '';
+    // Same reasoning for the tailored-link panel: a previous opportunity's
+    // links must never be shown (or edited) under this one's header.
+    this.links = [];
+    this.showLinkForm = false;
+    this.copiedLinkId = null;
+    this.resetLinkDraft();
     this.loadCvVersions();
+    this.loadLinks(opportunity.id);
     this.opportunitiesService.get(opportunity.id).subscribe({
       next: (full) => {
         this.selected = full;
@@ -114,6 +143,10 @@ export class PipelineComponent implements OnInit {
   close() {
     this.selected = null;
     this.noteDraft = '';
+    this.links = [];
+    this.showLinkForm = false;
+    this.copiedLinkId = null;
+    this.resetLinkDraft();
   }
 
   moveStage(stage: string) {
@@ -201,5 +234,122 @@ export class PipelineComponent implements OnInit {
         this.cdr.detectChanges();
       },
     });
+  }
+
+  // -- Tailored application links (#250) ------------------------------------
+
+  private resetLinkDraft() {
+    this.linkDraft = {
+      slug: '',
+      cv_document_id: '',
+      headline_note: '',
+      highlighted_skills: '',
+      highlighted_projects: '',
+      expires_at: '',
+    };
+  }
+
+  loadLinks(opportunityId: string) {
+    this.tailoredLinksService.listFor(opportunityId).subscribe({
+      next: (links) => {
+        this.links = links;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        // Not fatal to the panel — the rest of the detail view still works.
+        console.error('Error loading tailored links:', err);
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  createLink() {
+    if (!this.selected || this.savingLink) {
+      return;
+    }
+    this.savingLink = true;
+    this.tailoredLinksService
+      .create({
+        opportunity_id: this.selected.id,
+        // An empty custom slug means "generate one" — the backend appends a
+        // random suffix so the URL is not guessable from the company name.
+        slug: this.linkDraft.slug.trim() || null,
+        cv_document_id: this.linkDraft.cv_document_id || null,
+        headline_note: this.linkDraft.headline_note.trim() || null,
+        highlighted_skills: parseHighlights(this.linkDraft.highlighted_skills),
+        highlighted_projects: parseHighlights(this.linkDraft.highlighted_projects),
+        expires_at: this.linkDraft.expires_at || null,
+      })
+      .subscribe({
+        next: (link) => {
+          this.links = [link, ...this.links];
+          this.showLinkForm = false;
+          this.savingLink = false;
+          this.error = null; // a stale banner must not outlive a success
+          this.resetLinkDraft();
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error creating the tailored link:', err);
+          this.error =
+            err?.status === 409
+              ? 'That slug is already taken — pick another one'
+              : 'Failed to create the tailored link';
+          this.savingLink = false;
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  toggleLink(link: TailoredLink) {
+    this.tailoredLinksService.update(link.id, { enabled: !link.enabled }).subscribe({
+      next: (updated) => {
+        this.links = this.links.map((l) => (l.id === updated.id ? updated : l));
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error updating the tailored link:', err);
+        this.error = 'Failed to update the tailored link';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  deleteLink(link: TailoredLink) {
+    this.tailoredLinksService.remove(link.id).subscribe({
+      next: () => {
+        this.links = this.links.filter((l) => l.id !== link.id);
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error deleting the tailored link:', err);
+        this.error = 'Failed to delete the tailored link';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  /**
+   * Copy the absolute link. `navigator.clipboard` is undefined on insecure
+   * origins, so the failure path is explicit rather than an unhandled
+   * rejection — the operator still sees the URL in the row. (The admin app is
+   * browser-only, so `navigator` itself always exists here.)
+   */
+  copyLink(link: TailoredLink) {
+    const clipboard = navigator.clipboard;
+    if (!clipboard) {
+      this.error = 'Clipboard unavailable — copy the URL manually';
+      return;
+    }
+    clipboard.writeText(link.url).then(
+      () => {
+        this.copiedLinkId = link.id;
+        this.cdr.detectChanges();
+      },
+      () => {
+        this.error = 'Clipboard unavailable — copy the URL manually';
+        this.cdr.detectChanges();
+      }
+    );
   }
 }

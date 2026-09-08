@@ -39,6 +39,10 @@ export class SeoService {
     // lastSeoData would overwrite the #109 not-found title with the page
     // branding (#255 review round 1).
     private notFound = false;
+    private notFoundSubject = 'Post';
+    // Same reasoning for a deliberately unlisted page (#250's /for/:slug): its
+    // `noindex` must survive the config arrival that re-applies the SEO data.
+    private noIndex = false;
 
     public jsonLdSchema$ = new BehaviorSubject<JsonLd | null>(null);
 
@@ -57,9 +61,15 @@ export class SeoService {
             // its not-found title (with the fresh owner name), never the
             // regular branding.
             if (this.notFound) {
-                this.setNotFound();
+                this.setNotFound(this.notFoundSubject);
             } else {
+                // updateSeo clears the robots meta (see there), so a page that
+                // asked to stay unlisted has to re-assert it afterwards.
+                const wasNoIndex = this.noIndex;
                 this.updateSeo(this.lastSeoData ?? {});
+                if (wasNoIndex) {
+                    this.setNoIndex();
+                }
             }
         });
     }
@@ -77,6 +87,13 @@ export class SeoService {
     updateSeo(data: SeoData): void {
         this.lastSeoData = data;
         this.notFound = false;
+        // A `robots: noindex` written by a PREVIOUS page (a not-found body, or
+        // an unlisted /for/ link) lives in the document, not in the route, so a
+        // client-side navigation used to carry it onto the next, perfectly
+        // indexable page. Declaring a normal page clears it; pages that must
+        // stay unlisted call `setNoIndex()` right after (#250).
+        this.noIndex = false;
+        this.metaService.removeTag("name='robots'");
         const fullTitle = data.title ? `${data.title} | ${this.site.ownerName}` : this.baseTitle;
         const description = data.description || this.defaultDescription;
         // Absolute URLs need a configured site URL. Until the runtime config
@@ -132,10 +149,26 @@ export class SeoService {
      * SSR HTML (alongside the real 404 status set by the component) and kept after
      * hydration (#109).
      */
-    setNotFound(): void {
+    setNotFound(subject: string = 'Post'): void {
         this.notFound = true;
-        this.titleService.setTitle(`Post not found | ${this.site.ownerName}`);
+        this.notFoundSubject = subject;
+        this.titleService.setTitle(`${subject} not found | ${this.site.ownerName}`);
         this.metaService.updateTag({ name: 'robots', content: 'noindex' });
+    }
+
+    /**
+     * Keep this page out of every index without calling it a 404 (#250).
+     *
+     * A tailored application link (`/for/:slug`) is a REAL page — it returns
+     * 200 and renders the portfolio — that is shared with exactly one
+     * recipient. `robots.txt` disallows `/for/` too, but robots.txt is a
+     * request to well-behaved crawlers; the meta tag is what a page that has
+     * already been fetched carries with it. Written into the INJECTED document
+     * via Angular's Meta service, so it is present in the SERVER-rendered HTML.
+     */
+    setNoIndex(): void {
+        this.noIndex = true;
+        this.metaService.updateTag({ name: 'robots', content: 'noindex, nofollow' });
     }
 
     /**

@@ -210,6 +210,10 @@ export function buildRobotsTxt(siteUrl: string): string {
     const blocks = [
         'User-agent: *',
         'Allow: /',
+        // Tailored application links (#250) are shared with ONE recipient and
+        // must never enter an index. The pages also carry `robots: noindex` —
+        // robots.txt is a request, the meta tag travels with the page.
+        'Disallow: /for/',
         '',
         '# Specifically allow AI search crawlers',
         ...AI_CRAWLERS.flatMap((agent) => [`User-agent: ${agent}`, 'Allow: /', '']),

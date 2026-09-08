@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Tailored application links — `/for/:slug` (#250)** — the owner mints an unlisted URL per
+  application instead of attaching a generic PDF, and the application stops being write-only:
+  - **`TailoredLink`** (migration `tailored0010`) belongs to an opportunity (#247), pins a **CV
+    variant**, and carries the note, the highlighted skills/roles, an optional expiry and the
+    visit/download counters. Minted, revoked and copied from the pipeline detail panel — no
+    rebuild, no redeploy.
+  - **The slug is the access control**: no token, no login. A generated slug carries a random
+    8-character suffix, and unknown / disabled / expired slugs all return the SAME 404 — a
+    distinguishable answer would confirm that a guessed slug exists. A duplicate custom slug is a
+    409, enforced by a DB `UNIQUE`, never a silent overwrite of another application's page.
+  - **The public page is the portfolio, re-ordered — never a subset**: the highlighted skills and
+    the matching roles move first, nothing is hidden, and an empty tailoring returns the original
+    object, so `/` is provably untouched when the feature is unused.
+  - **Kept out of every index**: `robots: noindex, nofollow` in the SERVER-rendered `<head>`,
+    `Disallow: /for/` in `robots.txt`, and never a `<loc>` in `sitemap.xml`. `SeoService` now also
+    **clears a stale `robots` tag** on the next normal page — a meta tag lives in the document, not
+    in the route, so a client-side navigation away from a 404 used to carry `noindex` onto an
+    indexable page.
+  - **Visits are counted from the browser only** and land on the opportunity timeline
+    (`Tailored link /for/… opened (visit #2)`); the increment is a single atomic `UPDATE … +1
+    RETURNING`, so two opens in the same second are two visits. Counting during SSR would have
+    doubled every real visit and turned a crawler prefetch into "the recruiter opened it".
+  - Validated on every layer (rule 12): backend pytest at 100%, all three Vitest projects at 100%,
+    and a `public-e2e` spec that mints a link, asserts the note + `noindex` in the **server-rendered
+    HTML**, watches the browser visit reach the timeline, and proves a revoked link 404s.
 - **Marketing cover artwork, generated from the site's own visual identity (#311)** — the repository
   is the product's storefront, and until now a shared repo link rendered GitHub's generic fallback
   card while the README opened on administrivia:
