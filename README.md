@@ -1,4 +1,4 @@
-[![Hirefolio — fork-and-go portfolio + recruiter communications for job-seeking engineers, rendered as a green-phosphor terminal card](docs/assets/social-preview.png)](https://mavrov.de)
+[![Hirefolio — fork-and-go portfolio + recruiter communications for job-seeking engineers, rendered as a green-phosphor terminal card](docs/assets/social-preview.png)](https://github.com/mavrovde/hirefolio)
 
 # Hirefolio
 
