@@ -4,7 +4,7 @@ Binary assets in a repo are opaque, so their provenance lives here.
 
 | File | Size | Bytes | Where it is used |
 | --- | --- | --- | --- |
-| `social-preview.png` | 1280×640 | 278 KB (284,616 B) | GitHub **Settings → General → Social preview** (uploaded by hand — no API) and the README hero banner (`README.md:1`) |
+| `social-preview.png` | 1280×640 | 278 KB (284,616 B) | GitHub **Settings → General → Social preview** (uploaded by hand — no API) and the README hero banner (`README.md:1`, which links to the repository — see the de-brand note in `README.md`) |
 | `social-preview-thumbnail.png` | 320×160 | 27 KB (27,686 B) | Legibility evidence: the same card downscaled the way a Slack/X unfurl downscales it |
 | `../../frontend/projects/public/src/assets/og-image.png` | 1200×630 | 269 KB (275,794 B) | The site's `og:image`/`twitter:image` (`SeoService`, #71) — asserted live by `frontend/e2e/public/seo-ssr.spec.ts` |
 

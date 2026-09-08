@@ -528,8 +528,12 @@ site would bake a person into every fork. It is drawn in the site's own visual l
 **One manual step per fork — GitHub has no API for it:** upload `docs/assets/social-preview.png` at
 **Settings → General → Social preview → Upload an image…**. That setting is what renders when the
 *repository link* is shared (Slack/Discord/X unfurls, GitHub's own previews); the committed file
-only covers the README banner and the site card. Also point the banner's link (`README.md:1`) at
-your own deployment.
+only covers the README banner and the site card.
+
+The banner links to the **project repository**, not to any single deployment: an unannotated link to
+one instance's domain on a guidance surface is exactly what the de-brand contract (#313) rejects, and
+this file's one sanctioned reference-deployment aside already exists further down. In your own fork,
+point `README.md:1` wherever you like — your live site is the obvious choice.
 
 ### Frontend Environment
 
