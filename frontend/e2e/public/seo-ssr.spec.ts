@@ -39,7 +39,17 @@ test.describe('SEO & SSR Verification', () => {
         }
         // Tailored links (#250) and the admin surface stay out of every index.
         expect(text).toContain('User-agent: *\nAllow: /\nDisallow: /for/\nDisallow: /admin');
-        expect(text).toContain(`# llms.txt: ${site_url}/llms.txt`);
+        // The `# llms.txt:` breadcrumb follows the policy too (#252 review,
+        // minor 8): a deny deployment stops ADVERTISING the agent map to
+        // crawlers, even though the file itself is still served on request.
+        // Asserting it unconditionally passed only because the spec had never
+        // been run under `deny` after that change landed.
+        const breadcrumb = `# llms.txt: ${site_url}/llms.txt`;
+        if (ai_crawler_policy === 'deny') {
+            expect(text).not.toContain(breadcrumb);
+        } else {
+            expect(text).toContain(breadcrumb);
+        }
     });
 
     // 1b. llms.txt — the agent-facing site map (#252)

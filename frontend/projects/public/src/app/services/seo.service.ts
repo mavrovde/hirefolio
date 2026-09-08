@@ -166,13 +166,26 @@ export class SeoService {
      * agent that followed a dead recruiter link is still told where the real
      * profile is, in the response it already has (#252 review, minor 3).
      *
-     * It cannot be left to `updateSeo`'s call: on a real 404 the component marks
-     * the route missing BEFORE the runtime config HTTP response lands, so the
-     * subscription above re-enters this method and `updateSeo` never runs for
-     * this request. The reviewer measured exactly that on a served
-     * `/does-not-exist` — the links were absent. They are only absent now while
-     * `siteUrl` is unknown, the same rule the canonical follows: a relative or
-     * empty `href` is worse than none.
+     * It cannot be left to `updateSeo`'s call, because that call is ordering-
+     * dependent: when the component marks the route missing BEFORE the runtime
+     * config response lands, the subscription above re-enters this method and
+     * `updateSeo` never runs for the request. Measured on a served stack at
+     * `/blog/<unknown-slug>` (the route that actually reaches this code and
+     * returns a real 404), delaying `/config/site` by 1.2s so config lands
+     * last: WITHOUT this write the 404 carried no `alternate`/`describedby`
+     * and no canonical; WITH it, both links are present. When config wins the
+     * race instead — the common case — `updateSeo` has already written them and
+     * the two states are indistinguishable, so this is defence for the slow-
+     * config ordering, not for every 404.
+     *
+     * NOTE for the next reader: `/does-not-exist` is NOT this path. The public
+     * app declares no `**` route (`app.routes.ts`), so an unknown top-level URL
+     * never reaches Angular at all — the SSR engine declines it and Express
+     * answers its own `Cannot GET` page, which has no head links by
+     * construction. That absence cannot be fixed here.
+     *
+     * The links are still omitted while `siteUrl` is unknown, the same rule the
+     * canonical follows: a relative or empty `href` is worse than none.
      */
     setNotFound(): void {
         this.notFound = true;

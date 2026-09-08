@@ -214,11 +214,21 @@ describe('SeoService config re-apply (#255 review pins)', () => {
     /**
      * #252 review, minor 3 — the pin that can actually fail.
      *
-     * Real SSR order: the component marks the route missing, and the runtime
-     * config HTTP response lands AFTER. The subscription then re-enters
-     * `setNotFound()`, so `updateSeo` never runs for this request — which is
-     * why the reviewer measured a served `/does-not-exist` with no agent links
-     * at all. `setNotFound()` must write them itself.
+     * The ordering this pins: the component marks the route missing, and the
+     * runtime config HTTP response lands AFTER. The subscription then re-enters
+     * `setNotFound()`, so `updateSeo` never runs for this request and nothing
+     * else would write the links.
+     *
+     * Confirmed on a served stack, not just here: at `/blog/<unknown-slug>`
+     * with `/config/site` delayed 1.2s, the built app emitted NO
+     * `alternate`/`describedby` without `setNotFound()`'s write and both with
+     * it. Without the delay config wins the race, `updateSeo` writes them
+     * first, and the two builds are indistinguishable — so this ordering is the
+     * only one where the behaviour is observable.
+     *
+     * (The reviewer's round-1 note measured `/does-not-exist`, which is a
+     * different thing: no `**` route exists, so Express answers it and Angular
+     * never runs. See `seo.service.ts:setNotFound`.)
      */
     it('writes the agent links on a 404 whose config arrives after the route (#252)', () => {
         const ssrDocument = document.implementation.createHTMLDocument('ssr');
