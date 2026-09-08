@@ -242,7 +242,9 @@ export class TailoredComponent implements OnInit {
     }
 
     private handleNotFound(): void {
-        this.seoService.setNotFound();
+        // "Link", not the 'Post' default: an unknown/disabled/expired /for/:slug
+        // is a missing tailored LINK, and the subject is what the <title> says.
+        this.seoService.setNotFound('Link');
         if (isPlatformServer(this.platformId) && this.responseInit) {
             this.responseInit.status = 404;
         }

@@ -210,7 +210,8 @@ describe('TailoredComponent', () => {
 
         expect(fixture.nativeElement.querySelector('[data-testid="tailored-not-found"]')).toBeTruthy();
         expect(fixture.nativeElement.querySelector('[data-testid="tailored-banner"]')).toBeNull();
-        expect(seoSpy['setNotFound']).toHaveBeenCalled();
+        // The <title> subject must name a LINK, not the 'Post' default.
+        expect(seoSpy['setNotFound']).toHaveBeenCalledWith('Link');
     }));
 
     it('counts the visit in the browser, once', fakeAsync(() => {
@@ -263,7 +264,7 @@ describe('TailoredComponent', () => {
             fixture.detectChanges();
             await fixture.whenStable();
 
-            expect(seoSpy['setNotFound']).toHaveBeenCalled();
+            expect(seoSpy['setNotFound']).toHaveBeenCalledWith('Link');
         });
     });
 
