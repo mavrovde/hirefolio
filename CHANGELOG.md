@@ -27,9 +27,15 @@ All notable changes to this project will be documented in this file.
     (`Tailored link /for/… opened (visit #2)`); the increment is a single atomic `UPDATE … +1
     RETURNING`, so two opens in the same second are two visits. Counting during SSR would have
     doubled every real visit and turned a crawler prefetch into "the recruiter opened it".
-  - Validated on every layer (rule 12): backend pytest at 100%, all three Vitest projects at 100%,
-    and a `public-e2e` spec that mints a link, asserts the note + `noindex` in the **server-rendered
-    HTML**, watches the browser visit reach the timeline, and proves a revoked link 404s.
+  - Exercised on every layer rule 12 asks for, each one measured: 22 backend tests
+    (`tests/test_tailored_links.py`) inside a suite that holds at 100%; all three Vitest projects at
+    100% on all four metrics; migration `tailored0010` applied, downgraded and re-applied against a
+    real PostgreSQL 16; the route **curled on a composed Docker stack** — `200` with
+    `content="noindex, nofollow"` and the note in the server-rendered bytes for a live slug, a real
+    `404` for an unknown one, `Disallow: /for/` in `robots.txt` and no `/for/` `<loc>` in
+    `sitemap.xml`; and the whole `public-e2e` project green with a spec that mints a link, asserts
+    the note in the **server-rendered HTML**, watches the browser visit reach the opportunity
+    timeline, and proves a revoked link 404s.
 - **Marketing cover artwork, generated from the site's own visual identity (#311)** — the repository
   is the product's storefront, and until now a shared repo link rendered GitHub's generic fallback
   card while the README opened on administrivia:
