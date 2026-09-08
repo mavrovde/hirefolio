@@ -1201,6 +1201,37 @@ while `agents/PLAYBOOK.md` stays in scope, with a case asserting exactly that. A
 fail-closed property directly: the suite creates files at paths that appear nowhere in the checker
 and asserts they are caught from birth.
 
+## 48. "Best-effort" is a lie while the helper shares the caller's SESSION (#249)
+
+An analytics/audit/telemetry side-write is written to be harmless: wrap it in `try/except`, log the
+failure, return `False`. #249's first version did exactly that — and still turned two *already
+successful* requests into 500s, because the except path ended in `await db.rollback()` on the
+**caller's** session.
+
+`Session.rollback()` is **session-WIDE**. It expires every object in the identity map — regardless
+of `expire_on_commit=False`, which only governs *commit*. So after a swallowed failure the caller's
+next ordinary attribute read (`interaction.id`, `active_cv.version`) is no longer a memory read: it
+is a lazy reload, i.e. **sync IO inside async code** → `MissingGreenlet` → 500. The exception the
+helper "swallowed" reappears in the caller, one line later, wearing a different name.
+
+The trap only fires on the FAILURE path, so every happy-path test passes. What caught it was an
+existing failure-injection test in another module (`test_cv_request_survives_inbox_indexing_failure`)
+going red — the sibling-test argument for running the FULL suite, not the file you edited.
+
+- **The fix is ownership, not discipline.** The first patch was "capture the scalars you need before
+  the risky block" — and that same file already carried that exact comment, from the previous time
+  this happened, and the new code walked into it anyway. A contract that every call site must
+  remember is not a contract. Give the side-write its **own short-lived session**; then neither its
+  commit nor its rollback can reach the request's transaction or identity map, and "best effort"
+  becomes structurally true.
+- **Reference the module, not the name** (`import app.database` → `app.database.async_session()`),
+  so the test suite's session redirect (`_redirect_background_sessions`) reaches the write. A
+  `from app.database import async_session` binds at import time and escapes the monkeypatch — the
+  same reason `app.services.translation` needs its own explicit redirect line.
+- Generalization: **any helper that takes the caller's session inherits the power to destroy the
+  caller's state.** `rollback()`, `close()`, `expire_all()` and `commit()` are all session-wide. If
+  a helper is documented as "cannot affect the caller", it must not hold the caller's session.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,

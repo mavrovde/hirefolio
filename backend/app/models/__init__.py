@@ -1,5 +1,6 @@
 from app.models.cv_document import CvDocument
 from app.models.cv_request import CvRequest
+from app.models.engagement_event import EngagementEvent
 from app.models.interaction import Interaction
 from app.models.interview import Interview
 from app.models.opportunity import Opportunity, OpportunityNote
@@ -11,6 +12,7 @@ from app.models.user import User
 __all__ = [
     "CvDocument",
     "CvRequest",
+    "EngagementEvent",
     "Interaction",
     "Interview",
     "Opportunity",

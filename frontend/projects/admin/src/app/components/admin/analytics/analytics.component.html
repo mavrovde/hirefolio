@@ -1,0 +1,119 @@
+<div class="analytics-page">
+  <header class="page-header">
+    <h1>Engagement</h1>
+    <p class="subtitle">
+      First-party and owner-only: counted on this server from events the portfolio
+      already creates — no third-party analytics.
+    </p>
+  </header>
+
+  @if (state$ | async; as state) {
+    @if (state.status === 'loading') {
+      <p class="loading" data-testid="analytics-loading">Loading engagement data…</p>
+    } @else if (state.status === 'disabled') {
+      <p class="disabled-note" data-testid="analytics-disabled">
+        Engagement analytics is disabled on this server. Set
+        <code>ENGAGEMENT_ANALYTICS_ENABLED=true</code> to collect and show it.
+      </p>
+    } @else if (state.status === 'error') {
+      <p class="error" data-testid="analytics-error">
+        Failed to load engagement analytics.
+      </p>
+      <button type="button" (click)="reload()">Retry</button>
+    } @else {
+      <section class="totals" data-testid="analytics-totals">
+        @for (kind of state.summary.kinds; track kind) {
+          <div class="total-card" [attr.data-kind]="kind">
+            <span class="total-value">{{ countOf(state.summary.totals, kind) }}</span>
+            <span class="total-label">{{ label(kind) }}</span>
+          </div>
+        }
+      </section>
+
+      <section class="trend" data-testid="analytics-trend">
+        <div class="trend-header">
+          <h2>Per week</h2>
+          <div class="windows">
+            @for (option of windows; track option) {
+              <button
+                type="button"
+                class="window-btn"
+                [class.active]="option === weeks"
+                (click)="changeWindow(option)"
+              >
+                {{ option }}w
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="chart">
+          @for (week of state.summary.weeks; track week.week_start) {
+            <div class="chart-week" [attr.data-week]="week.week_start">
+              <div class="bars" [attr.data-total]="weekTotal(week.counts)">
+                @for (kind of state.summary.kinds; track kind) {
+                  <span
+                    class="bar"
+                    [attr.data-kind]="kind"
+                    [attr.data-count]="countOf(week.counts, kind)"
+                    [style.height.%]="barHeight(countOf(week.counts, kind), state.peak)"
+                    [title]="label(kind) + ': ' + countOf(week.counts, kind)"
+                  ></span>
+                }
+              </div>
+              <span class="chart-label">{{ week.week_start }}</span>
+            </div>
+          }
+        </div>
+
+        <ul class="legend">
+          @for (kind of state.summary.kinds; track kind) {
+            <li><span class="swatch" [attr.data-kind]="kind"></span>{{ label(kind) }}</li>
+          }
+        </ul>
+      </section>
+
+      <section class="feed" data-testid="analytics-feed">
+        <h2>Recent activity</h2>
+        @if (state.summary.recent.length === 0) {
+          <p class="empty">No engagement yet.</p>
+        } @else {
+          <ul class="feed-list">
+            @for (item of state.summary.recent; track item.id) {
+              <li class="feed-item" [attr.data-kind]="item.kind">
+                <span class="feed-kind">{{ label(item.kind) }}</span>
+                <span class="feed-who">{{ item.label ?? '—' }}</span>
+                <!-- Same formatting as the inbox: the raw ISO string with
+                     microseconds is unreadable in the feed. -->
+                <span class="feed-when">{{ item.created_at | date: 'medium' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="maintenance">
+        <h2>Housekeeping</h2>
+        <button
+          type="button"
+          data-testid="analytics-digest"
+          [disabled]="(busy$ | async) === true"
+          (click)="sendDigest()"
+        >
+          Send weekly digest
+        </button>
+        <button
+          type="button"
+          data-testid="analytics-purge"
+          [disabled]="(busy$ | async) === true"
+          (click)="purge()"
+        >
+          Purge old events
+        </button>
+        @if (action$ | async; as message) {
+          <p class="action-message" data-testid="analytics-action">{{ message }}</p>
+        }
+      </section>
+    }
+  }
+</div>

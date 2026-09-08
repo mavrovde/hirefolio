@@ -13,6 +13,7 @@ from app.api.admin_cv import router as admin_cv_router
 from app.api.admin_profile import router as admin_profile_router
 from app.api.admin_sql import router as admin_sql_router
 from app.api.ai import router as ai_router
+from app.api.analytics import router as analytics_router
 from app.api.auth import router as auth_router
 from app.api.cv import router as cv_router
 from app.api.interactions import admin_router as admin_interactions_router
@@ -273,6 +274,7 @@ app.include_router(profile_router, prefix=settings.api_prefix)
 app.include_router(admin_profile_router, prefix=settings.api_prefix)
 app.include_router(site_config_router, prefix=settings.api_prefix)
 app.include_router(site_settings_router, prefix=settings.api_prefix)
+app.include_router(analytics_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

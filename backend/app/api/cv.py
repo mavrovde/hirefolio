@@ -12,6 +12,7 @@ from app.logger import logger
 from app.models.cv_document import CvDocument
 from app.models.cv_request import CvRequest
 from app.services.email import email_service
+from app.services.engagement import record_event
 
 router = APIRouter(prefix="/cv", tags=["cv"])
 
@@ -60,6 +61,9 @@ async def request_cv(
         # it — sync IO inside the async context (greenlet error). Pinned by
         # test_cv_request_survives_inbox_indexing_failure.
         cv_request_id = cv_request.id
+        # Same reason, same trap: the analytics payload below reads the CV
+        # version, and `active_cv` is expired by that same rollback.
+        cv_version = active_cv.version
 
         # 1b. Index it in the unified inbox (#69): the CvRequest stays the
         # domain record; the Interaction is the hub entry linking back via
@@ -94,6 +98,15 @@ async def request_cv(
             logger.error(f"Failed to index CV request in the inbox: {e}")
             await db.rollback()
             inbox_interaction_id = None
+
+        # Engagement analytics (#249): count the request. Best-effort by
+        # contract — record_event writes through its own session and swallows
+        # its own failures, so analytics can never cost the owner a CV request.
+        await record_event(
+            "cv_request",
+            subject_id=cv_request_id,
+            payload={"cv_version": cv_version},
+        )
 
         # Transparent translation (#248): a CV request is a recruiter message
         # in the same inbox — it gets the same background translation as the
@@ -134,7 +147,12 @@ async def download_cv(req_id: str | None = None, db: AsyncSession = Depends(get_
 
                     cv_request.downloaded_at = datetime.now(UTC)
                     cv_request.download_count += 1
+                    downloaded_id = cv_request.id
                     await db.commit()
+                    # Engagement analytics (#249): ONE ROW PER DOWNLOAD. The
+                    # counter above cannot answer "when" for anything but the
+                    # last open, so the per-week trend needs its own event.
+                    await record_event("cv_download", subject_id=downloaded_id)
             except Exception as e:
                 logger.warning(f"Failed to track download for req_id {req_id}: {e}")
 

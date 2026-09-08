@@ -71,6 +71,18 @@ class Settings(BaseSettings):
     # Transparent translation (#248): flag-disabled cleanly — off means no
     # background task is ever scheduled and the UI shows no remnants.
     translation_enabled: bool = True
+
+    # Engagement analytics (#249): first-party, owner-only counting of
+    # meaningful events (CV request/download, contact submission). OFF means
+    # exactly that — no event row is ever written and the admin endpoints 404,
+    # so the dashboard has no route to reach.
+    engagement_analytics_enabled: bool = True
+    # Retention: events older than this many days are deleted by the purge
+    # (POST /admin/analytics/purge). 0 purges everything up to *now* — the
+    # documented "keep nothing" setting; a NEGATIVE value disables purging
+    # entirely. Events carry no identity data, so purging destroys no recruiter
+    # record: the CvRequest / Interaction rows they point at are untouched.
+    engagement_retention_days: int = 365
     # The language recruiter messages are translated INTO (ISO 639-1).
     owner_language: str = "en"
     admin_email: str = "admin@mavrov.de"

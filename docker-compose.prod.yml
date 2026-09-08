@@ -112,6 +112,8 @@ services:
       # these the root .env knobs never reach the container.
       - TRANSLATION_ENABLED=${TRANSLATION_ENABLED:-true}
       - OWNER_LANGUAGE=${OWNER_LANGUAGE:-en}
+      - ENGAGEMENT_ANALYTICS_ENABLED=${ENGAGEMENT_ANALYTICS_ENABLED:-true}
+      - ENGAGEMENT_RETENTION_DAYS=${ENGAGEMENT_RETENTION_DAYS:-365}
       # Email (#262): pass-through from .env. Empty SMTP_HOST = sending
       # disabled (the graceful-skip contract). Without these lines the whole
       # DEPLOYMENT.md email section was inert on prod — the settings never
