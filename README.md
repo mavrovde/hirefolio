@@ -1,3 +1,5 @@
+[![Hirefolio — fork-and-go portfolio + recruiter communications for job-seeking engineers, rendered as a green-phosphor terminal card](docs/assets/social-preview.png)](https://mavrov.de)
+
 # Hirefolio
 
 **A fork-and-go, self-hostable portfolio + recruiter-communication platform for job-seeking software
@@ -489,6 +491,38 @@ proxy container. Pinned third-party base images (`pgvector/pgvector:pg16`,
 during `docker compose up`. The **Ollama model weights** (`nomic-embed-text`,
 `llama3.2`, `llama3.2:1b`) are pulled by the stack at startup and are deliberately **not** cached
 in CI either — multi-GB actions caches restore as slowly as a fresh pull.
+
+### Marketing artwork: README banner + repo social preview (#311)
+
+The banner at the top of this file and the site's Open Graph card are **generated**, not hand-drawn,
+so a fork advertises *its* product instead of inheriting someone else's:
+
+```bash
+bash scripts/make-social-image.sh          # rewrites all three files below
+
+# …or re-brand it for your fork (every string is a knob; nothing is baked in):
+BRAND_NAME=Yourfolio BRAND_HOST=yourfolio \
+  BRAND_TAGLINE="what your product does" \
+  BRAND_FEATURES="one,two,three" \
+  BRAND_URL=github.com/you/yourfolio bash scripts/make-social-image.sh
+```
+
+| File | Size | Used by |
+| --- | --- | --- |
+| `docs/assets/social-preview.png` | 1280×640 | GitHub's social preview + the README banner |
+| `docs/assets/social-preview-thumbnail.png` | 320×160 | legibility evidence (how the card looks in a link unfurl) |
+| `frontend/projects/public/src/assets/og-image.png` | 1200×630 | the site's `og:image`/`twitter:image` (`SeoService`, #71) |
+
+The card is deliberately **product-branded** — no owner name, no headshot: the hero renders
+`profile.name` and `assets/images/profile.png` from runtime config, so a screenshot of the running
+site would bake a person into every fork. It is drawn in the site's own visual language instead
+(`#33ff00` phosphor on `#050505`, VT323, matrix grid, scanlines).
+
+**One manual step per fork — GitHub has no API for it:** upload `docs/assets/social-preview.png` at
+**Settings → General → Social preview → Upload an image…**. That setting is what renders when the
+*repository link* is shared (Slack/Discord/X unfurls, GitHub's own previews); the committed file
+only covers the README banner and the site card. Also point the banner's link (`README.md:1`) at
+your own deployment.
 
 ### Frontend Environment
 

@@ -11,6 +11,9 @@
 npm-debug.log
 yarn-error.log
 
+# Cached webfont used by scripts/make-social-image.mjs (#311) — refetched on demand
+/scripts/.cache
+
 # IDEs and editors
 .idea/
 .project
