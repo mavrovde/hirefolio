@@ -133,15 +133,18 @@ describe('SeoService', () => {
     });
 
     /**
-     * #252 review, minor 3 — MEASURED, then decided. A not-found page DOES
-     * carry the agent links: the config subscription applies `updateSeo` as
-     * soon as identity arrives, before any component marks the route missing.
-     * That is the right outcome and is pinned here rather than "fixed": the
-     * `noindex` meta governs indexing of THIS page's body, while
-     * `rel="alternate"`/`rel="describedby"` point at other, perfectly
-     * indexable documents — so an agent that followed a dead recruiter link is
-     * still told, in the response it already has, where the real profile is.
-     * What must NOT happen is the not-found title being overwritten (#255).
+     * #252 review, minor 3. The `noindex` meta governs indexing of THIS page's
+     * body, while `rel="alternate"`/`rel="describedby"` point at other,
+     * perfectly indexable documents — so an agent that followed a dead
+     * recruiter link is still told, in the response it already has, where the
+     * real profile is. What must NOT happen is the not-found title being
+     * overwritten (#255).
+     *
+     * NOTE: this case alone does not pin the behaviour — the mock config is
+     * `of(...)`, so it emits during construction and `updateSeo({})` has
+     * already written the links before `setNotFound()` runs. The pin that can
+     * fail is in the `config re-apply` block below, which reproduces the REAL
+     * SSR ordering (config after the 404).
      */
     it('keeps the agent links on a not-found page, alongside noindex (#109 + #252)', () => {
         const ssrDocument = document.implementation.createHTMLDocument('ssr');
@@ -206,6 +209,44 @@ describe('SeoService config re-apply (#255 review pins)', () => {
 
         subject.next(CFG);
         expect(titleService.getTitle()).toBe('Post not found | Real Owner');
+    });
+
+    /**
+     * #252 review, minor 3 — the pin that can actually fail.
+     *
+     * Real SSR order: the component marks the route missing, and the runtime
+     * config HTTP response lands AFTER. The subscription then re-enters
+     * `setNotFound()`, so `updateSeo` never runs for this request — which is
+     * why the reviewer measured a served `/does-not-exist` with no agent links
+     * at all. `setNotFound()` must write them itself.
+     */
+    it('writes the agent links on a 404 whose config arrives after the route (#252)', () => {
+        const ssrDocument = document.implementation.createHTMLDocument('ssr');
+        const late = new Subject<any>();
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({
+            providers: [
+                SeoService, Title, Meta,
+                { provide: DOCUMENT, useValue: ssrDocument },
+                { provide: SiteConfigService, useValue: { config$: late.asObservable() } },
+            ],
+        });
+        const seo = TestBed.inject(SeoService);
+
+        seo.setNotFound();
+        // siteUrl is still unknown: no link is better than an empty href.
+        expect(ssrDocument.querySelector("link[rel='alternate']")).toBeNull();
+        expect(ssrDocument.querySelector("link[rel='describedby']")).toBeNull();
+
+        late.next(CFG);
+
+        expect(
+            ssrDocument.querySelector("link[rel='alternate']")?.getAttribute('href'),
+        ).toBe('https://real.example/api/app/profile/resume.json');
+        expect(
+            ssrDocument.querySelector("link[rel='describedby']")?.getAttribute('href'),
+        ).toBe('https://real.example/llms.txt');
+        expect(TestBed.inject(Title).getTitle()).toBe('Post not found | Real Owner');
     });
 
     it('updateSeo after a not-found clears the flag (normal navigation resumes)', () => {

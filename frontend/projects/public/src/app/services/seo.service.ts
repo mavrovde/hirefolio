@@ -160,17 +160,27 @@ export class SeoService {
      * SSR HTML (alongside the real 404 status set by the component) and kept after
      * hydration (#109).
      *
-     * The #252 agent links stay on this page (they are applied by the config
-     * subscription before any route resolves). That is deliberate: `noindex`
+     * The #252 agent links are written here TOO, and deliberately so: `noindex`
      * governs indexing of THIS page's body, while `rel="alternate"` and
      * `rel="describedby"` point at other, perfectly indexable documents — so an
-     * agent that followed a dead link is still told where the real profile is,
-     * in the response it already has (#252 review, minor 3).
+     * agent that followed a dead recruiter link is still told where the real
+     * profile is, in the response it already has (#252 review, minor 3).
+     *
+     * It cannot be left to `updateSeo`'s call: on a real 404 the component marks
+     * the route missing BEFORE the runtime config HTTP response lands, so the
+     * subscription above re-enters this method and `updateSeo` never runs for
+     * this request. The reviewer measured exactly that on a served
+     * `/does-not-exist` — the links were absent. They are only absent now while
+     * `siteUrl` is unknown, the same rule the canonical follows: a relative or
+     * empty `href` is worse than none.
      */
     setNotFound(): void {
         this.notFound = true;
         this.titleService.setTitle(`Post not found | ${this.site.ownerName}`);
         this.metaService.updateTag({ name: 'robots', content: 'noindex' });
+        if (this.baseUrl) {
+            this.updateAgentLinks();
+        }
     }
 
     /**
