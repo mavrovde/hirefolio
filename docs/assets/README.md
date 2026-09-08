@@ -20,7 +20,10 @@ the thumbnail. All three files above are rewritten in place; commit the diff.
 
 Re-brand a fork with `BRAND_NAME` / `BRAND_HOST` / `BRAND_TAGLINE` / `BRAND_FEATURES` / `BRAND_URL`
 (see `scripts/make-social-image.sh`). Rows that would overflow the terminal frame are shrunk to fit
-automatically, so an arbitrary product name or tagline still renders inside the box.
+automatically — down to **60% of their design size**, measured against the frame's content box so the
+safe-area padding is respected. A value that still does not fit at that floor (roughly an 80-character
+product name) **fails the run** with an error naming the `BRAND_*` field to shorten; the shrink loop
+is bounded precisely so it reports instead of spinning.
 
 ## Design constraints (do not regress these)
 

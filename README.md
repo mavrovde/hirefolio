@@ -513,6 +513,10 @@ BRAND_NAME=Yourfolio BRAND_HOST=yourfolio \
 | `docs/assets/social-preview-thumbnail.png` | 320×160 | legibility evidence (how the card looks in a link unfurl) |
 | `frontend/projects/public/src/assets/og-image.png` | 1200×630 | the site's `og:image`/`twitter:image` (`SeoService`, #71) |
 
+Rows are auto-shrunk to fit the terminal frame (down to 60% of their design size); a value too long
+even for that — roughly an 80-character product name — fails the run with an error naming the
+`BRAND_*` field to shorten, rather than rendering a card that bleeds past the frame.
+
 The card is deliberately **product-branded** — no owner name, no headshot: the hero renders
 `profile.name` and `assets/images/profile.png` from runtime config, so a screenshot of the running
 site would bake a person into every fork. It is drawn in the site's own visual language instead

@@ -25,6 +25,7 @@
  *   BRAND_NAME=Yourfolio BRAND_URL=github.com/you/yourfolio node frontend/scripts/make-social-image.mjs
  */
 import { chromium } from 'playwright';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -66,21 +67,51 @@ const TARGETS = [
 const FONT_CACHE = join(FRONTEND, 'scripts', '.cache', 'vt323.woff2');
 const UA_WOFF2 =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+/** The exact bytes the committed artwork was rendered with. Pinned so
+ *  "deterministic" is mechanical, not incidental: a different VT323 revision (or
+ *  a captive-portal HTML page served as a font) changes the render, and this is
+ *  what notices. */
+export const VT323_SHA256 = '0ee3d783a89f050280fb48f7fec8602c6922da1716856f75089e4c77d61de9c7';
+
+/**
+ * A font is only usable if it IS a font and IS the pinned one. Without this a
+ * non-2xx body (error page, captive portal, rate-limit HTML) was written to the
+ * cache and embedded, and every later run logged "VT323 embedded" while silently
+ * rendering Courier — a poisoned cache that no gate could see.
+ */
+export function verifyFont(buffer, sha256 = VT323_SHA256) {
+  if (buffer.length < 4 || buffer.toString('latin1', 0, 4) !== 'wOF2') {
+    throw new Error(`not a woff2 file (magic ${JSON.stringify(buffer.toString('latin1', 0, 4))})`);
+  }
+  const digest = createHash('sha256').update(buffer).digest('hex');
+  if (digest !== sha256) {
+    throw new Error(`woff2 sha256 ${digest} does not match the pinned ${sha256}`);
+  }
+  return buffer;
+}
+
+async function fetchOk(url, init) {
+  const response = await fetch(url, init);
+  if (!response.ok) throw new Error(`${url} responded ${response.status} ${response.statusText}`);
+  return response;
+}
 
 async function loadFont() {
   try {
-    return await readFile(FONT_CACHE);
+    // A previously poisoned or stale cache must not survive: it is verified on
+    // read exactly like a fresh download, and re-fetched when it fails.
+    return verifyFont(await readFile(FONT_CACHE));
   } catch {
-    /* not cached yet — fetch it below */
+    /* not cached, or the cached bytes are not the pinned font — fetch below */
   }
   const css = await (
-    await fetch('https://fonts.googleapis.com/css2?family=VT323&display=swap', {
+    await fetchOk('https://fonts.googleapis.com/css2?family=VT323&display=swap', {
       headers: { 'user-agent': UA_WOFF2 },
     })
   ).text();
   const url = css.match(/url\((https:\/\/[^)]+\.woff2)\)/)?.[1];
   if (!url) throw new Error('no woff2 URL in the Google Fonts CSS response');
-  const font = Buffer.from(await (await fetch(url)).arrayBuffer());
+  const font = verifyFont(Buffer.from(await (await fetchOk(url)).arrayBuffer()));
   await mkdir(dirname(FONT_CACHE), { recursive: true });
   await writeFile(FONT_CACHE, font);
   return font;
@@ -156,11 +187,11 @@ const html = (w, h, fontFace) => {
   <div class="frame">
     <div class="titlebar"><span>~/${BRAND.host} &mdash; bash &mdash; 96x28</span><span class="dots">[ ][ ][x]</span></div>
     <div class="body">
-      <div class="prompt fit">you@${BRAND.host}:~$ ./deploy.sh --domain="your-name.dev"</div>
-      <h1 class="fit">${BRAND.name}</h1>
-      <div class="tagline fit">// ${BRAND.tagline}</div>
-      <div class="chips fit">${chips}</div>
-      <div class="url fit">&gt; ${BRAND.url}<span class="cursor"></span></div>
+      <div class="prompt fit" data-field="BRAND_HOST">you@${BRAND.host}:~$ ./deploy.sh --domain="your-name.dev"</div>
+      <h1 class="fit" data-field="BRAND_NAME">${BRAND.name}</h1>
+      <div class="tagline fit" data-field="BRAND_TAGLINE">// ${BRAND.tagline}</div>
+      <div class="chips fit" data-field="BRAND_FEATURES">${chips}</div>
+      <div class="url fit" data-field="BRAND_URL">&gt; ${BRAND.url}<span class="cursor"></span></div>
     </div>
   </div>
   <div class="vignette"></div><div class="scan"></div>
@@ -168,80 +199,154 @@ const html = (w, h, fontFace) => {
 };
 
 /**
- * Verify what was actually written, not what was intended (#311 acceptance
- * criteria, enforced by the producer instead of by a reviewer's eye):
- *  - the PNG carries the demanded dimensions;
- *  - it stays under GitHub's 1 MB social-preview limit;
- *  - it contains NO ancillary text/EXIF chunk. `scripts/check_no_pii.sh` is
- *    text-only and cannot look inside a PNG, so metadata that leaked here would
- *    pass every gate in the repo.
- * Throws — a broken card must fail the run, not be committed quietly.
+ * The ONLY chunks the artwork may carry. An allowlist, not a denylist: an
+ * unknown ancillary chunk is exactly the case a denylist misses, and
+ * `scripts/check_no_pii.sh` is text-only and cannot look inside a PNG
+ * (`scripts/check_no_pii.sh:9-11`), so metadata leaked here would pass every
+ * gate in the repo.
  */
-async function assertClean(out, width, height) {
-  const png = await readFile(out);
+export const ALLOWED_PNG_CHUNKS = ['IHDR', 'PLTE', 'IDAT', 'IEND'];
+/** GitHub's social-preview ceiling. */
+export const MAX_BYTES = 1_000_000;
+
+/**
+ * Verify what was actually written, not what was intended (#311 acceptance
+ * criteria, enforced by the producer instead of by a reviewer's eye): declared
+ * dimensions, the size ceiling, and the chunk allowlist. Throws — a broken card
+ * must fail the run, not be committed quietly.
+ */
+export function assertCleanPng(png, { width, height, label = 'png' }) {
   const [w, h] = [png.readUInt32BE(16), png.readUInt32BE(20)];
-  if (w !== width || h !== height) throw new Error(`${out}: rendered ${w}x${h}, expected ${width}x${height}`);
-  if (png.length >= 1_000_000) throw new Error(`${out}: ${png.length} bytes — over GitHub's 1 MB limit`);
+  if (w !== width || h !== height) {
+    throw new Error(`${label}: rendered ${w}x${h}, expected ${width}x${height}`);
+  }
+  if (png.length >= MAX_BYTES) {
+    throw new Error(`${label}: ${png.length} bytes — over GitHub's ${MAX_BYTES} byte limit`);
+  }
   const chunks = new Set();
   for (let i = 8; i < png.length; i += 12 + png.readUInt32BE(i)) {
     chunks.add(png.toString('latin1', i + 4, i + 8));
   }
-  const metadata = [...chunks].filter((c) => ['tEXt', 'iTXt', 'zTXt', 'eXIf', 'tIME'].includes(c));
-  if (metadata.length) throw new Error(`${out}: carries metadata chunks ${metadata.join(', ')}`);
+  const unexpected = [...chunks].filter((c) => !ALLOWED_PNG_CHUNKS.includes(c));
+  if (unexpected.length) {
+    throw new Error(`${label}: carries non-image chunks ${unexpected.join(', ')}`);
+  }
   return png.length;
 }
 
-let fontFace = '';
-try {
-  const font = await loadFont();
-  fontFace = `@font-face { font-family: 'VT323'; font-style: normal; font-weight: 400;
-    src: url(data:font/woff2;base64,${font.toString('base64')}) format('woff2'); }`;
-  console.log(`font: VT323 embedded (${font.length} bytes, cached at scripts/.cache/vt323.woff2)`);
-} catch (error) {
-  console.warn(
-    `font: VT323 UNAVAILABLE (${error.message}) — falling back to Courier. The committed artwork was rendered WITH VT323; re-run online to match it.`,
+/** Never shrink a row below this fraction of its design size. */
+export const MIN_FIT_RATIO = 0.6;
+
+/**
+ * Shrink one single-line row until it fits its column — BOUNDED. A row whose
+ * width is dominated by fixed-px letter-spacing or flex gaps can never fit no
+ * matter how small the glyphs get, and the first version of this loop spun
+ * forever on exactly that input (review of PR #320: an ~79-character product
+ * name hung the render). It now stops at MIN_FIT_RATIO of the design size and
+ * throws, naming the BRAND_* field to shorten, because a hang tells the forker
+ * nothing and a silently overflowing card is not better than an error.
+ *
+ * `row` is an async, DOM-free interface (`field`, `fontSize`, `setFontSize`,
+ * `overflow`) so the algorithm is testable without a browser; the generator
+ * backs it with Playwright element handles.
+ */
+export async function shrinkToFit(row, minRatio = MIN_FIT_RATIO) {
+  const base = await row.fontSize();
+  const floor = Math.max(1, Math.ceil(base * minRatio));
+  let size = base;
+  while ((await row.overflow()) > 0 && size > floor) {
+    size -= 1;
+    await row.setFontSize(size);
+  }
+  if ((await row.overflow()) > 0) {
+    throw new Error(
+      `${row.field} does not fit the terminal frame even at ${size}px ` +
+        `(${Math.round(minRatio * 100)}% of the design size) — shorten it.`,
+    );
+  }
+  return size;
+}
+
+/**
+ * Playwright-backed rows. The fit limit is the parent's CONTENT box: its
+ * `clientWidth` still includes the padding that IS the card's safe area, so
+ * measuring against it let rows sit a few pixels off the frame border (review of
+ * PR #320) instead of inside the documented margin.
+ */
+async function rowsOf(page) {
+  const handles = await page.$$('.fit');
+  return Promise.all(
+    handles.map(async (el) => ({
+      field: await el.evaluate((node) => node.dataset.field),
+      fontSize: () => el.evaluate((node) => parseFloat(getComputedStyle(node).fontSize)),
+      setFontSize: (size) => el.evaluate((node, px) => (node.style.fontSize = `${px}px`), size),
+      overflow: () =>
+        el.evaluate((node) => {
+          const parent = node.parentElement;
+          const style = getComputedStyle(parent);
+          const content =
+            parent.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+          return node.scrollWidth - content;
+        }),
+    })),
   );
 }
 
-const browser = await chromium.launch();
-for (const { width, height, out } of TARGETS) {
-  const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
-  await page.setContent(html(width, height, fontFace), { waitUntil: 'load' });
-  await page.evaluate(() => document.fonts.ready);
-  // Auto-fit: a re-branded name or tagline (BRAND_*) is arbitrary text, so every
-  // single-line row is shrunk until it fits its column instead of bleeding
-  // through the terminal frame. No-op for text that already fits.
-  await page.evaluate(() => {
-    for (const el of document.querySelectorAll('.fit')) {
-      const limit = el.parentElement.clientWidth - 2;
-      for (let size = parseFloat(getComputedStyle(el).fontSize); el.scrollWidth > limit; size -= 1) {
-        el.style.fontSize = `${size}px`;
-      }
+async function main() {
+  let fontFace = '';
+  try {
+    const font = await loadFont();
+    fontFace = `@font-face { font-family: 'VT323'; font-style: normal; font-weight: 400;
+    src: url(data:font/woff2;base64,${font.toString('base64')}) format('woff2'); }`;
+    console.log(`font: VT323 embedded (${font.length} bytes, cached at scripts/.cache/vt323.woff2)`);
+  } catch (error) {
+    console.warn(
+      `font: VT323 UNAVAILABLE (${error.message}) — falling back to Courier. The committed artwork was rendered WITH VT323; re-run online to match it.`,
+    );
+  }
+
+  const browser = await chromium.launch();
+  try {
+    for (const { width, height, out } of TARGETS) {
+      const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
+      await page.setContent(html(width, height, fontFace), { waitUntil: 'load' });
+      await page.evaluate(() => document.fonts.ready);
+      // A re-branded name or tagline (BRAND_*) is arbitrary text, so every
+      // single-line row is shrunk until it fits its column instead of bleeding
+      // through the terminal frame. No-op for text that already fits.
+      for (const row of await rowsOf(page)) await shrinkToFit(row);
+      await mkdir(dirname(out), { recursive: true });
+      await page.screenshot({ path: out, type: 'png' });
+      await page.close();
+      const bytes = assertCleanPng(await readFile(out), { width, height, label: out });
+      console.log(`wrote ${out} (${width}x${height}, ${bytes} bytes)`);
     }
-  });
-  await mkdir(dirname(out), { recursive: true });
-  await page.screenshot({ path: out, type: 'png' });
-  await page.close();
-  console.log(`wrote ${out} (${width}x${height}, ${await assertClean(out, width, height)} bytes)`);
+
+    // Legibility evidence (#311): the social preview as a link-unfurl thumbnail.
+    // Produced by DOWNSCALING the real PNG — which is what Slack/X/GitHub do —
+    // and not by re-laying-out at a small size, which would flatter the design.
+    const thumb = {
+      width: 320,
+      height: 160,
+      out: join(REPO, 'docs', 'assets', 'social-preview-thumbnail.png'),
+    };
+    const source = (await readFile(TARGETS[0].out)).toString('base64');
+    const page = await browser.newPage({
+      viewport: { width: thumb.width, height: thumb.height },
+      deviceScaleFactor: 1,
+    });
+    await page.setContent(
+      `<body style="margin:0"><img src="data:image/png;base64,${source}" width="${thumb.width}" height="${thumb.height}"></body>`,
+      { waitUntil: 'load' },
+    );
+    await page.screenshot({ path: thumb.out, type: 'png' });
+    await page.close();
+    const bytes = assertCleanPng(await readFile(thumb.out), { ...thumb, label: thumb.out });
+    console.log(`wrote ${thumb.out} (${thumb.width}x${thumb.height}, ${bytes} bytes)`);
+  } finally {
+    await browser.close();
+  }
 }
 
-// Legibility evidence (#311): the social preview as a link-unfurl thumbnail.
-// Produced by DOWNSCALING the real PNG — which is what Slack/X/GitHub do — and
-// not by re-laying-out at a small size, which would flatter the design.
-const THUMB = { width: 320, height: 160, out: join(REPO, 'docs', 'assets', 'social-preview-thumbnail.png') };
-const source = (await readFile(TARGETS[0].out)).toString('base64');
-const thumbPage = await browser.newPage({
-  viewport: { width: THUMB.width, height: THUMB.height },
-  deviceScaleFactor: 1,
-});
-await thumbPage.setContent(
-  `<body style="margin:0"><img src="data:image/png;base64,${source}" width="${THUMB.width}" height="${THUMB.height}"></body>`,
-  { waitUntil: 'load' },
-);
-await thumbPage.screenshot({ path: THUMB.out, type: 'png' });
-await thumbPage.close();
-console.log(
-  `wrote ${THUMB.out} (${THUMB.width}x${THUMB.height}, ${await assertClean(THUMB.out, THUMB.width, THUMB.height)} bytes)`,
-);
-
-await browser.close();
+// Importable for `make-social-image.test.mjs`; renders only when run directly.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) await main();

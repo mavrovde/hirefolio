@@ -21,14 +21,25 @@ All notable changes to this project will be documented in this file.
     running site would propagate a person into every fork. The artwork is drawn in the site's own
     language instead (`#33ff00` phosphor on `#050505`, VT323, matrix grid, scanlines, terminal
     prompt), and every string is a `BRAND_*` environment knob; rows that would overflow the terminal
-    frame auto-shrink, so an arbitrary fork name still renders inside the box.
+    frame auto-shrink (down to 60% of the design size, measured against the content box so the safe
+    area is respected), and a value that cannot fit even there fails the run with an error naming the
+    `BRAND_*` field instead of hanging or overflowing.
   - VT323 is fetched once and **embedded as a data URI** (cached, gitignored) rather than fetched by
     the browser, so the render does not depend on Chromium's network stack; offline with a cold
-    cache the script still exits 0 and warns loudly that it fell back to Courier.
-  - The renderer emits `IHDR`/`IDAT`/`IEND` only — no EXIF or text chunks, which matters because
-    `scripts/check_no_pii.sh` is text-only and cannot see inside a PNG. Provenance, the design
-    constraints and the one manual step GitHub exposes no API for (Settings → General → Social
-    preview) are documented in `docs/assets/README.md` and the README's fork-and-go section.
+    cache the script still exits 0 and warns loudly that it fell back to Courier. The bytes are
+    **validated and SHA-256-pinned** before they are cached or embedded, so a non-2xx body (error
+    page, captive portal) can neither poison the cache nor let a run log "VT323 embedded" while
+    silently rendering Courier.
+  - The renderer emits `IHDR`/`IDAT`/`IEND` only, enforced by an **allowlist** — no EXIF or text
+    chunks, which matters because `scripts/check_no_pii.sh` is text-only and cannot see inside a
+    PNG. Provenance, the design constraints and the one manual step GitHub exposes no API for
+    (Settings → General → Social preview) are documented in `docs/assets/README.md` and the
+    README's fork-and-go section.
+  - **The tooling has its own self-test** (`frontend/scripts/make-social-image.test.mjs`, wired into
+    `npm run lint` beside `check-cd-safety.test.mjs`): browserless and offline, it pins the PNG
+    assertions, the bounded fit loop, and the font validation. Each case was mutation-checked —
+    reverting the loop bound makes it report "the loop is unbounded again" in 5s instead of hanging
+    the gate.
 
 - **Recruiter-discovery SEO & schema.org structured data (#71)** — the portfolio is now
   discoverable outside the HR platforms, and everything it publishes about its owner comes from
