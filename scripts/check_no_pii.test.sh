@@ -34,8 +34,27 @@ skeleton() {
   echo "Prepare and check a release of Hirefolio." > "$d/.github/prompts/release-check.prompt.md"
   echo "# Dependabot version updates for Hirefolio" > "$d/.github/dependabot.yml"
   echo "Pushes your posts into your Hirefolio backend." > "$d/importer/README.md"
+  # Surfaces round 2 proved unguarded under the old INCLUDE list — plus the rest
+  # of the same class (every legacy per-tool rule file, every instructions file).
+  mkdir -p "$d/.github/instructions" "$d/scraper"
+  for g in AGENTS.md AI.md .cline.md .clauderules .cursorrules .geminirules .windsurfrules; do
+    echo "See CLAUDE.md; this project is Hirefolio." > "$d/$g"
+  done
+  echo "Images publish to ghcr.io/mavrovde/hirefolio-*." > "$d/.github/instructions/infra-ci.instructions.md"
+  echo "Scrape, then import into your Hirefolio backend." > "$d/scraper/WORKFLOW.md"
+  # Excluded classes: each must keep the domain WITHOUT tripping the guard.
+  mkdir -p "$d/specs/done" "$d/proxy" "$d/backend/app" "$d/agents/common" "$d/.github/workflows"
   echo "## v1.0.0 — moved off mavrov.de" > "$d/CHANGELOG.md"
   echo "  - PUBLIC_SERVER_NAME=\${PUBLIC_SERVER_NAME:-mavrov.de}" > "$d/docker-compose.yml"
+  echo "spec: import into mavrov.de" > "$d/specs/done/06-importer.md"
+  echo "the maintainer deploys it at mavrov.de" > "$d/CLAUDE.md"
+  echo ': "${PUBLIC_SERVER_NAME:=mavrov.de}"' > "$d/proxy/entrypoint.sh"
+  echo "# defaults preserve the mavrov.de hostnames" > "$d/proxy/default.conf.template"
+  echo "          PUBLIC_URL: 'https://mavrov.de'" > "$d/.github/workflows/deploy.yml"
+  echo '    cors_origins: str = "https://mavrov.de"' > "$d/backend/app/config.py"
+  echo '"""A2A team for mavrov.de."""' > "$d/agents/common/roster.py"
+  echo '"""LinkedIn -> mavrov.de importer."""' > "$d/importer/core.py"
+  echo '{"headers": {"Host": "mavrov.de"}}' > "$d/verify_proxy_routes.py"
   ( cd "$d" && git init -q . && git add -A ) >/dev/null 2>&1
 }
 
@@ -116,16 +135,20 @@ do
 done
 
 # --- 4. EVERY in-scope surface is actually scanned ---------------------------
-#     (a scope list is a claim; an unscanned entry is a silent hole). The last
-#     six entered the list in round 2 of #318 — the reviewer found five of them
-#     branded AND permanently unguarded, which is the failure mode this loop
-#     exists for: the guard's scope has to grow with the de-branding, or the very
-#     next drift lands somewhere nothing looks.
+#     A scope list is a claim; an unscanned entry is a silent hole. Rounds 1 AND 2
+#     of #318 both found branded, permanently-unguarded surfaces because the scope
+#     was an INCLUDE list — round 2's positive control (append the domain, watch
+#     the guard stay green) caught AGENTS.md, AI.md, .cline.md,
+#     .github/instructions/*, scraper/WORKFLOW.md. The scope is now inverted, so
+#     this loop asserts the *whole class*, not a hand-maintained subset.
 for f in README.md docs/DEPLOYMENT.md docs/wiki/production-deployment.md \
          .claude/agents/backend-dev.md .env.example agents/PLAYBOOK.md \
          README_TESTING.md SECURITY.md .github/copilot-instructions.md \
          .github/prompts/release-check.prompt.md .github/dependabot.yml \
-         importer/README.md
+         importer/README.md \
+         AGENTS.md AI.md .cline.md .clauderules .cursorrules .geminirules \
+         .windsurfrules .github/instructions/infra-ci.instructions.md \
+         scraper/WORKFLOW.md
 do
   d="$(mktemp -d)"; skeleton "$d"
   echo "deploy it at mavrov.de" >> "$d/$f"
@@ -134,10 +157,33 @@ do
   rm -rf "$d"
 done
 
-# --- 5. Historical + runtime surfaces stay OUT of scope ----------------------
-#     Retros, agent-runs, CHANGELOG and the compose fallbacks legitimately keep
-#     the domain; check B must not force a rewrite of history or repoint a host.
-for f in docs/retrospectives/v1.0.0.md docs/agent-runs/run.md CHANGELOG.md docker-compose.yml
+# --- 4b. FAIL CLOSED: a file nobody ever listed is guarded from birth --------
+#     This is the case an include list can never satisfy, and the reason the scope
+#     was inverted. None of these paths appears anywhere in the checker.
+for f in docs/BRAND-NEW.md .github/instructions/newthing.instructions.md \
+         .github/workflows/newthing.yml proxy/newthing.conf \
+         some/dir/nobody/listed/guide.md .aiderrules
+do
+  d="$(mktemp -d)"; skeleton "$d"
+  mkdir -p "$d/$(dirname "$f")"
+  echo "Point your DNS at mavrov.de and you are done." > "$d/$f"
+  out="$(run "$d")"; rc=$?
+  [ "$rc" -eq 1 ] && ok "guarded from birth (never listed): $f" \
+    || bad "new file unguarded: $f" "rc=$rc, out=$out"
+  rm -rf "$d"
+done
+
+# --- 5. Historical + runtime + application surfaces stay OUT of scope --------
+#     History must not be rewritten, a runtime default must not be repointed, and
+#     application code is a separate effort. Each entry here is a DEFERRAL of #313
+#     made executable — if one is ever de-branded, its exclusion comes off and the
+#     matching case here flips.
+for f in docs/retrospectives/v1.0.0.md docs/agent-runs/run.md CHANGELOG.md \
+         specs/done/06-importer.md CLAUDE.md \
+         docker-compose.yml proxy/entrypoint.sh proxy/default.conf.template \
+         .github/workflows/deploy.yml \
+         backend/app/config.py agents/common/roster.py importer/core.py \
+         verify_proxy_routes.py
 do
   d="$(mktemp -d)"; skeleton "$d"
   echo "we shipped mavrov.de v1.0.0 that day" >> "$d/$f"
@@ -145,6 +191,16 @@ do
   [ "$rc" -eq 0 ] && ok "out of scope: $f" || bad "out of scope: $f" "rc=$rc, out=$out"
   rm -rf "$d"
 done
+
+# --- 5b. The agents/ exclusion is NARROW, not the whole directory ------------
+#     agents/PLAYBOOK.md is the shared agent charter and must stay guarded even
+#     though its neighbours in agents/ are excluded application code.
+d="$(mktemp -d)"; skeleton "$d"
+echo "the mavrov.de delivery team" >> "$d/agents/PLAYBOOK.md"
+out="$(run "$d")"; rc=$?
+[ "$rc" -eq 1 ] && ok "agents/PLAYBOOK.md stays in scope beside excluded agents/ code" \
+  || bad "PLAYBOOK excluded with the rest of agents/" "rc=$rc, out=$out"
+rm -rf "$d"
 
 # --- 6. Check A still gates, and the two checks are independent -------------
 d="$(mktemp -d)"; skeleton "$d"

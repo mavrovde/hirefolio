@@ -337,7 +337,7 @@ bash .claude/hooks/pre-push-tests.test.sh      # the pre-push gate's own parsing
 sh proxy/test-generate-admin-config.sh         # admin allowlist / real_ip generator (#86)
 bash scripts/check_no_pii.sh                   # no personal identifiers (#66) + no maintainer-domain
                                                #   branding on guidance surfaces (#313)
-bash scripts/check_no_pii.test.sh              # that checker's own 23 cases, both directions (#313)
+bash scripts/check_no_pii.test.sh              # that checker's own 60 cases, both directions (#313)
 ```
 
 `scripts/check_live_freshness.sh <url> <version>` is the same family — it powers the daily

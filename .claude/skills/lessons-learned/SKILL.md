@@ -1148,9 +1148,12 @@ git grep -inE 'mavrov\.de' -- <scope> | grep -ivE "$GUIDANCE_ANNOTATIONS"
 
 Three independent failures fell out of that one decision, and the review caught all three:
 
-1. **The marker words are ordinary English here.** 21 lines already inside the guard's own scope
-   say "canonical" innocently ("preserves the canonical behavior", "the canonical URL for every
-   page"). The decisive reproduction was a **revert of the very README row the change had just
+1. **The marker words are ordinary English here.** Measured inside the guard's own scope, excluding
+   real markers: **33 lines say "canonical"** innocently ("preserves the canonical behavior", "the
+   canonical URL for every page"), 9 say "historical", 41 say either. (That count is a moving
+   target — it was 21 when the guard's scope was narrower and 25 a review round later; quote it
+   with the scope you measured it against, per §42.) The decisive reproduction was a **revert of
+   the very README row the change had just
    fixed** — it sailed through green because the restored cell contained the word "canonical". A
    guard that cannot protect the line it just fixed protects nothing.
 2. **Matching the `path:line:` prefix moves the exemption into the filesystem.** Any file under a
@@ -1171,8 +1174,32 @@ the annotation never distorts the text it annotates — in markdown, `<!-- de-br
 PERMISSIVE direction.** "An annotated line passes" was pinned six ways; "an unrelated line that
 merely *contains* the word does NOT pass" was pinned zero ways. For any allowlist, exemption,
 `# noqa`, `eslint-disable`, or skip-marker you introduce, **the load-bearing test is the negative
-one** — the near-miss that must still fail. Measured on the fix: restoring the round-1 matcher
-turns **7 of 35** cases red, and every one of them is a case added *after* the review.
+one** — the near-miss that must still fail. Measured on the 60-case suite: swapping the namespaced
+markers back to bare words turns **3** cases red, and every one of them was added *after* the review.
+
+### 47b. An INCLUDE list of "surfaces we guard" fails open — invert it
+
+The same guard was rejected twice more for the same structural reason, and it had nothing to do
+with the matcher. Its scope was a hand-maintained **include list**, so the review found branded and
+unguarded surfaces both times: round 1 `README_TESTING.md`, `SECURITY.md`, the copilot/prompt files,
+`importer/README.md`; round 2 — by the right technique, a **positive control** (append the domain to
+a file and check the guard actually goes red) — `AGENTS.md`, `AI.md`, `.cline.md`,
+`.github/instructions/*`, `scraper/WORKFLOW.md`. Each round the fix was "add the missing five",
+which is a fix for the instances and not for the defect.
+
+**An include list fails OPEN: every file nobody thought of is silently exempt, forever, and a file
+created next year is exempt before it exists.** An exclude list fails CLOSED. Inverting it — scan
+everything tracked, minus a named exclusion list — cost the same number of lines, produced **zero**
+new findings on the real repo (proof the exclusions were exactly the already-documented deferrals),
+and turned the PR's prose "deferred list" into something the checker executes. Restoring the include
+list turns **14 of 60** cases red.
+
+Corollaries worth keeping: **name exclusions file-by-file, not by directory** (`.github/workflows/deploy.yml`,
+not `.github/workflows/*`) so a *new* file in a mostly-excluded directory is still guarded — and
+when an exclusion must be broad, pin the survivor: `agents/*.py` + `agents/common/*` are excluded
+while `agents/PLAYBOOK.md` stays in scope, with a case asserting exactly that. And test the
+fail-closed property directly: the suite creates files at paths that appear nowhere in the checker
+and asserts they are caught from birth.
 
 ## Where the rules live (AI-config map)
 

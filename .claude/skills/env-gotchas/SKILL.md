@@ -51,6 +51,20 @@ Facts about THIS repo's environments that keep costing cycles. Check here before
   --body-file`, `gh pr comment --body-file`, `gh issue comment --body-file`. **Always read the
   edited surface back** — `gh api … --jq '.body|length'` next to `wc -c` on the source file is a
   two-second check that catches it.
+- **EDITING a published comment does NOT purge what it used to say — only DELETING it does.**
+  This is the half that made the above an actual disclosure rather than a typo. GitHub keeps every
+  prior revision of an issue/PR comment in its **edit history**, and on a public repo that history
+  is readable by anyone — so "I fixed it by editing" leaves the leaked body in place. When a comment
+  has published something that must not stay (a secret, an internal path or hostname, a session id
+  per issue-flow rule 8), **delete the comment and repost the clean body**; a fresh comment has no
+  prior revisions. Verify, do not assume:
+  `gh api repos/<owner>/<repo>/issues/comments/<id> --jq '.body_html|length, (.user.login)'` for the
+  live body, and check the replacement really is clean with
+  `gh api graphql -f query='{node(id:"<node_id>"){... on IssueComment{userContentEdits(first:10){totalCount}}}}'`
+  — **`totalCount` must be 0** on the repost. Same rule for PR/issue *bodies* (`gh pr edit --body-file`
+  likewise only adds a revision): if the content is sensitive, the surface has to be recreated, and
+  anything already in a **commit message** cannot be scrubbed by editing at all — report it rather
+  than rewriting public history unilaterally.
 - **A large heredoc in a `Bash` call can be refused by the destructive-command guard** (it blocks
   what it cannot finish analysing). Write the body with the `Write` tool to a scratch file, then
   run a short `gh … --body-file` command — which is also the shape that avoids the `-f`/`-F` trap.
