@@ -24,6 +24,16 @@ export const routes: Routes = [
       ),
   },
   {
+    // Tailored application link (#250) — one unlisted page per application.
+    // Deliberately NOT in the sitemap (`seo/sitemap.ts` STATIC_ROUTES) and
+    // disallowed in robots.txt: the slug is the only thing keeping it private.
+    path: 'for/:slug',
+    loadComponent: () =>
+      import('./components/tailored/tailored.component').then(
+        (m) => m.TailoredComponent
+      ),
+  },
+  {
     path: 'cv',
     loadComponent: () =>
       import('./components/cv/cv.component').then((m) => m.CvComponent),

@@ -27,6 +27,8 @@ from app.api.site_config import router as site_config_router
 from app.api.site_settings import router as site_settings_router
 from app.api.stats import router as stats_router
 from app.api.tags import router as tags_router
+from app.api.tailored_links import admin_router as admin_tailored_links_router
+from app.api.tailored_links import public_router as tailored_links_router
 from app.api.years import router as years_router
 from app.config import settings
 from app.database import async_session, get_db
@@ -273,6 +275,8 @@ app.include_router(profile_router, prefix=settings.api_prefix)
 app.include_router(admin_profile_router, prefix=settings.api_prefix)
 app.include_router(site_config_router, prefix=settings.api_prefix)
 app.include_router(site_settings_router, prefix=settings.api_prefix)
+app.include_router(admin_tailored_links_router, prefix=settings.api_prefix)
+app.include_router(tailored_links_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

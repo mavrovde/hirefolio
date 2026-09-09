@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Tailored application links — `/for/:slug` (#250)** — the owner mints an unlisted URL per
+  application instead of attaching a generic PDF, and the application stops being write-only:
+  - **`TailoredLink`** (migration `tailored0010`) belongs to an opportunity (#247), pins a **CV
+    variant**, and carries the note, the highlighted skills/roles, an optional expiry and the
+    visit/download counters. Minted, revoked and copied from the pipeline detail panel — no
+    rebuild, no redeploy.
+  - **The slug is the access control**: no token, no login. A generated slug carries a random
+    8-character suffix, and unknown / disabled / expired slugs all return the SAME 404 — a
+    distinguishable answer would confirm that a guessed slug exists. A duplicate custom slug is a
+    409, enforced by a DB `UNIQUE`, never a silent overwrite of another application's page.
+  - **The public page is the portfolio, re-ordered — never a subset**: the highlighted skills and
+    the matching roles move first, nothing is hidden, and an empty tailoring returns the original
+    object, so `/` is provably untouched when the feature is unused.
+  - **Kept out of every index**: `robots: noindex, nofollow` in the SERVER-rendered `<head>`,
+    `Disallow: /for/` in `robots.txt`, and never a `<loc>` in `sitemap.xml`. `SeoService` now also
+    **clears a stale `robots` tag** on the next normal page — a meta tag lives in the document, not
+    in the route, so a client-side navigation away from a 404 used to carry `noindex` onto an
+    indexable page.
+  - **Visits are counted from the browser only** and land on the opportunity timeline
+    (`Tailored link /for/… opened (visit #2)`); the increment is a single atomic `UPDATE … +1
+    RETURNING`, so two opens in the same second are two visits. Counting during SSR would have
+    doubled every real visit and turned a crawler prefetch into "the recruiter opened it".
+  - **An expiry date means "through the end of that day."** The admin's `<input type="date">`
+    submits a bare `2026-12-01`, which read as a timestamp is *midnight* — so a link "expiring
+    2026-12-01" was already dead for the whole of 2026-12-01, and one minted with today's date
+    404'd the instant it was sent, indistinguishable from a slug that never existed. A date-only
+    value now resolves to the last microsecond of that day (UTC) on BOTH the create and the patch
+    path, while a value carrying an explicit time is still honoured literally. The admin panel
+    renders the expiry in UTC for the same reason: east of UTC the local calendar day of that
+    instant is the next one, and the panel must show the day that was typed.
+  - **The public writes are rate-limited per client IP.** `POST /for/{slug}/visit` and
+    `GET /for/{slug}/cv` each append a row to the owner's timeline and are unauthenticated by
+    design (the slug IS the access control, and the URL is meant to be forwarded), so an unlimited
+    endpoint let any recipient grow the database without bound and inflate the very visit signal
+    the owner acts on. 20 requests / 60 s by default
+    (`TAILORED_VISIT_RATE_LIMIT_REQUESTS`/`_WINDOW_SECONDS`, both compose files), sitting between
+    the contact form's 5 and the profile read's 100 so a corporate NAT full of real recruiters
+    still fits; over budget is a **429 that writes nothing**. The READ path is deliberately
+    unlimited — SSR fetches it server-to-server, so a per-IP budget there would key every rendered
+    visit to one bucket and throttle the site instead of an abuser.
+  - **Deleting a link asks first.** Delete is irreversible and the URL is already in a recruiter's
+    inbox, while the recoverable `Disable` sits in the same row — same confirm-first convention as
+    every other destructive admin action.
+  - Exercised on every layer rule 12 asks for, each one measured: 42 backend tests
+    (`tests/test_tailored_links.py`) inside a suite that holds at 100%; all three Vitest projects at
+    100% on all four metrics; migration `tailored0010` applied, downgraded and re-applied against a
+    real PostgreSQL 16; the route **curled on a composed Docker stack** — `200` with
+    `content="noindex, nofollow"` and the note in the server-rendered bytes for a live slug, a real
+    `404` for an unknown one, `Disallow: /for/` in `robots.txt` and no `/for/` `<loc>` in
+    `sitemap.xml`; and the whole `public-e2e` project green with a spec that mints a link, asserts
+    the note in the **server-rendered HTML**, watches the browser visit reach the opportunity
+    timeline, and proves a revoked link 404s.
 - **AI-agent discoverability: `llms.txt`, a JSON Resume endpoint and an explicit AI-crawler
   policy (#252)** — recruiter research increasingly runs through AI assistants, which rank what
   they can *read*. #71 won the search result; this makes the site legible to the answer engine.

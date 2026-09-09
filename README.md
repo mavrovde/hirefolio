@@ -639,6 +639,52 @@ All admin-only (auth required):
 - `POST /api/app/admin/opportunities/{id}/notes` - Append a timeline note (optionally linked to an inbox interaction)
 - `POST /api/app/admin/opportunities/promote` - Promote an inbox interaction into an opportunity (advances the interaction new → in_progress). **Idempotent per interaction**: a repeat call returns the card created by the first one — enforced by a UNIQUE constraint, so concurrent requests collapse to one card rather than racing. Overrides (`company`, `role_title`) therefore apply only to the FIRST promotion; changing a card afterwards is an edit, not a re-promote. The card's `source` is derived from the interaction's origin (contact_form → recruiter_outreach, cv_request/booking → discovery)
 
+### Tailored application links (#250)
+
+One unlisted page per application: `/for/<slug>` renders the portfolio the way *this* recruiter
+should read it — a personal note, the relevant skills and roles first, and the CV variant that
+actually went with the application. **The slug is the access control**: there is no token and no
+login, so a generated slug carries a random suffix, and unknown / disabled / expired slugs all
+return the same **404** (a distinguishable answer would confirm that a guessed slug exists).
+`/for/*` is `Disallow`ed in `robots.txt`, carries `robots: noindex, nofollow` in the
+server-rendered `<head>`, and is never listed in `sitemap.xml`.
+
+Admin (auth required):
+
+- `POST /api/app/admin/tailored-links` - Mint a link for an opportunity (`opportunity_id`,
+  optional `slug` — generated unguessably when omitted, `cv_document_id`, `headline_note`,
+  `highlighted_skills`/`highlighted_projects` (≤20 each, trimmed + de-duplicated), `expires_at`).
+  A duplicate custom slug is a **409**, never a silent overwrite. Writes a timeline note on the
+  opportunity. **`expires_at` given as a bare date (`2026-12-01`, what the admin date picker
+  sends) means "through the end of that day"** — it is stored as the last instant of that day in
+  UTC, so a link that expires today is live for the rest of today. A value carrying an explicit
+  time is honoured literally
+- `GET /api/app/admin/tailored-links?opportunity_id=…` - The links of one application (or all),
+  with `visit_count`, `cv_download_count`, `last_visited_at` and the copyable absolute `url`
+  built from the runtime `SITE_URL`
+- `PATCH /api/app/admin/tailored-links/{id}` - Edit or **revoke** (`enabled: false`); `clear_cv` /
+  `clear_expiry` clear the nullable fields a JSON `null` cannot distinguish from "absent"
+- `DELETE /api/app/admin/tailored-links/{id}` - Remove a link
+
+Public (no auth — the URL is the secret):
+
+- `GET /api/app/for/{slug}` - The tailored payload the page renders. Deliberately carries **no**
+  owner metrics (no visit counts, no expiry, no opportunity id)
+- `POST /api/app/for/{slug}/visit` - Count one opening. Called from the **browser only**: SSR
+  renders the same page server-side, so counting there would double every real visit. Each visit
+  lands on the opportunity timeline (`Tailored link /for/… opened (visit #2)`)
+- `GET /api/app/for/{slug}/cv` - The **pinned** CV variant (not the site's active default), also
+  recorded on the timeline
+
+Both public **writes** (`/visit` and `/cv`) append to the owner's timeline and are unauthenticated
+by design, so both are **rate-limited per client IP** — `TAILORED_VISIT_RATE_LIMIT_REQUESTS`
+(default 20) per `TAILORED_VISIT_RATE_LIMIT_WINDOW_SECONDS` (default 60); over budget is a
+**429 that writes nothing**. The read (`GET /for/{slug}`) is deliberately *not* limited: SSR
+fetches it server-to-server, so every rendered visit would share one bucket.
+
+The owner mints and revokes links from the pipeline detail panel in the admin app — no rebuild,
+no redeploy.
+
 ### Interview calendar (#247 phase 2 / #70)
 
 All admin-only (auth required). Timestamps are stored and returned in **UTC**; any ISO-8601
