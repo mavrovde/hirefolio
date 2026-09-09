@@ -37,6 +37,10 @@ own name and domain.
 - **Opportunity pipeline** (#247 phase 1): a stage board (lead → … → closed), a notes timeline per
   opportunity, and one-click **promote** turning an inbox message into a pipeline card that keeps
   the original text as its first note.
+- **Engagement analytics** (#249): a private admin dashboard counting the events the portfolio
+  already creates — CV requests, **every** CV download, contact submissions — as totals, a per-week
+  trend and a recent-activity feed, plus a weekly digest email. First-party and owner-only: no
+  third-party analytics, no new personal data (events point at the existing records).
 
 **Make it yours**
 - **Runtime configuration** (#65): identity — site name/URL, owner name/headline/description,
@@ -463,6 +467,10 @@ IMPORT_MAX_POSTS_PER_REQUEST=500           # default: 500 entries
 # Transparent translation (#248) — forwarded by both compose files.
 TRANSLATION_ENABLED=true                   # default: true — false disables cleanly
 OWNER_LANGUAGE=en                          # default: en — ISO 639-1; casing/region normalized
+
+# Engagement analytics (#249) — forwarded by both compose files.
+ENGAGEMENT_ANALYTICS_ENABLED=true          # default: true — false writes no events and 404s the dashboard
+ENGAGEMENT_RETENTION_DAYS=365              # default: 365 — 0 keeps nothing; negative disables purging
 ```
 
 ### Root Environment (Docker Compose)
@@ -599,6 +607,27 @@ the original always one click away and never modified in storage**. Local Ollama
 (nothing leaves your machine); your Gemini key upgrades it if configured. `TRANSLATION_ENABLED=false`
 turns the whole feature off cleanly.
 
+## 📈 Engagement analytics (#249)
+
+A **private** dashboard in the admin panel (*Engagement*) answering the one question a job search
+actually needs: *did anyone engage, and when?* It counts first-party events the site already
+produces — CV request, **each** CV download, contact submission — and shows all-time totals, a
+per-week trend and a recent-activity feed. Nothing is sent to a third party, and no new personal
+data is stored: an event carries a kind, a pointer to the record that already holds the identity
+(`cv_requests.id` / `interactions.id`) and a timestamp — no IP, no user agent, no name.
+
+Why a table and not a query over existing rows: `cv_requests.download_count` collapses every
+download into a counter plus the LAST timestamp, so "they opened it twice on Tuesday" cannot be
+recovered from it. A repeated event needs one row per occurrence.
+
+- **Weekly digest**: *Send weekly digest* emails the owner a counts-only summary via the existing
+  SMTP configuration; with no `SMTP_HOST` it is skipped and the UI says so.
+- **Retention**: *Purge old events* deletes events older than `ENGAGEMENT_RETENTION_DAYS`
+  (0 = keep nothing, negative = never purge). Only events are deleted — the CV requests and inbox
+  messages they point at stay.
+- **Off switch**: `ENGAGEMENT_ANALYTICS_ENABLED=false` writes no events and 404s the endpoints, so
+  the dashboard has no route to reach.
+
 ## 🌐 API Endpoints
 
 ### Blog Posts
@@ -616,6 +645,18 @@ turns the whole feature off cleanly.
 - `POST /api/app/interactions/contact` - Public contact form (rate-limited per client IP; validated + normalized input)
 - `GET /api/app/admin/interactions` - Admin inbox: filter by `status`/`source`, paginated (auth required)
 - `PATCH /api/app/admin/interactions/{id}` - Move an interaction through the status workflow (auth required)
+
+### Engagement analytics (#249)
+
+All admin-only (auth required); every route 404s when `ENGAGEMENT_ANALYTICS_ENABLED=false`:
+
+- `GET /api/app/admin/analytics/engagement?weeks=8&limit=20` - Totals, the per-week trend
+  (Monday-anchored UTC buckets, zero-filled so the chart has no holes) and the recent-activity
+  feed in one call
+- `POST /api/app/admin/analytics/purge` - Apply `ENGAGEMENT_RETENTION_DAYS` now; returns how many
+  events were deleted
+- `POST /api/app/admin/analytics/digest` - Send the weekly summary email now; `sent: false` means
+  SMTP is unconfigured, which is a normal answer
 
 ### Job-search pipeline (#247, phase 1)
 
@@ -737,6 +778,7 @@ All three columns are `NULL` for posts not imported from LinkedIn. Two posts may
 | `pipeline0004` | Job-search pipeline phase 1 (#247): `opportunities` + `opportunity_notes` tables (stage workflow, recruiter fields, notes timeline linked to inbox interactions). Self-adopting per the guard above. |
 | `promote0005` | Promote-from-inbox idempotency (#279): unique `opportunities.promoted_from_interaction_id` + an index on `opportunity_notes.interaction_id`, backfilled from the promotion note. |
 | `interview0006` | Interview calendar, pipeline phase 2 (#247/#70): the `interviews` table (UTC `scheduled_at`, duration, kind, location/link, interviewer, outcome) with `ON DELETE CASCADE` to `opportunities` and indexes for per-opportunity listing + the "next N days" range scan. Self-adopting: when the table already exists it adds only the missing indexes, comparing **column sets, not names** (a name check adds duplicates — see the guard note below). |
+| `engage0010` | Engagement analytics (#249): the `engagement_events` table (kind, nullable `subject_id` pointing at the source record, JSONB payload, indexes on `created_at` and `kind`). No FK on purpose — an event outlives the record it references, and the two have different retention. Self-adopting per the guard above. |
 
 New changes get their own revision on top of this baseline — see
 [How to write a migration](#how-to-write-a-migration) above.

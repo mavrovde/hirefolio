@@ -57,6 +57,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'analytics',
+        loadComponent: () =>
+          import('./components/admin/analytics/analytics.component').then(
+            (m) => m.AnalyticsComponent,
+          ),
+      },
+      {
         path: 'pipeline',
         loadComponent: () =>
           import('./components/admin/pipeline/pipeline.component').then(

@@ -105,6 +105,41 @@ All notable changes to this project will be documented in this file.
     document so they are in the server-rendered HTML an agent reads.
   - README gained a "How AI assistants read this site" section; `AI_CRAWLER_POLICY` is
     documented in `.env.example` and reaches the backend in both compose files.
+- **Engagement analytics: a private admin dashboard (#249)** — until now the only signal that a
+  recruiter engaged was `cv_requests.download_count` buried in a DB row:
+  - **`engagement_events`** (migration `engage0010`): a lean, first-party event table written from
+    the flows that already exist — CV request, **every** CV download, contact submission. A new
+    table rather than an aggregate because `download_count`/`downloaded_at` collapse repeated
+    downloads into a counter plus the LAST timestamp, so a per-week download trend cannot be
+    derived from them. **No new personal data**: an event carries a kind, a pointer to the record
+    that already holds the identity (`cv_requests.id` / `interactions.id`) and a timestamp — no IP,
+    no user agent, no name; the activity feed resolves names from the source record at read time.
+  - **Recording is best-effort by contract, structurally**: it runs after the flow's own commit,
+    writes through its OWN short-lived session and swallows its failures, so analytics can never
+    cost the owner a CV request or an inbox message. The own session is load-bearing rather than
+    tidy: sharing the request's session means a failed event write has to `rollback()`, which is
+    session-WIDE — it expires the caller's loaded objects, and the caller's next attribute read
+    becomes a lazy reload, i.e. sync IO in an async context (`MissingGreenlet`) and a 500 on a
+    request that had already succeeded. Pinned by tests that break the event write and assert the
+    contact form still returns 201 and the CV request still returns 200. The emit is also
+    **scheduled rather than awaited** (`BackgroundTasks`), so the second connection it needs never
+    sits on the visitor's critical path: `/cv/download` measured 6.5 ms mean inline vs 4.3 ms
+    scheduled, with 210 requests still producing exactly 210 events.
+  - **Admin dashboard** (`/analytics`, *Engagement*): all-time totals, a Monday-anchored per-week
+    trend zero-filled so a quiet fortnight is a flat chart rather than a hole, and a
+    recent-activity feed. Dependency-free CSS chart; zoneless-safe (every rendered value arrives
+    through the async pipe).
+  - **Weekly digest email** via the existing SMTP configuration — counts only, so the summary
+    carries no identity off the server — and skipped gracefully (`sent: false`) when SMTP is
+    unconfigured. One label map names an event the same way in the email and on the dashboard.
+  - **Retention knob** `ENGAGEMENT_RETENTION_DAYS` (default 365; `0` keeps nothing, negative
+    disables purging) applied from the dashboard. Purging deletes events only — the CV requests and
+    inbox rows they point at survive.
+  - **Off means off**: `ENGAGEMENT_ANALYTICS_ENABLED=false` writes no event and 404s every
+    `/admin/analytics/*` route, so the dashboard has no route to reach. Both knobs are forwarded by
+    both compose files (`scripts/check_compose_env.sh` green).
+  - Every route sits behind `get_current_admin_user` at the router level — recruiter activity is
+    owner-only, pinned by a 401 test on all three endpoints.
 - **Marketing cover artwork, generated from the site's own visual identity (#311)** — the repository
   is the product's storefront, and until now a shared repo link rendered GitHub's generic fallback
   card while the README opened on administrivia:

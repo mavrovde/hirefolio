@@ -1,8 +1,10 @@
 import smtplib
+from datetime import datetime
 from email.message import EmailMessage
 
 from app.config import settings
 from app.logger import logger
+from app.models.engagement_event import engagement_label
 
 
 class EmailService:
@@ -207,6 +209,45 @@ Review and update its status in the admin panel.
         return self._send(
             msg, f"Interaction notification sent to {settings.admin_email}"
         )
+
+    def send_engagement_digest(
+        self,
+        *,
+        counts: dict[str, int],
+        since: datetime,
+    ) -> bool:
+        """Weekly engagement summary to the owner (#249).
+
+        Counts only — the digest names no recruiter, so the summary itself
+        carries no identity data out of the server. Same
+        skip-gracefully-when-unconfigured contract as every method above:
+        without ``smtp_host`` this returns False and sends nothing.
+        """
+        if not self._configured():
+            return False
+
+        lines = "\n".join(
+            f"{engagement_label(kind)}: {count}" for kind, count in counts.items()
+        )
+        total = sum(counts.values())
+
+        msg = EmailMessage()
+        msg.set_content(f"""
+Your weekly engagement summary.
+
+Since {since.strftime("%Y-%m-%d %H:%M UTC")}
+--------------------------------
+{lines}
+--------------------------------
+Total events: {total}
+
+Open the admin analytics dashboard for the per-week trend and the activity feed.
+""")
+        msg["Subject"] = f"Weekly engagement digest — {total} events"
+        msg["From"] = self._from_address()
+        msg["To"] = settings.admin_email
+
+        return self._send(msg, f"Engagement digest sent to {settings.admin_email}")
 
 
 email_service = EmailService()

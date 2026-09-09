@@ -30,6 +30,7 @@ from app.models.interaction import (
 )
 from app.models.user import User
 from app.services.auth import get_current_admin_user
+from app.services.engagement import record_event
 from app.services.notifications import OwnerNotification, notify_owner
 from app.services.rate_limit import SlidingWindowRateLimiter, rate_limit_dependency
 from app.services.translation import translate_interaction
@@ -165,6 +166,12 @@ async def submit_contact(
     db.add(interaction)
     await db.commit()
     await db.refresh(interaction)
+    # Engagement analytics (#249): counted after the intake commit, scheduled
+    # rather than awaited, and best-effort by contract — the event references
+    # this row instead of copying the recruiter's identity into a second table.
+    background_tasks.add_task(
+        record_event, "contact_submitted", subject_id=interaction.id
+    )
     background_tasks.add_task(
         _notify, body.name, body.email, body.company, body.message
     )
