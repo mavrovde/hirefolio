@@ -274,10 +274,14 @@ All notable changes to this project will be documented in this file.
     upgrade:** `.env.example` ships the key commented out, so an existing host has no pin and takes
     the new value. The application is unaffected — `docker-compose.prod.yml` wires the backend to
     `db:${POSTGRES_PORT}` over the compose network, and the `pg_isready` health check runs inside the
-    `db` container, so neither traverses the published port. What changes is the host publish: an
-    **off-host** client connecting to `<host>:5433` loses access (on-host and SSH-tunnelled clients do
-    not). That reachability was an unintended exposure, not a supported interface; if you relied on it,
-    set `POSTGRES_BIND_HOST=0.0.0.0` — eyes open — or tunnel over SSH.
+    `db` container, so neither traverses the published port. What changes is the host publish: any
+    client reaching the box at an address other than loopback loses access — an **off-host** client on
+    `<host>:5433`, and equally a **host-local process dialling the machine's LAN or bridge address**.
+    Only clients dialling `127.0.0.1`, directly or through an SSH tunnel, keep it. That wider
+    reachability was an unintended exposure, not a supported interface (`docs/DEPLOYMENT.md` documents
+    no off-host database access, and the backup runbook goes through
+    `docker compose exec -T db pg_dump`); if you relied on it, set `POSTGRES_BIND_HOST=0.0.0.0` — eyes
+    open — or tunnel over SSH.
   - **`ssh-deploy` skill** (`.claude/skills/ssh-deploy/`) — failure→diagnosis for every step of
     `Roll Out To Prod Host`, the certificate-renewal runbook and the multi-tenant do-not-touch list;
     referenced from the `devops-pipeline` and `release-manager` charters and the CLAUDE.md AI-config
