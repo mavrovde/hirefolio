@@ -136,6 +136,20 @@ class Settings(BaseSettings):
     # Namespaced like the Gemini knobs (#141): an ambient generic name could
     # silently bind someone else's id.
     analytics_id: str = Field(default="", validation_alias="HIREFOLIO_ANALYTICS_ID")
+    # AI-crawler policy (#252) — "allow" (default) or "deny", served on
+    # GET {api_prefix}/config/site and rendered into the SSR robots.txt.
+    # Allow-by-default is the product thesis: recruiter research runs through AI
+    # assistants, so being readable BY them is the point. An owner who objects
+    # sets AI_CRAWLER_POLICY=deny and the AI user-agents (only those) get
+    # `Disallow: /`. Anything unrecognized falls back to "allow" — see the
+    # validator below — because a typo must not silently deindex a portfolio.
+    ai_crawler_policy: str = "allow"
+
+    @field_validator("ai_crawler_policy", mode="before")
+    @classmethod
+    def _normalize_ai_crawler_policy(cls, v: object) -> object:
+        policy = v.strip().lower() if isinstance(v, str) else v
+        return policy if policy in ("allow", "deny") else "allow"
 
     # Docker compose forwards these as ``SITE_NAME=${SITE_NAME:-}`` — an UNSET
     # host variable therefore arrives as an EMPTY string, which would silently

@@ -36,6 +36,54 @@ All notable changes to this project will be documented in this file.
     `sitemap.xml`; and the whole `public-e2e` project green with a spec that mints a link, asserts
     the note in the **server-rendered HTML**, watches the browser visit reach the opportunity
     timeline, and proves a revoked link 404s.
+- **AI-agent discoverability: `llms.txt`, a JSON Resume endpoint and an explicit AI-crawler
+  policy (#252)** — recruiter research increasingly runs through AI assistants, which rank what
+  they can *read*. #71 won the search result; this makes the site legible to the answer engine.
+  Everything below derives from runtime config (#65) and the live profile — no per-owner edits,
+  no rebuild:
+  - **`GET /api/app/profile/resume.json`** — the whole candidate in ONE request as
+    [JSON Resume](https://jsonresume.org) v1.0.0: basics (incl. location, social profiles),
+    work, education, skills, languages, certificates, projects, references, plus the signals an
+    agent needs to act — `meta.availability` (#271) and `meta.contactUrl`. The mapping is a
+    pure, fully-tested module (`backend/app/services/json_resume.py`) that translates the
+    LinkedIn-flavoured scraper vocabulary into the standard one: `"Mar 2022"`/`"Mai 2019"` →
+    `2022-03`/`2019-05`, `"Present"`/`"Heute"` → an **absent** `endDate` (the schema's
+    convention for ongoing), `"2014 - 2016"` → start/end years. Every optional field is
+    **omitted rather than emitted empty**, because `""` in a `format: uri`/`format: email`
+    field is invalid while an absent key simply claims nothing. `certificates[].date` is the one
+    field the schema declares `format: date`, so a year-only credential date ("2024") omits it
+    rather than fabricating a day — the year stays on the HTML CV, which has no schema to
+    satisfy. Served through the SAME public allowlist as the HTML profile
+    (`public_profile_view`) — pinned by asserting the dict the mapper RECEIVES, since no input
+    can make the two paths differ observably today — and validated in CI against the
+    **vendored** v1.0.0 schema (`backend/tests/fixtures/jsonresume_schema_v1.json`) with
+    **format assertion armed** (`jsonschema.FormatChecker()` + `rfc3986-validator`, so `uri`,
+    `email` and `date` are really checked), including both shipped demo personas.
+    With no profile uploaded yet it falls back to the frontend's bundled demo asset, the same
+    source the public site renders, so the machine-readable document can never contradict the
+    HTML.
+  - **`GET /llms.txt`**, rendered per request by the SSR server
+    (`projects/public/src/app/seo/llms-txt.ts`) in the [llmstxt.org](https://llmstxt.org)
+    format: H1 + summary + availability sentence, then curated link lists — the structured
+    profile first, then home/CV/contact, the newest posts (capped at 25, so the entry point
+    stays small enough to fit in context — and the backend read is bounded to that same 25
+    rather than paging the whole blog to discard it), and the sitemap/robots/AI-assistant links.
+  - **An explicit, switchable AI-crawler policy in `robots.txt`.** The AI user-agents are now
+    named individually (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-Web,
+    anthropic-ai, Google-Extended, PerplexityBot, Applebot-Extended, meta-externalagent, CCBot,
+    YouBot). `AI_CRAWLER_POLICY=allow` (default — being read by recruiter-side AI is the point)
+    or `deny`, which gives **only** those agents `Disallow: /` and leaves classic search
+    untouched. An unrecognized value normalizes to `allow` on both ends, so a typo can never
+    silently deindex a portfolio. `/for/` (#250's tailored recruiter links) and `/admin` are
+    excluded for every crawler — as path prefixes, and shipped before the feature rather than
+    after the first leak. Under `deny`, robots.txt also stops advertising `/llms.txt`; the file
+    keeps being served, because it is an on-demand map an assistant reads while helping a
+    person, not a crawl permission (llmstxt.org draws the same distinction).
+  - **The HTML head advertises both**: `<link rel="alternate" type="application/json">` to the
+    JSON Resume and `<link rel="describedby">` to `/llms.txt`, written into the **injected**
+    document so they are in the server-rendered HTML an agent reads.
+  - README gained a "How AI assistants read this site" section; `AI_CRAWLER_POLICY` is
+    documented in `.env.example` and reaches the backend in both compose files.
 - **Marketing cover artwork, generated from the site's own visual identity (#311)** — the repository
   is the product's storefront, and until now a shared repo link rendered GitHub's generic fallback
   card while the README opened on administrivia:

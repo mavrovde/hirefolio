@@ -165,7 +165,12 @@
             · {{ l.cv_download_count }} CV download{{ l.cv_download_count === 1 ? '' : 's' }}
             <span *ngIf="l.cv_version"> · variant {{ l.cv_version }}</span>
             <span *ngIf="l.last_visited_at"> · last {{ l.last_visited_at | date: 'medium' }}</span>
-            <span *ngIf="l.expires_at"> · expires {{ l.expires_at | date }}</span>
+            <!-- Rendered in UTC on purpose: the owner picks a bare day in the
+                 date field and the backend resolves it to the LAST instant of
+                 that day (UTC). In local time east of UTC that instant falls on
+                 the next calendar day, so the default `| date` would show a
+                 panel expiry one day later than the one that was typed. -->
+            <span *ngIf="l.expires_at"> · expires {{ l.expires_at | date: 'mediumDate' : 'UTC' }}</span>
           </p>
           <div class="flex flex-wrap gap-2 mt-2">
             <button type="button" (click)="copyLink(l)" class="border rounded px-2 py-1 bg-white hover:bg-gray-50"

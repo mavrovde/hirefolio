@@ -17,6 +17,7 @@ const DTO = {
     social_links: ['https://linkedin.example/x'],
     analytics_id: 'G-TEST0001',
     availability: 'open',
+    ai_crawler_policy: 'deny',
 };
 
 describe('SiteConfigService', () => {
@@ -50,7 +51,22 @@ describe('SiteConfigService', () => {
             socialLinks: ['https://linkedin.example/x'],
             availability: 'open',
             analyticsId: 'G-TEST0001',
+            aiCrawlerPolicy: 'deny',
         });
+    });
+
+    it.each([
+        [undefined, 'allow'], // pre-#252 backend during a deploy window
+        ['allow', 'allow'],
+        ['DENY', 'deny'], // case-insensitive, like the backend's normalization
+        ['sometimes', 'allow'], // a typo must never deindex the portfolio
+    ])('normalizes ai_crawler_policy %s to %s', (wire, expected) => {
+        let got: string | undefined;
+        service.config$.subscribe((c) => (got = c.aiCrawlerPolicy));
+        httpMock
+            .expectOne((r) => r.url.includes('/config/site'))
+            .flush({ ...DTO, ai_crawler_policy: wire });
+        expect(got).toBe(expected);
     });
 
     it('falls back to the neutral default when the backend is unreachable', () => {

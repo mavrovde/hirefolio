@@ -1,21 +1,40 @@
-import { STATIC_ROUTES, buildRobotsTxt, buildSitemapXml } from './sitemap';
+import { STATIC_ROUTES, SsrSiteConfig, buildRobotsTxt, buildSitemapXml } from './sitemap';
 
 /**
  * Tailored links must stay OUT of every index (#250, criterion 3).
  *
- * Kept in its own file rather than appended to `sitemap.spec.ts`: #252 is
- * rewriting that spec at the same time, and a regression this specific should
- * not be lost in a merge resolution.
+ * Kept in its own file rather than appended to `sitemap.spec.ts` because #252
+ * was rewriting that spec at the same time. #252 has since landed (#322) and
+ * turned `buildRobotsTxt(siteUrl)` into `buildRobotsTxt(site)` with `/for/` in
+ * its own `DISALLOWED_PATHS` list — so this file now guards the #250 invariant
+ * against THAT implementation: whatever the AI-crawler policy does to the rest
+ * of robots.txt, the tailored space stays excluded and no tailored URL can
+ * reach the sitemap.
  */
-describe('tailored links are never advertised (#250)', () => {
-    it('robots.txt disallows /for/ for the wildcard agent', () => {
-        const txt = buildRobotsTxt('https://example.com');
+const siteConfig = (overrides: Partial<SsrSiteConfig> = {}): SsrSiteConfig => ({
+    siteUrl: 'https://example.com',
+    siteName: 'Example',
+    ownerName: 'Owner',
+    ownerHeadline: 'Headline',
+    ownerDescription: 'Description',
+    availability: 'open',
+    aiCrawlerPolicy: 'allow',
+    ...overrides,
+});
 
-        expect(txt).toContain('Disallow: /for/');
-        // The general Allow must survive — this excludes ONE path, it does not
-        // turn the site invisible.
-        expect(txt).toContain('User-agent: *\nAllow: /\nDisallow: /for/');
-    });
+describe('tailored links are never advertised (#250)', () => {
+    it.each(['allow', 'deny'] as const)(
+        'robots.txt disallows /for/ for the wildcard agent (policy: %s)',
+        (aiCrawlerPolicy) => {
+            const txt = buildRobotsTxt(siteConfig({ aiCrawlerPolicy }));
+
+            expect(txt).toContain('Disallow: /for/');
+            // The general Allow must survive — this excludes ONE path space, it
+            // does not turn the site invisible. #252's AI policy switches the
+            // named-agent blocks below; it must never reach this one.
+            expect(txt).toContain('User-agent: *\nAllow: /\nDisallow: /for/');
+        }
+    );
 
     it('no tailored URL can reach the sitemap', () => {
         // The sitemap is built from STATIC_ROUTES + the published posts. Neither

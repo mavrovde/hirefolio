@@ -1,3 +1,4 @@
+import { DATE_PIPE_DEFAULT_OPTIONS } from '@angular/common';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
@@ -153,11 +154,31 @@ describe('PipelineComponent — tailored links (#250)', () => {
             headline_note: 'Hi Acme team',
             highlighted_skills: ['Angular', 'Python'],
             highlighted_projects: ['Acme'],
+            // Forwarded verbatim — see 'sends the picked day as a bare date'
+            // below for why the panel must not turn this into an instant.
             expires_at: '2026-12-01',
         });
         expect(component.links[0].id).toBe('l2');
         expect(component.showLinkForm).toBe(false);
         expect(component.linkDraft.headline_note).toBe('');
+    });
+
+    it('sends the picked day as a bare date, never a fabricated instant', () => {
+        // The contract behind the expiry off-by-one (#323 review, finding 1):
+        // `<input type="date">` yields `YYYY-MM-DD` and the panel forwards it
+        // UNCHANGED, because the backend is what defines what a bare day means
+        // — `normalize_expiry` resolves it to the LAST microsecond of that day,
+        // so "expires 2026-12-01" is live through all of 2026-12-01. If this
+        // ever starts sending a timestamp (`…T00:00:00Z`), the backend honours
+        // it literally and the link dies a day early: the exact bug that made a
+        // link minted with today's date 404 the moment it was sent.
+        component.open(makeOpp());
+        component.linkDraft = { ...component.linkDraft, expires_at: '2026-12-01' };
+        component.createLink();
+
+        const payload = tailoredSpy.create.mock.calls[0][0];
+        expect(payload.expires_at).toBe('2026-12-01');
+        expect(payload.expires_at).not.toContain('T');
     });
 
     it('sends explicit nulls for the empty optional controls', () => {
@@ -224,15 +245,33 @@ describe('PipelineComponent — tailored links (#250)', () => {
     });
 
     it('deletes a link and drops only that one from the list', () => {
+        const confirmed = vi.spyOn(window, 'confirm').mockReturnValue(true);
         tailoredSpy.listFor.mockReturnValue(of([makeLink(), makeLink({ id: 'l9' })]));
         component.open(makeOpp());
         component.deleteLink(component.links[0]);
 
+        expect(confirmed).toHaveBeenCalledWith(
+            'Delete the tailored link /for/acme-staff-eng? This cannot be undone.'
+        );
         expect(tailoredSpy.remove).toHaveBeenCalledWith('l1');
         expect(component.links.map((l) => l.id)).toEqual(['l9']);
     });
 
+    it('does not delete a shared URL when the confirmation is dismissed', () => {
+        // Delete is irreversible and the URL is already in a recruiter's inbox:
+        // a mis-click turns a live page into a permanent 404, while the
+        // recoverable `Disable` sits in the same row (#323 review, finding 3).
+        vi.spyOn(window, 'confirm').mockReturnValue(false);
+        component.open(makeOpp());
+        component.deleteLink(component.links[0]);
+
+        expect(tailoredSpy.remove).not.toHaveBeenCalled();
+        expect(component.links.map((l) => l.id)).toEqual(['l1']);
+        expect(component.error).toBeNull();
+    });
+
     it('surfaces a delete failure', () => {
+        vi.spyOn(window, 'confirm').mockReturnValue(true);
         tailoredSpy.remove.mockReturnValue(throwError(() => new Error('x')));
         component.open(makeOpp());
         component.deleteLink(component.links[0]);
@@ -257,6 +296,46 @@ describe('PipelineComponent — tailored links (#250)', () => {
         expect(component.links).toEqual([]);
         expect(component.showLinkForm).toBe(false);
         expect(component.copiedLinkId).toBeNull();
+    });
+
+    describe('the expiry the panel shows is the day that was picked', () => {
+        // A bare day resolves to the LAST instant of that day in UTC. Rendered
+        // in a browser east of UTC, that instant lands on the NEXT calendar
+        // day — so without an explicit `'UTC'` on the date pipe the panel would
+        // report an expiry one day later than the one the owner typed, which is
+        // the same off-by-one as #323's finding 1 wearing a different hat.
+        beforeEach(async () => {
+            TestBed.resetTestingModule();
+            await TestBed.configureTestingModule({
+                imports: [PipelineComponent],
+                providers: [
+                    { provide: OpportunitiesService, useValue: serviceSpy },
+                    { provide: AdminCvService, useValue: cvSpy },
+                    { provide: TailoredLinksService, useValue: tailoredSpy },
+                    // Pin the "browser" 9 hours east of UTC so the assertion
+                    // cannot pass by accident on a machine that happens to run
+                    // in UTC (as CI does).
+                    { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { timezone: '+0900' } },
+                ],
+            }).compileComponents();
+            fixture = TestBed.createComponent(PipelineComponent);
+            component = fixture.componentInstance;
+            fixture.detectChanges();
+        });
+
+        it('shows the picked day, not the next one, east of UTC', () => {
+            tailoredSpy.listFor.mockReturnValue(
+                of([makeLink({ expires_at: '2026-12-01T23:59:59.999999Z' })])
+            );
+            component.open(makeOpp());
+            fixture.detectChanges();
+
+            const row: HTMLElement = fixture.nativeElement.querySelector(
+                '[data-testid="link-l1"]'
+            );
+            expect(row.textContent).toContain('expires Dec 1, 2026');
+            expect(row.textContent).not.toContain('Dec 2, 2026');
+        });
     });
 
     describe('copy to clipboard', () => {
