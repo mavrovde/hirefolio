@@ -268,10 +268,10 @@ same variable on every boot:
   *Change visibility* → **Public**. The rollout job preflights this and fails
   with an explicit message naming the package if it is still private, before it
   touches the host.
-- Images published **before** the `beaconfolio` rename remain at `ghcr.io/mavrovde/hirefolio-*`
-  (and pre-#88 builds at `ghcr.io/mavrovde/mavrov.de-*`)
-  (still public). To deploy a pre-rename tag such as `1.8.4`, pin
-  `IMAGE_REPO=ghcr.io/mavrovde/beaconfolio.com` explicitly.
+- Images published **before** the `beaconfolio` rename remain at their era's path (still
+  public). To deploy a pre-rename tag, pin `IMAGE_REPO` to the path that era published:
+  `IMAGE_REPO=ghcr.io/mavrovde/hirefolio` for tags between #88 and #330 (e.g. `1.14.0`),
+  or `IMAGE_REPO=ghcr.io/mavrovde/mavrov.de` for pre-#88 tags (e.g. `1.8.4`).
 - Once made public, keep them public — otherwise every host needs a read-only
   PAT `docker login` and the rollout job's anonymous-pull preflight fails.
 - `build_amd64_and_push.sh` remains as a manual fallback for pushing images

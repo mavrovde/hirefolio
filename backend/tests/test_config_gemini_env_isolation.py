@@ -176,3 +176,17 @@ async def test_startup_is_quiet_when_no_legacy_variable_is_set(monkeypatch, caps
         "a clean environment must boot silently; a warning that always fires "
         "trains operators to ignore it"
     )
+
+
+@pytest.mark.asyncio
+async def test_startup_warns_about_a_retired_prefix_key(monkeypatch, capsys):
+    """#330: the retired-prefix warning must fire FROM LIFESPAN, not merely
+    exist as a helper — deleting the `_warn_retired_env()` call from startup
+    survived the whole suite at 100% coverage until this test (review of #331,
+    round 2: a mutation check proved the gate did not gate)."""
+    from app.main import RETIRED_ENV_PREFIX
+
+    monkeypatch.setenv(f"{RETIRED_ENV_PREFIX}TELEGRAM_BOT_TOKEN", "still-set")
+    out = await _startup_output(monkeypatch, capsys)
+    assert "IGNORED since the #330 rebrand" in out
+    assert f"{RETIRED_ENV_PREFIX}TELEGRAM_BOT_TOKEN" in out
