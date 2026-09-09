@@ -5,6 +5,15 @@
 # is indistinguishable from a gate that cannot fail. So every case here asserts a
 # DIRECTION, the negative cases outnumber the positive ones, and the last case
 # replays the real #323/#325 fork out of this repository's own history.
+#
+# CASE COUNT DIFFERS BY ENVIRONMENT, and that is deliberate: **25 locally, 22 in
+# CI**. `actions/checkout` clones at depth 1, so the three real-history cases
+# cannot resolve `aef2938`/`2cf326f` and skip with a printed `~ skipped:` line
+# rather than failing. The contract they illustrate is fully covered by the
+# synthetic `--against` fixtures, so buying them back with `fetch-depth: 0` would
+# cost a full clone on every run for no additional coverage. Stated here because a
+# self-test that quietly reports a different number in CI is exactly the kind of
+# unexplained gap this suite exists to catch.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
