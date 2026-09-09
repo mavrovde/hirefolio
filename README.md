@@ -655,7 +655,10 @@ Admin (auth required):
   optional `slug` — generated unguessably when omitted, `cv_document_id`, `headline_note`,
   `highlighted_skills`/`highlighted_projects` (≤20 each, trimmed + de-duplicated), `expires_at`).
   A duplicate custom slug is a **409**, never a silent overwrite. Writes a timeline note on the
-  opportunity
+  opportunity. **`expires_at` given as a bare date (`2026-12-01`, what the admin date picker
+  sends) means "through the end of that day"** — it is stored as the last instant of that day in
+  UTC, so a link that expires today is live for the rest of today. A value carrying an explicit
+  time is honoured literally
 - `GET /api/app/admin/tailored-links?opportunity_id=…` - The links of one application (or all),
   with `visit_count`, `cv_download_count`, `last_visited_at` and the copyable absolute `url`
   built from the runtime `SITE_URL`
@@ -672,6 +675,12 @@ Public (no auth — the URL is the secret):
   lands on the opportunity timeline (`Tailored link /for/… opened (visit #2)`)
 - `GET /api/app/for/{slug}/cv` - The **pinned** CV variant (not the site's active default), also
   recorded on the timeline
+
+Both public **writes** (`/visit` and `/cv`) append to the owner's timeline and are unauthenticated
+by design, so both are **rate-limited per client IP** — `TAILORED_VISIT_RATE_LIMIT_REQUESTS`
+(default 20) per `TAILORED_VISIT_RATE_LIMIT_WINDOW_SECONDS` (default 60); over budget is a
+**429 that writes nothing**. The read (`GET /for/{slug}`) is deliberately *not* limited: SSR
+fetches it server-to-server, so every rendered visit would share one bucket.
 
 The owner mints and revokes links from the pipeline detail panel in the admin app — no rebuild,
 no redeploy.

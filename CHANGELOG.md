@@ -27,7 +27,28 @@ All notable changes to this project will be documented in this file.
     (`Tailored link /for/… opened (visit #2)`); the increment is a single atomic `UPDATE … +1
     RETURNING`, so two opens in the same second are two visits. Counting during SSR would have
     doubled every real visit and turned a crawler prefetch into "the recruiter opened it".
-  - Exercised on every layer rule 12 asks for, each one measured: 22 backend tests
+  - **An expiry date means "through the end of that day."** The admin's `<input type="date">`
+    submits a bare `2026-12-01`, which read as a timestamp is *midnight* — so a link "expiring
+    2026-12-01" was already dead for the whole of 2026-12-01, and one minted with today's date
+    404'd the instant it was sent, indistinguishable from a slug that never existed. A date-only
+    value now resolves to the last microsecond of that day (UTC) on BOTH the create and the patch
+    path, while a value carrying an explicit time is still honoured literally. The admin panel
+    renders the expiry in UTC for the same reason: east of UTC the local calendar day of that
+    instant is the next one, and the panel must show the day that was typed.
+  - **The public writes are rate-limited per client IP.** `POST /for/{slug}/visit` and
+    `GET /for/{slug}/cv` each append a row to the owner's timeline and are unauthenticated by
+    design (the slug IS the access control, and the URL is meant to be forwarded), so an unlimited
+    endpoint let any recipient grow the database without bound and inflate the very visit signal
+    the owner acts on. 20 requests / 60 s by default
+    (`TAILORED_VISIT_RATE_LIMIT_REQUESTS`/`_WINDOW_SECONDS`, both compose files), sitting between
+    the contact form's 5 and the profile read's 100 so a corporate NAT full of real recruiters
+    still fits; over budget is a **429 that writes nothing**. The READ path is deliberately
+    unlimited — SSR fetches it server-to-server, so a per-IP budget there would key every rendered
+    visit to one bucket and throttle the site instead of an abuser.
+  - **Deleting a link asks first.** Delete is irreversible and the URL is already in a recruiter's
+    inbox, while the recoverable `Disable` sits in the same row — same confirm-first convention as
+    every other destructive admin action.
+  - Exercised on every layer rule 12 asks for, each one measured: 42 backend tests
     (`tests/test_tailored_links.py`) inside a suite that holds at 100%; all three Vitest projects at
     100% on all four metrics; migration `tailored0010` applied, downgraded and re-applied against a
     real PostgreSQL 16; the route **curled on a composed Docker stack** — `200` with

@@ -542,7 +542,9 @@ async def test_visit_is_rate_limited_after_the_budget(client: AsyncClient, monke
     await _link(client, opportunity, slug="rate-limited")
 
     for _ in range(3):
-        assert (await client.post(f"{PUBLIC_URL}/rate-limited/visit")).status_code == 204
+        assert (
+            await client.post(f"{PUBLIC_URL}/rate-limited/visit")
+        ).status_code == 204
     blocked = await client.post(f"{PUBLIC_URL}/rate-limited/visit")
     assert blocked.status_code == 429
 
@@ -566,9 +568,7 @@ async def test_tailored_cv_download_is_rate_limited(
     monkeypatch.setattr(module.visit_rate_limiter, "max_requests", 2)
     opportunity = await _opportunity(client)
     cv = await _cv(db_session)
-    await _link(
-        client, opportunity, slug="rate-limited-cv", cv_document_id=str(cv.id)
-    )
+    await _link(client, opportunity, slug="rate-limited-cv", cv_document_id=str(cv.id))
 
     for _ in range(2):
         assert (await client.get(f"{PUBLIC_URL}/rate-limited-cv/cv")).status_code == 200
