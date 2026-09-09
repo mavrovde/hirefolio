@@ -2438,7 +2438,7 @@ All notable changes to this project will be documented in this file.
   - `public` — the SSR visitor site (home, blog, cv, llm, marketing shell), unauthenticated.
   - `admin` — a CSR-only admin console SPA (login + management), served on the restricted
     `admin.mavrov.de` subdomain.
-  - `@beaconfolio/shared` — an ng-packagr library holding the code both apps share (blog/stats/llm/
+  - `@mavrov/shared` — an ng-packagr library holding the code both apps share (blog/stats/llm/
     language/storage services, translate pipe, i18n), decoupled from the host app via the
     `SHARED_ENVIRONMENT` and `AUTH_TOKEN_PROVIDER` injection tokens.
   Each app builds, tests (100% coverage per project), and deploys independently.

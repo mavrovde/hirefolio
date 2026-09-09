@@ -425,7 +425,7 @@ is the bug**: extract it, or the next fix will miss a branch too (rule 1, applie
 
 ## 20. Renaming a repo does not carry the container packages with it
 
-Renaming `mavrovde/beaconfolio.com` → `mavrovde/beaconfolio` changed CI's publish target, because it derives <!-- de-brand:historical: verbatim rename record, #313 -->
+Renaming `mavrovde/mavrov.de` → `mavrovde/hirefolio` changed CI's publish target, because it derives <!-- de-brand:historical: verbatim rename record, #313 -->
 from `${{ github.repository }}`. The consequences are not obvious: **new GHCR packages are created
 private, and package visibility does not follow a repository rename**, while the prod host pulls
 anonymously with no `docker login`. Previously published tags stay at the *old* path forever, so
