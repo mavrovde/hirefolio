@@ -1,7 +1,7 @@
 """Tailored application links (#250) — admin minting + the public `/for/:slug`."""
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta, timezone
 
 import pytest
 from httpx import AsyncClient
@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.tailored_links import (
     SLUG_SUFFIX_LENGTH,
+    TailoredLinkIn,
+    TailoredLinkPatch,
     _clean_highlights,
     generate_slug,
     slugify,
@@ -438,3 +440,165 @@ async def test_the_default_portfolio_is_untouched_by_an_unused_feature(
     assert config.status_code == 200
     assert "tailored" not in config.text.lower()
     assert (await clean_client.get(f"{PUBLIC_URL}/anything")).status_code == 404
+
+
+# --------------------------------------------------------------------------
+# Expiry semantics (#323 review round 1, finding 1)
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        # The `<input type="date">` shape: "through the end of that day".
+        ("2026-12-01", datetime(2026, 12, 1, 23, 59, 59, 999999, tzinfo=UTC)),
+        # An explicit time is honoured, NOT rounded up to end-of-day.
+        ("2026-12-01T00:00:00Z", datetime(2026, 12, 1, 0, 0, tzinfo=UTC)),
+        ("2026-12-01T10:30:00Z", datetime(2026, 12, 1, 10, 30, tzinfo=UTC)),
+        # A naive timestamp is read as UTC (the documented contract). Without
+        # this, `expires_at > now` raises TypeError — a 500, not a 404.
+        ("2026-12-01T10:30:00", datetime(2026, 12, 1, 10, 30, tzinfo=UTC)),
+        # An explicit offset survives: Pydantic's smart `date | datetime` union
+        # would have collapsed this to a bare date, dropping time AND offset.
+        (
+            "2026-12-01T00:00:00+02:00",
+            datetime(2026, 12, 1, 0, 0, tzinfo=timezone(timedelta(hours=2))),
+        ),
+        (None, None),
+    ],
+)
+def test_expiry_normalisation_resolves_every_input_shape(raw, expected):
+    parsed = TailoredLinkIn(opportunity_id=uuid.uuid4(), expires_at=raw)
+    assert parsed.expires_at == expected
+    # The PATCH path shares the contract: editing an expiry must not
+    # reintroduce the off-by-one that creating it fixed.
+    assert TailoredLinkPatch(expires_at=raw).expires_at == expected
+    if expected is not None:
+        assert parsed.expires_at.tzinfo is not None
+
+
+@pytest.mark.asyncio
+async def test_a_link_expiring_today_is_live_today_and_dead_tomorrow(
+    client: AsyncClient,
+):
+    """The boundary the off-by-one broke.
+
+    The owner picks TODAY in the date field. Before the fix that resolved to
+    midnight UTC, so the link was already expired at the instant it was minted
+    — a silent 404 for a recruiter who had just been sent the URL, with nothing
+    wrong-looking in the admin panel.
+    """
+    opportunity = await _opportunity(client)
+    today = datetime.now(UTC).date()
+    link = await _link(
+        client, opportunity, slug="expires-today", expires_at=today.isoformat()
+    )
+
+    stored = datetime.fromisoformat(link["expires_at"])
+    assert stored == datetime.combine(today, time.max, tzinfo=UTC)
+
+    # Live right now, and for the whole of the chosen day.
+    assert (await client.get(f"{PUBLIC_URL}/expires-today")).status_code == 200
+    assert (await client.post(f"{PUBLIC_URL}/expires-today/visit")).status_code == 204
+
+    model = TailoredLink(enabled=True, expires_at=stored)
+    last_moment = datetime.combine(today, time.max, tzinfo=UTC)
+    assert model.is_live(last_moment - timedelta(microseconds=1)) is True
+    # ...and dead the moment the day ends.
+    assert model.is_live(last_moment + timedelta(microseconds=1)) is False
+    assert model.is_live(last_moment + timedelta(days=1)) is False
+
+
+@pytest.mark.asyncio
+async def test_patching_an_expiry_to_today_keeps_the_link_live(client: AsyncClient):
+    opportunity = await _opportunity(client)
+    link = await _link(client, opportunity, slug="patched-expiry")
+    today = datetime.now(UTC).date()
+
+    patched = await client.patch(
+        f"{ADMIN_URL}/{link['id']}", json={"expires_at": today.isoformat()}
+    )
+    assert patched.status_code == 200
+    assert datetime.fromisoformat(patched.json()["expires_at"]) == datetime.combine(
+        today, time.max, tzinfo=UTC
+    )
+    assert (await client.get(f"{PUBLIC_URL}/patched-expiry")).status_code == 200
+
+
+# --------------------------------------------------------------------------
+# Rate limiting the public writes (#323 review round 1, finding 2)
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_visit_is_rate_limited_after_the_budget(client: AsyncClient, monkeypatch):
+    """The slug is unauthenticated BY DESIGN and meant to be forwarded, so an
+    unlimited `/visit` lets any recipient append rows to the owner's timeline
+    without bound and inflate the signal AC4 exists to produce."""
+    from app.api import tailored_links as module
+
+    monkeypatch.setattr(module.visit_rate_limiter, "max_requests", 3)
+    opportunity = await _opportunity(client)
+    await _link(client, opportunity, slug="rate-limited")
+
+    for _ in range(3):
+        assert (await client.post(f"{PUBLIC_URL}/rate-limited/visit")).status_code == 204
+    blocked = await client.post(f"{PUBLIC_URL}/rate-limited/visit")
+    assert blocked.status_code == 429
+
+    # The rejected request wrote NOTHING: no counter bump, no timeline row.
+    rows = (
+        await client.get(ADMIN_URL, params={"opportunity_id": opportunity["id"]})
+    ).json()
+    assert rows[0]["visit_count"] == 3
+    detail = (await client.get(f"{OPPORTUNITIES_URL}/{opportunity['id']}")).json()
+    opened = [n for n in detail["notes"] if "opened" in n["body"]]
+    assert len(opened) == 3
+
+
+@pytest.mark.asyncio
+async def test_tailored_cv_download_is_rate_limited(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch
+):
+    """The CV download writes a row too, so it shares the budget."""
+    from app.api import tailored_links as module
+
+    monkeypatch.setattr(module.visit_rate_limiter, "max_requests", 2)
+    opportunity = await _opportunity(client)
+    cv = await _cv(db_session)
+    await _link(
+        client, opportunity, slug="rate-limited-cv", cv_document_id=str(cv.id)
+    )
+
+    for _ in range(2):
+        assert (await client.get(f"{PUBLIC_URL}/rate-limited-cv/cv")).status_code == 200
+    assert (await client.get(f"{PUBLIC_URL}/rate-limited-cv/cv")).status_code == 429
+
+
+def test_the_visit_limiter_is_wired_to_its_settings(monkeypatch):
+    """Pin the WIRING with sentinels — asserting against unmodified defaults
+    would pass even if the factory read the wrong setting (§25)."""
+    from app.api import tailored_links as module
+
+    monkeypatch.setattr(settings, "tailored_visit_rate_limit_requests", 4321)
+    monkeypatch.setattr(settings, "tailored_visit_rate_limit_window_seconds", 1234)
+    built = module._build_visit_limiter()
+    assert built.max_requests == 4321
+    assert built.window_seconds == 1234
+
+
+def test_the_read_path_is_deliberately_not_rate_limited():
+    """`GET /for/{slug}` is fetched during SSR by the frontend container, so a
+    per-IP budget there would key EVERY server-rendered visit to one bucket and
+    throttle the whole site. Only the writes carry the limiter."""
+    from app.api import tailored_links as module
+
+    limited = {
+        route.path
+        for route in module.public_router.routes
+        if any(
+            dep.call is module._enforce_visit_rate_limit
+            for dep in route.dependant.dependencies
+        )
+    }
+    assert limited == {"/for/{slug}/visit", "/for/{slug}/cv"}

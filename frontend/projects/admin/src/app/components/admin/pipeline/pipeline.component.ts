@@ -316,6 +316,14 @@ export class PipelineComponent implements OnInit {
   }
 
   deleteLink(link: TailoredLink) {
+    // Irreversible, and the URL is already in a recruiter's inbox: deleting it
+    // turns a live page into a 404 with no way back, while the recoverable
+    // `Disable` sits one button away in the same row. Same confirm-first
+    // convention as every other destructive admin action (tag-manager,
+    // post-list, post-editor, sql-panel).
+    if (!confirm(`Delete the tailored link /for/${link.slug}? This cannot be undone.`)) {
+      return;
+    }
     this.tailoredLinksService.remove(link.id).subscribe({
       next: () => {
         this.links = this.links.filter((l) => l.id !== link.id);

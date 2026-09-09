@@ -199,6 +199,18 @@ class Settings(BaseSettings):
     contact_rate_limit_requests: int = 5
     contact_rate_limit_window_seconds: int = 60
 
+    # The tailored-link public WRITES (`POST /for/{slug}/visit`, `GET
+    # /for/{slug}/cv`) each append a row to the owner's opportunity timeline,
+    # and the slug is unauthenticated BY DESIGN — a forwarded link is the whole
+    # product — so an unlimited endpoint lets any recipient grow the DB without
+    # bound and inflate the very visit signal the owner acts on (#250 review).
+    # 20/minute sits between the contact form's 5 (one deliberate human action)
+    # and the profile read's 100: a genuine open costs ONE call, but several
+    # recruiters behind one corporate NAT share a client IP, so the budget has
+    # to absorb a burst of real people without ever absorbing a scripted loop.
+    tailored_visit_rate_limit_requests: int = 20
+    tailored_visit_rate_limit_window_seconds: int = 60
+
     # Outbound SMTP: without a timeout a hung peer pins the worker thread that
     # the notification background task runs on (#69 review finding).
     smtp_timeout_seconds: int = 10

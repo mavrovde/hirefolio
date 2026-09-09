@@ -14,7 +14,7 @@ links are indistinguishable from unknown ones (both 404).
 import re
 import secrets
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
@@ -29,6 +29,7 @@ from app.models.cv_document import CvDocument
 from app.models.opportunity import Opportunity, OpportunityNote
 from app.models.tailored_link import MAX_HIGHLIGHTS, TailoredLink
 from app.services.auth import get_current_admin_user
+from app.services.rate_limit import SlidingWindowRateLimiter, rate_limit_dependency
 
 admin_router = APIRouter(
     prefix="/admin/tailored-links",
@@ -36,6 +37,26 @@ admin_router = APIRouter(
     dependencies=[Depends(get_current_admin_user)],
 )
 public_router = APIRouter(prefix="/for", tags=["tailored-links"])
+
+
+def _build_visit_limiter() -> SlidingWindowRateLimiter:
+    # Factory so tests can pin the settings wiring with SENTINEL values —
+    # asserting equality against unmodified defaults pins nothing (§25).
+    return SlidingWindowRateLimiter(
+        max_requests=settings.tailored_visit_rate_limit_requests,
+        window_seconds=settings.tailored_visit_rate_limit_window_seconds,
+    )
+
+
+visit_rate_limiter = _build_visit_limiter()
+#: Applied to the two public WRITES only, NOT to `public_router` as a whole.
+#: `GET /for/{slug}` is fetched during SSR by the frontend container, so every
+#: server-rendered visit would share ONE limiter key (the container's IP, with
+#: no `X-Forwarded-For` on a server-to-server call) — a per-IP budget there
+#: would throttle the whole site under mild traffic instead of throttling an
+#: abuser. The writes are browser-originated by design, so they key on real
+#: client IPs.
+_enforce_visit_rate_limit = rate_limit_dependency(visit_rate_limiter)
 
 #: A slug is a URL path segment and nothing else: lowercase, digits, hyphens,
 #: never leading/trailing hyphens. Validated here rather than only in the DB so
@@ -61,6 +82,41 @@ def generate_slug(company: str, role_title: str) -> str:
     stem = slugify(f"{company} {role_title}")
     suffix = "".join(secrets.choice(_SLUG_ALPHABET) for _ in range(SLUG_SUFFIX_LENGTH))
     return f"{stem}-{suffix}" if stem else suffix
+
+
+#: A date with no time, exactly as `<input type="date">` submits it.
+DATE_ONLY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def normalize_expiry(value: object) -> object:
+    """Resolve an expiry to an explicit, timezone-aware instant.
+
+    The owner picks an expiry in a `<input type="date">`, which submits a bare
+    ``YYYY-MM-DD``. Read as a timestamp that is **midnight**, so "expires
+    2026-12-01" used to kill the link for the whole of 2026-12-01, and an
+    expiry of *today* minted a link that was already dead — a silent 404 for a
+    recruiter who had just been sent the URL, with nothing wrong-looking in the
+    admin panel. A date means "through the end of that day", so a date-only
+    value resolves to the last microsecond of it.
+
+    Anything carrying an explicit time is left alone: ``2026-12-01T00:00:00Z``
+    really does mean midnight, and guessing "they must have meant end of day"
+    would be the same bug pointing the other way. The two cases are told apart
+    on the RAW input, before Pydantic parses it — a `date | datetime` union
+    cannot do this, because Pydantic's smart union resolves
+    ``2026-12-01T00:00:00+02:00`` to a bare `date`, silently discarding both
+    the time and the offset (measured).
+
+    Naive timestamps are interpreted as UTC, the contract the README states.
+    """
+    if isinstance(value, str) and DATE_ONLY_RE.match(value.strip()):
+        value = date.fromisoformat(value.strip())
+    # `date` first: `datetime` IS a `date` subclass, so the order matters.
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    if isinstance(value, date):
+        return datetime.combine(value, time.max, tzinfo=UTC)
+    return value
 
 
 def _clean_highlights(values: list[str] | None) -> list[str]:
@@ -94,6 +150,13 @@ class TailoredLinkIn(BaseModel):
             return v or None
         return v
 
+    _expiry = field_validator("expires_at", mode="before")(normalize_expiry)
+    # Runs on the PARSED value: a naive string like `2026-12-01T10:30:00` is
+    # still naive after `mode="before"` (Pydantic parses it afterwards), and
+    # comparing a naive `expires_at` to an aware `now` raises TypeError — a 500
+    # on the public route, not a 404.
+    _expiry_tz = field_validator("expires_at", mode="after")(normalize_expiry)
+
 
 class TailoredLinkPatch(BaseModel):
     """Every field optional: the admin panel patches one control at a time.
@@ -112,6 +175,12 @@ class TailoredLinkPatch(BaseModel):
     highlighted_projects: list[str] | None = None
     expires_at: datetime | None = None
     clear_expiry: bool = False
+
+    # The panel patches the same `<input type="date">` it creates from, so the
+    # date-only contract has to hold on BOTH paths — otherwise editing an
+    # expiry would silently reintroduce the off-by-one that creating it fixed.
+    _expiry = field_validator("expires_at", mode="before")(normalize_expiry)
+    _expiry_tz = field_validator("expires_at", mode="after")(normalize_expiry)
 
 
 class TailoredLinkOut(BaseModel):
@@ -411,7 +480,11 @@ async def _record(
     await db.commit()
 
 
-@public_router.post("/{slug}/visit", status_code=204)
+@public_router.post(
+    "/{slug}/visit",
+    status_code=204,
+    dependencies=[Depends(_enforce_visit_rate_limit)],
+)
 async def record_visit(slug: str, db: AsyncSession = Depends(get_db)) -> None:
     """Count one opening of a tailored link (#250 criterion 4).
 
@@ -425,8 +498,10 @@ async def record_visit(slug: str, db: AsyncSession = Depends(get_db)) -> None:
     )
 
 
-@public_router.get("/{slug}/cv")
-async def download_tailored_cv(slug: str, db: AsyncSession = Depends(get_db)):
+@public_router.get("/{slug}/cv", dependencies=[Depends(_enforce_visit_rate_limit)])
+async def download_tailored_cv(
+    slug: str, db: AsyncSession = Depends(get_db)
+) -> Response:
     """Serve the CV variant pinned to this link (#250 criterion 1/2).
 
     Deliberately NOT the active public CV: the whole point of a tailored link
