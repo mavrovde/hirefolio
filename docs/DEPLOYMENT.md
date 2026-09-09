@@ -238,8 +238,8 @@ docker compose -f docker-compose.prod.yml logs backend | grep 'CONFIG WARNING'
 
 ## Database-name default (#288)
 
-The default database name is **`beaconfolio`** (the product) since #288; before that it was
-`mavrov`. Postgres reads `POSTGRES_DB` only at **volume initialization**, so this changes
+The default database name is **`beaconfolio`** since the #330 rebrand — it was `hirefolio` <!-- de-brand:historical: the two prior defaults, needed for volume pins -->
+from #288, and `mavrov` before that. Postgres reads `POSTGRES_DB` only at **volume initialization**, so this changes
 nothing for existing data — but the backend's connection string is interpolated from the
 same variable on every boot:
 
@@ -247,7 +247,9 @@ same variable on every boot:
   initializes as `beaconfolio` and everything matches.
 - **Host created before the rename** (including the current canonical host and any dev
   machine with an existing volume): pin the old name in that host's `.env` **before**
-  pulling a post-rename compose file: `POSTGRES_DB=mavrov`. Without the pin the backend
+  pulling a post-rename compose file — pin the name your volume actually holds:
+  `POSTGRES_DB=hirefolio` (initialised between #288 and #330) or `POSTGRES_DB=mavrov` <!-- de-brand:historical: the two prior defaults, needed for volume pins -->
+  (initialised before #288). Without the pin the backend
   looks for a `beaconfolio` database that does not exist in the old volume and fails at
   startup — the data itself is untouched either way.
 - Renaming an existing volume's database instead of pinning is a deliberate manual
@@ -267,7 +269,7 @@ same variable on every boot:
   with an explicit message naming the package if it is still private, before it
   touches the host.
 - Images published **before** the `beaconfolio` rename remain at `ghcr.io/mavrovde/hirefolio-*`
-  (and pre-`beaconfolio` builds at `ghcr.io/mavrovde/beaconfolio.com-*`)
+  (and pre-#88 builds at `ghcr.io/mavrovde/mavrov.de-*`)
   (still public). To deploy a pre-rename tag such as `1.8.4`, pin
   `IMAGE_REPO=ghcr.io/mavrovde/beaconfolio.com` explicitly.
 - Once made public, keep them public — otherwise every host needs a read-only

@@ -162,7 +162,7 @@ test.describe('Blog Interactions', () => {
 
     test('should support terminal commands in UI', async ({ page }) => {
         // Verify terminal aesthetics on the list page
-        await expect(page.locator('text=user@mavrov:~/blog$')).toBeVisible();
+        await expect(page.locator('text=user@portfolio:~/blog$')).toBeVisible();
 
         // Verify grep search input exists
         await expect(page.getByPlaceholder('search semantically...')).toBeVisible();

@@ -84,7 +84,6 @@ PATTERNS='serg\.mavrov|smavrov|sergii|G-1QSMT6N045'
 # Allowlist: legal/historical records and the one negative assertion.
 #   LICENSE            — the copyright holder is the real author (correct).
 #   CHANGELOG.md       — immutable history.
-#   specs/done/        — historical spec documents.
 #   this script        — carries the patterns.
 hits=$(git grep -inE "$PATTERNS" -- . \
   ':(exclude)LICENSE' \

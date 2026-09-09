@@ -42,10 +42,35 @@ def _read_file_bytes(path: str) -> bytes:
         return f.read()
 
 
+RETIRED_ENV_PREFIX = "HIREFOLIO_"  # de-brand:historical: pre-#330 prefix, detected only
+
+
+def _warn_retired_env() -> None:
+    """#330 hard-break diagnostic: the retired env prefix has no compat window.
+    A retired key in the environment is silently ignored by Settings, which
+    reads as "my token stopped working" — so name every such key at startup."""
+    # In a container the retired names never reach this process; the compose
+    # files forward any that are set on the host via LEGACY_GEMINI_ENV (names
+    # only, never values) — the same channel the pre-#141 names use below.
+    forwarded = os.getenv("LEGACY_GEMINI_ENV", "").split()
+    retired = sorted(
+        {k for k in os.environ if k.startswith(RETIRED_ENV_PREFIX)}
+        | {k for k in forwarded if k.startswith(RETIRED_ENV_PREFIX)}
+    )
+    if retired:
+        print(
+            f"[{datetime.now(UTC)}] WARNING: retired {RETIRED_ENV_PREFIX}* env keys "
+            f"are set and IGNORED since the #330 rebrand — rename to BEACONFOLIO_*: "
+            + ", ".join(retired)
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print(f"[{datetime.now(UTC)}] LIFESPAN START: Beaconfolio API")
     app.state.start_time = datetime.now(UTC)
+
+    _warn_retired_env()
 
     # SECURITY (issue #177): fail fast when the JWT signing secret is unset or
     # still the publicly-known placeholder — a deployment that signs admin

@@ -29,7 +29,7 @@ All notable changes to this project will be documented in this file.
     historical surfaces — the former #313 deferral exclusions (compose files, proxy defaults,
     workflows, CLAUDE.md, backend/frontend/agents/importer code) are all IN SCOPE now that #330
     renamed them. Exempt: `de-brand:` markers and the legacy GHCR pins. The self-test grew to
-    **65 cases**, including one that replays the sweep's own miss (mixed-case `Mavrov.de` — the
+    **62 cases**, including one that replays the sweep's own miss (mixed-case `Mavrov.de` — the
     guard caught 3 of those in real code the moment it was tightened).
   - **Legacy subsystems removed** (owner directive during #330): `specs/` (pre-issue-flow spec
     documents), the root `agents/` A2A multi-agent team (`intake.py`, `orchestrator.py`, the a2a
@@ -38,8 +38,10 @@ All notable changes to this project will be documented in this file.
     `PLAYBOOK.md` — which the eight `.claude/agents/` charters cite as their working flow —
     moved to `.claude/PLAYBOOK.md` with content intact; the CI playbook-drift step and the
     pre-push hook step that exercised `agents/tests/` were removed with the subsystem.
-  - **Historical records left intact**: this changelog, `specs/done/`, `docs/retrospectives/`,
-    `docs/agent-runs/` and `LICENSE` still read as written.
+  - **Immutable records verified byte-identical to `main`**: this changelog's shipped entries,
+    `docs/retrospectives/` and `LICENSE`. (`specs/` and `docs/agent-runs/` are removed, not
+    rewritten — their content is unchanged in git history; an early sweep pass touched two
+    retrospective lines and was reverted verbatim before merge.)
 
 ### Added
 - **v1.14.0 release retrospective, and the gates it produced (#328)** — the cycle's evidence turned

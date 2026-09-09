@@ -59,3 +59,43 @@ async def test_ping(client: AsyncClient) -> None:
     response = await client.get(f"{settings.api_prefix}/ping")
     assert response.status_code == 200
     assert response.json() == {"ping": "ok"}
+
+
+def test_retired_prefix_warning_names_the_keys(monkeypatch, capsys):
+    """#330 hard break: a leftover retired-prefix key must be NAMED at startup,
+    not silently ignored — the failure mode is 'my token stopped working'."""
+    from app.main import RETIRED_ENV_PREFIX, _warn_retired_env
+
+    monkeypatch.setenv(f"{RETIRED_ENV_PREFIX}GEMINI_API_KEY", "x")
+    monkeypatch.setenv(f"{RETIRED_ENV_PREFIX}TELEGRAM_CHAT_ID", "y")
+    _warn_retired_env()
+    out = capsys.readouterr().out
+    assert "IGNORED since the #330 rebrand" in out
+    assert f"{RETIRED_ENV_PREFIX}GEMINI_API_KEY" in out
+    assert f"{RETIRED_ENV_PREFIX}TELEGRAM_CHAT_ID" in out
+
+
+def test_retired_prefix_warning_silent_when_clean(monkeypatch, capsys):
+    import os
+
+    from app.main import RETIRED_ENV_PREFIX, _warn_retired_env
+
+    for k in list(os.environ):
+        if k.startswith(RETIRED_ENV_PREFIX):
+            monkeypatch.delenv(k)
+    _warn_retired_env()
+    assert "IGNORED" not in capsys.readouterr().out
+
+
+def test_retired_prefix_warning_reads_the_forwarded_channel(monkeypatch, capsys):
+    """In a container the retired keys never reach the process env; compose
+    forwards their NAMES via LEGACY_GEMINI_ENV — the diagnostic must read it."""
+    from app.main import RETIRED_ENV_PREFIX, _warn_retired_env
+
+    monkeypatch.setenv(
+        "LEGACY_GEMINI_ENV", f"GEMINI_API_KEY {RETIRED_ENV_PREFIX}TELEGRAM_BOT_TOKEN"
+    )
+    _warn_retired_env()
+    out = capsys.readouterr().out
+    assert f"{RETIRED_ENV_PREFIX}TELEGRAM_BOT_TOKEN" in out
+    assert "GEMINI_API_KEY," not in out  # pre-#141 names belong to the other warning

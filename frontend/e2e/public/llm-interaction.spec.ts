@@ -15,7 +15,7 @@ test.describe('LLM Terminal', () => {
 
     test('should display terminal with initial state', async ({ page }) => {
         await expect(page.locator('.terminal-container')).toBeVisible();
-        await expect(page.getByText('user@mavrov:~/llm$', { exact: true }).first()).toBeVisible();
+        await expect(page.getByText('user@portfolio:~/llm$', { exact: true }).first()).toBeVisible();
     });
 
     test('should handle multi-chunk streaming response', async ({ page }) => {

@@ -175,8 +175,7 @@ done
 #     History must not be rewritten. Every OTHER former exclusion — runtime
 #     defaults, CLAUDE.md, application code — was renamed by #330 and is now
 #     guarded like any file.
-for f in docs/retrospectives/v1.0.0.md CHANGELOG.md \
-         specs/done/06-importer.md
+for f in docs/retrospectives/v1.0.0.md CHANGELOG.md
 do
   d="$(mktemp -d)"; skeleton "$d"
   echo "we shipped mavrov.de v1.0.0 that day" >> "$d/$f"

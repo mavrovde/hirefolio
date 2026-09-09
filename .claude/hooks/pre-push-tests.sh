@@ -385,7 +385,6 @@ run_checks() {
     PREPUSH_DB="${PREPUSH_TEST_DATABASE_URL:-postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_beaconfolio_prepush}"
     ( cd "$ROOT/backend" && BEACONFOLIO_GEMINI_API_KEY="" TEST_DATABASE_URL="$PREPUSH_DB" \
         ./venv/bin/pytest -q -n auto --cov-fail-under=100 ) || return 1
-    echo "== agent-playbook drift check (#115) =="
   fi
 
   if [ "$PREPUSH_RUN_LINT" = "1" ]; then
