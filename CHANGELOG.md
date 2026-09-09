@@ -5,7 +5,50 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Placeholder for next release.
+- **v1.14.0 release retrospective, and the gates it produced (#328)** — the cycle's evidence turned
+  into committed configuration, archived as `docs/retrospectives/v1.14.0.md` with the trend row in
+  that directory's README:
+  - **`scripts/check_migration_heads.sh` + self-test** — exactly ONE Alembic head, measured on the
+    working tree **unioned with a git ref** (`--against origin/main`). Dependency-free (no alembic
+    import, no database, no Python), wired into the pre-push gate and CI's Version Consistency job.
+    #323 and #325 both chained onto `trans0009`; each branch was single-head in isolation, so every
+    gate on both was green, and `alembic upgrade head` — which `docker-entrypoint.sh` runs on every
+    container start — refuses to run on the merged result. The self-test replays that exact incident
+    from this repo's history: **26 cases** pass locally (23 in CI, where a depth-1 clone cannot
+    resolve the historical commits — a `MIN_CASES` floor keeps that note enforceable), and three
+    mutations turn **9 / 6 / 1** of them red.
+  - **`.claude/hooks/guard-stack-resources.sh` + self-test** — a free-disk floor
+    (`DOCKER_DISK_FLOOR_GB`, default 5) and ONE Docker compose project, checked before
+    `up`/`build`/`run`/`pull` only; `down`/`ps`/`logs`/`exec`/`builder prune` are never blocked,
+    because those are what you run to recover from a full disk. Three parallel stacks filled the disk
+    and crashed the daemon this cycle, costing ~2 hours. **44 cases, 11 mutations killed, 0
+    survived.** The documented `DOCKER_STACK_GUARD=0` bypass is read from the COMMAND TEXT per
+    segment, like both sibling hooks — the first version read only the hook's own environment, which
+    nothing in this harness sets, so the printed remedy was a deny loop with no exit.
+
+### Changed
+- **`.claude/hooks/pre-merge-gate.sh`: an APPROVE must be NEWER than every commit on the PR.**
+  Replaying the release's own threads as they stood at merge time, **4 of 10 reviewed merges** carried
+  commits no approval had seen — including the fixes to a reviewer's own findings, two merges of
+  `main`, and the release PR itself. The remedy is the delta-confirm verdict this repo already posts.
+  Self-test 85 → 94 cases (3 fail against the pre-change hook), mutation contract 18 → 20 killed.
+- **Charters, playbook, skills and commands** taught the cycle's defect classes with the measurement
+  behind each: assert a control at the SEAM (#322's PII test passed with the control deleted), jsdom
+  never applies the component stylesheet (#325 — 447 unit tests green with the CSS gone), a
+  conditional `test.skip` reports green against a dead stack (#323), a test pinning today's payload
+  pins today's bug (#323's expiry off-by-one), one machine/one Docker stack and a worktree per
+  concurrent agent, and — found by this PR's own review — that an `ENV=value` **prefix is command
+  text**, so a hook documenting a bypass must parse it per segment or the documented remedy is a deny
+  loop with no exit. Recorded as `lessons-learned` §49–§55; `env-gotchas` gains the shared-checkout
+  trap (a moved `HEAD` sends a commit to `main`) and the shallow-fetch trap (proving a CI step
+  locally with `git fetch --depth=1` shallows your own repository), both measured while writing this
+  retrospective.
+
+### Removed
+- **The `frontend-design` plugin** — carried as a conditional KEEP through two releases with no
+  evidence of use in either; the cycle's only design-shaped work (#311) shipped through a hand-written
+  renderer without it. An enabled plugin costs tokens on every load; re-enabling is one line, and the
+  trigger is written into CLAUDE.md.
 
 ## [1.14.0] - 2026-09-09
 

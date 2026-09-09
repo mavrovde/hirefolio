@@ -115,6 +115,25 @@ repaint rule mechanically (#118).
 - **SSR relative→absolute URL rewrite belongs in an `HttpBackend`, not an `HttpInterceptorFn`.** Interceptors run *before* Angular's transfer-cache interceptor, so a rewrite there makes the server key the cache on the absolute URL and the browser on the relative URL → mismatch → re-fetch on hydration (the blog "flash to home", #25). Do it in `SsrHttpBackend` (terminal, runs after the cache keys the original URL) and **delegate to `HttpXhrBackend`, never `FetchBackend`** — the app uses XHR on both platforms (server xhr2), and forcing Fetch broke the browser's only real fetch (reverted #84). See the [[public-app-ssr-and-zoneless-cd-gotchas]] memory.
 - **Validate against the WHOLE `public-e2e` project, and when you change a user-visible behavior, grep ALL e2e specs for assertions on the OLD behavior** (`grep -rn "toHaveURL('/')" frontend/e2e` etc.). Running only the one spec you touched misses stale sibling tests that assert the removed behavior and fail the deploy E2E (cost us an extra fix-forward: #108 changed invalid-slug handling but `blog-interactions.spec.ts` still asserted the old home-redirect).
 
+- **jsdom never applies the component stylesheet, so a CSS assertion in Vitest
+  passes with the CSS deleted.** #325 measured it: the whole admin unit suite —
+  447 tests, 51 files — stayed green with both `border` rules removed, because
+  jsdom reports `border-top-style: "none"` and a placeholder width either way. Any
+  assertion about layout, box model, computed colour or visibility-by-CSS goes in
+  Playwright. If you found the defect in a browser, its regression test stays in a
+  browser. (lessons §51)
+- **A conditional `test.skip` turns an unserviceable stack into a pass.** #323's
+  E2E skipped itself when the admin token or the mint failed — exactly when the
+  feature is broken — and reported green against a dead backend. Fail instead, and
+  mutation-check an E2E by breaking the STACK (`BACKEND_URL=http://localhost:59999`)
+  rather than the code. Always report the skip count next to the pass count.
+  (lessons §52)
+- **A date rendered through a local-time pipe is a different day east of UTC.**
+  #323's own fix shipped a panel showing "Dec 2" for a Dec 1 expiry until it was
+  run under `test.use({ timezoneId: 'Asia/Tokyo' })`. Pin timezone-sensitive
+  rendering in a browser with an explicit non-UTC timezone; a UTC CI runner cannot
+  fail that assertion by accident.
+
 ## Rules
 - Never lower coverage thresholds, delete/skip tests, or add blanket ignores to
   make CI pass. Fix the code.

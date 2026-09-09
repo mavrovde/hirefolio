@@ -149,6 +149,29 @@ When your fix maps to a GitHub issue (see `CLAUDE.md` → *Issue tracking, miles
 - Close-the-loop is the merge/devops step — don't close the issue from here; leave `Closes #NN` to do
   it on merge, or note partial status.
 
+## Backend gotchas this repo keeps re-learning (each cost a review round)
+
+- **Assert a control at the SEAM, not at the output.** #322's PII-allowlist test
+  passed with the allowlist DELETED (85 passed, 0 failed) because the mapper
+  downstream never emits those keys anyway. Spy the callee and assert the dict it
+  RECEIVES. Any "X is filtered before Y sees it" guarantee needs an assertion on
+  Y's INPUT. (lessons §49)
+- **A new PUBLIC write route inherits the module's abuse budget — go and look at
+  the sibling.** `POST /for/{slug}/visit` (#323) shipped unauthenticated and
+  unlimited, writing a DB row per call, in a repo where a *read* is rate limited
+  "against scraping/abuse" and the contact form has a tighter budget "because it
+  creates a row". Limit every public write, and remember a new setting is THREE
+  edits (config.py + .env.example + BOTH compose files, lessons §40).
+- **A test that pins today's payload also pins today's bug.** #323's expiry
+  off-by-one was test-locked: the admin spec asserted the raw date goes out
+  unchanged, so the suite defended a link that was dead the day it was minted.
+  State what the RECEIVER must do with the value. (lessons §50)
+- **A side-write that takes the caller's session can 500 the caller on its
+  failure path only** (§48), and **two branches each single-head alone can fork
+  Alembic once merged** (§53) — run `bash scripts/check_migration_heads.sh
+  --against origin/main` and, whenever your base has moved, re-run the gates on
+  the MERGED tree.
+
 ## Rules
 - Never lower coverage thresholds, delete/skip tests, or add blanket ignores to
   make CI pass. Fix the code.

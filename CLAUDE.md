@@ -100,11 +100,13 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 | skill | `ssr-cd-safety` | zoneless repaint + SSR HTTP contract (#118) |
 | hook | `pre-push-tests.sh` | PreToolUse Bash: docs + backend + frontend gates before every real `git push` (command-position aware, #237) |
 | hook | `guard-destructive.sh` | PreToolUse Bash: blocks irreversible local/infra destruction (rule 9) |
-| hook | `pre-merge-gate.sh` | PreToolUse Bash: refuses `gh pr merge` without an APPROVE verdict, or with `Closes #NN` against unticked criteria (rule 13 enforced, not asked) |
-| hook | `hook-parse-lib.sh` | the ONE quote-aware command-parsing model, sourced by all three hooks (#237) |
+| hook | `pre-merge-gate.sh` | PreToolUse Bash: refuses `gh pr merge` without an APPROVE verdict, with an APPROVE that predates the head, or with `Closes #NN` against unticked criteria (rule 13 enforced, not asked) |
+| hook | `guard-stack-resources.sh` | PreToolUse Bash: free-disk floor + ONE Docker compose project before any `up`/`build`/`run`/`pull` (v1.14.0 retro — three parallel stacks crashed the daemon) |
+| hook | `hook-parse-lib.sh` | the ONE quote-aware command-parsing model, sourced by all four hooks (#237) |
 | lint | `scripts/check_compose_env.sh` | every documented `Settings` knob must reach the backend container in BOTH compose files — pre-push + CI (v1.13.0 retro; #296/#297/#298 each shipped this bug) |
 | lint | `scripts/run_frontend_suites.sh` | runs all three Vitest projects independently and retries ONCE on the Vitest worker-teardown race (present on 4.x AND 5.x, #309); replaces `npm test` in the pre-push gate |
-| plugin | `frontend-design`, `context7`, `pyright-lsp`, `typescript-lsp`, `security-guidance` | per-plugin keep-rationale in "Plugins" below (#122) |
+| lint | `scripts/check_migration_heads.sh` | exactly ONE Alembic head in the working tree UNIONED with `origin/main` — pre-push + CI (v1.14.0 retro; #323/#325 forked the chain only in the merged result, which would have stopped the prod backend booting) |
+| plugin | `context7`, `pyright-lsp`, `typescript-lsp`, `security-guidance` | per-plugin keep-rationale in "Plugins" below (#122); `frontend-design` and `playwright` were dropped |
 | MCP | `postgres`, `playwright`, `github` | read-only SQL / browser automation / PRs+issues |
 
 - **MCP servers** (`.mcp.json`): `postgres` (read-only SQL on the pgvector DB), `playwright`
@@ -118,11 +120,17 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
   `pre-push-tests.sh` runs docs + backend pytest + backend lint/type (ruff check + ruff format --check
   + mypy) + frontend tests before every `git push` (env-configurable: `PREPUSH_RUN_LINT`/
   `PREPUSH_RUN_RUFF`/`PREPUSH_RUN_MYPY` …, self-gating); `guard-destructive.sh` blocks irreversible
-  local/infra destruction (rule 9) — bypass one command with `GUARD_DESTRUCTIVE=0`. All three hooks are
+  local/infra destruction (rule 9) — bypass one command with `GUARD_DESTRUCTIVE=0`;
+  `guard-stack-resources.sh` refuses a `docker compose up`/`build`/`run`/`pull` below a free-disk
+  floor (`DOCKER_DISK_FLOOR_GB`, default 5) or one that would start a SECOND compose project beside a
+  running one — bypass with `DOCKER_STACK_GUARD=0`. It reads `down`/`ps`/`logs`/`exec`/`builder prune`
+  as always allowed, because those are what you run to RECOVER from a full disk (v1.14.0 retro:
+  three concurrent stacks filled the disk, crashed the daemon and cost ~2 hours; one stack of this
+  project measures 15.35 GB of images + 3.09 GB of build cache + 6.97 GB of volumes). All four hooks are
   **command-position aware** (quoted prose is data, #204/#237) and share ONE parsing model,
-  `.claude/hooks/hook-parse-lib.sh`; each has a self-test (`*.test.sh`) beside it, and all three self-tests run inside the pre-push gate — `pre-merge-gate.test.sh` with its `--mutations` contract, because its first version passed every case against a gate whose blocking had been removed.
-  `pre-merge-gate.sh` blocks `gh pr merge` unless the newest posted verdict states APPROVE and every `Closes #NN` points at an issue with all acceptance criteria ticked; bypass one authorized command with `PR_MERGE_GATE=0`. **A verdict is a body whose FIRST NON-EMPTY LINE states `APPROVE` or `REQUEST CHANGES`** (v1.13.0 retro): reading the whole body let an author's fix-report on #291 count as the newest verdict and would have allowed a merge against a standing REQUEST CHANGES — reviewer and author share one identity here, so only the marker's position separates them. Fix reports must not open with a marker.
-  Two repo-contract lints run in the pre-push gate: `scripts/check_compose_env.sh` (a documented knob must reach the container — #296/#297/#298), which **also runs in CI** (`deploy.yml`, Version Consistency job), and `scripts/run_frontend_suites.sh` (all three Vitest projects, one signature-narrow retry for the upstream worker-teardown race), which is **gate-only** — CI already runs the three projects as separate jobs, so the `&&`-chain problem it solves does not exist there. Each has a `*.test.sh` beside it that also runs in the gate.
+  `.claude/hooks/hook-parse-lib.sh`; each has a self-test (`*.test.sh`) beside it, and all four self-tests run inside the pre-push gate — `pre-merge-gate.test.sh` and `guard-stack-resources.test.sh` with their `--mutations` contracts, because the merge gate's first self-test passed every case against a gate whose blocking had been removed.
+  `pre-merge-gate.sh` blocks `gh pr merge` unless the newest posted verdict states APPROVE, that APPROVE is newer than every commit on the PR, and every `Closes #NN` points at an issue with all acceptance criteria ticked; bypass one authorized command with `PR_MERGE_GATE=0`. **An approval covers the head it reviewed** (v1.14.0 retro): replaying the real threads at merge time, **four of the ten reviewed merges** carried commits no approval had seen (an 11-PR corpus; #321 merged with no verdict at all) — #320 merged four commits after its only verdict (including the fixes to the reviewer's own findings and a behaviour change), #315 merged two seconds before its delta-confirm was posted, #314 merged a `main` merge, and the release PR #327 merged a CHANGELOG commit, so the `v1.14.0` tag sits on an uncovered commit. A merge of `main` is not benign: that is how #325's Alembic head fork appeared. The remedy is a `## ✅ APPROVE — round N (delta-confirm at <sha>)`, not a bypass. **A verdict is a body whose FIRST NON-EMPTY LINE states `APPROVE` or `REQUEST CHANGES`** (v1.13.0 retro): reading the whole body let an author's fix-report on #291 count as the newest verdict and would have allowed a merge against a standing REQUEST CHANGES — reviewer and author share one identity here, so only the marker's position separates them. Fix reports must not open with a marker.
+  Three repo-contract lints run in the pre-push gate: `scripts/check_compose_env.sh` (a documented knob must reach the container — #296/#297/#298) and `scripts/check_migration_heads.sh` (exactly one Alembic head, measured on the working tree UNIONED with `origin/main` — #323/#325), both of which **also run in CI** (`deploy.yml`, Version Consistency job); and `scripts/run_frontend_suites.sh` (all three Vitest projects, one signature-narrow retry for the upstream worker-teardown race), which is **gate-only** — CI already runs the three projects as separate jobs, so the `&&`-chain problem it solves does not exist there. Each has a `*.test.sh` beside it that also runs in the gate. Note what the migration lint's CI half canNOT see: GitHub does not re-run a PR's checks when its base moves, so the pre-push run against `origin/main` and the merge gate's approval-covers-head check are the layers that actually catch a fork opened by someone else's merge.
 - **Plugins** (project scope; curation rationale + review cadence per #122 — re-review each
   release alongside the security check):
   - `context7` — KEEP: live library docs beat training-data recall for Angular 22 / FastAPI /
@@ -136,9 +144,13 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
     backend `app/` and the 3-project Angular workspace; cheaper than grep-navigation at this size.
   - `security-guidance` — KEEP: inline flags on risky patterns (it fired usefully this cycle on a
     `shell=True` mention); supports security-triage.
-  - `frontend-design` — KEEP (conditionally): used when shaping new public-site UI; candidate to
-    drop if the portfolio-template work (#67 theming) brings its own design system. Re-evaluate
-    at the next release.
+  - `frontend-design` — **DROPPED at v1.14.0.** It was carried as a conditional KEEP through two
+    releases with, in both retrospectives, "no new evidence either way" — and v1.14.0 shipped the
+    cycle's only design-shaped work (#311's cover artwork, PR #320) through a hand-written
+    `frontend/scripts/make-social-image.mjs` renderer without touching it. An enabled plugin costs
+    tokens on every load; two releases of non-use is the evidence. Restoring it is one line in
+    `.claude/settings.json`, so the trigger is explicit: re-enable when the #67 theming work
+    actually starts shaping new public-site UI.
   - **Evaluated and NOT added** (record per #122 so it isn't re-researched) — marketplace
     candidates reviewed against this stack: `commit-commands` (the repo's rule-3 branch→PR flow,
     `/prep-pr`, and the `issue-workflow` skill already cover commit/PR hygiene with repo context),

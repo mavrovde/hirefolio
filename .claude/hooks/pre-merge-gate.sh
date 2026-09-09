@@ -348,7 +348,7 @@ fi
 # `gh pr review --approve` is blocked for a same-identity author, so the repo's
 # sanctioned path is a COMMENT verdict whose body states APPROVE. Both streams
 # count and the NEWEST wins, so a later REQUEST CHANGES overrides an approval.
-PR_JSON="$(gh pr view "$PR_NUM" --json reviews,comments,body 2>/dev/null)" \
+PR_JSON="$(gh pr view "$PR_NUM" --json reviews,comments,body,commits 2>/dev/null)" \
   || deny "could not read PR #$PR_NUM (network or auth) — refusing to merge unverified"
 past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unanalysed merge must not proceed"
 
@@ -407,12 +407,17 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 # waiting for the incident is the posture this repo argues against. Revisit on the
 # first fix report with a leading marker posted while the standing verdict is
 # NEGATIVE — that instance is decision-CHANGING, and it is the cheap signal.
-VERDICT="$(printf '%s' "$PR_JSON" | jq -r '
+SELECTED="$(printf '%s' "$PR_JSON" | jq -c '
   def heading: (.body // "") | split("\n") | map(select(test("\\S"))) | (.[0] // "");
   [ ((.reviews // [])[]  | {at: .submittedAt, body: (.body // "")}),
     ((.comments // [])[] | {at: .createdAt,   body: (.body // "")}) ]
   | map(select(.at != null and (heading | test("APPROVE|APPROVED|REQUEST CHANGES"; "i"))))
-  | sort_by(.at) | last | .body // ""' 2>/dev/null)"
+  | sort_by(.at) | (last // {at: null, body: ""})' 2>/dev/null)"
+VERDICT="$(printf '%s' "$SELECTED" | jq -r '.body // ""' 2>/dev/null)"
+# The same selection's TIMESTAMP — check 1b below asks what landed after it.
+# Derived from the SAME object rather than a second copy of the filter, because
+# two filters that must stay in sync are the duplication §19 is about.
+VERDICT_AT="$(printf '%s' "$SELECTED" | jq -r '.at // ""' 2>/dev/null)"
 
 # MESSAGE-ONLY, and deliberately so (#291 review round 2, the #240 answer). An
 # empty verdict also yields an empty FIRST_MARKER, so the APPROVE check below
@@ -446,6 +451,51 @@ if printf '%s' "$FIRST_MARKER" | grep -qiE 'REQUEST CHANGES'; then
 fi
 printf '%s' "$FIRST_MARKER" | grep -qiE 'APPROVE' \
   || deny "PR #$PR_NUM's latest verdict does not state APPROVE (rule 13)"
+
+# --- Check 1b: the approval must COVER the head (v1.14.0 retrospective) ------
+# Rule 13 asks for a verdict on the CHANGE, not for a verdict at some point in
+# the PR's history. Check 1 above only asked "is the newest verdict an APPROVE",
+# which is satisfied by an approval of a head that no longer exists.
+#
+# MEASURED IN v1.14.0 — FOUR of the ten REVIEWED merges (an 11-PR corpus; #321
+# merged with no verdict at all) carried commits no approval had seen, and one of
+# them was not close:
+#   #320  approved 06:57:04Z on b91f908; then 0537a86 (five review findings),
+#         54158e8 (merge of main), e6373a4 ("banner links to the repository, not
+#         the maintainer's site" — a behaviour change) and 8290bca landed, and it
+#         merged 07:43:35Z with no second verdict. The reviewer never saw the
+#         fixes to their OWN findings.
+#   #315  approved 13:40:54Z; the six-finding fix commit 2a7c1a0 landed 13:45:03Z;
+#         merged 14:03:18Z — TWO SECONDS before the delta-confirm was posted.
+#   #314  approved 14:00:11Z; be1ffc2 (merge of main + a lesson renumber) landed
+#         14:12:38Z; merged 14:17:58Z.
+#   #327  the RELEASE PR: approved 12:09:07Z; 882ddae landed 12:10:52Z; merged
+#         12:25:17Z — so the v1.14.0 tag sits on a commit no verdict covers.
+# "Merge of main" is not a benign case: #325's Alembic head fork was created by
+# exactly that, and cost a production-boot blocker one review round later.
+#
+# The remedy is cheap and the repo already has the habit — #315's reviewer posted
+# "## ✅ APPROVE — round 2 (delta-confirm at 2a7c1a0)". This check makes the habit
+# the rule.
+#
+# KNOWN LIMIT, stated rather than implied: `committedDate` is set when the commit
+# is CREATED, not when it is pushed, so a commit authored before the verdict and
+# pushed after it is invisible here — and a badly skewed committer clock could
+# hide one. GitHub exposes no push time on `gh pr view`, and no reviewer-side
+# commit oid at all for the COMMENT verdicts this repo's same-identity constraint
+# forces. This closes the shape that actually happened three times; it is not a
+# proof of coverage.
+if [ -n "$VERDICT_AT" ]; then
+  NEWER="$(printf '%s' "$PR_JSON" | jq -r --arg at "$VERDICT_AT" '
+    [ (.commits // [])[] | select(((.committedDate // "") > $at)) ]
+    | map(((.oid // "???????")[0:7]) + " " + ((.messageHeadline // "") | .[0:52]))
+    | .[]' 2>/dev/null)"
+  if [ -n "$NEWER" ]; then
+    NEWER_N="$(printf '%s\n' "$NEWER" | grep -c '.')"
+    NEWER_LIST="$(printf '%s\n' "$NEWER" | head -3 | paste -sd '; ' - 2>/dev/null || printf '%s' "$NEWER")"
+    deny "PR #$PR_NUM's APPROVE was posted at $VERDICT_AT, but $NEWER_N commit(s) landed after it ($NEWER_LIST) — the approval does not cover the head. Ask pr-reviewer for a delta-confirm verdict on the current head (rule 13), or prefix PR_MERGE_GATE=0 if this merge is already authorized"
+  fi
+fi
 
 # --- Check 2: `Closes #NN` must not point at unticked criteria ---------------
 BODY="$(printf '%s' "$PR_JSON" | jq -r '.body // ""')"

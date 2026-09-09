@@ -392,6 +392,31 @@ jobs:
         run: bash scripts/check_compose_env.sh
       - name: Self-test the compose-env checker itself
         run: bash scripts/check_compose_env.test.sh
+      # Alembic single-head contract (v1.14.0 retrospective): #323 and #325 both
+      # chained onto `trans0009`. Each branch was single-head in isolation, so
+      # the Backend Migrations job passed on both — the fork existed only in the
+      # merged result, and `alembic upgrade head` (run by docker-entrypoint.sh on
+      # every container start) then refuses to run.
+      #
+      # On a pull_request this compares the branch with the BASE it targets. Note
+      # the residual it does not remove: GitHub does not re-run a PR's checks when
+      # the base moves, so a green PR run can predate the collision entirely. That
+      # is why the pre-push gate runs the same check against `origin/main` and why
+      # the merge gate now refuses an approval that does not cover the head.
+      - name: Alembic single-head contract (branch merged with its base)
+        run: |
+          BASE=""
+          if [ -n "${{ github.base_ref }}" ]; then
+            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}" 2>/dev/null \
+              && BASE="FETCH_HEAD"
+          fi
+          if [ -n "$BASE" ]; then
+            bash scripts/check_migration_heads.sh --against "$BASE"
+          else
+            bash scripts/check_migration_heads.sh
+          fi
+      - name: Self-test the migration-heads checker itself
+        run: bash scripts/check_migration_heads.test.sh
 
   # ============================================
   # PROXY QA

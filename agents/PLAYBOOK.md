@@ -58,6 +58,26 @@ WORKING DISCIPLINE (learned the hard way — see .claude/skills/lessons-learned/
   fix-reports opened with `APPROVED` further in, and under the old body-wide rule
   either would have been read as the newest verdict while the standing verdict was
   REQUEST CHANGES. (lessons §43)
+- ONE MACHINE, ONE DOCKER STACK — and a concurrent agent gets its own git
+  WORKTREE, never a shared checkout. In v1.14.0 three compose projects ran at
+  once (`hirefolio-*`, `hirefolio250-*`, `mavrovde-*`), the disk reached zero and
+  the daemon crashed; the harness could not even write command output, and
+  recovery cost ~2 hours across two sessions. One stack of this project is
+  15.35 GB of images + 3.09 GB of build cache + 6.97 GB of volumes (measured).
+  Reuse the running project (layer an overlay file, as run_integration_tests.sh
+  does) or stop it first; check free disk BEFORE composing or building.
+  `.claude/hooks/guard-stack-resources.sh` enforces both halves. Separately, two
+  agents sharing one checkout put #318's commit on #317's branch and switched a
+  branch under a running agent. (lessons §54)
+- AN APPROVAL IS ABOUT A HEAD. Anything you push after the verdict — including a
+  merge of `main` — is unreviewed code, and the merge gate now denies it. Ask for
+  a delta-confirm (`## ✅ APPROVE — round N (delta-confirm at <sha>)`) instead of
+  merging on a stale one. FOUR of v1.14.0's TEN reviewed merges carried commits
+  no approval had seen (the release PR among them, so the tag sits on an uncovered
+  commit); and a branch that is green ALONE can be broken by the
+  MERGE — #323 and #325 were each single-head in isolation and forked Alembic
+  into two heads once merged, which would have stopped the prod backend booting.
+  Re-run the gates ON THE MERGED TREE and say so. (lessons §53)
 - Report what you measured, not what you expect.
 
 STACK FACTS

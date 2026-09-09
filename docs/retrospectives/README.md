@@ -31,21 +31,31 @@ Update this when you add a retro. These are the numbers worth watching; everythi
 |---|---|---|---|---|---|---|---|---|---|
 | [v1.12.0](v1.12.0.md) | 10 | 24 / n-a¹ | **2.4** | 20% (2/10) | 58%⁴ | **9**⁵ | 17 | 9.07M² | 28.1h² |
 | [v1.13.0](v1.13.0.md) | 16 | 52 / **50** | **3.13** | **0% (0/16)** | 68%⁴ | **12**⁵ | 14 | not recorded³ | 23.5h tag→tag |
+| [v1.14.0](v1.14.0.md) | 11 | 23 / **20** | **1.82** | 27% (3/11)⁶ | 45%⁷ | **4**⁵ | 20 | **8.38M**³ | **35.5h**³ · 53.0h tag→tag |
 
 ¹ v1.12.0's verdict headings predate the mandated form, so a canonical-heading re-count undercounts
 that window (15). From v1.13.0 the heading is charter-mandated **and** gate-enforced, so this column
 is exact and becomes the primary one at v1.14.0. v1.13.0's 50 includes #293's two `⛔ REJECTED`
 verdicts, which BOTH published matchers missed — see "How to count consistently".
 ² Console session estimates, not Project 3 fields — labelled as estimates.
-³ **Project 3's `Tokens (k)` and `Time of processing (min)` are empty for every item in the repo**,
-and `Review rounds` is unset for all six issues v1.13.0 shipped. Inventing a comparable number would
-be the exact defect these retros keep finding; the measurable GitHub-side proxies are in the table
-instead (PR count, verdicts, rounds, PR size, wall clock). Either the fields get filled at
-close-the-loop or the columns should be dropped — decide it at v1.14.
+³ **Decided at v1.14.0: the token/time columns STAY.** They were empty repo-wide at v1.13.0 and are
+now filled for 31 of 55 Project 3 items, including 8 of 8 in the `v1.14 reach` bucket — so v1.14.0's
+8.38M / 35.5h are recorded FIELDS, not console estimates (v1.12.0's still are). Two caveats that
+change the reading: the total includes **#310, still `In Progress`**, whose 2 900k/640min covers host
+work that has not shipped; and `Review rounds` is still unset for all 8 items, so **do not publish
+from that field** — the thread is the instrument (executable, re-derivable by anyone) and the field
+disagreed with the thread the one time it was filled (5 recorded vs 3 posted on #240).
 ⁴ Rework share is measured in **verdicts**, not tokens — a redefinition, and v1.12.0's cell was
 re-derived under it (its originally published 75% was token-based). See "How to count consistently".
-⁵ The two cells count **different severity populations** (v1.12.0 blocker-only, v1.13.0 blocker +
-major). Two data points, not a trend — see "How to count consistently".
+⁵ The two earliest cells count **different severity populations** (v1.12.0 blocker-only, v1.13.0
+blocker + major); v1.14.0's **4** is blocker + major, so it is comparable with v1.13.0's 12 and not
+with v1.12.0's 9. See "How to count consistently".
+⁶ v1.14.0's three round-1 approvals (#315, #320, #327) are **ALL also stale merges** — the rate
+partly recovered by approving early and merging the fixes unreviewed. Read this column beside the
+stale-approval count, never alone.
+⁷ Denominator: the full 11-PR corpus, for series comparability. #321 merged with **zero** verdicts, so
+the "every PR spends one verdict on round 1" identity does not hold; over the 10 reviewed PRs the
+figure is 50%. See "How to count consistently".
 
 **v1.12.0's prediction: FAILED.** It asked for mean rounds < 2.0 and ≥40% round-1 approvals;
 measured **3.13** and **0%** — no PR in the release was approved on its first round. Its own falsification test (PR size) was also refuted — median size FELL 17→14
@@ -54,14 +64,30 @@ credential-, billing- and container-configuration-shaped features produced 9 blo
 barely existed at v1.12.0), and note the counter-evidence to a "churn" reading: **zero review rounds
 found nothing**.
 
-**Standing prediction (set by v1.13.0, checked at v1.14):** zero class-A findings ("a documented knob
-never reaches the container"); zero merges on a stale approval (newest canonical-heading verdict at
-merge time is an APPROVE, for every merged PR); round-1 approvals **≥20%**; mean rounds **≤2.8**
-canonical-heading.
+**v1.13.0's prediction: 3 of 4 clauses PASS, 1 FAILS.** Class-A findings **zero** ✅ (every
+`check_compose_env` mention in the window is a passing gate report, 45→50 knobs); round-1 approvals
+**27%** ✅ (target ≥20%); mean rounds **1.82** ✅ (target ≤2.8) while median PR size
+ROSE 14→20, so the fall is not "smaller PRs". **Merges on a stale approval: 4 of 10 reviewed merges**
+❌ — #320 merged four commits after its only verdict (including the fixes to the reviewer's own
+findings and a behaviour change), #315 merged two seconds before its delta-confirm was posted, #314
+merged a `main` merge, and the RELEASE PR #327 merged a CHANGELOG commit its verdict never saw, so
+the `v1.14.0` tag sits on an uncovered commit; #321 was merged with **no verdict at all**. Read
+clauses 2 and 3 together: **all three** round-1 approvals are also stale merges, so the rate partly
+"recovered" by approving early and merging the fixes unreviewed. Its falsification clause did **not** trigger (class A went to zero and
+rounds FELL). See [v1.14.0.md §6](v1.14.0.md).
 
-**Falsification stated up front:** if classes A, C and D go to zero while mean rounds stay ≥3.0, then
-author-side discipline was never the constraint — the next retro should look at reviewer scope
-(a single reviewer serialising four rounds on security-shaped PRs) instead of editing charters.
+**Standing prediction (set by v1.14.0, checked at v1.15):** zero merges whose newest canonical
+APPROVE predates a commit on the PR; zero PRs merged with no posted verdict at all; zero
+merged-result findings (Alembic head fork / "green alone, broken by the merge"); class-F blocker+major
+findings **≤2**; Project 3 `Review rounds` filled for every issue the release ships, or the column
+formally retired.
+
+**Falsification stated up front:** clauses 1 and 3 can go to zero for the wrong reason — if fewer
+merges pass through a guarded session, the gate is being ROUTED AROUND, not obeyed. So measure merge
+PROVENANCE first (`gh pr view <n> --json mergedBy`, plus whether the thread shows a delta-confirm) and
+report web-UI merges as *unmeasured*, never as a pass. Second falsifier: if mean rounds rise back above
+3.0 while classes F, G and S stay low, the constraint has moved back to material difficulty and the
+answer is not another charter paragraph.
 
 ## How to count consistently
 
@@ -87,7 +113,11 @@ So the series stays comparable, count the same way every time:
   ```
 
   Case matters: a lowercase "approve" in prose is not a verdict, and matching case-insensitively
-  inflated the v1.12.0 count by one.
+  inflated the v1.12.0 count by one. And run the widened sweep even when you expect nothing:
+  v1.14.0's found **no** missed verdict — the first window for which that is true, because the two
+  canonical headings have been charter-mandated since v1.13.0 — but it did surface a `COMMENTED`
+  review with a **zero-length body** on #322, which appears as a blank first line and is not a
+  verdict. Say so rather than leaving the reader to wonder what the blank was.
 
   **The loose matcher over-counts, measurably, and v1.13.0 quantified it.** A body containing a
   marker is not necessarily a verdict: on #291 it returns 11 where the thread holds **8** reviewer
@@ -144,6 +174,29 @@ So the series stays comparable, count the same way every time:
   column as two data points, not a trend, until one of them is re-split — each release's own record
   carries the severity-resolved detail. State the severity population whenever you fill this cell;
   this is the same comparability trap the verdicts column already carries a footnote for.
+- **Merges on a stale approval** = merged PRs carrying at least one commit whose `committedDate` is
+  newer than the selected canonical APPROVE. Replay the thread **as it stood at `mergedAt`** — today's
+  thread can contain a delta-confirm posted after the merge (#315's was, by two seconds), which makes
+  a stale merge look clean:
+
+  ```bash
+  M=$(gh pr view <n> --json mergedAt --jq .mergedAt)
+  gh pr view <n> --json reviews,comments,commits --jq "
+    {commits:.commits,
+     reviews:[.reviews[]|select(.submittedAt<=\"$M\")],
+     comments:[.comments[]|select(.createdAt<=\"$M\")]}"
+  ```
+
+  `pre-merge-gate.sh` enforces this since v1.14.0, so from v1.15 a non-zero count also means the gate
+  was bypassed or the merge never reached it (a web-UI merge is invisible to a PreToolUse hook —
+  report those as *unmeasured*, not as a pass).
+- **The rework-share identity assumes every PR spends one verdict on round 1**, which #321 broke by
+  merging with zero. v1.14.0's cell uses the full **11-PR** corpus and its **20** canonical verdicts,
+  for series comparability — `(20 − 11)/20 = 45%`; over the **10** PRs that were actually reviewed it
+  is `(20 − 10)/20 = 50%`. State which denominator you used, **and re-derive it after the release PR
+  merges**: this bullet first shipped reading `(19 − 10)/19 = 47%`, the pre-#327 state, contradicting
+  the trend row three lines above it (#329 review round 1). The corpus moves under a retro that runs
+  as the release ships.
 - **Release attribution** = the tag the work actually **shipped in**, not the one it was planned
   for. v1.12.0 found #235 filed under v1.11.1 although its PR merged after that tag, understating
   the release by ~11%.

@@ -13,7 +13,12 @@ description: >-
   triage method, the @angular/* exact-peer single-pass-update/lockfile-regeneration rule, the
   mutation-check-your-tests discipline, the run-the-suite-as-CI-runs-it (`-n auto`) rule, the
   verify-that-gates-actually-gate habit, the diff-the-coverage-FILE-SET-across-a-runner-major rule,
-  and the repo-rename/GHCR-package-visibility trap.
+  the repo-rename/GHCR-package-visibility trap, the assert-the-control-at-the-SEAM rule, the
+  a-test-pinning-today's-payload-pins-today's-bug trap, the
+  jsdom-never-applies-the-component-stylesheet trap, the conditional-`test.skip`-is-a-fake-green
+  rule, the an-approval-covers-a-HEAD / a-branch-green-alone-can-break-on-the-MERGE rule (Alembic
+  head forks), the one-machine-one-Docker-stack / concurrent-agents-need-their-own-worktree
+  constraint, and the an-`ENV=value`-prefix-is-command-text rule for every hook documenting a bypass.
   Grep it or load it when a task matches — it exists so
   fresh contexts and teammates don't re-research answers we already have.
 ---
@@ -1232,6 +1237,193 @@ going red — the sibling-test argument for running the FULL suite, not the file
   caller's state.** `rollback()`, `close()`, `expire_all()` and `commit()` are all session-wide. If
   a helper is documented as "cannot affect the caller", it must not hold the caller's session.
 
+## 49. Assert the control at the SEAM — an output assertion can be satisfied by a coincidence (#322)
+
+`/profile/resume.json` promised, in the PR body, the CHANGELOG and the README, that a PII allowlist
+projection "can never become a back door". One test guarded that promise. The reviewer deleted the
+control — `build_json_resume(public_profile_view(data), ...)` -> `build_json_resume(data, ...)` — and
+ran the two relevant files:
+
+```
+pytest tests/test_resume_api.py tests/test_json_resume.py  ->  85 passed
+```
+
+Zero failures. The reason is worth internalising: `build_json_resume` reads a **fixed key set** that
+happens to be a subset of `PUBLIC_PROFILE_FIELDS`, so `phone`/`birthday`/`contact.address` are absent
+from the output whether or not the projection runs. The assertion was satisfied by the *mapper*, not
+by the *control it named*.
+
+**The fix is to assert where the control is observable — the seam.** Spy the callee and assert the
+dict it RECEIVES equals `public_profile_view(raw)`. After that, the same mutation gives `1 failed,
+94 passed`, and the failure names the leaked fields.
+
+**Generalise:** whenever a guarantee is "X is filtered before Y sees it", an assertion on Y's OUTPUT
+cannot distinguish "the filter ran" from "Y never emits that field anyway". Assert on Y's INPUT.
+This is §30's sibling — §30 asks whether the *layer* can enforce the guarantee, §49 asks whether the
+*observation point* can discriminate. Same instrument for both: mutate the control and count.
+
+## 50. A test that pins today's wire format also pins today's BUG (#323)
+
+`<input type="date">` submits `2026-12-01`; Pydantic coerces it to **midnight**; `is_live` tests
+`expires_at > now`. So a tailored link the owner labelled "expires 1 Dec" was 404 for the whole of
+1 Dec, and one set to *today* was dead the instant it was minted — no error to the owner, an
+indistinguishable 404 for the recruiter who already had the URL.
+
+The part that makes it a lesson rather than a bug: `pipeline.tailored-links.spec.ts:145,156` asserted
+that the raw `'2026-12-01'` goes out **unchanged**. The wrong behaviour was **test-locked**. The suite
+was green and would have stayed green through a refactor, because it was defending the defect.
+
+**How to apply.** A test asserting "the value goes out as-is" is a test of a CONTRACT, and it is only
+as right as the contract. When you pin a payload shape, write into the test what the receiver is
+required to do with it — the fix here re-aimed the spec at `sends the picked day as a bare date, never
+a fabricated instant` (`not.toContain('T')`), so a later "obvious" frontend fix cannot silently
+re-break it. When reviewing: a payload assertion that merely mirrors the current code is evidence of
+nothing; ask what the other end does with the value.
+
+Two boundary habits came with it. Pin the boundary at the resolution the code uses
+(`is_live(last_moment - 1us) is True`, `is_live(last_moment + 1us) is False`). And check the DISPLAY
+side: the fix's own first version rendered the stored `23:59:59.999999Z` through a local-time date
+pipe, so east of UTC the panel said "Dec 2" for a Dec 1 expiry — caught in a real browser under
+`test.use({ timezoneId: 'Asia/Tokyo' })`, which jsdom could not have shown (§51).
+
+## 51. jsdom NEVER applies the component stylesheet — a CSS assertion there passes with the CSS deleted (#325)
+
+The admin analytics buttons were coloured by the theme but had no box. The fix was two CSS rules. The
+natural home for the regression test is the unit suite; it would have been a gate that cannot gate:
+
+```
+# admin unit suite, WITH both `border: 1px solid currentColor` rules deleted
+Test Files  51 passed (51)
+Tests      447 passed (447)
+```
+
+jsdom reports `border-top-style: "none"` and a placeholder `border-top-width: "16px"` whether or not
+the rule exists, so `borderTopWidth > 0` passes against the broken screen. 447 unit tests cannot see a
+deleted component stylesheet; one browser test can — the same deletion turns the admin E2E red on all
+three attempts (`expect(box.borderWidth).toBeGreaterThan(0)` -> `Received: 0`).
+
+**How to apply.** Any assertion about layout, box model, computed colour, visibility-by-CSS or
+overflow belongs in Playwright, not Vitest/jsdom. If you caught a defect *in a browser*, its
+regression test goes back in a browser — moving it "down" to the unit tier for speed silently deletes
+it. This is the layer half of §29 stated as a concrete rule; rule 12 is what makes it enforceable.
+
+## 52. A conditional `test.skip` turns an unserviceable stack into a PASS (#323)
+
+`e2e/public/tailored-link.spec.ts` skipped itself when it could not get an admin token, and skipped
+again when the mint returned 404. Both are precisely the conditions under which the feature is broken.
+Measured against a backend pointed at a dead port:
+
+| spec | result against a dead backend |
+|---|---|
+| before | `1 skipped` — **green** |
+| after (skips turned into failures) | `1 failed` — `connect ECONNREFUSED ::1:59999` |
+
+**How to apply.**
+- **Never skip on an environment condition the feature depends on.** Fail. A skip is for a case that
+  genuinely does not apply, not for "the thing I am testing is missing".
+- **Mutation-check an E2E by breaking the STACK, not the code**: point `BACKEND_URL`/`BASE_URL` at a
+  dead port and confirm the spec goes red. A spec that stays green against a dead stack measures
+  nothing, and this is a two-minute check.
+- **Report the skip count next to the pass count.** "77 passed, 0 skipped" is evidence; "77 passed"
+  is not. A non-zero skip in a spec your PR touches is a finding.
+
+## 53. An approval is about a HEAD — and `main` moving is a code change (#320/#315/#314; #323/#325)
+
+Two halves of one mistake, both measured in v1.14.0.
+
+**(a) Commits landed after the verdict.** Replaying the real threads as they stood at merge time,
+**four of the ten reviewed merges** carried commits no approval had seen (an 11-PR corpus; #321 was
+merged with no verdict at all): **#320** merged four commits after its only verdict — including the
+fixes to the reviewer's own five findings and a behaviour change ("banner links to the repository, not
+the maintainer's site"); **#315** merged **two seconds** before its delta-confirm was posted; **#314**
+merged a `main` merge plus a lessons renumber; and **#327, the release PR**, merged a CHANGELOG commit
+its verdict never saw, so the `v1.14.0` tag itself sits on an uncovered commit. Rule 13 asks for
+a verdict on the CHANGE, and "the newest verdict says APPROVE" does not imply it saw the code.
+`pre-merge-gate.sh` now denies when a commit is newer than the selected APPROVE. The remedy is a habit
+this repo already had: post `## ✅ APPROVE — round N (delta-confirm at <sha>)`.
+
+**(b) A branch that is green ALONE can be broken by the MERGE.** #323 and #325 both set
+`down_revision = "trans0009"`. Each branch was single-head in isolation, so `alembic heads`, the
+Backend Migrations drift guard and both full suites were green on both. The fork existed only in the
+merged result — and `backend/docker-entrypoint.sh` runs `alembic upgrade head` on every container
+start, so it was a backend that would never finish booting, not a CI annoyance. **GitHub does not
+re-run a PR's checks when its base moves**, so a green PR run can predate the collision entirely.
+`scripts/check_migration_heads.sh --against origin/main` is that check done mechanically, in the
+pre-push gate and in CI.
+
+**How to apply.** Before asking for a merge on a branch whose base has moved: merge or rebase, re-run
+the gates ON THE MERGED TREE, and say so. When two open PRs touch the same ordered structure —
+migrations, a router include list, a numbered lessons section, a CHANGELOG block — name the merge
+order explicitly in the review. #323's reviewer did exactly that, and it is what caught this one.
+
+## 54. One machine, ONE stack — and concurrent agents need their own worktree (v1.14.0)
+
+The cycle's largest wall-clock loss was not a defect. Parallel agents each composed their own Docker
+project (`hirefolio-*`, `hirefolio250-*`, `mavrovde-*` at once); the disk reached zero, the Docker
+daemon crashed, and the harness could no longer write command output — so the session that caused it
+could not see it. Recovery took about two hours across two sessions, and #322's round-1 fix report had
+to ship with its backend gates declared **unmeasured**.
+
+The arithmetic, measured with `docker system df` on 2026-09-09: **images 15.35 GB, build cache
+3.09 GB, volumes 6.97 GB** for ONE stack of this project. A second does not fit beside the first on a
+laptop with single-digit GB free. The repo's own E2E and integration tiers are built to reuse the
+`hirefolio` project for exactly this reason.
+
+A cheaper collision the same cycle: two agents shared ONE checkout, so #317's branch briefly carried
+#318's commit and needed a rebase, and a later agent had the branch switched under it mid-run.
+
+**How to apply.**
+- **Reuse the running compose project.** Need a variant? Layer an overlay onto it
+  (`run_integration_tests.sh` is the pattern), or stop the running one first. `docker builder prune`
+  is the safe reclaim; volume/system prune is rule-9 territory and needs authorization.
+- **Check free disk before composing or building** and abort rather than "try it and see" — a crashed
+  daemon costs more than the wait. `.claude/hooks/guard-stack-resources.sh` enforces both halves.
+- **Concurrent agents get separate git worktrees**, never a shared checkout. A worktree is cheap
+  (no image cost); a second Docker stack is not.
+- **§36 again:** during a mutation loop, commit the round's fixes BEFORE the first mutation so
+  `git checkout`/`git stash` restores exactly the fixed state. This recurred in v1.14.0, which
+  falsifies v1.13.0's bet that discipline alone would hold. The answer stays a habit rather than a
+  hook for the reason v1.13.0 gave — a hook cannot tell "discard my experiment" from "discard my
+  fix" — but it is now stated in the charters instead of only here.
+
+## 55. An `ENV=value` PREFIX is command TEXT — a PreToolUse hook never sees it in its environment (#329)
+
+Two independent instances in one session, both of them a knob that silently did nothing:
+
+- `DOCKER_STACK_GUARD=0 docker compose up -d` — the documented per-command bypass of the new stack
+  guard. The hook read `${DOCKER_STACK_GUARD:-1}` from its **own process environment**, which nothing
+  in this harness ever sets, so the deny message told the operator to type a remedy that did not
+  work. Measured: `deny` for both the bypassed and the plain form, while the sibling
+  `GUARD_DESTRUCTIVE=0 docker volume rm x` correctly allowed.
+- `PREPUSH_RUN_BACKEND=0 git push` — typed to skip the backend leg, and the full gate ran anyway.
+
+**Why.** The hook is a separate process spawned by the harness with the *session's* environment. An
+`ENV=value cmd` prefix is part of the **command string** the tool is about to run; it is applied by
+the shell that eventually executes it, long after the hook has decided. And because shell state does
+not persist between Bash tool calls, `export` in an earlier call is gone by the next one — so if the
+prefix is not parsed, **there is no working escape at all**, and an agent that hits the gate reads the
+printed remedy, types it, and is denied again with the same message.
+
+**How to apply.** A hook that documents an env bypass MUST parse it from the command text, per
+SEGMENT, with the house regex — one model, three hooks (`guard-destructive.sh`,
+`pre-merge-gate.sh`, `guard-stack-resources.sh`):
+
+```bash
+if printf '%s' "$seg" | grep -Eq '^([A-Za-z_][A-Za-z0-9_]*=[^ ]* )*MY_KNOB=0( |$)'; then
+  return 1   # authorized: this segment is not gated
+fi
+```
+
+Keep the environment read as well (it costs nothing and covers a hook launched with the variable),
+but never let it be the only path.
+
+**And the test has to drive the bypass THE WAY A CALLER TYPES IT.** This one shipped with a green
+self-test because the case set the variable in the **harness's** environment — which the hook did
+read — instead of putting it in the command string. That is §49 ("assert the control at the seam")
+failing on the artifact that teaches §49, caught by review rather than by the suite. The case that
+discriminates leaves the variable UNSET in the harness; under a mutation that breaks the regex, only
+the command-text cases go red (measured: 3 of them, while the session-env case stays green).
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,
@@ -1247,7 +1439,8 @@ going red — the sibling-test argument for running the FULL suite, not the file
   (failure→diagnosis per rollout step, cert renewal, multi-tenant do-not-touch); its design
   companion is `docs/wiki/production-deployment.md`.
 - **`.claude/hooks/`** — `pre-push-tests.sh` (test gate), `guard-destructive.sh` (destruction guard),
-  `pre-merge-gate.sh` (rule-13 + Closes/AC merge gate), `hook-parse-lib.sh` (the ONE parsing model
-  all three source, #237), plus a `*.test.sh` self-test beside each hook — the merge gate's carries
+  `guard-stack-resources.sh` (free-disk floor + one Docker stack, §54), `pre-merge-gate.sh` (rule 13,
+  approval-covers-head, and the Closes/AC merge gate), `hook-parse-lib.sh` (the ONE parsing model
+  they all source, #237), plus a `*.test.sh` self-test beside each hook — the merge gate's carries
   a mutation contract with an identity control, because its first two versions certified themselves
   green while pinning nothing.

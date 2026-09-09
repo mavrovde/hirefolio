@@ -19,6 +19,12 @@ This is the exact sequence; `/e2e` runs it.
   `test_hirefolio` DB and clobber each other (lessons-learned §4).
 - Docker daemon up; ~4 GB free (images + ollama models; models persist in `ollama_data`, so only
   the first run pays the pull).
+- **ONE stack.** Reuse the running `hirefolio` compose project and layer the overlay onto it —
+  never start a second project. One stack of this repo is 15.35 GB of images + 3.09 GB of build
+  cache + 6.97 GB of volumes (measured 2026-09-09); three concurrent stacks filled the disk and
+  crashed the Docker daemon in v1.14.0, costing ~2 hours (lessons §54).
+  `.claude/hooks/guard-stack-resources.sh` denies a second named project and a bring-up below the
+  free-disk floor.
 
 ## 1. Build + bring up the prod topology
 ```bash
@@ -55,7 +61,24 @@ cd frontend && CI=true BASE_URL=http://localhost npx playwright test --project=p
 # when profile specs are in scope for your change)
 ```
 Run the WHOLE project, not a spec subset — a stale spec asserting removed behavior is exactly what
-a subset run misses (lessons-learned §3, the #108→#110 fix-forward). Report pass/fail counts.
+a subset run misses (lessons-learned §3, the #108→#110 fix-forward). **Report pass, fail AND SKIP
+counts**: "77 passed, 0 skipped" is evidence, "77 passed" is not.
+
+### Prove the spec can fail — break the STACK, not the code
+A Playwright spec that guards a backend feature must go red when the backend is gone. #323's
+tailored-link spec did the opposite: it `test.skip`ped itself when the admin token or the mint
+failed — precisely the states in which the feature is broken — so it reported **green against a
+dead backend**. Two-minute mutation, and it is the E2E equivalent of lessons §16:
+
+```bash
+cd frontend && BACKEND_URL=http://localhost:59999 npx playwright test --project=public-e2e <spec>
+# must FAIL (ECONNREFUSED), never `1 skipped`
+```
+
+Use `test.skip` only for a case that genuinely does not apply. "The dependency is missing" is a
+FAILURE (lessons §52). And when the change is CSS or layout, the assertion belongs here rather than
+in Vitest — jsdom never applies the component stylesheet, so a box/border/colour assertion there
+passes with the CSS deleted (lessons §51).
 
 ## 5. Teardown (optional — keep the stack for debugging)
 ```bash
