@@ -191,9 +191,12 @@ So the series stays comparable, count the same way every time:
   was bypassed or the merge never reached it (a web-UI merge is invisible to a PreToolUse hook —
   report those as *unmeasured*, not as a pass).
 - **The rework-share identity assumes every PR spends one verdict on round 1**, which #321 broke by
-  merging with zero. v1.14.0's cell uses the full 10-PR corpus for series comparability —
-  `(19 − 10)/19 = 47%`; over the 9 PRs that were actually reviewed it is `(19 − 9)/19 = 53%`. State
-  which denominator you used.
+  merging with zero. v1.14.0's cell uses the full **11-PR** corpus and its **20** canonical verdicts,
+  for series comparability — `(20 − 11)/20 = 45%`; over the **10** PRs that were actually reviewed it
+  is `(20 − 10)/20 = 50%`. State which denominator you used, **and re-derive it after the release PR
+  merges**: this bullet first shipped reading `(19 − 10)/19 = 47%`, the pre-#327 state, contradicting
+  the trend row three lines above it (#329 review round 1). The corpus moves under a retro that runs
+  as the release ships.
 - **Release attribution** = the tag the work actually **shipped in**, not the one it was planned
   for. v1.12.0 found #235 filed under v1.11.1 although its PR merged after that tag, understating
   the release by ~11%.

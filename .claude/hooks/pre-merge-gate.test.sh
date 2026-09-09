@@ -353,7 +353,7 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED — round 3\n\nThe 
 
 # 4b. The approval must COVER the head (v1.14.0 retrospective).
 # EVIDENCE, measured by replaying the real threads as they stood at merge time:
-# three of v1.14.0's nine reviewed merges carried commits no approval had seen —
+# four of v1.14.0's ten reviewed merges carried commits no approval had seen —
 # #320 (four commits, including five review-finding fixes and a behaviour change,
 # after its only verdict), #315 (the six-finding fix commit; merged two seconds
 # before the delta-confirm was posted) and #314 (a merge of `main`). The gate as

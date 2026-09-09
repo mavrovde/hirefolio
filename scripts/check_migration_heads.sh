@@ -45,6 +45,17 @@
 #   * `depends_on` is deliberately NOT a chain edge and is ignored.
 #   * A merge revision (`down_revision = ("a", "b")`) is understood: every
 #     quoted id in the tuple counts as a parent.
+#   * `--against` UNIONS, so it cannot see a DELETION. A branch that removes a
+#     migration the base still has gets it resurrected by the union and is
+#     reported as a fork the real merge would not produce (#329 review, minor 4;
+#     reproduced: base `a0001 -> b0002`, branch deletes `b0002` and adds `c0003`
+#     on `a0001` -> alone `✓ one head`, `--against HEAD` -> `found 2`). Not fixed
+#     rather than fixed badly: with `--dir` pointed at a partial directory — which
+#     is exactly how the self-test drives it — "deleted on the branch" and "this
+#     directory only holds a subset" are the same input. Deleting an applied
+#     migration is also a thing this repo does not do (ids are stamped in
+#     deployed databases). If it ever legitimately happens, run the checker
+#     without `--against` and say so in the PR.
 set -u
 
 DIR_DEFAULT="backend/migrations/versions"

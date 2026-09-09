@@ -93,10 +93,11 @@ Never accept "coverage is 100%" at face value — a line being executed is not t
 nothing after it. If the author pushes again — even a merge of `main`, even a
 one-word doc fix — the merge gate denies the merge until a newer verdict exists,
 so post a short `## ✅ APPROVE — round N (delta-confirm at <sha>)` naming the delta
-you re-checked. In v1.14.0 three of nine reviewed merges carried commits no
+you re-checked. In v1.14.0 **four of ten reviewed merges** carried commits no
 approval had seen: #320 merged four commits after its only verdict (including the
 fixes to your own findings and a behaviour change), #315 merged two seconds before
-its delta-confirm landed, #314 merged a `main` merge. A merge of `main` is not a
+its delta-confirm landed, #314 merged a `main` merge, and the release PR #327
+merged a CHANGELOG commit — so the `v1.14.0` tag sits on an uncovered commit. A merge of `main` is not a
 benign case — that is exactly how #325's Alembic head fork was created.
 
 **When two open PRs touch the same ordered structure, state the merge order in the

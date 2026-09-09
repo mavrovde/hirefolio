@@ -72,8 +72,9 @@ WORKING DISCIPLINE (learned the hard way — see .claude/skills/lessons-learned/
 - AN APPROVAL IS ABOUT A HEAD. Anything you push after the verdict — including a
   merge of `main` — is unreviewed code, and the merge gate now denies it. Ask for
   a delta-confirm (`## ✅ APPROVE — round N (delta-confirm at <sha>)`) instead of
-  merging on a stale one. Three of v1.14.0's nine reviewed merges carried commits
-  no approval had seen; and a branch that is green ALONE can be broken by the
+  merging on a stale one. FOUR of v1.14.0's TEN reviewed merges carried commits
+  no approval had seen (the release PR among them, so the tag sits on an uncovered
+  commit); and a branch that is green ALONE can be broken by the
   MERGE — #323 and #325 were each single-head in isolation and forked Alembic
   into two heads once merged, which would have stopped the prod backend booting.
   Re-run the gates ON THE MERGED TREE and say so. (lessons §53)

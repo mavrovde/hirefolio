@@ -457,9 +457,10 @@ printf '%s' "$FIRST_MARKER" | grep -qiE 'APPROVE' \
 # the PR's history. Check 1 above only asked "is the newest verdict an APPROVE",
 # which is satisfied by an approval of a head that no longer exists.
 #
-# MEASURED IN v1.14.0 — three of ten merged PRs carried commits no approval had
-# seen, and one of them was not close:
-#   #320  approved 07:04:56Z on b91f908; then 0537a86 (five review findings),
+# MEASURED IN v1.14.0 — FOUR of the ten REVIEWED merges (an 11-PR corpus; #321
+# merged with no verdict at all) carried commits no approval had seen, and one of
+# them was not close:
+#   #320  approved 06:57:04Z on b91f908; then 0537a86 (five review findings),
 #         54158e8 (merge of main), e6373a4 ("banner links to the repository, not
 #         the maintainer's site" — a behaviour change) and 8290bca landed, and it
 #         merged 07:43:35Z with no second verdict. The reviewer never saw the
@@ -468,6 +469,8 @@ printf '%s' "$FIRST_MARKER" | grep -qiE 'APPROVE' \
 #         merged 14:03:18Z — TWO SECONDS before the delta-confirm was posted.
 #   #314  approved 14:00:11Z; be1ffc2 (merge of main + a lesson renumber) landed
 #         14:12:38Z; merged 14:17:58Z.
+#   #327  the RELEASE PR: approved 12:09:07Z; 882ddae landed 12:10:52Z; merged
+#         12:25:17Z — so the v1.14.0 tag sits on a commit no verdict covers.
 # "Merge of main" is not a benign case: #325's Alembic head fork was created by
 # exactly that, and cost a production-boot blocker one review round later.
 #

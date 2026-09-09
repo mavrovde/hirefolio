@@ -29,7 +29,13 @@
 # It is deliberately narrow. It is not a quota system and it cannot see a build
 # that arrives through a script file — that is the same command-text boundary the
 # sibling hooks document, and pretending otherwise would be the false comfort
-# `pre-merge-gate.sh`'s header warns about.
+# `pre-merge-gate.sh`'s header warns about. Name the case that matters HERE rather
+# than leaving it generic (#329 review, nit 10): **`./manage.sh start` is this
+# repo's own primary bring-up command and is INVISIBLE to this guard**, because
+# the `docker compose up` inside it is file contents, not command text. So is
+# `./verify_all.sh` and `./run_integration_tests.sh`. Check free disk before
+# running those by hand; the guard covers the direct `docker …` form an agent
+# types, not the wrappers.
 #
 # Bypass ONE authorized command with:  DOCKER_STACK_GUARD=0 docker compose up …
 # Tune with: DOCKER_DISK_FLOOR_GB (default 5), DOCKER_STACK_ALLOW_PROJECTS
@@ -65,6 +71,18 @@ FLOOR_GB="${DOCKER_DISK_FLOOR_GB:-5}"
 creates_resources() { # <segment> -> 0 if this segment creates docker resources
   local seg="$1"
   case "$seg" in *docker*) ;; *) return 1 ;; esac
+  # THE DOCUMENTED BYPASS LIVES HERE, not in the hook's own environment. A caller
+  # types `DOCKER_STACK_GUARD=0 docker compose up -d`, so the token is part of the
+  # COMMAND TEXT; the env read at the top of this file only fires when the hook
+  # PROCESS inherited the variable, which nothing in this harness does — shell
+  # state does not persist between Bash tool calls. Shipping without this made the
+  # printed remedy a deny loop with no exit, which is the "makes the incident
+  # worse" failure mode this hook exists to prevent (#329 review round 1). Same
+  # regex and same per-segment position as guard-destructive.sh:242 and
+  # pre-merge-gate.sh:134 — one model, three hooks (#237).
+  if printf '%s' "$seg" | grep -Eq '^([A-Za-z_][A-Za-z0-9_]*=[^ ]* )*DOCKER_STACK_GUARD=0( |$)'; then
+    return 1   # authorized: this segment is not gated
+  fi
   argv_split "$seg"
   [ "${#ARGV_SPLIT_RESULT[@]}" -eq 0 ] && return 1
   set -- "${ARGV_SPLIT_RESULT[@]}"
@@ -92,7 +110,11 @@ creates_resources() { # <segment> -> 0 if this segment creates docker resources
     esac
   done
   case "${1:-}" in
-    up|build|run|pull|create|start) [ "$is_compose" = "1" ] && return 0 ;;
+    # `start` is deliberately NOT here (#329 review, minor 7): it starts EXISTING
+    # containers and writes no image, layer or build cache, and it is a plausible
+    # step AFTER reclaiming space. `create` stays — it writes a container's
+    # read-write layer, so it does consume the resource this floor protects.
+    up|build|run|pull|create) [ "$is_compose" = "1" ] && return 0 ;;
   esac
   case "${1:-}" in
     build|run|pull) [ "$is_compose" = "0" ] && return 0 ;;
@@ -119,7 +141,24 @@ IFS="$OLD_IFS"
 # --- Check A: free disk floor ------------------------------------------------
 # `df -Pk` is the POSIX form and behaves the same on macOS (BSD) and Linux —
 # `df -h` output is NOT parseable across both (env-gotchas).
-AVAIL_KB="$(df -Pk . 2>/dev/null | awk 'NR==2 {print $4}')"
+#
+# WHICH filesystem (#329 review, minor 6): the cwd is the right probe on macOS,
+# where Docker Desktop's disk image lives under the user's home, but on Linux the
+# data root is usually /var/lib/docker on a SEPARATE volume — so the cwd alone
+# would measure a filesystem the build never touches. Both are probed and the
+# SMALLER wins. Deliberately NOT `docker info -f '{{.DockerRootDir}}'`: this hook
+# fires exactly when the daemon may be wedged, and a hanging daemon call would
+# outlive the hook timeout — and a timed-out PreToolUse hook does not deny, it
+# ALLOWS (#219). Override the path with DOCKER_DATA_ROOT.
+avail_kb_of() { df -Pk "$1" 2>/dev/null | awk 'NR==2 {print $4}'; }
+AVAIL_KB="$(avail_kb_of .)"
+DATA_ROOT="${DOCKER_DATA_ROOT:-/var/lib/docker}"
+if [ -d "$DATA_ROOT" ]; then
+  ROOT_KB="$(avail_kb_of "$DATA_ROOT")"
+  if [ -n "${ROOT_KB:-}" ] && [ "$ROOT_KB" -eq "$ROOT_KB" ] 2>/dev/null; then
+    if [ -z "${AVAIL_KB:-}" ] || [ "$ROOT_KB" -lt "$AVAIL_KB" ]; then AVAIL_KB="$ROOT_KB"; fi
+  fi
+fi
 if [ -n "${AVAIL_KB:-}" ] && [ "$AVAIL_KB" -eq "$AVAIL_KB" ] 2>/dev/null; then
   AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
   if [ "$AVAIL_GB" -lt "$FLOOR_GB" ]; then

@@ -6,14 +6,15 @@
 # DIRECTION, the negative cases outnumber the positive ones, and the last case
 # replays the real #323/#325 fork out of this repository's own history.
 #
-# CASE COUNT DIFFERS BY ENVIRONMENT, and that is deliberate: **25 locally, 22 in
+# CASE COUNT DIFFERS BY ENVIRONMENT, and that is deliberate: **26 locally, 23 in
 # CI**. `actions/checkout` clones at depth 1, so the three real-history cases
 # cannot resolve `aef2938`/`2cf326f` and skip with a printed `~ skipped:` line
 # rather than failing. The contract they illustrate is fully covered by the
 # synthetic `--against` fixtures, so buying them back with `fetch-depth: 0` would
 # cost a full clone on every run for no additional coverage. Stated here because a
 # self-test that quietly reports a different number in CI is exactly the kind of
-# unexplained gap this suite exists to catch.
+# unexplained gap this suite exists to catch. The MIN_CASES floor at the bottom
+# makes that note enforceable rather than descriptive (#329 review, nit 8).
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -148,8 +149,14 @@ CLAUDE_PROJECT_DIR="$BASE_REPO" expect_rc 0 \
   "the branch's own tree is single-head — which is exactly why the branch gates were green" --dir "$BRANCH"
 CLAUDE_PROJECT_DIR="$BASE_REPO" expect_rc 1 \
   "UNIONED with the base that moved, the same tree is two heads (FAILING-FIRST)" --dir "$BRANCH" --against HEAD
-CLAUDE_PROJECT_DIR="$BASE_REPO" expect_output "unioned with" \
-  "the union failure says it is measuring the merged result" --dir "$BRANCH" --against HEAD
+# Assert something ONLY the failure emits (#329 review, minor 5): the success
+# line also ends "(working tree unioned with HEAD)", so matching that phrase
+# survived the head-count mutation while its neighbours died — a case that
+# cannot fail is worse than no case (lessons §16/§18).
+CLAUDE_PROJECT_DIR="$BASE_REPO" expect_output "expected exactly 1 head" \
+  "the union failure says how many heads it found" --dir "$BRANCH" --against HEAD
+CLAUDE_PROJECT_DIR="$BASE_REPO" expect_output "unioned with HEAD" \
+  "…and that it measured the MERGED result, not the branch alone" --dir "$BRANCH" --against HEAD
 
 BRANCH_FIXED="$TMP/branch-fixed"; mkdir -p "$BRANCH_FIXED"
 mig "$BRANCH_FIXED" engage0010 '"tailored0010"'
@@ -211,4 +218,15 @@ echo "== the repository as it stands =="
 expect_rc 0 "the committed migration chain has exactly one head"
 
 printf '\nmigration-heads self-test: %d passed, %d failed\n' "$pass" "$fail"
+
+# A FLOOR on the case count (#329 review, nit 8). Without it a suite that skipped
+# everything would exit 0 and the "25 local / 22 CI" note above would be
+# descriptive rather than enforceable. 22 is the CI figure — the three
+# real-history cases cannot run in a depth-1 clone.
+MIN_CASES=23
+if [ "$pass" -lt "$MIN_CASES" ]; then
+  printf '  ✗ only %d cases ran; expected at least %d — did the harness skip?\n' "$pass" "$MIN_CASES"
+  fail=$((fail+1))
+fi
+
 [ "$fail" -eq 0 ]

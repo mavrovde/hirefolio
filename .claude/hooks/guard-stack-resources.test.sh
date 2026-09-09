@@ -18,8 +18,19 @@ trap 'rm -rf "$STUB"' EXIT
 # machine; `docker` is stubbed so the project check never touches a real daemon.
 cat > "$STUB/df" <<'EOF'
 #!/usr/bin/env bash
+# Answers DF_AVAIL_KB for every path, except that DF_LOW_PATH always reports a
+# nearly-full filesystem and DF_HIGH_PATH a roomy one — which is what lets the
+# data-root cases below discriminate "probed the cwd" from "probed both".
+avail="${DF_AVAIL_KB:-41943040}"
+for a in "$@"; do
+  case "$a" in
+    -*) ;;
+    "${DF_LOW_PATH:-__none__}")  avail=1048576 ;;
+    "${DF_HIGH_PATH:-__none__}") avail=62914560 ;;
+  esac
+done
 printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\n'
-printf '/dev/stub %s %s %s 50%%  /\n' 100000000 1 "${DF_AVAIL_KB:-41943040}"
+printf '/dev/stub %s %s %s 50%%  /\n' 100000000 1 "$avail"
 EOF
 cat > "$STUB/docker" <<'EOF'
 #!/usr/bin/env bash
@@ -80,6 +91,12 @@ DF_AVAIL_KB=$LOW run "docker exec is never blocked"          allow "docker exec 
 DF_AVAIL_KB=$LOW run "docker system df is never blocked"     allow "docker system df"
 DF_AVAIL_KB=$LOW run "docker builder prune is never blocked" allow "docker builder prune -f"
 DF_AVAIL_KB=$LOW run "docker image ls is never blocked"      allow "docker image ls"
+# `start` creates nothing — it starts containers that already exist, and it is a
+# plausible step AFTER reclaiming space (#329 review, minor 7).
+DF_AVAIL_KB=$LOW run "docker compose start is never blocked"  allow "docker compose start backend"
+DF_AVAIL_KB=$LOW run "docker start is never blocked"          allow "docker start hirefolio-backend-1"
+# …but `create` still gates: it writes a container's read-write layer.
+DF_AVAIL_KB=$LOW run "docker compose create still gates"      deny  "docker compose create backend"
 DF_AVAIL_KB=$LOW run "a non-docker command is never blocked" allow "npm run build"
 DF_AVAIL_KB=$LOW run "git commands are untouched"            allow "git status"
 
@@ -100,6 +117,17 @@ DF_AVAIL_KB=$LOW run "…but a real up on the heredoc-opening line still gates" 
 notes
 MD"
 DF_AVAIL_KB=$LOW run "an echo of the phrase is not a command" allow "echo 'next: docker compose up'"
+
+# --- Check A, second filesystem: the Docker data root (#329 review, minor 6) ---
+# On Linux /var/lib/docker is usually a separate volume, so a roomy cwd says
+# nothing about where the image actually lands. The SMALLER of the two wins.
+DATAROOT="$STUB/dataroot"; mkdir -p "$DATAROOT"
+DF_AVAIL_KB=$LOTS DOCKER_DATA_ROOT="$DATAROOT" DF_LOW_PATH="$DATAROOT" \
+  run "a roomy cwd does not excuse a full Docker data root" deny "docker compose up -d"
+DF_AVAIL_KB=$LOW DOCKER_DATA_ROOT="$DATAROOT" DF_HIGH_PATH="$DATAROOT" \
+  run "…and the cwd still gates when IT is the full one" deny "docker compose up -d"
+DF_AVAIL_KB=$LOTS DOCKER_DATA_ROOT="$STUB/definitely-not-here" \
+  run "a data root that does not exist is simply not probed" allow "docker compose up -d"
 
 # --- Check B: one compose project -------------------------------------------
 BUSY='[{"Name":"hirefolio","Status":"running(8)"}]'
@@ -131,9 +159,35 @@ DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS="$BUSY" \
   "docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d"
 
 # --- the bypass, typed the way the message advertises ------------------------
-DF_AVAIL_KB=$LOW DOCKER_STACK_GUARD=0 run "DOCKER_STACK_GUARD=0 releases one command" allow "docker compose up -d"
+# THIS IS THE ONE THAT MATTERED (#329 review round 1, blocker 1). The first
+# version of this file set DOCKER_STACK_GUARD=0 in the HARNESS's environment —
+# which the hook does read — while every deny message tells the operator to type
+# it as a COMMAND PREFIX, which the hook did not read. The suite was green and the
+# shipped bypass did not work, so an agent below the floor got a deny loop with no
+# exit. That is §49 ("assert the control at the SEAM") failing on the artifact
+# that teaches it, and the case below is the seam: the variable is UNSET in the
+# harness and present only in the command text. It fails against the pre-fix hook.
+DF_AVAIL_KB=$LOW run "DOCKER_STACK_GUARD=0 as a COMMAND PREFIX releases one command" allow \
+  "DOCKER_STACK_GUARD=0 docker compose up -d"
+DF_AVAIL_KB=$LOW run "…and it survives another assignment ahead of it" allow \
+  "COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_STACK_GUARD=0 docker build -t x ."
+DF_AVAIL_KB=$LOW run "a NON-zero value is not a bypass" deny "DOCKER_STACK_GUARD=1 docker compose up -d"
+DF_AVAIL_KB=$LOW run "the prefix is PER SEGMENT — it does not release an earlier unguarded one" deny \
+  "docker compose up -d && DOCKER_STACK_GUARD=0 docker build ."
+DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS='[{"Name":"hirefolio","Status":"running(8)"}]' \
+  run "the prefix also releases the one-project check" allow "DOCKER_STACK_GUARD=0 docker compose -p other up -d"
+# The SESSION-ENV form is a different path (the hook process itself inherits the
+# variable). Keep it, but it is no longer the only coverage — it was the bug.
+DF_AVAIL_KB=$LOW DOCKER_STACK_GUARD=0 run "DOCKER_STACK_GUARD=0 in the hook's own environment" allow "docker compose up -d"
 
 echo "guard-stack-resources self-test: $PASS passed, $FAIL failed"
+# A suite that silently ran NOTHING would otherwise report success (#329 review,
+# nit 8 — raised against the sibling checker and true here too).
+MIN_CASES=40
+if [ "$PASS" -lt "$MIN_CASES" ]; then
+  printf '  ✗ only %d cases ran; expected at least %d — did the harness skip?\n' "$PASS" "$MIN_CASES"
+  FAIL=$((FAIL+1))
+fi
 
 # --- Mutation contract -------------------------------------------------------
 if [ "${1-}" = "--mutations" ]; then
@@ -174,9 +228,18 @@ if [ "${1-}" = "--mutations" ]; then
   mutate die "the floor is read as 0" 's/FLOOR_GB="\${DOCKER_DISK_FLOOR_GB:-5}"/FLOOR_GB=0/'
   mutate die "the one-project check never fires" 's/  if \[ "\$hit" = "0" \]; then/  if false; then/'
   mutate die "explicit -p is ignored (every second stack passes)" 's/-p|--project-name) SEG_PROJECT="\${2:-}"/-p|--project-name) SEG_PROJECT=""/'
-  mutate die "down, ps and logs are treated as resource-creating too" 's/    up|build|run|pull|create|start)/    up|build|run|pull|create|start|down|ps|logs|exec)/'
+  mutate die "down, ps and logs are treated as resource-creating too" 's/    up|build|run|pull|create)/    up|build|run|pull|create|down|ps|logs)/'
   mutate die "heredoc bodies are parsed as commands" 's/quote_split "\$(strip_text_heredocs "\$CMD")"/quote_split "$CMD"/'
-  mutate die "the documented bypass stops working" 's/\[ "\${DOCKER_STACK_GUARD:-1}" = "0" \] \&\& allow/[ "${DOCKER_STACK_GUARD:-1}" = "9" ] \&\& allow/'
+  mutate die "the session-env bypass stops working" 's/\[ "\${DOCKER_STACK_GUARD:-1}" = "0" \] \&\& allow/[ "${DOCKER_STACK_GUARD:-1}" = "9" ] \&\& allow/'
+  # ONLY the command-text cases kill this one — the session-env case above cannot,
+  # which is exactly why the first version of this suite certified a bypass the
+  # shipped hook did not honour.
+  mutate die "the COMMAND-PREFIX bypass stops being recognised (the round-1 blocker)" \
+    's/DOCKER_STACK_GUARD=0( |/DOCKER_STACK_GUARD=0_NEVER( |/'
+  mutate die "compose start is treated as resource-creating again" \
+    's/    up|build|run|pull|create)/    up|build|run|pull|create|start)/'
+  mutate die "the Docker data root is no longer probed" \
+    's/^if \[ -d "\$DATA_ROOT" \]; then/if false; then/'
 
   echo "mutation contract: $MPASS killed, $MFAIL survived, $MBAD invalid"
   [ "$MFAIL" -eq 0 ] && [ "$MBAD" -eq 0 ] || exit 1

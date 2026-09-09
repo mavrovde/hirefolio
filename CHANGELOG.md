@@ -14,12 +14,17 @@ All notable changes to this project will be documented in this file.
     #323 and #325 both chained onto `trans0009`; each branch was single-head in isolation, so every
     gate on both was green, and `alembic upgrade head` — which `docker-entrypoint.sh` runs on every
     container start — refuses to run on the merged result. The self-test replays that exact incident
-    from this repo's history: 25 cases pass, and three mutations turn 7 / 4 / 1 of them red.
+    from this repo's history: **26 cases** pass locally (23 in CI, where a depth-1 clone cannot
+    resolve the historical commits — a `MIN_CASES` floor keeps that note enforceable), and three
+    mutations turn **9 / 6 / 1** of them red.
   - **`.claude/hooks/guard-stack-resources.sh` + self-test** — a free-disk floor
     (`DOCKER_DISK_FLOOR_GB`, default 5) and ONE Docker compose project, checked before
     `up`/`build`/`run`/`pull` only; `down`/`ps`/`logs`/`exec`/`builder prune` are never blocked,
     because those are what you run to recover from a full disk. Three parallel stacks filled the disk
-    and crashed the daemon this cycle, costing ~2 hours. 33 cases, 8 mutations killed, 0 survived.
+    and crashed the daemon this cycle, costing ~2 hours. **44 cases, 11 mutations killed, 0
+    survived.** The documented `DOCKER_STACK_GUARD=0` bypass is read from the COMMAND TEXT per
+    segment, like both sibling hooks — the first version read only the hook's own environment, which
+    nothing in this harness sets, so the printed remedy was a deny loop with no exit.
 
 ### Changed
 - **`.claude/hooks/pre-merge-gate.sh`: an APPROVE must be NEWER than every commit on the PR.**
@@ -32,7 +37,9 @@ All notable changes to this project will be documented in this file.
   never applies the component stylesheet (#325 — 447 unit tests green with the CSS gone), a
   conditional `test.skip` reports green against a dead stack (#323), a test pinning today's payload
   pins today's bug (#323's expiry off-by-one), one machine/one Docker stack and a worktree per
-  concurrent agent. Recorded as `lessons-learned` §49–§54; `env-gotchas` gains the shared-checkout
+  concurrent agent, and — found by this PR's own review — that an `ENV=value` **prefix is command
+  text**, so a hook documenting a bypass must parse it per segment or the documented remedy is a deny
+  loop with no exit. Recorded as `lessons-learned` §49–§55; `env-gotchas` gains the shared-checkout
   trap (a moved `HEAD` sends a commit to `main`) and the shallow-fetch trap (proving a CI step
   locally with `git fetch --depth=1` shallows your own repository), both measured while writing this
   retrospective.

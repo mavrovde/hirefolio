@@ -17,8 +17,8 @@ description: >-
   a-test-pinning-today's-payload-pins-today's-bug trap, the
   jsdom-never-applies-the-component-stylesheet trap, the conditional-`test.skip`-is-a-fake-green
   rule, the an-approval-covers-a-HEAD / a-branch-green-alone-can-break-on-the-MERGE rule (Alembic
-  head forks), and the one-machine-one-Docker-stack / concurrent-agents-need-their-own-worktree
-  constraint.
+  head forks), the one-machine-one-Docker-stack / concurrent-agents-need-their-own-worktree
+  constraint, and the an-`ENV=value`-prefix-is-command-text rule for every hook documenting a bypass.
   Grep it or load it when a task matches — it exists so
   fresh contexts and teammates don't re-research answers we already have.
 ---
@@ -1332,10 +1332,12 @@ Measured against a backend pointed at a dead port:
 Two halves of one mistake, both measured in v1.14.0.
 
 **(a) Commits landed after the verdict.** Replaying the real threads as they stood at merge time,
-three of nine reviewed merges carried commits no approval had seen: **#320** merged four commits after
-its only verdict — including the fixes to the reviewer's own five findings and a behaviour change
-("banner links to the repository, not the maintainer's site"); **#315** merged **two seconds** before
-its delta-confirm was posted; **#314** merged a `main` merge plus a lessons renumber. Rule 13 asks for
+**four of the ten reviewed merges** carried commits no approval had seen (an 11-PR corpus; #321 was
+merged with no verdict at all): **#320** merged four commits after its only verdict — including the
+fixes to the reviewer's own five findings and a behaviour change ("banner links to the repository, not
+the maintainer's site"); **#315** merged **two seconds** before its delta-confirm was posted; **#314**
+merged a `main` merge plus a lessons renumber; and **#327, the release PR**, merged a CHANGELOG commit
+its verdict never saw, so the `v1.14.0` tag itself sits on an uncovered commit. Rule 13 asks for
 a verdict on the CHANGE, and "the newest verdict says APPROVE" does not imply it saw the code.
 `pre-merge-gate.sh` now denies when a commit is newer than the selected APPROVE. The remedy is a habit
 this repo already had: post `## ✅ APPROVE — round N (delta-confirm at <sha>)`.
@@ -1383,6 +1385,44 @@ A cheaper collision the same cycle: two agents shared ONE checkout, so #317's br
   falsifies v1.13.0's bet that discipline alone would hold. The answer stays a habit rather than a
   hook for the reason v1.13.0 gave — a hook cannot tell "discard my experiment" from "discard my
   fix" — but it is now stated in the charters instead of only here.
+
+## 55. An `ENV=value` PREFIX is command TEXT — a PreToolUse hook never sees it in its environment (#329)
+
+Two independent instances in one session, both of them a knob that silently did nothing:
+
+- `DOCKER_STACK_GUARD=0 docker compose up -d` — the documented per-command bypass of the new stack
+  guard. The hook read `${DOCKER_STACK_GUARD:-1}` from its **own process environment**, which nothing
+  in this harness ever sets, so the deny message told the operator to type a remedy that did not
+  work. Measured: `deny` for both the bypassed and the plain form, while the sibling
+  `GUARD_DESTRUCTIVE=0 docker volume rm x` correctly allowed.
+- `PREPUSH_RUN_BACKEND=0 git push` — typed to skip the backend leg, and the full gate ran anyway.
+
+**Why.** The hook is a separate process spawned by the harness with the *session's* environment. An
+`ENV=value cmd` prefix is part of the **command string** the tool is about to run; it is applied by
+the shell that eventually executes it, long after the hook has decided. And because shell state does
+not persist between Bash tool calls, `export` in an earlier call is gone by the next one — so if the
+prefix is not parsed, **there is no working escape at all**, and an agent that hits the gate reads the
+printed remedy, types it, and is denied again with the same message.
+
+**How to apply.** A hook that documents an env bypass MUST parse it from the command text, per
+SEGMENT, with the house regex — one model, three hooks (`guard-destructive.sh`,
+`pre-merge-gate.sh`, `guard-stack-resources.sh`):
+
+```bash
+if printf '%s' "$seg" | grep -Eq '^([A-Za-z_][A-Za-z0-9_]*=[^ ]* )*MY_KNOB=0( |$)'; then
+  return 1   # authorized: this segment is not gated
+fi
+```
+
+Keep the environment read as well (it costs nothing and covers a hook launched with the variable),
+but never let it be the only path.
+
+**And the test has to drive the bypass THE WAY A CALLER TYPES IT.** This one shipped with a green
+self-test because the case set the variable in the **harness's** environment — which the hook did
+read — instead of putting it in the command string. That is §49 ("assert the control at the seam")
+failing on the artifact that teaches §49, caught by review rather than by the suite. The case that
+discriminates leaves the variable UNSET in the harness; under a mutation that breaks the regex, only
+the command-text cases go red (measured: 3 of them, while the session-env case stays green).
 
 ## Where the rules live (AI-config map)
 
