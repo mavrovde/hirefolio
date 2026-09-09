@@ -6,7 +6,7 @@ applyTo: ".github/workflows/**,proxy/**,docker-compose*.yml,backend/Dockerfile*,
 
 - `.github/workflows/deploy.yml` is the **prod deploy**: it runs on push to `main` (gates →
   image build/publish → Docker E2E). PRs get CodeQL only. Merging to `main` IS deploying.
-- Images are published to **GitHub Container Registry** (`ghcr.io/mavrovde/hirefolio-*` — see
+- Images are published to **GitHub Container Registry** (`ghcr.io/mavrovde/beaconfolio-*` — see
   `REGISTRY`/`IMAGE_NAME` in `deploy.yml`), NOT Docker Hub; do not treat `maverickde/*` Hub
   images as current.
 - **Green `deploy.yml` always = images PUBLISHED; live-on-host only if the `deploy` job ran.**
@@ -14,7 +14,7 @@ applyTo: ".github/workflows/**,proxy/**,docker-compose*.yml,backend/Dockerfile*,
   `sha-<gitsha>` tag, digest + health + freshness gates, auto-rollback); with `DEPLOY_HOST`/
   `DEPLOY_USER`/`DEPLOY_SSH_KEY` unset it skips and the run is still green (#112/#156). Check the
   job status; if skipped, verify the live site (footer `BE: vX.Y.Z`) or say rollout is pending.
-- CI test stacks must inject **empty/placeholder credentials** (e.g. `HIREFOLIO_GEMINI_API_KEY: ""`) so
+- CI test stacks must inject **empty/placeholder credentials** (e.g. `BEACONFOLIO_GEMINI_API_KEY: ""`) so
   paid APIs fall back to local Ollama. Never wire `${{ secrets.* }}` into a test job — real
   credentials belong only to the production runtime environment.
 - Do not add `actions/cache` for multi-GB Docker artifacts (base images, model weights): the

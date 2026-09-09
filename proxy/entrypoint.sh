@@ -11,9 +11,9 @@ if [ ! -f /etc/nginx/ssl/fullchain.pem ]; then
 fi
 
 # --- Render the site config from the template (owner-configurable server_name) ----
-# Defaults preserve the canonical mavrov.de hostnames; a forker overrides via env.
-: "${PUBLIC_SERVER_NAME:=mavrov.de www.mavrov.de}"
-: "${ADMIN_SERVER_NAME:=admin.mavrov.de admin.localhost}"
+# Defaults preserve the canonical beaconfolio.com hostnames; a forker overrides via env.
+: "${PUBLIC_SERVER_NAME:=beaconfolio.com www.beaconfolio.com}"
+: "${ADMIN_SERVER_NAME:=admin.beaconfolio.com admin.localhost}"
 export PUBLIC_SERVER_NAME ADMIN_SERVER_NAME
 echo "Rendering nginx config (public='${PUBLIC_SERVER_NAME}', admin='${ADMIN_SERVER_NAME}')..."
 # Substitute ONLY our two names so nginx runtime vars ($host, $remote_addr, ...) survive.

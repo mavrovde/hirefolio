@@ -169,9 +169,9 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED' 'Closes #279')" GH
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=284 \
   run "no PR number (merges current branch)" deny "gh pr merge --squash"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
-  run "--repo before the number" deny "gh --repo mavrovde/hirefolio pr merge 284"
+  run "--repo before the number" deny "gh --repo mavrovde/beaconfolio pr merge 284"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
-  run "URL form" deny "gh pr merge https://github.com/mavrovde/hirefolio/pull/284"
+  run "URL form" deny "gh pr merge https://github.com/mavrovde/beaconfolio/pull/284"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
   run "env wrapper" deny "env FOO=1 gh pr merge 284"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
@@ -242,9 +242,9 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
 # values. Round 4 read those VALUES as the operand and denied an APPROVED PR --
 # a hard stop on the sanctioned deploy trigger, with a bypass that did not work.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
-  run "--repo before the operand" allow "gh pr merge --repo mavrovde/hirefolio 284 --squash"
+  run "--repo before the operand" allow "gh pr merge --repo mavrovde/beaconfolio 284 --squash"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
-  run "-R before the operand" allow "gh pr merge -R mavrovde/hirefolio 284"
+  run "-R before the operand" allow "gh pr merge -R mavrovde/beaconfolio 284"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
   run "--body-file before the operand" allow "gh pr merge --body-file notes.md 284"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_PR=999 \
@@ -255,7 +255,7 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_
   run "a QUOTED number is still that PR" allow "gh pr merge \"284\" --squash"
 # ...and those same flags must not become a way to smuggle a bad merge past.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
-  run "--repo before the operand, REQUEST CHANGES" deny "gh pr merge --repo mavrovde/hirefolio 284"
+  run "--repo before the operand, REQUEST CHANGES" deny "gh pr merge --repo mavrovde/beaconfolio 284"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" GH_STUB_CURRENT_PR=999 \
   run "-F before the operand, REQUEST CHANGES" deny "gh pr merge -F notes.md 284"
 # A BRANCH is valid gh input. Expect ALLOW, and only the RESOLVED PR is the

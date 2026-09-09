@@ -1,22 +1,27 @@
-[![Hirefolio — fork-and-go portfolio + recruiter communications for job-seeking engineers, rendered as a green-phosphor terminal card](docs/assets/social-preview.png)](https://github.com/mavrovde/hirefolio)
+[![Beaconfolio — fork-and-go portfolio + recruiter communications for job-seeking engineers, rendered as a green-phosphor terminal card](docs/assets/social-preview.png)](https://github.com/mavrovde/beaconfolio)
 
-# Hirefolio
+# Beaconfolio
 
 **A fork-and-go, self-hostable portfolio + recruiter-communication platform for job-seeking software
 engineers** — semantic blog search, local-AI tagging, and an admin console, deployable under *your*
 own name and domain.
 
-> **Name change (#88):** the project is now **Hirefolio** and the repository is
-> [`mavrovde/hirefolio`](https://github.com/mavrovde/hirefolio) (GitHub redirects the old
-> `mavrovde/mavrov.de` URLs, and `git remote` keeps working — but update your remote <!-- de-brand:historical: the pre-#88 repository name -->
-> when convenient: `git remote set-url origin https://github.com/mavrovde/hirefolio.git`).
-> **Hirefolio is the product**; any single deployment of it — including the maintainer's — is just
+> **Name change (#88 → #330):** the project is now **Beaconfolio**, the repository is
+> [`mavrovde/beaconfolio`](https://github.com/mavrovde/beaconfolio), and the product domain is
+> [`beaconfolio.com`](https://beaconfolio.com). GitHub redirects the old URLs and `git remote` keeps
+> working, but update your remote when convenient:
+> `git remote set-url origin https://github.com/mavrovde/beaconfolio.git`.
+> **Beaconfolio is the product**; any single deployment of it — including the maintainer's — is just
 > one instance, and this documentation is written for *yours*.
-> Container images publish to `ghcr.io/mavrovde/hirefolio-*` from the first build after the rename;
-> images published earlier still live at `ghcr.io/mavrovde/mavrov.de-*`, so pin `IMAGE_REPO`
-> explicitly when deploying a pre-rename tag. **One-time owner action:** those four new GHCR
-> packages are created **private** (visibility does not follow a repo rename) — make them public
-> once, or the host, which pulls without a login, cannot fetch them. See
+>
+> ⚠️ **Image paths moved with the rename.** `IMAGE_NAME` derives from the repository slug, so builds
+> publish to `ghcr.io/mavrovde/beaconfolio-*` **from v1.14.1 onward**. Every tag up to and including
+> **`1.14.0` exists only at the pre-rename path** `ghcr.io/mavrovde/hirefolio-*`. The compose default
+> targets the new path, so to deploy a pre-rename tag you must pin it explicitly:
+> `IMAGE_REPO=ghcr.io/mavrovde/hirefolio IMAGE_TAG=1.14.0`.
+> **One-time owner action:** the new GHCR packages are created **private** — package visibility does
+> not follow a repository rename — so make them public once after the first post-rename build, or the
+> host, which pulls without a login, cannot fetch them. See
 > [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md#registry-notes).
 
 ## 🚀 Features
@@ -148,8 +153,8 @@ curl https://<your-domain>/api/app/profile/resume.json | jq .meta
 > prod compose, prebuilt images, hardened settings.
 
 ```bash
-git clone https://github.com/mavrovde/hirefolio.git
-cd hirefolio
+git clone https://github.com/mavrovde/beaconfolio.git
+cd beaconfolio
 ./setup.sh          # prompts for your name/site; --defaults for a demo persona
 ```
 
@@ -162,10 +167,10 @@ Then open <http://localhost:4200> (public site) and <http://admin.localhost:4200
 `admin`). **Make it yours** — the whole checklist is config + admin uploads, zero code edits:
 
 1. `.env`: `OWNER_NAME`, `OWNER_HEADLINE`, `SITE_NAME`, `SITE_URL`, `SOCIAL_LINKS`,
-   `HIREFOLIO_ANALYTICS_ID` (identity, #65) · `PUBLIC_SERVER_NAME`/`ADMIN_SERVER_NAME` (your
+   `BEACONFOLIO_ANALYTICS_ID` (identity, #65) · `PUBLIC_SERVER_NAME`/`ADMIN_SERVER_NAME` (your
    domain) · `IMAGE_REPO` (your registry, for prod).
 2. Admin panel: upload your **Profile Data** JSON and your **CV** (Content → replaces the demo).
-3. Optional: LinkedIn import (`importer/README.md`), Gemini key (`HIREFOLIO_GEMINI_API_KEY` —
+3. Optional: LinkedIn import (`importer/README.md`), Gemini key (`BEACONFOLIO_GEMINI_API_KEY` —
    empty keeps the free local Ollama).
 
 ### Manual start (the same stack, no wizard)
@@ -279,7 +284,7 @@ A project-scoped `.mcp.json` configures Model Context Protocol servers to speed 
 ```bash
 # Optional overrides before launching Claude Code
 export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx        # for the github server
-export MCP_POSTGRES_URL=postgresql://user:pass@host:5433/hirefolio  # non-default DB
+export MCP_POSTGRES_URL=postgresql://user:pass@host:5433/beaconfolio  # non-default DB
 ```
 
 Secrets are supplied only via environment variables — `.mcp.json` contains no credentials.
@@ -379,7 +384,7 @@ a version-carrier mismatch fails the pipeline before anything is published.
 ## 📁 Project Structure
 
 ```text
-hirefolio/
+beaconfolio/
 ├── backend/                 # FastAPI backend
 │   ├── app/
 │   │   ├── api/                 # API endpoints
@@ -396,7 +401,7 @@ hirefolio/
 │   ├── projects/
 │   │   ├── public/              # Visitor app — native SSR (src/server.ts), zoneless
 │   │   ├── admin/               # Admin console — CSR SPA
-│   │   └── shared/              # @mavrov/shared library used by both apps
+│   │   └── shared/              # @beaconfolio/shared library used by both apps
 │   ├── e2e/                     # Playwright suites (public-e2e / admin-e2e)
 │   ├── Dockerfile               # public (SSR) image
 │   ├── Dockerfile.admin         # admin-frontend image
@@ -404,8 +409,6 @@ hirefolio/
 ├── proxy/                       # Reverse proxy (nginx) config + entrypoint
 ├── scraper/                     # LinkedIn scrapers (profile + posts → *_data.json)
 ├── importer/                    # LinkedIn → backend post importer
-├── agents/                      # A2A multi-agent delivery team
-├── specs/                       # Feature specs (inbox/planned/done)
 ├── docker-compose.yml           # Dev stack
 ├── docker-compose.prod.yml      # Prod stack (pulls published images)
 └── README.md                    # This file
@@ -420,22 +423,22 @@ The Docker stack takes everything from the ROOT `.env` (created by
 A `backend/.env` is only for running the backend BARE-METAL outside compose:
 
 ```bash
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/beaconfolio
 OLLAMA_URL=http://localhost:11434
 EMBEDDING_MODEL=nomic-embed-text
-HIREFOLIO_GEMINI_API_KEY=your_api_key_here
+BEACONFOLIO_GEMINI_API_KEY=your_api_key_here
 
 # Fernet key that encrypts the per-user Gemini API key at rest (issue #143).
 # Empty = plaintext passthrough (backward compatible); set in prod to encrypt.
 # Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-HIREFOLIO_GEMINI_ENCRYPTION_KEY=                          # default: "" (encryption disabled)
+BEACONFOLIO_GEMINI_ENCRYPTION_KEY=                          # default: "" (encryption disabled)
 #
 # NOTE (encrypting EXISTING keys): the `encrypt0002` migration runs once at
-# deploy. If HIREFOLIO_GEMINI_ENCRYPTION_KEY was still empty when it ran, existing keys
+# deploy. If BEACONFOLIO_GEMINI_ENCRYPTION_KEY was still empty when it ran, existing keys
 # stay plaintext — setting the key later does NOT retroactively encrypt them.
 # After enabling the key, encrypt existing rows by either (a) re-saving the key
 # in the admin profile UI, or (b) running the idempotent backfill once:
-#   cd backend && HIREFOLIO_GEMINI_ENCRYPTION_KEY=... python -m scripts.backfill_encrypt_gemini_key
+#   cd backend && BEACONFOLIO_GEMINI_ENCRYPTION_KEY=... python -m scripts.backfill_encrypt_gemini_key
 # (Regardless of encryption, `/auth/me` never returns the raw key — the network
 # EXPOSURE is closed independently of encryption-at-rest.)
 
@@ -489,7 +492,7 @@ identifies you. Every knob has a safe default that preserves the canonical behav
 
 | Knob | Where | Default | What it controls |
 | --- | --- | --- | --- |
-| `IMAGE_REPO` | `.env` (compose) | `ghcr.io/mavrovde/hirefolio` (prod), `mavrovde` (dev) | Registry/org/name the compose files pull `-backend/-frontend/-admin-frontend/-proxy` images from |
+| `IMAGE_REPO` | `.env` (compose) | `ghcr.io/mavrovde/beaconfolio` (prod), `mavrovde` (dev) | Registry/org/name the compose files pull `-backend/-frontend/-admin-frontend/-proxy` images from |
 | `IMAGE_TAG` | `.env` (compose) | repo `VERSION` | Pinned image tag to run |
 | `REGISTRY`, `IMAGE_NAME` | GitHub **repository variables** | `ghcr.io`, `${{ github.repository }}` | Where `deploy.yml` publishes images (override to retarget the CI publish) |
 | `PUBLIC_SERVER_NAME` | `.env` (proxy) | the canonical instance's hostnames | Public site hostname(s) the reverse proxy answers on. **Set this** to `<your-domain> www.<your-domain>` — unlike the other rows, the built-in fallback is not neutral (#313) |
@@ -578,7 +581,7 @@ export const environment = {
   apiUrl: '',
   apiPrefix: '/api/app',
   // Deprecated (#65): analytics is RUNTIME config now — set
-  // HIREFOLIO_ANALYTICS_ID in the host .env; this field is inert.
+  // BEACONFOLIO_ANALYTICS_ID in the host .env; this field is inert.
   googleAnalyticsId: '',
 };
 ```
@@ -591,8 +594,8 @@ when its config does, and one dead channel never blocks another (nor intake).
 | Channel | Config | Notes |
 |---|---|---|
 | Email | `SMTP_*` | the pre-existing path, unchanged |
-| **Telegram** | `HIREFOLIO_TELEGRAM_BOT_TOKEN` + `HIREFOLIO_TELEGRAM_CHAT_ID` | **2-minute setup**: message [@BotFather](https://t.me/botfather) → `/newbot` → copy the token; then message your bot once and read your chat id from `https://api.telegram.org/bot<token>/getUpdates`. Free; lands on your phone in seconds. |
-| Webhook | `HIREFOLIO_NOTIFY_WEBHOOK_URL` | provider-agnostic JSON POST (`text` + structured fields) — works as-is with Slack/Mattermost incoming webhooks and ntfy |
+| **Telegram** | `BEACONFOLIO_TELEGRAM_BOT_TOKEN` + `BEACONFOLIO_TELEGRAM_CHAT_ID` | **2-minute setup**: message [@BotFather](https://t.me/botfather) → `/newbot` → copy the token; then message your bot once and read your chat id from `https://api.telegram.org/bot<token>/getUpdates`. Free; lands on your phone in seconds. |
+| Webhook | `BEACONFOLIO_NOTIFY_WEBHOOK_URL` | provider-agnostic JSON POST (`text` + structured fields) — works as-is with Slack/Mattermost incoming webhooks and ntfy |
 
 **WhatsApp — a documented decision, not a missing feature:** the Business Cloud API requires a
 Meta-verified business account, pre-approved message templates, and bills per conversation.
@@ -773,7 +776,7 @@ All three columns are `NULL` for posts not imported from LinkedIn. Two posts may
 | Revision | Description |
 |---|---|
 | `baseline0001` | Baseline schema — all current tables (`users`, `cv_documents`, `cv_requests`, `posts` incl. `image_url`/`image_blob`/`image_type` and LinkedIn provenance columns, `profile_snapshots`). Consolidates what used to be several disjoint/incomplete revisions (see #46). |
-| `encrypt0002` | Encrypts stored per-user Gemini API keys at rest (Fernet via `HIREFOLIO_GEMINI_ENCRYPTION_KEY`); one-time backfill of existing plaintext keys — a no-op if the key env var is empty when it runs (see #143 and the note in the backend env section above). |
+| `encrypt0002` | Encrypts stored per-user Gemini API keys at rest (Fernet via `BEACONFOLIO_GEMINI_ENCRYPTION_KEY`); one-time backfill of existing plaintext keys — a no-op if the key env var is empty when it runs (see #143 and the note in the backend env section above). |
 | `inbox0003` | Recruiter communication hub (#69): the `interactions` table (unified inbox — source, status workflow, JSON payload, indexes on status/source/created_at). Self-adopting: a no-op if `create_all` already made the table (pre-Alembic installs). |
 | `pipeline0004` | Job-search pipeline phase 1 (#247): `opportunities` + `opportunity_notes` tables (stage workflow, recruiter fields, notes timeline linked to inbox interactions). Self-adopting per the guard above. |
 | `promote0005` | Promote-from-inbox idempotency (#279): unique `opportunities.promoted_from_interaction_id` + an index on `opportunity_notes.interaction_id`, backfilled from the promotion note. |
@@ -867,10 +870,10 @@ Container Registry (anonymously pullable), then runs the full Docker E2E
 against exactly those images:
 
 ```text
-ghcr.io/mavrovde/hirefolio-backend:sha-<gitsha>
-ghcr.io/mavrovde/hirefolio-frontend:sha-<gitsha>
-ghcr.io/mavrovde/hirefolio-admin-frontend:sha-<gitsha>
-ghcr.io/mavrovde/hirefolio-proxy:sha-<gitsha>
+ghcr.io/mavrovde/beaconfolio-backend:sha-<gitsha>
+ghcr.io/mavrovde/beaconfolio-frontend:sha-<gitsha>
+ghcr.io/mavrovde/beaconfolio-admin-frontend:sha-<gitsha>
+ghcr.io/mavrovde/beaconfolio-proxy:sha-<gitsha>
 ```
 
 After a green E2E each `sha-<gitsha>` image is also promoted to the
@@ -890,7 +893,7 @@ is still green — nothing is rolled out** (the original #112 / #156 gap). See
 set in the root `.env`:
 
 ```bash
-IMAGE_REPO=ghcr.io/mavrovde/hirefolio
+IMAGE_REPO=ghcr.io/mavrovde/beaconfolio
 IMAGE_TAG=<version>          # e.g. the current VERSION, or sha-<gitsha>
 ```
 
@@ -973,9 +976,9 @@ maintainer's own profile data are *not* part of the license grant; bring your ow
 Your deployment shows **your** contact details — they come from the site config (#65) and your
 uploaded profile data, never from this repository.
 
-- **Reference deployment**: <https://mavrov.de> — the **canonical instance** of Hirefolio (the <!-- de-brand:canonical: the one sanctioned instance aside in this file -->
+- **Reference deployment**: <https://beaconfolio.com> — the **canonical instance** of Beaconfolio (the <!-- de-brand:canonical: the one sanctioned instance aside in this file -->
   maintainer's own install; one deployment of the product, not the product itself)
-- **Issues / questions about the project**: [GitHub issues](https://github.com/mavrovde/hirefolio/issues)
+- **Issues / questions about the project**: [GitHub issues](https://github.com/mavrovde/beaconfolio/issues)
 
 ## 🗺️ Roadmap
 

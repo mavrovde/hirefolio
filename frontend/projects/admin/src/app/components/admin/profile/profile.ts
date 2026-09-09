@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
-import { TranslatePipe } from '@mavrov/shared';
+import { TranslatePipe } from '@beaconfolio/shared';
 
 @Component({
   selector: 'app-profile',

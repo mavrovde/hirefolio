@@ -1,7 +1,7 @@
 import { Component, Input, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Observable, map } from 'rxjs';
-import { TranslatePipe } from '@mavrov/shared';
+import { TranslatePipe } from '@beaconfolio/shared';
 import { Profile } from '../../services/profile.service';
 import { SiteConfigService } from '../../services/site-config.service';
 

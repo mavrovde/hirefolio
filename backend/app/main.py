@@ -44,7 +44,7 @@ def _read_file_bytes(path: str) -> bytes:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print(f"[{datetime.now(UTC)}] LIFESPAN START: Mavrov.de API")
+    print(f"[{datetime.now(UTC)}] LIFESPAN START: Beaconfolio API")
     app.state.start_time = datetime.now(UTC)
 
     # SECURITY (issue #177): fail fast when the JWT signing secret is unset or
@@ -64,16 +64,16 @@ async def lifespan(app: FastAPI):
     # the Ollama fallback with no explanation.
     #
     # In a container the legacy names are NOT present — compose passes only the
-    # HIREFOLIO_* names and there is no env_file — so checking os.getenv for them
+    # BEACONFOLIO_* names and there is no env_file — so checking os.getenv for them
     # directly is dead code exactly where it matters. The compose files therefore
     # pass LEGACY_GEMINI_ENV, a space-separated list of legacy names that are set
     # ON THE HOST (names only, never values, so no credential enters the
     # container). Outside a container the direct check still applies.
     _legacy_pairs = (
-        ("GEMINI_API_KEY", "HIREFOLIO_GEMINI_API_KEY"),
-        ("GEMINI_ENCRYPTION_KEY", "HIREFOLIO_GEMINI_ENCRYPTION_KEY"),
-        ("GEMINI_MODEL", "HIREFOLIO_GEMINI_MODEL"),
-        ("GEMINI_MODEL_FALLBACK", "HIREFOLIO_GEMINI_MODEL_FALLBACK"),
+        ("GEMINI_API_KEY", "BEACONFOLIO_GEMINI_API_KEY"),
+        ("GEMINI_ENCRYPTION_KEY", "BEACONFOLIO_GEMINI_ENCRYPTION_KEY"),
+        ("GEMINI_MODEL", "BEACONFOLIO_GEMINI_MODEL"),
+        ("GEMINI_MODEL_FALLBACK", "BEACONFOLIO_GEMINI_MODEL_FALLBACK"),
     )
     _reported_by_host = set(os.getenv("LEGACY_GEMINI_ENV", "").split())
     for legacy, current in _legacy_pairs:
@@ -126,10 +126,10 @@ async def lifespan(app: FastAPI):
         from dotenv import load_dotenv
 
         load_dotenv(local_env_path)
-        gemini_key_seed = os.getenv("HIREFOLIO_GEMINI_API_KEY")
+        gemini_key_seed = os.getenv("BEACONFOLIO_GEMINI_API_KEY")
         if gemini_key_seed:
             print(
-                f"[{datetime.now(UTC)}] DB SEED: Loaded HIREFOLIO_GEMINI_API_KEY from local env for seeding."
+                f"[{datetime.now(UTC)}] DB SEED: Loaded BEACONFOLIO_GEMINI_API_KEY from local env for seeding."
             )
 
     async with async_session() as session:
@@ -237,7 +237,7 @@ async def lifespan(app: FastAPI):
 
     print(f"[{datetime.now(UTC)}] LIFESPAN READY: Backend is operational.")
     yield
-    print(f"[{datetime.now(UTC)}] LIFESPAN SHUTDOWN: Mavrov.de API shutting down.")
+    print(f"[{datetime.now(UTC)}] LIFESPAN SHUTDOWN: Beaconfolio API shutting down.")
 
 
 app = FastAPI(

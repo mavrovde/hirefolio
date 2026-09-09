@@ -8,7 +8,7 @@ import {
     ValidationErrors,
     Validators,
 } from '@angular/forms';
-import { TranslatePipe } from '@mavrov/shared';
+import { TranslatePipe } from '@beaconfolio/shared';
 import { InteractionService } from '../../services/interaction.service';
 
 /**

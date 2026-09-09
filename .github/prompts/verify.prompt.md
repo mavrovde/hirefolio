@@ -9,12 +9,12 @@ affected stage on failure.
 
 Preconditions:
 - `pgrep -f pytest` must return nothing — never run backend pytest while another suite is active
-  (the shared `test_hirefolio` DB clobbers concurrent suites). Wait if needed.
+  (the shared `test_beaconfolio` DB clobbers concurrent suites). Wait if needed.
 - If a gate fails, reproduce it on an unmodified `main` build (git worktree) before blaming the
   current diff — it may be a latent gate bug.
 
 1. Backend (`cd backend`, use `venv/bin`; Postgres on `127.0.0.1:5433`, a `test_*` DB via
-   `TEST_DATABASE_URL`, `HIREFOLIO_GEMINI_API_KEY=""`):
+   `TEST_DATABASE_URL`, `BEACONFOLIO_GEMINI_API_KEY=""`):
    `ruff check .` · `ruff format --check .` · `mypy app --ignore-missing-imports
    --no-error-summary` · `bandit -r app -ll --skip B101` · `pytest` (100% coverage).
 2. Frontend (`cd frontend`):

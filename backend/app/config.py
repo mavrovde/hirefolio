@@ -16,7 +16,7 @@ INSECURE_JWT_SECRET_KEYS = frozenset(
 
 class Settings(BaseSettings):
     database_url: str = (
-        "postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/hirefolio"
+        "postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/beaconfolio"
     )
     ollama_url: str = "http://localhost:11434"
     embedding_model: str = "nomic-embed-text"
@@ -47,16 +47,16 @@ class Settings(BaseSettings):
     smtp_password: str = ""
 
     # Messenger notification channels (#263). Credentials follow the
-    # HIREFOLIO_* namespace (#141 — the generic names bit us once). Empty =
+    # BEACONFOLIO_* namespace (#141 — the generic names bit us once). Empty =
     # that channel simply does not exist in the registry; zero requests.
     telegram_bot_token: str = Field(
-        default="", validation_alias="HIREFOLIO_TELEGRAM_BOT_TOKEN"
+        default="", validation_alias="BEACONFOLIO_TELEGRAM_BOT_TOKEN"
     )
     telegram_chat_id: str = Field(
-        default="", validation_alias="HIREFOLIO_TELEGRAM_CHAT_ID"
+        default="", validation_alias="BEACONFOLIO_TELEGRAM_CHAT_ID"
     )
     notify_webhook_url: str = Field(
-        default="", validation_alias="HIREFOLIO_NOTIFY_WEBHOOK_URL"
+        default="", validation_alias="BEACONFOLIO_NOTIFY_WEBHOOK_URL"
     )
     notify_timeout_seconds: int = 10
     # STARTTLS + auth are ON by default (external providers). A local catch-all
@@ -85,14 +85,16 @@ class Settings(BaseSettings):
     engagement_retention_days: int = 365
     # The language recruiter messages are translated INTO (ISO 639-1).
     owner_language: str = "en"
-    admin_email: str = "admin@mavrov.de"
+    admin_email: str = "admin@beaconfolio.com"
     api_prefix: str = "/api/app"
-    # Read from HIREFOLIO_GEMINI_API_KEY, deliberately NOT the generic
+    # Read from BEACONFOLIO_GEMINI_API_KEY, deliberately NOT the generic
     # GEMINI_API_KEY (#141): that name is commonly exported globally from a
     # shell profile, and a process environment variable OVERRIDES .env in
     # docker compose — so the generic name silently bound a developer's live
     # personal key into the E2E stack. A project-scoped name cannot collide.
-    gemini_api_key: str = Field(default="", validation_alias="HIREFOLIO_GEMINI_API_KEY")
+    gemini_api_key: str = Field(
+        default="", validation_alias="BEACONFOLIO_GEMINI_API_KEY"
+    )
     # Fernet key (urlsafe-base64, 32 bytes) used to encrypt the per-user Gemini
     # API key at rest (see app.services.crypto / issue #143). Empty disables
     # field encryption (values stored/read as plaintext) so local/dev/E2E setups
@@ -100,11 +102,11 @@ class Settings(BaseSettings):
     # Generate with: python -c "from cryptography.fernet import Fernet;
     # print(Fernet.generate_key().decode())"
     gemini_encryption_key: str = Field(
-        default="", validation_alias="HIREFOLIO_GEMINI_ENCRYPTION_KEY"
+        default="", validation_alias="BEACONFOLIO_GEMINI_ENCRYPTION_KEY"
     )
     # Gemini model selection. Suggestion/tagging tasks (tags, title, slug,
     # summary) are cheap and use the flash-tier model by default; override via
-    # HIREFOLIO_GEMINI_MODEL / HIREFOLIO_GEMINI_MODEL_FALLBACK. The fallback is only used when the
+    # BEACONFOLIO_GEMINI_MODEL / BEACONFOLIO_GEMINI_MODEL_FALLBACK. The fallback is only used when the
     # primary model is reported *unavailable* (HTTP 404), never on generic
     # errors — those fall through to the free local Ollama models instead of
     # making a second billable Gemini call.
@@ -112,11 +114,11 @@ class Settings(BaseSettings):
     # control, and an ambient GEMINI_MODEL pointing at a premium tier would
     # silently raise the price of every suggestion.
     gemini_model: str = Field(
-        default="gemini-2.5-flash", validation_alias="HIREFOLIO_GEMINI_MODEL"
+        default="gemini-2.5-flash", validation_alias="BEACONFOLIO_GEMINI_MODEL"
     )
     gemini_model_fallback: str = Field(
         default="gemini-2.0-flash",
-        validation_alias="HIREFOLIO_GEMINI_MODEL_FALLBACK",
+        validation_alias="BEACONFOLIO_GEMINI_MODEL_FALLBACK",
     )
     cv_version: str = "v1.0"
 
@@ -134,20 +136,20 @@ class Settings(BaseSettings):
     owner_headline: str = "Senior Software Engineer"
     owner_description: str = (
         "Professional portfolio of Jane Doe, a Senior Software Engineer — "
-        "the Hirefolio demo persona. Set the OWNER_*/SITE_* env vars to yours."
+        "the Beaconfolio demo persona. Set the OWNER_*/SITE_* env vars to yours."
     )
     # Comma-separated public profile URLs (JSON-LD sameAs + contact links).
     social_links: str = ""
     # Google Analytics measurement id; empty disables analytics entirely — and
     # empty IS the default: analytics is opt-in for a general-portfolio
     # template, and a non-empty default was unreachable anyway in the only
-    # supported topology (compose forwards ``${HIREFOLIO_ANALYTICS_ID:-}``, so
+    # supported topology (compose forwards ``${BEACONFOLIO_ANALYTICS_ID:-}``, so
     # an unset host var arrives as "" and — deliberately, see the validator
     # below — stays "": empty is this field's documented off switch, #255
     # review round 1). The canonical deployment sets its id in the host .env.
     # Namespaced like the Gemini knobs (#141): an ambient generic name could
     # silently bind someone else's id.
-    analytics_id: str = Field(default="", validation_alias="HIREFOLIO_ANALYTICS_ID")
+    analytics_id: str = Field(default="", validation_alias="BEACONFOLIO_ANALYTICS_ID")
     # AI-crawler policy (#252) — "allow" (default) or "deny", served on
     # GET {api_prefix}/config/site and rendered into the SSR robots.txt.
     # Allow-by-default is the product thesis: recruiter research runs through AI
@@ -198,7 +200,7 @@ class Settings(BaseSettings):
     linkedin_cookies_dir: str = "/data/linkedin_cookies"
 
     # CORS
-    cors_origins: str = "http://localhost:4200,https://mavrov.de,https://www.mavrov.de,http://mavrov.de,http://www.mavrov.de"
+    cors_origins: str = "http://localhost:4200,https://beaconfolio.com,https://www.beaconfolio.com,http://beaconfolio.com,http://www.beaconfolio.com"
 
     # Default admin seeding.
     #
@@ -208,7 +210,7 @@ class Settings(BaseSettings):
     # is empty, so prod can never ship the historical ``admin``/``admin`` login.
     # Local dev / E2E seed their own throwaway credentials via
     # ``scripts/seed_e2e_user.py`` instead of relying on this path.
-    default_admin_email: str = "admin@mavrov.de"
+    default_admin_email: str = "admin@beaconfolio.com"
     admin_password: str = ""
 
     # Profile data (years API)
@@ -288,7 +290,7 @@ class Settings(BaseSettings):
     # NAME as an environment source, which would let the generic GEMINI_API_KEY
     # bind again and silently undo #141 (caught by
     # tests/test_config_gemini_env_isolation.py). Construct these fields by their
-    # alias — Settings(HIREFOLIO_GEMINI_API_KEY=...) — not by field name.
+    # alias — Settings(BEACONFOLIO_GEMINI_API_KEY=...) — not by field name.
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

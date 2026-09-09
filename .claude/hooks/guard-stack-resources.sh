@@ -3,8 +3,8 @@
 #
 # WHY THIS EXISTS — the single largest wall-clock loss of the v1.14.0 cycle, and
 # the only one that took the machine down rather than a PR:
-#   Parallel agents each composed their OWN Docker stack (`hirefolio-*`,
-#   `hirefolio250-*`, `mavrovde-*` running simultaneously). The disk reached zero,
+#   Parallel agents each composed their OWN Docker stack (`beaconfolio-*`,
+#   `beaconfolio250-*`, `mavrovde-*` running simultaneously). The disk reached zero,
 #   the Docker daemon crashed, and the harness could no longer even write command
 #   output — so the failure was invisible from inside the session that caused it.
 #   Recovery took roughly two hours across two sessions, and #322's round-1 fix
@@ -15,7 +15,7 @@
 #   images 15.35 GB · build cache 3.09 GB · volumes 6.97 GB.
 # A second stack does not fit beside the first on a laptop that had 7.7 GB free.
 # The repo's own E2E and integration tiers are deliberately built to REUSE the
-# `hirefolio` project for this reason (`run_integration_tests.sh` layers an
+# `beaconfolio` project for this reason (`run_integration_tests.sh` layers an
 # overlay onto the dev compose; it does not start a second project).
 #
 # WHAT IT DOES — two checks, only on commands that CREATE stack resources

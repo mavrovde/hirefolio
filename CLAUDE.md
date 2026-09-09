@@ -1,4 +1,4 @@
-# CLAUDE.md — Hirefolio (repo: mavrovde/hirefolio; the maintainer deploys it at mavrov.de)
+# CLAUDE.md — Beaconfolio (repo: mavrovde/beaconfolio; the maintainer deploys it at beaconfolio.com)
 
 Primary AI configuration for this repository. **Claude (Claude Code) is the main AI tool for
 this project.** This file is the single source of truth for how AI assistants work here; the
@@ -9,7 +9,7 @@ legacy per-tool rule files (`.cursorrules`, `.windsurfrules`, `.cline.md`, `.gem
 
 ## What this project is
 
-Personal portfolio + blog with semantic search and local AI. A LinkedIn → mavrov.de content
+Personal portfolio + blog with semantic search and local AI. A LinkedIn → beaconfolio.com content
 pipeline moves posts (and profile data) into the site.
 
 - **Frontend**: Angular 22 (standalone components, **RxJS Observables + `async` pipe** for state,
@@ -24,13 +24,11 @@ pipeline moves posts (and profile data) into the site.
 ```
 backend/    FastAPI app (app/api, app/services, app/models); tests/; conftest.py mocks heavy native libs
 frontend/   Angular 22 workspace — projects/public (SSR visitor app), projects/admin (CSR admin SPA),
-            projects/shared (@mavrov/shared lib); Vitest (per-project) + Playwright (public-e2e/admin-e2e)
+            projects/shared (@beaconfolio/shared lib); Vitest (per-project) + Playwright (public-e2e/admin-e2e)
 scraper/    LinkedIn scrapers — scrape-linkedin.js (profile) + scrape-posts.js (posts) → *_data.json
 importer/   Standalone LinkedIn → backend importer (POSTs to /api/app/linkedin/import-post)
-agents/     A2A multi-agent delivery team (independent of the importer)
 proxy/      Reverse proxy config
 scripts/    Repo-contract self-checks (live-freshness gate, PII guard) shared by pre-push + CI
-specs/      Feature specs (planned/done)
 ```
 
 ## Commands (run these; don't guess)
@@ -45,7 +43,7 @@ specs/      Feature specs (planned/done)
 - Tests (100% coverage each): `npm run test:coverage` (all) or `npm run test:{shared,public,admin}`
 - Build: `npm run build` (all) or `npm run build:{shared,public,admin}`. `shared` must build before the apps.
 - Serve: `npm start` (public, :4200) · `npm run start:admin` (admin, :4300)
-- Shared code lives in `@mavrov/shared`; apps consume it via the `SHARED_ENVIRONMENT` +
+- Shared code lives in `@beaconfolio/shared`; apps consume it via the `SHARED_ENVIRONMENT` +
   `AUTH_TOKEN_PROVIDER` injection tokens (public passes a null token; admin wires it to AuthService).
 
 **Full stack / verify / release**:
@@ -65,7 +63,7 @@ specs/      Feature specs (planned/done)
 **LinkedIn pipeline** (see `importer/README.md`, `scraper/WORKFLOW.md`):
 - Scrape: `cd scraper && PLAYWRIGHT_CHANNEL=chrome HEADLESS=false node scrape-linkedin.js` (profile)
   and `node scrape-posts.js` (posts). Session lives in `scraper/.chrome-profile/` (gitignored).
-- Import: `MAVROV_API_URL=... LINKEDIN_IMPORT_TOKEN=... python -m importer [--dry-run] [--publish]`.
+- Import: `BEACONFOLIO_API_URL=... LINKEDIN_IMPORT_TOKEN=... python -m importer [--dry-run] [--publish]`.
   Upserts by LinkedIn URN (idempotent); imported posts are drafts by default.
 
 ## Claude Code tooling in this repo
@@ -247,7 +245,7 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
     paid service with a live credential. **Rationale:** a real key wired into an automated test fires
     on *every* pipeline run — causing silent, unbounded, recurring cost and quota exhaustion — and
     needlessly exposes the credential to CI logs. Treat any such wiring as a critical bug to fix, not
-    to run. (In this repo: CI passes `HIREFOLIO_GEMINI_API_KEY: ""` so the E2E falls back to the local Ollama;
+    to run. (In this repo: CI passes `BEACONFOLIO_GEMINI_API_KEY: ""` so the E2E falls back to the local Ollama;
     paid-API specs are also mocked.)
 11. **Fix review findings IN the PR — do not convert them into new issues.** (Owner directive
     2026-09-06: "if the behavior was not confirmed by the reviewer during the review — do not
@@ -286,11 +284,11 @@ that adds or removes a tool; the #232 drift-check pattern is the model if it kee
 
 ## Issue tracking, milestones & labels (development flow)
 
-The repo is **PUBLIC** (`github.com/mavrovde/hirefolio`). This flow is the shared source of truth
+The repo is **PUBLIC** (`github.com/mavrovde/beaconfolio`). This flow is the shared source of truth
 for issue-driven work — humans and AI agents both follow it.
 
 1. **Issues are the project notebook.** Every idea, plan, bug, deferred fix, shipped milestone, and
-   research decision lives as a GitHub issue on `mavrovde/hirefolio` — never only in chat or personal
+   research decision lives as a GitHub issue on `mavrovde/beaconfolio` — never only in chat or personal
    memory. Register work as an issue up front; **close-the-loop** when it lands (see rule 7).
 2. **Full issue template (every issue):** Summary → Why it matters → Impact (project / developers /
    visitors) → Current state (grounded, cite `path:line`) → Proposed action → **Acceptance criteria**

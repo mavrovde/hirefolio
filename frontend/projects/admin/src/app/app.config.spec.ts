@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AUTH_TOKEN_PROVIDER } from '@mavrov/shared';
+import { AUTH_TOKEN_PROVIDER } from '@beaconfolio/shared';
 import { appConfig } from './app.config';
 import { AuthService } from './services/auth.service';
 

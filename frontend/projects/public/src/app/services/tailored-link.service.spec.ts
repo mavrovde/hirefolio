@@ -9,7 +9,7 @@ const VIEW: TailoredView = {
     role_title: 'Staff Engineer',
     headline_note: 'Hi Acme team',
     highlighted_skills: ['Angular'],
-    highlighted_projects: ['Hirefolio'],
+    highlighted_projects: ['Beaconfolio'],
     cv_version: 'acme-v1',
     cv_download_path: '/api/app/for/acme-staff-eng/cv',
 };

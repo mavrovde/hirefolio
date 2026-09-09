@@ -14,7 +14,7 @@ test.describe('Gemini Configuration', () => {
                     body: JSON.stringify({
                         id: 1,
                         username: 'admin',
-                        email: 'admin@mavrov.de',
+                        email: 'admin@beaconfolio.com',
                         is_admin: true,
                         has_gemini_key: !!data.api_key
                     })
@@ -33,7 +33,7 @@ test.describe('Gemini Configuration', () => {
                 body: JSON.stringify({
                     id: 1,
                     username: 'admin',
-                    email: 'admin@mavrov.de',
+                    email: 'admin@beaconfolio.com',
                     is_admin: true,
                     has_gemini_key: true
                 })

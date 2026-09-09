@@ -35,15 +35,15 @@ const REPO = join(FRONTEND, '..');
 
 /** Everything a forker re-brands. No owner name, no headshot, by design (#311). */
 const BRAND = {
-  name: process.env.BRAND_NAME ?? 'HIREFOLIO',
-  host: process.env.BRAND_HOST ?? 'hirefolio',
+  name: process.env.BRAND_NAME ?? 'BEACONFOLIO',
+  host: process.env.BRAND_HOST ?? 'beaconfolio',
   tagline:
     process.env.BRAND_TAGLINE ??
     'fork-and-go portfolio + recruiter comms for engineers',
   features: (
     process.env.BRAND_FEATURES ?? 'semantic search,local AI,recruiter inbox,self-hosted'
   ).split(','),
-  url: process.env.BRAND_URL ?? 'github.com/mavrovde/hirefolio',
+  url: process.env.BRAND_URL ?? 'github.com/mavrovde/beaconfolio',
 };
 
 /** width, height, output path — the two surfaces the artwork has to serve. */

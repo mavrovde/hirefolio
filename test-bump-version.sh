@@ -27,12 +27,12 @@ doc = CvDocument(
                 version="0.0.9",
 )
 app = FastAPI(
-    title="Hirefolio API",
+    title="Beaconfolio API",
     version="$ver",
 )
 PY
     printf '{\n  "name": "frontend",\n  "version": "%s"\n}\n' "$ver" > "$dir/frontend/package.json"
-    printf '{\n  "name": "@mavrov/shared",\n  "version": "%s"\n}\n' "$ver" > "$dir/frontend/projects/shared/package.json"
+    printf '{\n  "name": "@beaconfolio/shared",\n  "version": "%s"\n}\n' "$ver" > "$dir/frontend/projects/shared/package.json"
     printf "export const VERSION = '%s';\n" "$ver" > "$dir/frontend/projects/public/src/app/version.ts"
     printf '{\n  "version": "%s",\n  "packages": {\n    "": {\n      "version": "%s"\n    }\n  }\n}\n' \
         "$ver" "$ver" > "$dir/frontend/package-lock.json"

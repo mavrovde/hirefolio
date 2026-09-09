@@ -146,7 +146,7 @@ def test_empty_analytics_id_stays_empty():
     """analytics_id is the exception: empty is the documented OFF switch."""
     from app.config import Settings
 
-    s = Settings(HIREFOLIO_ANALYTICS_ID="", _env_file=None)
+    s = Settings(BEACONFOLIO_ANALYTICS_ID="", _env_file=None)
     assert s.analytics_id == ""
 
 

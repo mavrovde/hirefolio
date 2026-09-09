@@ -1,8 +1,8 @@
 import { Component, OnInit, Input, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { BlogService, BlogPost, BlogSearchResult } from '@mavrov/shared';
+import { BlogService, BlogPost, BlogSearchResult } from '@beaconfolio/shared';
 import { Observable, map, of, take } from 'rxjs';
-import { TranslatePipe } from '@mavrov/shared';
+import { TranslatePipe } from '@beaconfolio/shared';
 import { Router, RouterModule } from '@angular/router';
 import { SeoService } from '../../services/seo.service';
 import { SiteConfigService, DEFAULT_SITE_CONFIG, SiteConfig } from '../../services/site-config.service';

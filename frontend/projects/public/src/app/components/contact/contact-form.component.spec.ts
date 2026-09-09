@@ -3,8 +3,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { ContactFormComponent } from './contact-form.component';
 import { InteractionService } from '../../services/interaction.service';
-import { TranslatePipe } from '@mavrov/shared';
-import { MockTranslatePipe } from '@mavrov/shared/testing';
+import { TranslatePipe } from '@beaconfolio/shared';
+import { MockTranslatePipe } from '@beaconfolio/shared/testing';
 
 describe('ContactFormComponent', () => {
     let fixture: ComponentFixture<ContactFormComponent>;

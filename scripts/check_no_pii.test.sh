@@ -18,43 +18,41 @@ bad() { fail=$((fail+1)); printf '  ✗ %s\n     %s\n' "$1" "$2"; }
 # clean. $1 = temp dir. Callers then dirty exactly one file.
 skeleton() {
   d="$1"
-  mkdir -p "$d/docs/retrospectives" "$d/docs/agent-runs" "$d/docs/wiki" \
+  mkdir -p "$d/docs/retrospectives" "$d/docs/wiki" \
            "$d/.claude/agents" "$d/agents" "$d/.github/prompts" "$d/importer"
-  echo "# Hirefolio" > "$d/README.md"
-  echo "deploy Hirefolio at <your-domain>" > "$d/docs/DEPLOYMENT.md"
+  echo "# Beaconfolio" > "$d/README.md"
+  echo "deploy Beaconfolio at <your-domain>" > "$d/docs/DEPLOYMENT.md"
   echo "see <your-domain>" > "$d/docs/wiki/production-deployment.md"
   echo "v1.0.0 retro" > "$d/docs/retrospectives/v1.0.0.md"
-  echo "run log" > "$d/docs/agent-runs/run.md"
-  echo "You work on Hirefolio." > "$d/.claude/agents/backend-dev.md"
+  echo "You work on Beaconfolio." > "$d/.claude/agents/backend-dev.md"
   echo "# SITE_URL=https://example.com" > "$d/.env.example"
-  echo "You are part of the Hirefolio delivery team." > "$d/agents/PLAYBOOK.md"
-  echo "Hirefolio testing guide." > "$d/README_TESTING.md"
-  echo "Report at https://github.com/mavrovde/hirefolio/security/advisories/new" > "$d/SECURITY.md"
-  echo "A LinkedIn -> Hirefolio content pipeline." > "$d/.github/copilot-instructions.md"
-  echo "Prepare and check a release of Hirefolio." > "$d/.github/prompts/release-check.prompt.md"
-  echo "# Dependabot version updates for Hirefolio" > "$d/.github/dependabot.yml"
-  echo "Pushes your posts into your Hirefolio backend." > "$d/importer/README.md"
+  echo "You are part of the Beaconfolio delivery team." > "$d/.claude/PLAYBOOK.md"
+  echo "Beaconfolio testing guide." > "$d/README_TESTING.md"
+  echo "Report at https://github.com/mavrovde/beaconfolio/security/advisories/new" > "$d/SECURITY.md"
+  echo "A LinkedIn -> Beaconfolio content pipeline." > "$d/.github/copilot-instructions.md"
+  echo "Prepare and check a release of Beaconfolio." > "$d/.github/prompts/release-check.prompt.md"
+  echo "# Dependabot version updates for Beaconfolio" > "$d/.github/dependabot.yml"
+  echo "Pushes your posts into your Beaconfolio backend." > "$d/importer/README.md"
   # Surfaces round 2 proved unguarded under the old INCLUDE list — plus the rest
   # of the same class (every legacy per-tool rule file, every instructions file).
   mkdir -p "$d/.github/instructions" "$d/scraper"
   for g in AGENTS.md AI.md .cline.md .clauderules .cursorrules .geminirules .windsurfrules; do
-    echo "See CLAUDE.md; this project is Hirefolio." > "$d/$g"
+    echo "See CLAUDE.md; this project is Beaconfolio." > "$d/$g"
   done
-  echo "Images publish to ghcr.io/mavrovde/hirefolio-*." > "$d/.github/instructions/infra-ci.instructions.md"
-  echo "Scrape, then import into your Hirefolio backend." > "$d/scraper/WORKFLOW.md"
+  echo "Images publish to ghcr.io/mavrovde/beaconfolio-*." > "$d/.github/instructions/infra-ci.instructions.md"
+  echo "Scrape, then import into your Beaconfolio backend." > "$d/scraper/WORKFLOW.md"
   # Excluded classes: each must keep the domain WITHOUT tripping the guard.
-  mkdir -p "$d/specs/done" "$d/proxy" "$d/backend/app" "$d/agents/common" "$d/.github/workflows"
+  mkdir -p "$d/proxy" "$d/backend/app" "$d/agents/common" "$d/.github/workflows"
   echo "## v1.0.0 — moved off mavrov.de" > "$d/CHANGELOG.md"
-  echo "  - PUBLIC_SERVER_NAME=\${PUBLIC_SERVER_NAME:-mavrov.de}" > "$d/docker-compose.yml"
-  echo "spec: import into mavrov.de" > "$d/specs/done/06-importer.md"
-  echo "the maintainer deploys it at mavrov.de" > "$d/CLAUDE.md"
-  echo ': "${PUBLIC_SERVER_NAME:=mavrov.de}"' > "$d/proxy/entrypoint.sh"
-  echo "# defaults preserve the mavrov.de hostnames" > "$d/proxy/default.conf.template"
-  echo "          PUBLIC_URL: 'https://mavrov.de'" > "$d/.github/workflows/deploy.yml"
-  echo '    cors_origins: str = "https://mavrov.de"' > "$d/backend/app/config.py"
-  echo '"""A2A team for mavrov.de."""' > "$d/agents/common/roster.py"
-  echo '"""LinkedIn -> mavrov.de importer."""' > "$d/importer/core.py"
-  echo '{"headers": {"Host": "mavrov.de"}}' > "$d/verify_proxy_routes.py"
+  echo "  - PUBLIC_SERVER_NAME=\${PUBLIC_SERVER_NAME:-beaconfolio.com}" > "$d/docker-compose.yml"
+  echo "the maintainer deploys it at beaconfolio.com" > "$d/CLAUDE.md"
+  echo ': "${PUBLIC_SERVER_NAME:=beaconfolio.com}"' > "$d/proxy/entrypoint.sh"
+  echo "# defaults preserve the beaconfolio.com hostnames" > "$d/proxy/default.conf.template"
+  echo "          PUBLIC_URL: 'https://beaconfolio.com'" > "$d/.github/workflows/deploy.yml"
+  echo '    cors_origins: str = "https://beaconfolio.com"' > "$d/backend/app/config.py"
+  echo '"""A2A team for Beaconfolio."""' > "$d/agents/common/roster.py"
+  echo '"""LinkedIn -> Beaconfolio importer."""' > "$d/importer/core.py"
+  echo '{"headers": {"Host": "beaconfolio.com"}}' > "$d/verify_proxy_routes.py"
   ( cd "$d" && git init -q . && git add -A ) >/dev/null 2>&1
 }
 
@@ -142,7 +140,7 @@ done
 #     .github/instructions/*, scraper/WORKFLOW.md. The scope is now inverted, so
 #     this loop asserts the *whole class*, not a hand-maintained subset.
 for f in README.md docs/DEPLOYMENT.md docs/wiki/production-deployment.md \
-         .claude/agents/backend-dev.md .env.example agents/PLAYBOOK.md \
+         .claude/agents/backend-dev.md .env.example .claude/PLAYBOOK.md \
          README_TESTING.md SECURITY.md .github/copilot-instructions.md \
          .github/prompts/release-check.prompt.md .github/dependabot.yml \
          importer/README.md \
@@ -173,33 +171,59 @@ do
   rm -rf "$d"
 done
 
-# --- 5. Historical + runtime + application surfaces stay OUT of scope --------
-#     History must not be rewritten, a runtime default must not be repointed, and
-#     application code is a separate effort. Each entry here is a DEFERRAL of #313
-#     made executable — if one is ever de-branded, its exclusion comes off and the
-#     matching case here flips.
-for f in docs/retrospectives/v1.0.0.md docs/agent-runs/run.md CHANGELOG.md \
-         specs/done/06-importer.md CLAUDE.md \
-         docker-compose.yml proxy/entrypoint.sh proxy/default.conf.template \
-         .github/workflows/deploy.yml \
-         backend/app/config.py agents/common/roster.py importer/core.py \
-         verify_proxy_routes.py
+# --- 5. ONLY history stays out of scope (#330 executed the #313 deferrals) ---
+#     History must not be rewritten. Every OTHER former exclusion — runtime
+#     defaults, CLAUDE.md, application code — was renamed by #330 and is now
+#     guarded like any file.
+for f in docs/retrospectives/v1.0.0.md CHANGELOG.md \
+         specs/done/06-importer.md
 do
   d="$(mktemp -d)"; skeleton "$d"
   echo "we shipped mavrov.de v1.0.0 that day" >> "$d/$f"
   out="$(run "$d")"; rc=$?
-  [ "$rc" -eq 0 ] && ok "out of scope: $f" || bad "out of scope: $f" "rc=$rc, out=$out"
+  [ "$rc" -eq 0 ] && ok "out of scope (history): $f" || bad "out of scope: $f" "rc=$rc, out=$out"
   rm -rf "$d"
 done
 
-# --- 5b. The agents/ exclusion is NARROW, not the whole directory ------------
-#     agents/PLAYBOOK.md is the shared agent charter and must stay guarded even
-#     though its neighbours in agents/ are excluded application code.
+# --- 5a. The #313 deferrals are DEFERRED NO LONGER: each former exclusion now trips
+for f in CLAUDE.md docker-compose.yml proxy/entrypoint.sh proxy/default.conf.template \
+         .github/workflows/deploy.yml backend/app/config.py agents/common/roster.py \
+         importer/core.py verify_proxy_routes.py
+do
+  d="$(mktemp -d)"; skeleton "$d"
+  echo "deploy it at mavrov.de" >> "$d/$f"
+  out="$(run "$d")"; rc=$?
+  [ "$rc" -eq 1 ] && ok "former #313 deferral now IN scope: $f" \
+    || bad "former deferral still excluded: $f" "rc=$rc, out=$out"
+  rm -rf "$d"
+done
+
+# --- 5c. The OLD PRODUCT NAME is a violation too (#330) ----------------------
+for line in \
+  "clone the hirefolio repository and run setup" \
+  "the Hirefolio admin panel" \
+  "set HIREFOLIO_GEMINI_API_KEY in your .env"
+do
+  d="$(mktemp -d)"; skeleton "$d"
+  printf '%s\n' "$line" >> "$d/README.md"
+  out="$(run "$d")"; rc=$?
+  [ "$rc" -eq 1 ] && ok "old product name trips: ${line:0:34}…" \
+    || bad "old product name must trip: $line" "rc=$rc, out=$out"
+  rm -rf "$d"
+done
+
+# --- 5d. …but the legacy GHCR pin and MIXED-CASE domain behave correctly -----
 d="$(mktemp -d)"; skeleton "$d"
-echo "the mavrov.de delivery team" >> "$d/agents/PLAYBOOK.md"
+echo "tags <= 1.14.0 live at ghcr.io/mavrovde/hirefolio-backend" >> "$d/README.md"
 out="$(run "$d")"; rc=$?
-[ "$rc" -eq 1 ] && ok "agents/PLAYBOOK.md stays in scope beside excluded agents/ code" \
-  || bad "PLAYBOOK excluded with the rest of agents/" "rc=$rc, out=$out"
+[ "$rc" -eq 0 ] && ok "legacy ghcr.io/mavrovde/hirefolio pin is exempt" \
+  || bad "legacy pin exempt" "rc=$rc, out=$out"
+rm -rf "$d"
+d="$(mktemp -d)"; skeleton "$d"
+echo "LIFESPAN START: Mavrov.de API" >> "$d/README.md"
+out="$(run "$d")"; rc=$?
+[ "$rc" -eq 1 ] && ok "mixed-case Mavrov.de is caught (the #330 sweep missed 3 of these)" \
+  || bad "mixed case caught" "rc=$rc, out=$out"
 rm -rf "$d"
 
 # --- 6. Check A still gates, and the two checks are independent -------------

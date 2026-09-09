@@ -1,7 +1,7 @@
 ---
 name: lessons-learned
 description: >-
-  The committed "do-not-repeat" knowledge base for Hirefolio — hard-won operational lessons
+  The committed "do-not-repeat" knowledge base for Beaconfolio — hard-won operational lessons
   and footguns that unit tests and PR CI do NOT catch. Consult BEFORE touching the frontend
   SSR/HTTP/change-detection path, running backend pytest locally, adding a GitHub Actions
   cache, deciding a release SemVer bump, running destructive local/infra commands, writing any
@@ -23,7 +23,7 @@ description: >-
   fresh contexts and teammates don't re-research answers we already have.
 ---
 
-# Lessons learned — Hirefolio (do not repeat)
+# Lessons learned — Beaconfolio (do not repeat)
 
 This is the **in-repo** home for durable, hard-won lessons — the things that cost us a revert, a red
 pipeline, or a wasted research loop. It complements `CLAUDE.md` (the rules) with the *why* and the
@@ -97,14 +97,14 @@ change to ship the rest, then redo it properly (never leave `main` red).
 
 ## 4. Backend pytest local DB — isolation rules (or it hangs / wipes the dev DB)
 
-- **Always** export `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio`
+- **Always** export `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_beaconfolio`
   (`test_mavrov` before the #288 rename)
-  and `HIREFOLIO_GEMINI_API_KEY=""` before `./venv/bin/pytest`. This is exactly what
+  and `BEACONFOLIO_GEMINI_API_KEY=""` before `./venv/bin/pytest`. This is exactly what
   `.claude/hooks/pre-push-tests.sh` sets. Without it, `conftest.get_test_engine()` falls back to the
   **live `mavrov` dev DB**, and the per-test `Base.metadata.drop_all` **hangs** on the running backend
   container's table locks (and would wipe the dev DB if it didn't block).
-- The `test_hirefolio` DB lives in the db container. Create if missing:
-  `docker exec hirefolio-db-1 psql -U postgres -p 5433 -c "CREATE DATABASE test_hirefolio"`
+- The `test_beaconfolio` DB lives in the db container. Create if missing:
+  `docker exec beaconfolio-db-1 psql -U postgres -p 5433 -c "CREATE DATABASE test_beaconfolio"`
   (conftest also creates it on demand).
 - **2026-09-06 addendum — the rule is now ENFORCED IN CODE, because documentation did not stop
   the recurrence.** This exact lesson was on record, and an agent still ran ad-hoc
@@ -116,7 +116,7 @@ change to ship the rest, then redo it properly (never leave `main` red).
   refuses (`pytest.exit`) any resolved DB whose name doesn't start with `test_` (#260/#261).
   Meta-lesson: when a footgun recurs despite being documented, the fix is a GUARD, not a louder
   paragraph — same class as items 18 (gates must gate) and the #142/#177 startup refusals.
-- **Never run two full pytest suites against the shared `test_hirefolio` at once** (e.g. a manual run while the
+- **Never run two full pytest suites against the shared `test_beaconfolio` at once** (e.g. a manual run while the
   pre-push hook fires). Both do `drop_all`/`create_all` per test on the same DB and clobber each other
   → dozens of spurious `InvalidRequestError: Could not refresh instance` / count-mismatch failures.
   Serialize them.
@@ -216,7 +216,7 @@ test job's env "so the feature works", turns green CI into a money leak.
    `${{ secrets.* }}`. Real credentials belong **only** to the production runtime environment.
 Before writing or running any test/CI path, verify it cannot reach a paid service with a live
 credential. In review, treat a real paid-service secret in a test stack — or an unmocked paid-API
-test — as a **blocker**. In this repo: `deploy.yml` passes `HIREFOLIO_GEMINI_API_KEY: ""` to the E2E stack (→
+test — as a **blocker**. In this repo: `deploy.yml` passes `BEACONFOLIO_GEMINI_API_KEY: ""` to the E2E stack (→
 Ollama fallback) and the admin AI-suggestion specs mock `/posts/suggest-*`. This is **CLAUDE.md
 rule 10**.
 
@@ -425,7 +425,7 @@ is the bug**: extract it, or the next fix will miss a branch too (rule 1, applie
 
 ## 20. Renaming a repo does not carry the container packages with it
 
-Renaming `mavrovde/mavrov.de` → `mavrovde/hirefolio` changed CI's publish target, because it derives <!-- de-brand:historical: verbatim rename record, #313 -->
+Renaming `mavrovde/beaconfolio.com` → `mavrovde/beaconfolio` changed CI's publish target, because it derives <!-- de-brand:historical: verbatim rename record, #313 -->
 from `${{ github.repository }}`. The consequences are not obvious: **new GHCR packages are created
 private, and package visibility does not follow a repository rename**, while the prod host pulls
 anonymously with no `docker login`. Previously published tags stay at the *old* path forever, so
@@ -716,7 +716,7 @@ failures. With agents working in parallel it blocked four pushes in one session,
 temptation was to retry rather than read the log.
 
 **The rule:** when two workers contend for a resource, give each its own instead of taking turns.
-The gate now uses `test_hirefolio_prepush` (`test_mavrov_prepush` before the #288 rename) (conftest creates databases on demand and only drops
+The gate now uses `test_beaconfolio_prepush` (`test_mavrov_prepush` before the #288 rename) (conftest creates databases on demand and only drops
 TABLES, so nothing accumulates) and runs `-n auto`, which is how CI runs it and additionally gives
 every xdist worker its own `_gwN` database. A detector that samples at a point in time cannot prevent a race;
 separate namespaces can. (Two concurrent pre-push runs would still share the gate's own name —
@@ -909,7 +909,7 @@ Three blocker-level review findings in ONE release, plus two priors:
 | PR | What the docs promised | What was measured |
 |---|---|---|
 | #296 | prod `--profile mail` + `SMTP_*` in `.env` | `docker compose -f docker-compose.prod.yml config` → backend has 35 env keys, **none** SMTP/MAIL |
-| #297 | `setup.sh:150` + `README.md:509`: set `HIREFOLIO_TELEGRAM_BOT_TOKEN`… | `TELEGRAM present: []  NOTIFY present: []  env_file: None` — a "2-minute setup" that could not work |
+| #297 | `setup.sh:150` + `README.md:509`: set `BEACONFOLIO_TELEGRAM_BOT_TOKEN`… | `TELEGRAM present: []  NOTIFY present: []  env_file: None` — a "2-minute setup" that could not work |
 | #298 | `.env.example:190-195`: `TRANSLATION_ENABLED=false` | `docker exec … env \| grep -c` → **0**; AC5 undeliverable |
 | #256 (prior) | `setup.sh` printed admin credentials | `ADMIN_PASSWORD` never reached the container; backend took the refuse-to-seed branch |
 | #228 (prior) | LinkedIn importer token | dev stack never forwarded it; a configured token silently 401'd |
@@ -1023,7 +1023,7 @@ is the cheap signal that arrives before the damage.
 
 ## 44. On a SHARED host, the host is not yours — and three defaults assume it is (#310)
 
-Every item below was measured on the tree at 2026-09-07, when the owner moved hirefolio onto a
+Every item below was measured on the tree at 2026-09-07, when the owner moved beaconfolio onto a
 **multi-project** box with **no server panel**. Each default is harmless on a dedicated machine and a
 cross-project outage on a shared one.
 
@@ -1048,8 +1048,8 @@ cross-project outage on a shared one.
   looks exactly like total loss. Pin it explicitly, and on an existing host pin **the name already
   in use**, read off the host first — the same continuity rule as the #288 `POSTGRES_DB` pin.
 - **Do not put a shared edge in the rolled service list.** `proxy` is in `APP_SERVICES`
-  (`deploy.yml:934`), so every hirefolio rollout — and every rollback — recreates it. That is fine
-  while the proxy serves only hirefolio, and an outage for every tenant the moment it is shared.
+  (`deploy.yml:934`), so every beaconfolio rollout — and every rollback — recreates it. That is fine
+  while the proxy serves only beaconfolio, and an outage for every tenant the moment it is shared.
 
 Also measured, and the reason the edge must forward to the tenant's **443** and not its 80:
 `proxy/default.conf.template` has an unconditional `return 301 https://` block that `listen 80` and
@@ -1074,7 +1074,7 @@ root, without `contains`** (a pattern with no wildcard now means "that directory
 
 Root cause, found by diffing the **file keys of `coverage-final.json`** before vs after (not by
 reading percentages): `exclude: ['testing/**']` was written for `projects/shared/testing/**` (the
-`@mavrov/shared/testing` entry point). Under v4's `contains` matching it *also* silently swallowed
+`@beaconfolio/shared/testing` entry point). Under v4's `contains` matching it *also* silently swallowed
 `src/lib/testing/**`, so `mock-language.service.ts` and `mock-translate.pipe.ts` were never measured.
 v5 matches precisely, so those two files entered the report — and they were already at 100%, which is
 exactly why nothing went red.
@@ -1202,7 +1202,7 @@ list turns **14 of 60** cases red.
 Corollaries worth keeping: **name exclusions file-by-file, not by directory** (`.github/workflows/deploy.yml`,
 not `.github/workflows/*`) so a *new* file in a mostly-excluded directory is still guarded — and
 when an exclusion must be broad, pin the survivor: `agents/*.py` + `agents/common/*` are excluded
-while `agents/PLAYBOOK.md` stays in scope, with a case asserting exactly that. And test the
+while `.claude/PLAYBOOK.md` stays in scope, with a case asserting exactly that. And test the
 fail-closed property directly: the suite creates files at paths that appear nowhere in the checker
 and asserts they are caught from birth.
 
@@ -1359,7 +1359,7 @@ order explicitly in the review. #323's reviewer did exactly that, and it is what
 ## 54. One machine, ONE stack — and concurrent agents need their own worktree (v1.14.0)
 
 The cycle's largest wall-clock loss was not a defect. Parallel agents each composed their own Docker
-project (`hirefolio-*`, `hirefolio250-*`, `mavrovde-*` at once); the disk reached zero, the Docker
+project (`beaconfolio-*`, `beaconfolio250-*`, `mavrovde-*` at once); the disk reached zero, the Docker
 daemon crashed, and the harness could no longer write command output — so the session that caused it
 could not see it. Recovery took about two hours across two sessions, and #322's round-1 fix report had
 to ship with its backend gates declared **unmeasured**.
@@ -1367,7 +1367,7 @@ to ship with its backend gates declared **unmeasured**.
 The arithmetic, measured with `docker system df` on 2026-09-09: **images 15.35 GB, build cache
 3.09 GB, volumes 6.97 GB** for ONE stack of this project. A second does not fit beside the first on a
 laptop with single-digit GB free. The repo's own E2E and integration tiers are built to reuse the
-`hirefolio` project for exactly this reason.
+`beaconfolio` project for exactly this reason.
 
 A cheaper collision the same cycle: two agents shared ONE checkout, so #317's branch briefly carried
 #318's commit and needed a rebase, and a later agent had the branch switched under it mid-run.

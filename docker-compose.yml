@@ -18,14 +18,14 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-hirefolio}
+      POSTGRES_DB: ${POSTGRES_DB:-beaconfolio}
       PGPORT: ${POSTGRES_PORT:-5433}
     ports:
       - "${POSTGRES_PORT:-5433}:${POSTGRES_PORT:-5433}"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-hirefolio} -p ${POSTGRES_PORT:-5433}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-beaconfolio} -p ${POSTGRES_PORT:-5433}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -81,17 +81,17 @@ services:
       # (see LINKEDIN_COOKIES_DIR / app.services.linkedin.COOKIES_DIR).
       - linkedin_cookies:/data/linkedin_cookies
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:${POSTGRES_PORT:-5433}/${POSTGRES_DB:-hirefolio}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:${POSTGRES_PORT:-5433}/${POSTGRES_DB:-beaconfolio}
       - OLLAMA_URL=http://ollama:11434
       - GENERATION_MODEL=llama3.2
       - FAST_GENERATION_MODEL=llama3.2:1b
       - OTEL_SDK_DISABLED=true
       - CREWAI_TELEMETRY_OPT_OUT=true
-      - HIREFOLIO_GEMINI_API_KEY=${HIREFOLIO_GEMINI_API_KEY}
+      - BEACONFOLIO_GEMINI_API_KEY=${BEACONFOLIO_GEMINI_API_KEY}
       # Notification channels (#263): empty = channel off, exactly like SMTP.
-      - HIREFOLIO_TELEGRAM_BOT_TOKEN=${HIREFOLIO_TELEGRAM_BOT_TOKEN:-}
-      - HIREFOLIO_TELEGRAM_CHAT_ID=${HIREFOLIO_TELEGRAM_CHAT_ID:-}
-      - HIREFOLIO_NOTIFY_WEBHOOK_URL=${HIREFOLIO_NOTIFY_WEBHOOK_URL:-}
+      - BEACONFOLIO_TELEGRAM_BOT_TOKEN=${BEACONFOLIO_TELEGRAM_BOT_TOKEN:-}
+      - BEACONFOLIO_TELEGRAM_CHAT_ID=${BEACONFOLIO_TELEGRAM_CHAT_ID:-}
+      - BEACONFOLIO_NOTIFY_WEBHOOK_URL=${BEACONFOLIO_NOTIFY_WEBHOOK_URL:-}
       - NOTIFY_TIMEOUT_SECONDS=${NOTIFY_TIMEOUT_SECONDS:-10}
       # Transparent translation (#248): without these forwards the knobs in
       # the root .env are INERT — config.py's env_file resolves inside the
@@ -111,14 +111,14 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - SMTP_STARTTLS=${SMTP_STARTTLS:-false}
-      - SMTP_FROM=${SMTP_FROM:-hirefolio@localhost}
+      - SMTP_FROM=${SMTP_FROM:-beaconfolio@localhost}
       # Names ONLY (never values) of pre-#141 variables still set on the host, so
       # the backend can warn that they are ignored (#141). A credential never
       # enters the container through this.
       - LEGACY_GEMINI_ENV=${GEMINI_API_KEY:+GEMINI_API_KEY }${GEMINI_ENCRYPTION_KEY:+GEMINI_ENCRYPTION_KEY }${GEMINI_MODEL:+GEMINI_MODEL }${GEMINI_MODEL_FALLBACK:+GEMINI_MODEL_FALLBACK}
       # SECURITY (issue #143): Fernet key that encrypts the per-user Gemini API
       # key at rest. Optional locally (empty = plaintext passthrough).
-      - HIREFOLIO_GEMINI_ENCRYPTION_KEY=${HIREFOLIO_GEMINI_ENCRYPTION_KEY:-}
+      - BEACONFOLIO_GEMINI_ENCRYPTION_KEY=${BEACONFOLIO_GEMINI_ENCRYPTION_KEY:-}
       # SECURITY (issue #177): admin JWTs are signed with JWT_SECRET_KEY, which
       # has no default any more (prod refuses to start without it). The local
       # dev stack opts into a random per-process secret instead of committing a
@@ -165,7 +165,7 @@ services:
       - OWNER_HEADLINE=${OWNER_HEADLINE:-}
       - OWNER_DESCRIPTION=${OWNER_DESCRIPTION:-}
       - SOCIAL_LINKS=${SOCIAL_LINKS:-}
-      - HIREFOLIO_ANALYTICS_ID=${HIREFOLIO_ANALYTICS_ID:-}
+      - BEACONFOLIO_ANALYTICS_ID=${BEACONFOLIO_ANALYTICS_ID:-}
       # AI-crawler policy (#252): allow (default) | deny — rendered into the
       # SSR robots.txt via GET /config/site.
       - AI_CRAWLER_POLICY=${AI_CRAWLER_POLICY:-}
@@ -248,9 +248,9 @@ services:
     logging: *default-logging
     environment:
       # Owner-configurable proxy identity (see .env.example). Defaults preserve
-      # the canonical mavrov.de behavior; a forker overrides these in the root .env.
-      - PUBLIC_SERVER_NAME=${PUBLIC_SERVER_NAME:-mavrov.de www.mavrov.de}
-      - ADMIN_SERVER_NAME=${ADMIN_SERVER_NAME:-admin.mavrov.de admin.localhost}
+      # the canonical beaconfolio.com behavior; a forker overrides these in the root .env.
+      - PUBLIC_SERVER_NAME=${PUBLIC_SERVER_NAME:-beaconfolio.com www.beaconfolio.com}
+      - ADMIN_SERVER_NAME=${ADMIN_SERVER_NAME:-admin.beaconfolio.com admin.localhost}
       # Admin console hardening (#86). Closed by default (loopback only); set
       # trusted operator CIDRs to open. See docker-compose.prod.yml for details.
       - ADMIN_ALLOWED_CIDRS=${ADMIN_ALLOWED_CIDRS:-}

@@ -16,8 +16,8 @@
     "module": "preserve",
     "resolveJsonModule": true,
     "paths": {
-      "@mavrov/shared": ["./projects/shared/src/public-api.ts"],
-      "@mavrov/shared/testing": ["./projects/shared/testing/public-api.ts"]
+      "@beaconfolio/shared": ["./projects/shared/src/public-api.ts"],
+      "@beaconfolio/shared/testing": ["./projects/shared/testing/public-api.ts"]
     }
   },
   "angularCompilerOptions": {

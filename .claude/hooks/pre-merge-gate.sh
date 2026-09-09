@@ -398,8 +398,8 @@ past_deadline && deny "could not finish within ${DEADLINE_SECONDS}s — an unana
 # repo: `## Round 3 — ✅ APPROVED` and `## Round 2 — ⛔ REJECTED (…)` (#255), and
 # `PR-REVIEWER VERDICT: APPROVE` (#171). The first is already pinned as a case in
 # pre-merge-gate.test.sh. Tightening buys the residual at the price of rejecting
-# those. The GUARD is therefore the charter convention (`pr-reviewer.md` +
-# `agents/PLAYBOOK.md`: a fix report opens "## Round N — what changed", never with
+# those. The GUARD is therefore the charter convention (`pr-reviewer.md`
+# charter: a fix report opens "## Round N — what changed", never with
 # a marker), and a case asserting the residual could never fail, so it is
 # documented rather than tested (the #240 answer, applied again).
 #

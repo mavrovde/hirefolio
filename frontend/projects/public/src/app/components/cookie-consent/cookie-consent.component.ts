@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TranslatePipe } from '@mavrov/shared';
-import { StorageService } from '@mavrov/shared';
+import { TranslatePipe } from '@beaconfolio/shared';
+import { StorageService } from '@beaconfolio/shared';
 
 @Component({
     selector: 'app-cookie-consent',

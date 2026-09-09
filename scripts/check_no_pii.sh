@@ -30,37 +30,14 @@
 # per-tool rule file is guarded from the moment it exists, and adding an exemption
 # is a visible diff to this list.
 #
-# So the list below IS the deferred list of #313 — executable rather than prose:
-#   CHANGELOG.md, docs/retrospectives/, docs/agent-runs/, specs/done/
-#       — immutable history; the domain is part of the record.
-#   docker-compose*.yml, proxy/entrypoint.sh, proxy/default.conf.template,
-#   .github/workflows/deploy.yml, .github/workflows/live-freshness.yml
-#       — REAL RUNTIME FALLBACKS (PUBLIC_SERVER_NAME / ADMIN_SERVER_NAME /
-#         PUBLIC_URL). Changing a default here repoints a live deployment, which
-#         #313 AC5 excludes. Named file-by-file, NOT `proxy/*` or
-#         `.github/workflows/*`: a new workflow or proxy file is still guarded.
-#   CLAUDE.md
-#       — 2 hits; line 1 is already a canonical aside. An agent may not edit
-#         CLAUDE.md on another agent's instruction, so this needs the maintainer.
-#   backend/, frontend/
-#       — application code AND behaviour: `cors_origins` is a live security
-#         default; the frontend residue is the admin tab title
-#         (projects/admin/src/index.html:6) and an export header string
-#         (projects/public/.../llm.component.ts:322) — not the @mavrov/shared
-#         package name, which is a separate rename effort.
-#   agents/*.py, agents/common/, agents/README.md, agents/requirements.txt
-#       — the A2A subsystem: application code with its own pytest suite
-#         (autonomous.py:1, common/tools.py:3, common/roster.py, common/server.py).
-#         agents/PLAYBOOK.md is deliberately NOT excluded — it is the shared agent
-#         charter and is de-branded.
-#   importer/*.py
-#       — application code (docstrings + argparse --help); the operator-facing
-#         importer/README.md IS in scope and is de-branded.
-#   verify_proxy_routes.py, verify_proxy_startup.sh
-#       — `Host:` headers and a cert filename that verify_all.sh asserts against;
-#         changing them changes what the suite verifies.
+# So the list below is what remains after #330 EXECUTED #313's deferred list —
+# every former runtime-fallback exclusion (compose files, proxy defaults,
+# workflows, CLAUDE.md, backend/, frontend/, agents/, importer/, the proxy
+# verifiers) was renamed to the product identity and is now IN SCOPE:
+#   CHANGELOG.md, docs/retrospectives/
+#       — immutable history; the old identity is part of the record.
 #   scripts/check_no_pii.sh, scripts/check_no_pii.test.sh
-#       — this checker and its fixtures carry the pattern by construction (§46).
+#       — this checker and its fixtures carry the patterns by construction (§46).
 #
 # A line inside the scope may keep the domain ONLY if it carries one of three
 # NAMESPACED annotations, on the SAME line (an exception must be deliberate and
@@ -68,7 +45,8 @@
 #   * `<!-- de-brand:canonical: … -->`  — an explicitly-marked canonical-deployment-instance aside
 #   * `<!-- de-brand:historical: … -->` — a historical record; the comment annotates an
 #                                         incident narrative WITHOUT rewriting it
-#   * ghcr.io/mavrovde/mavrov.de        — a pre-rename GHCR image path (#88)
+#   * ghcr.io/mavrovde/mavrov.de        — a pre-#88-rename GHCR image path
+#   * ghcr.io/mavrovde/hirefolio        — a pre-#330-rename GHCR image path (tags ≤ 1.14.0)
 #
 # The `de-brand:` namespace and the exact lowercase spelling are load-bearing, and
 # so is matching CONTENT ONLY. Round 1 of #318 shipped this as three BARE words
@@ -111,7 +89,6 @@ PATTERNS='serg\.mavrov|smavrov|sergii|G-1QSMT6N045'
 hits=$(git grep -inE "$PATTERNS" -- . \
   ':(exclude)LICENSE' \
   ':(exclude)CHANGELOG.md' \
-  ':(exclude)specs/done/*' \
   ':(exclude)scripts/check_no_pii.sh' \
   2>/dev/null)
 
@@ -129,7 +106,7 @@ fi
 # --- CHECK B: no maintainer-domain branding on current-guidance surfaces -----
 # Case-SENSITIVE and namespaced on purpose (see the header): only a deliberate
 # `de-brand:` marker, or the literal legacy GHCR path, exempts a line.
-GUIDANCE_ANNOTATIONS='de-brand:(canonical|historical)|ghcr\.io/mavrovde/mavrov\.de'
+GUIDANCE_ANNOTATIONS='de-brand:(canonical|historical)|ghcr\.io/mavrovde/(mavrov\.de|hirefolio)'
 
 # Ask git only for the FILE LIST, then let awk read each file and judge its lines.
 # The marker is therefore tested against file CONTENT and nothing else. Filtering
@@ -138,40 +115,23 @@ GUIDANCE_ANNOTATIONS='de-brand:(canonical|historical)|ghcr\.io/mavrovde/mavrov\.
 # the prefix textually does not fix that, because a path may itself contain `:`.
 # Reading the file is the only formulation with no prefix to parse. `-z` keeps
 # paths with spaces intact; the report re-creates `path:line:content` itself.
-brand=$(git grep -zilE 'mavrov\.de' -- '.' \
+brand=$(git grep -zilE 'mavrov\.de|hirefolio' -- '.' \
   ':(exclude)CHANGELOG.md' \
   ':(exclude)docs/retrospectives/*' \
-  ':(exclude)docs/agent-runs/*' \
-  ':(exclude)specs/done/*' \
-  ':(exclude)CLAUDE.md' \
-  ':(exclude)docker-compose*.yml' \
-  ':(exclude)proxy/entrypoint.sh' \
-  ':(exclude)proxy/default.conf.template' \
-  ':(exclude).github/workflows/deploy.yml' \
-  ':(exclude).github/workflows/live-freshness.yml' \
-  ':(exclude)backend/*' \
-  ':(exclude)frontend/*' \
-  ':(exclude)agents/*.py' \
-  ':(exclude)agents/common/*' \
-  ':(exclude)agents/README.md' \
-  ':(exclude)agents/requirements.txt' \
-  ':(exclude)importer/*.py' \
-  ':(exclude)verify_proxy_routes.py' \
-  ':(exclude)verify_proxy_startup.sh' \
   ':(exclude)scripts/check_no_pii.sh' \
   ':(exclude)scripts/check_no_pii.test.sh' \
   2>/dev/null | while IFS= read -r -d '' f; do
     awk -v f="$f" -v pat="$GUIDANCE_ANNOTATIONS" '
-      tolower($0) ~ /mavrov\.de/ && $0 !~ pat { printf "%s:%d:%s\n", f, FNR, $0 }
+      tolower($0) ~ /mavrov\.de|hirefolio/ && $0 !~ pat { printf "%s:%d:%s\n", f, FNR, $0 }
     ' "$f"
   done)
 
 if [ -n "$brand" ]; then
-  echo "✗ De-brand guard (#313): the maintainer's domain appears, unannotated, on a"
-  echo "  CURRENT-GUIDANCE surface — docs written for whoever deploys Hirefolio:"
+  echo "✗ De-brand guard (#313/#330): a retired identity (mavrov.de or the old product"
+  echo "  name hirefolio) appears, unannotated, on a CURRENT-GUIDANCE surface:"
   printf '%s\n' "$brand"
   echo "  Fix it one of three ways (the marker must be on the SAME line, exactly as spelled):"
-  echo "    * write the product voice instead — 'Hirefolio', '<your-domain>', 'example.com';"
+  echo "    * write the product voice instead — 'Beaconfolio', '<your-domain>', 'example.com';"
   echo "    * if the line is genuinely an aside about the canonical deployment INSTANCE,"
   echo "      append '<!-- de-brand:canonical: … -->' — README keeps exactly one such aside;"
   echo "    * if it is a historical record, annotate WITHOUT rewriting the narrative:"

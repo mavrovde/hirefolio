@@ -5,7 +5,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
 import { authInterceptor } from './interceptors/auth.interceptor';
 import { AuthService } from './services/auth.service';
-import { AUTH_TOKEN_PROVIDER, provideSharedEnvironment } from '@mavrov/shared';
+import { AUTH_TOKEN_PROVIDER, provideSharedEnvironment } from '@beaconfolio/shared';
 import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {

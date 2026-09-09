@@ -1,7 +1,7 @@
 # Production deployment — panel-free SSH flow on a multi-project Linux host
 
 Everything needed to take a bare Linux VPS to a hardened, multi-tenant host that
-serves hirefolio (and its neighbours) over valid, auto-renewing HTTPS, rolls a
+serves beaconfolio (and its neighbours) over valid, auto-renewing HTTPS, rolls a
 release automatically, health-gates it, and rolls back when it fails — operated
 entirely over SSH.
 
@@ -10,7 +10,7 @@ entirely over SSH.
 > (a) **NO 1Panel and no server panel of any kind** — clear SSH access, operating
 > directly on the OS: distro package manager, Docker Engine + compose plugin,
 > systemd/journald, plain logs; (b) **the host is shared by multiple projects** —
-> hirefolio is one tenant among several, not the owner of the machine.
+> beaconfolio is one tenant among several, not the owner of the machine.
 
 > Any proposal that reintroduces a panel, or that assumes exclusive ownership of
 > the host, is out of scope by decision.
@@ -28,11 +28,11 @@ Two documents, one split — keep them that way or they drift:
 | **`docs/DEPLOYMENT.md`** | The compose project runbook: environment variables, image coordinates, rollout secrets, per-release operator actions. |
 | **`.claude/skills/ssh-deploy/`** | The agent-executable operational loop distilled from this article (deploy, verify, roll back, read logs, the traps). |
 
-**Who this is written for.** Hirefolio is an open project, and this article is
+**Who this is written for.** Beaconfolio is an open project, and this article is
 written for **anyone deploying it**, not for one installation. Hostnames appear as
 `<your-domain>` / `admin.<your-domain>` where you substitute your own, and as
-`example.com` in configuration samples; the deploy directory is `/opt/hirefolio`
-and the compose project is `hirefolio`. (`mavrov.de` is simply the canonical <!-- de-brand:canonical: #315's instance aside, marker added by #313 -->
+`example.com` in configuration samples; the deploy directory is `/opt/beaconfolio`
+and the compose project is `beaconfolio`. (`beaconfolio.com` is simply the canonical <!-- de-brand:canonical: #315's instance aside, marker added by #313 -->
 deployment instance of this product — nothing here is specific to it.)
 
 Assumed distro: **Ubuntu LTS**. 24.04 LTS "Noble Numbat" is the conservative
@@ -75,7 +75,7 @@ rotate or disable it once key-only access is confirmed working.
 - [ ] **[owner]** Sizing. **Measured against this stack on 2026-09-07**, warm,
       with all three models resident:
 
-  | Resource | hirefolio alone | Shared host (recommended) | Where it goes |
+  | Resource | beaconfolio alone | Shared host (recommended) | Where it goes |
   |---|---|---|---|
   | **RAM** | **8 GB minimum** | **16 GB** | Measured warm: `ollama` **4.195 GiB** (the driver — `OLLAMA_KEEP_ALIVE=-1` keeps 3 models resident), `open-webui` 863 MiB, `db` 168 MiB, `backend` 85 MiB, `frontend` 57 MiB, `admin-frontend` 10 MiB, `proxy` 5 MiB ⇒ **≈ 5.4 GiB**, plus ~1 GB for the OS. 8 GB leaves little for a neighbour; that is why 16 GB is the shared-host number. |
   | **Disk** | **40 GB minimum** | **60–80 GB** | Images ≈ **15.9 GB** for one copy — and two of them dominate: `ollama/ollama:0.5.7` **7.29 GB** and `open-webui:v0.11.0` **6.51 GB** (the four app images total only 1.5 GB). Volumes: `ollama_data` **3.6 GB** (the models again, on disk), `open-webui_data` ~1.1 GB, `postgres_data` grows with content. Add ~1.5 GB because a rollout holds the old **and** new image tags at once, ~0.3 GB of capped logs, and the OS. 25 GB will fill. |
@@ -188,7 +188,7 @@ signing key is an open admin door that looks completely normal in the logs.
 
   ```bash
   # on the server, appending straight into the .env — the value is never displayed
-  printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> /opt/hirefolio/.env
+  printf 'JWT_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> /opt/beaconfolio/.env
   ```
 
 - **Nobody memorizes it or needs a copy.** It lives in the host `.env` (mode 600)
@@ -208,7 +208,7 @@ signing key is an open admin door that looks completely normal in the logs.
 
 **Optional — each is off when empty, by design:**
 
-- [ ] **[owner]** `HIREFOLIO_GEMINI_API_KEY` (+ `HIREFOLIO_GEMINI_ENCRYPTION_KEY`,
+- [ ] **[owner]** `BEACONFOLIO_GEMINI_API_KEY` (+ `BEACONFOLIO_GEMINI_ENCRYPTION_KEY`,
       a Fernet key, to encrypt it at rest). Without it the AI features fall back to
       the in-stack Ollama at no cost. **A real key never goes anywhere near CI**
       (rule 10).
@@ -216,8 +216,8 @@ signing key is an open admin door that looks completely normal in the logs.
       FROM`) — **external provider recommended**. Most VPS providers block
       outbound **port 25** entirely, so the bundled self-hosted relay usually
       cannot deliver at all (item 5).
-- [ ] **[owner]** `HIREFOLIO_TELEGRAM_BOT_TOKEN` + `HIREFOLIO_TELEGRAM_CHAT_ID`
-      (two minutes with `@BotFather`) and/or `HIREFOLIO_NOTIFY_WEBHOOK_URL`. These
+- [ ] **[owner]** `BEACONFOLIO_TELEGRAM_BOT_TOKEN` + `BEACONFOLIO_TELEGRAM_CHAT_ID`
+      (two minutes with `@BotFather`) and/or `BEACONFOLIO_NOTIFY_WEBHOOK_URL`. These
       are also the natural target for the certificate-expiry alarm.
 
 **Decided, not generated:**
@@ -227,7 +227,7 @@ signing key is an open admin door that looks completely normal in the logs.
 - [ ] **[agent-at-cutover]** `PROXY_HTTP_PUBLISH` / `PROXY_HTTPS_PUBLISH` —
       loopback high ports from the port registry.
 - [ ] **`POSTGRES_DB` needs NO pin on a fresh server.** A new volume initializes
-      as `hirefolio` and everything matches (#288). A `POSTGRES_DB` pin applies
+      as `beaconfolio` and everything matches (#288). A `POSTGRES_DB` pin applies
       **only** to a host whose volume predates that rename, and its value is that
       host's pre-existing database name.
 
@@ -251,11 +251,11 @@ signing key is an open admin door that looks completely normal in the logs.
 ### 6. GitHub-side
 
 - [ ] **[owner]** **Initialize the wiki** — open
-      `https://github.com/mavrovde/hirefolio/wiki` and create the first page
-      through the web UI. Until that click, `hirefolio.wiki.git` does not exist and
+      `https://github.com/mavrovde/beaconfolio/wiki` and create the first page
+      through the web UI. Until that click, `beaconfolio.wiki.git` does not exist and
       this article cannot be moved out of the repository (`docs/wiki/README.md`).
       This is the one item that is **not** blocked on the server.
-- [ ] **[owner]** **GHCR packages public** — the four `hirefolio-*` packages. The
+- [ ] **[owner]** **GHCR packages public** — the four `beaconfolio-*` packages. The
       host pulls with no `docker login`. *Already done for this repository*; the
       rollout preflights it anyway and names the package if it regresses.
 - [ ] **[agent-at-cutover]** **The three `DEPLOY_*` secrets — created DURING the
@@ -303,26 +303,26 @@ signing key is an open admin door that looks completely normal in the logs.
 installed from its vendor APT repository and run under systemd owns host ports
 80 and 443, terminates TLS for *every* hostname the box serves, and forwards to
 each project on a **loopback-bound high port** that project registers. Every
-tenant — hirefolio included — stops claiming host-global 80/443 and becomes an
+tenant — beaconfolio included — stops claiming host-global 80/443 and becomes an
 internal upstream.
 
-**Rejected: option (B) — hirefolio's own `proxy` service as the shared edge.**
+**Rejected: option (B) — beaconfolio's own `proxy` service as the shared edge.**
 It is superficially attractive (the config and the certificate path already
 exist), and it was not dismissed on taste. It fails on a measured fact:
 
 - `proxy` is a member of `APP_SERVICES` in `.github/workflows/deploy.yml:934`.
   The rollout runs `docker compose up -d --no-deps backend frontend
-  admin-frontend proxy` (`:1060`), so **every hirefolio release recreates the
+  admin-frontend proxy` (`:1060`), so **every beaconfolio release recreates the
   edge**, and the rollback step (`:1107-1132`) recreates it a second time.
 - Consequence: every neighbouring project's traffic path is torn down and rebuilt
-  on *hirefolio's* release cadence, and a hirefolio rollback rolls the shared edge
-  back to a hirefolio-shaped configuration. The acceptance criterion "redeploying
-  hirefolio does not interrupt other projects' traffic — zero failed requests"
+  on *beaconfolio's* release cadence, and a beaconfolio rollback rolls the shared edge
+  back to a beaconfolio-shaped configuration. The acceptance criterion "redeploying
+  beaconfolio does not interrupt other projects' traffic — zero failed requests"
   cannot pass under (B) as the pipeline is written.
 - The only repair is to remove `proxy` from `APP_SERVICES`, which means proxy
   changes stop deploying at all — reintroducing exactly the "published ≠ live"
   asymmetry #175 was built to close.
-- Two smaller costs: every tenant's availability would depend on a hirefolio image
+- Two smaller costs: every tenant's availability would depend on a beaconfolio image
   build, and the ACME client would live inside an image CI rebuilds on every merge
   — the worst possible home for a long-lived account key.
 
@@ -349,7 +349,7 @@ Within (A), **Caddy over nginx + certbot**, with the trade-off stated honestly:
 
 ### The measured trap that shapes the edge configuration
 
-**The edge must forward to hirefolio's HTTPS port, not its HTTP port.**
+**The edge must forward to beaconfolio's HTTPS port, not its HTTP port.**
 
 `proxy/default.conf.template` declares two server blocks that both `listen 80`
 and both match the public hostname: an unconditional redirect (`:17-21`,
@@ -411,13 +411,13 @@ admin.example.com {
     }
 }
 
-# Second tenant — four lines, no hirefolio involvement.
+# Second tenant — four lines, no beaconfolio involvement.
 other-project.example {
     reverse_proxy 127.0.0.1:18081
 }
 ```
 
-Two consequences for hirefolio's own configuration:
+Two consequences for beaconfolio's own configuration:
 
 - `TRUSTED_PROXY_CIDRS` — **check it; do not assume it needs changing.** A
   host-level edge connects to the tenant over loopback, so the packet still
@@ -467,7 +467,7 @@ docker compose -f docker-compose.prod.yml ps --format '{{.Project}}' | head -1
 docker volume ls --filter name=postgres_data      # -> <project>_postgres_data
 ```
 
-Fresh install: any stable, project-unique value — `hirefolio` is the obvious one.
+Fresh install: any stable, project-unique value — `beaconfolio` is the obvious one.
 Existing host: whatever the two commands above report, character for character. `.env.example` ships it **commented out** on
 purpose — a default here would silently orphan the volumes of every host whose
 directory basename differs.
@@ -512,7 +512,7 @@ hog, and it is one of the three the rollout does not touch.**
 One-time, on the host, after the first rollout that carries this change:
 
 ```bash
-cd /opt/hirefolio
+cd /opt/beaconfolio
 docker compose -f docker-compose.prod.yml up -d          # NO --no-deps
 ```
 
@@ -616,8 +616,8 @@ journalctl -k | grep -i -e oom -e 'killed process'   # who got killed, and when
 docker inspect -f '{{.Name}} {{.HostConfig.Memory}} {{.HostConfig.NanoCpus}}' $(docker ps -q)
 ```
 
-**During a hirefolio rollout, neighbours are untouched**: the job recreates only
-`backend frontend admin-frontend proxy` with `--no-deps`, all inside hirefolio's
+**During a beaconfolio rollout, neighbours are untouched**: the job recreates only
+`backend frontend admin-frontend proxy` with `--no-deps`, all inside beaconfolio's
 own project, and — under the chosen shared-edge design — the edge is not among
 them, so no neighbour's traffic path is modified.
 
@@ -642,11 +642,11 @@ tenant so a project can grow without renegotiating:
 
 | Range | Tenant |
 |---|---|
-| `18000-18099` | hirefolio |
+| `18000-18099` | beaconfolio |
 | `18100-18199` | (next tenant) |
 | … | assign in order, record here |
 
-**hirefolio's prod bindings — a verdict for each:**
+**beaconfolio's prod bindings — a verdict for each:**
 
 | Binding (before #310) | Verdict | How |
 |---|---|---|
@@ -708,7 +708,7 @@ requirement costs nothing, and it needs **no DNS credential on the box at all**.
 DNS-01 is the correct choice only if a wildcard is ever needed, or if port 80 must
 be closed — and then the token belongs in `/root` at mode 600, scoped to one zone.
 
-Note for anyone tempted to run ACME through *hirefolio's* proxy instead of the
+Note for anyone tempted to run ACME through *beaconfolio's* proxy instead of the
 edge: it would not work as configured. The public `:80` block is a blanket
 `return 301` (`proxy/default.conf.template:17-21`) and unknown hosts get
 `return 444` (`:10-14`), so an HTTP-01 webroot challenge would be redirected away
@@ -718,7 +718,7 @@ project proxy never sees one.
 
 ### Coverage decisions
 
-**Within hirefolio: one SAN certificate, not a wildcard.**
+**Within beaconfolio: one SAN certificate, not a wildcard.**
 `proxy/default.conf.template:30-31` (public) and `:91-92` (admin) point at the
 *same* `fullchain.pem`/`privkey.pem`, so a single certificate must cover
 `<your-domain>`, `www.<your-domain>` **and** `admin.<your-domain>`. A SAN certificate listing
@@ -737,7 +737,7 @@ certificate.
 
 **The internal hop is plaintext-equivalent, and that is fine.** The edge reaches
 tenants over `127.0.0.1`, so that traffic never leaves the machine or touches a
-network interface. For hirefolio the hop is nominally HTTPS (to port 18443) with
+network interface. For beaconfolio the hop is nominally HTTPS (to port 18443) with
 verification disabled, purely because forwarding to port 80 triggers the redirect
 loop measured above — it buys no security and should not be described as if it
 does. Any tenant reachable on plain HTTP over loopback is equally acceptable.
@@ -835,7 +835,7 @@ done
 ```
 
 Route the alarm somewhere a human reads — the notification channels this project
-already has (`HIREFOLIO_TELEGRAM_*`, `HIREFOLIO_NOTIFY_WEBHOOK_URL`, #263) are a
+already has (`BEACONFOLIO_TELEGRAM_*`, `BEACONFOLIO_NOTIFY_WEBHOOK_URL`, #263) are a
 reasonable target. Verify names and expiry by hand at any time:
 
 ```bash
@@ -1078,9 +1078,9 @@ Follow `docs/DEPLOYMENT.md` § First deploy for the environment variables; this
 section adds only the host and tenancy context.
 
 ```bash
-sudo mkdir -p /opt/hirefolio && sudo chown deploy:deploy /opt/hirefolio
-sudo -u deploy git clone https://github.com/mavrovde/hirefolio.git /opt/hirefolio
-cd /opt/hirefolio
+sudo mkdir -p /opt/beaconfolio && sudo chown deploy:deploy /opt/beaconfolio
+sudo -u deploy git clone https://github.com/mavrovde/beaconfolio.git /opt/beaconfolio
+cd /opt/beaconfolio
 cp .env.example .env && chmod 600 .env
 ```
 
@@ -1089,7 +1089,7 @@ Before the first `up`, set in `.env`:
 - **`COMPOSE_PROJECT_NAME`** — decided now, never changed later (above).
 - **`POSTGRES_DB`** — on a host created before the #288 rename, pin that host's
   **existing** database name; a fresh volume needs nothing (it initializes as
-  `hirefolio`).
+  `beaconfolio`).
 - **Tenancy bindings** — `PROXY_HTTP_PUBLISH=127.0.0.1:18080:80`,
   `PROXY_HTTPS_PUBLISH=127.0.0.1:18443:443`; leave `POSTGRES_BIND_HOST` at its
   loopback default.
@@ -1138,7 +1138,7 @@ valid HTTPS on 443** — the health gate polls
 every push.
 
 ```bash
-ssh-keygen -t ed25519 -f ./hirefolio_deploy -C 'github-actions rollout' -N ''
+ssh-keygen -t ed25519 -f ./beaconfolio_deploy -C 'github-actions rollout' -N ''
 # public half -> /home/deploy/.ssh/authorized_keys on the host
 # private half -> the DEPLOY_SSH_KEY secret; then delete the local copy
 ```
@@ -1148,7 +1148,7 @@ ssh-keygen -t ed25519 -f ./hirefolio_deploy -C 'github-actions rollout' -N ''
 | `DEPLOY_HOST` | yes | Host to SSH to |
 | `DEPLOY_USER` | yes | The `deploy` user |
 | `DEPLOY_SSH_KEY` | yes | Private half of the pair above — used nowhere else |
-| `DEPLOY_DIR` | no | Compose project dir (default `/opt/hirefolio`; set it if your host uses another path) |
+| `DEPLOY_DIR` | no | Compose project dir (default `/opt/beaconfolio`; set it if your host uses another path) |
 | `DEPLOY_SSH_PORT` | no | Default 22 |
 | `PUBLIC_URL` (**variable**) | forks: yes | Health-gate + Live Freshness URL |
 
@@ -1184,7 +1184,7 @@ restores the previous `IMAGE_REPO`/`IMAGE_TAG` and re-runs `up -d --no-deps`.
 **Manual equivalent**, when the job cannot (network died mid-run):
 
 ```bash
-cd /opt/hirefolio
+cd /opt/beaconfolio
 cat .env.rollback                      # the previous coordinates, nothing else
 grep -E '^IMAGE_(REPO|TAG)=' .env      # what is deployed now
 
@@ -1213,7 +1213,7 @@ journalctl -k | grep -i oom                   # did WE get something killed?
 docker stats --no-stream                      # who is at their ceiling?
 ```
 
-If hirefolio is inside its ceilings, the disk is fine, and the edge is healthy,
+If beaconfolio is inside its ceilings, the disk is fine, and the edge is healthy,
 the fault is the neighbour's. If the edge is unhealthy, it is everyone's — and
 the edge is the one component whose restart affects every tenant, so `reload`
 (graceful) before `restart`.
@@ -1310,15 +1310,15 @@ are **not** authorization to run one.
 
 ```bash
 # Backup — no downtime; write outside /var/lib/docker
-cd /opt/hirefolio
+cd /opt/beaconfolio
 docker compose -f docker-compose.prod.yml exec -T db \
   pg_dump -U "${POSTGRES_USER:-postgres}" -p "${POSTGRES_PORT:-5433}" \
-          -d "${POSTGRES_DB:-hirefolio}" -Fc \
-  > "/var/backups/hirefolio/db-$(date +%F-%H%M).dump"
+          -d "${POSTGRES_DB:-beaconfolio}" -Fc \
+  > "/var/backups/beaconfolio/db-$(date +%F-%H%M).dump"
 
 # Verify the dump is real — an unverified backup is a hope, not a backup
-ls -lh /var/backups/hirefolio/ | tail -3
-pg_restore --list /var/backups/hirefolio/db-<stamp>.dump | head
+ls -lh /var/backups/beaconfolio/ | tail -3
+pg_restore --list /var/backups/beaconfolio/db-<stamp>.dump | head
 ```
 
 Keep a nightly cron with retention, and store at least one copy **off the host** —
@@ -1335,7 +1335,7 @@ docker compose -f docker-compose.prod.yml exec -T db \
 Restoring *over* the live database, or dropping it, is a **rule 9** action needing
 explicit authorization that names the resource; `guard-destructive.sh` blocks the
 usual shapes. Only `test_*` databases may be dropped autonomously. This applies to
-**every tenant on the box**, not just hirefolio: `docker volume rm`,
+**every tenant on the box**, not just beaconfolio: `docker volume rm`,
 `docker volume prune`, `docker compose down -v` and `docker system prune` are
 host-wide and not project-scoped — one careless command destroys a neighbour's
 data.
@@ -1351,7 +1351,7 @@ everyone's); `/etc/letsencrypt` or `/var/lib/caddy`; another tenant's `.env`.
 | # | Risk | Mitigation / open question |
 |---|---|---|
 | 1 | **Host port collision** between tenants (`bind: address already in use`) | Port registry above is authoritative; `sudo ss -ltnp` before assigning; per-tenant loopback block in `18000-18999`. Never take a port from its holder. |
-| 2 | **Shared edge is a single point of failure** | Accepted deliberately: it is one small, stable component under systemd with `restart=always`, versus option (B) where the edge restarts on every hirefolio release. It is **not** in hirefolio's rolled service list. `reload` (graceful) before `restart`; validate config before either. |
+| 2 | **Shared edge is a single point of failure** | Accepted deliberately: it is one small, stable component under systemd with `restart=always`, versus option (B) where the edge restarts on every beaconfolio release. It is **not** in beaconfolio's rolled service list. `reload` (graceful) before `restart`; validate config before either. |
 | 3 | **Certificate renewal race** — two ACME clients, one name | Exactly one client on the box (Caddy, at the edge). Tenants never request certificates. Documented in § The single ACME client. |
 | 4 | **Disk exhaustion** by images and unbounded json-file logs | Bounded logging in both compose files **and** `/etc/docker/daemon.json`; the six-step escalation in § Disk-space policy, none of which is a blocked command. |
 | 5 | **Accidental cross-project volume destruction** (`volume rm`/`system prune` are host-wide) | Rule 9 + `guard-destructive.sh:365-383` block the blanket forms while leaving scoped `docker image prune` usable; the do-not-touch list above; volumes carry a project prefix so ownership is legible. |
@@ -1399,8 +1399,8 @@ Caddy `acme_ca` staging directive set.
    behind the same edge, with its own hostname.
 3. Issue certificates for all three names against **staging**. Confirm `openssl
    s_client` shows the staging issuer and the expected SAN list.
-4. Deploy hirefolio (§ First deploy), confirm `curl` without `-k` returns 200 on
-   both hirefolio names.
+4. Deploy beaconfolio (§ First deploy), confirm `curl` without `-k` returns 200 on
+   both beaconfolio names.
 5. Add the `DEPLOY_*` secrets in the scratch environment and push. Record the
    health-gate output and the freshness verdict.
 6. **Run the neighbour probe across the whole rollout** and record `failed=0`:

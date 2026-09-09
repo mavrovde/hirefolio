@@ -6,7 +6,7 @@
 #     backend 35 environment keys, "none matching SMTP/MAIL": the prod `mail`
 #     profile started a relay the app could never talk to.
 #   * #297 blocker 3 — `setup.sh` and `README.md` told the owner to set
-#     HIREFOLIO_TELEGRAM_BOT_TOKEN / _CHAT_ID / HIREFOLIO_NOTIFY_WEBHOOK_URL;
+#     BEACONFOLIO_TELEGRAM_BOT_TOKEN / _CHAT_ID / BEACONFOLIO_NOTIFY_WEBHOOK_URL;
 #     measured: "TELEGRAM present: []  NOTIFY present: []  env_file: None".
 #     A "2-minute setup" that could not work.
 #   * #298 blocker 4 — TRANSLATION_ENABLED / OWNER_LANGUAGE documented at
@@ -68,7 +68,7 @@ note() { printf '%s\n' "$*"; }
 [ -f "$CONFIG_PY" ]         || { note "✗ $CONFIG_PY not found"; exit 1; }
 
 # (1) Env keys `Settings` actually binds: every field name uppercased, plus every
-#     explicit validation_alias (the #141 HIREFOLIO_* namespacing).
+#     explicit validation_alias (the #141 BEACONFOLIO_* namespacing).
 settings_keys="$(
   { grep -oE '^ {4}[a-z][a-z0-9_]*[[:space:]]*:' "$CONFIG_PY" | tr -d ' :' | tr '[:lower:]' '[:upper:]'
     grep -oE 'validation_alias="[A-Z][A-Z0-9_]*"' "$CONFIG_PY" | cut -d'"' -f2

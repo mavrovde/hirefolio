@@ -1,4 +1,4 @@
-# AGENTS.md — Hirefolio
+# AGENTS.md — Beaconfolio
 
 Instructions for AI coding agents (GitHub Copilot coding agent, and any other tool that reads
 `AGENTS.md`). **`CLAUDE.md` at the repo root is the authoritative, complete AI configuration** —
@@ -7,7 +7,7 @@ Copilot-specific guidance: `.github/copilot-instructions.md` + `.github/instruct
 
 ## Project
 
-Personal portfolio + blog (public repo `github.com/mavrovde/hirefolio`). Angular 22 workspace
+Personal portfolio + blog (public repo `github.com/mavrovde/beaconfolio`). Angular 22 workspace
 frontend (`frontend/projects/{public,admin,shared}` — public is SSR), FastAPI backend (`backend/`,
 Python 3.12, SQLAlchemy 2 async, PostgreSQL 16 + pgvector, Ollama), Docker Compose infra,
 LinkedIn → site content pipeline (`scraper/`, `importer/`).
@@ -16,8 +16,8 @@ LinkedIn → site content pipeline (`scraper/`, `importer/`).
 
 Backend (`cd backend`; venv at `backend/venv`):
 ```
-TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio \
-HIREFOLIO_GEMINI_API_KEY="" venv/bin/pytest          # needs Postgres on 127.0.0.1:5433; 100% coverage
+TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_beaconfolio \
+BEACONFOLIO_GEMINI_API_KEY="" venv/bin/pytest          # needs Postgres on 127.0.0.1:5433; 100% coverage
 venv/bin/ruff check . && venv/bin/ruff format --check .
 venv/bin/mypy app --ignore-missing-imports --no-error-summary
 venv/bin/bandit -r app -ll --skip B101
@@ -54,11 +54,11 @@ Full stack: `./manage.sh start|stop|logs` · full verification incl. Docker E2E:
    `system prune`, dropping non-`test_*` DBs, recursive `rm` of data dirs) without explicit user
    authorization naming the resource.
 10. **No real API keys / paid-service credentials in any test or CI job** — mock the call or use an
-    empty/dummy credential (free local fallback). CI passes `HIREFOLIO_GEMINI_API_KEY: ""`.
+    empty/dummy credential (free local fallback). CI passes `BEACONFOLIO_GEMINI_API_KEY: ""`.
 11. Every PR needs an independent `pr-reviewer` verdict before merge — no exceptions.
 
 Operational rule (not a numbered CLAUDE.md rule, but non-negotiable in practice): **never run
-backend pytest while another suite is running** (`pgrep -f pytest` first — the shared `test_hirefolio`
+backend pytest while another suite is running** (`pgrep -f pytest` first — the shared `test_beaconfolio`
 DB clobbers concurrent suites).
 
 ### Working discipline

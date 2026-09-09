@@ -24,7 +24,7 @@ async def seed_e2e_user():
         print("Creating fresh admin user for E2E...")
         user = User(
             username="admin",
-            email="admin@mavrov.de",
+            email="admin@beaconfolio.com",
             hashed_password=hashed,
             is_admin=True,
             is_active=True,

@@ -347,7 +347,7 @@ describe('buildSitemapXml', () => {
         expect(xml).toContain('<lastmod>2026-02-03</lastmod>');
         // The dateless post must not emit an empty <lastmod/>.
         expect(xml.match(/<lastmod>/g)).toHaveLength(1);
-        expect(xml).not.toContain('mavrov.de');
+        expect(xml).not.toContain('beaconfolio.com');
         expect(xml.trimEnd().endsWith('</urlset>')).toBe(true);
     });
 
@@ -383,7 +383,7 @@ describe('buildRobotsTxt', () => {
         }
         expect(txt).toContain('Sitemap: https://example.com/sitemap.xml');
         expect(txt).toContain('# llms.txt: https://example.com/llms.txt');
-        expect(txt).not.toContain('mavrov.de');
+        expect(txt).not.toContain('beaconfolio.com');
     });
 
     it('turns the AI crawlers away — and ONLY them — under the deny policy (#252)', () => {

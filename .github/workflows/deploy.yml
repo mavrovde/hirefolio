@@ -110,7 +110,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_hirefolio
+          POSTGRES_DB: test_beaconfolio
         ports:
           - 5432:5432
         options: >-
@@ -134,23 +134,18 @@ jobs:
       - name: Run tests with coverage
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_hirefolio
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_beaconfolio
           SECRET_KEY: test-secret-key-for-ci
           OLLAMA_BASE_URL: http://localhost:11434
           # Rule 10 (#141): explicit, not safe-by-absence. The job was relying on
           # the runner simply not having this variable; state it so the guarantee
           # survives someone adding a repo-level env or variable later.
-          HIREFOLIO_GEMINI_API_KEY: ""
+          BEACONFOLIO_GEMINI_API_KEY: ""
         run: |
           # --cov-fail-under=100 makes the project's stated coverage standard an
           # actual gate: without it CI printed the percentage and passed regardless,
           # so a drop below 100% only ever surfaced in a local run (review of #194).
           pytest -n auto -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=100
-          # Agent-playbook drift check (#115): the single test file only — the
-          # rest of agents/tests needs the a2a dependencies, not installed here.
-          # No DB, no coverage; a drift between agents/PLAYBOOK.md, roster.py
-          # and the .claude/agents charters fails this job.
-          (cd .. && python -m pytest agents/tests/test_playbook_sync.py -q --no-header -p no:cacheprovider --no-cov)
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
@@ -167,7 +162,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: hirefolio_migrations
+          POSTGRES_DB: beaconfolio_migrations
         ports:
           - 5432:5432
         options: >-
@@ -197,9 +192,9 @@ jobs:
 
           async def main():
               conn = await asyncpg.connect(
-                  'postgresql://postgres:postgres@localhost:5432/hirefolio_migrations'
+                  'postgresql://postgres:postgres@localhost:5432/beaconfolio_migrations'
               )
-              await conn.execute('CREATE DATABASE hirefolio_migrations_pre')
+              await conn.execute('CREATE DATABASE beaconfolio_migrations_pre')
               await conn.close()
 
           asyncio.run(main())
@@ -207,7 +202,7 @@ jobs:
       - name: Simulate today's prod DB (tables via create_all, no alembic_version)
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations_pre
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/beaconfolio_migrations_pre
           SECRET_KEY: test-secret-key-for-ci
         run: |
           python -c "
@@ -227,37 +222,37 @@ jobs:
       - name: Self-adopt the pre-Alembic DB via the real entrypoint (must NOT crash)
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations_pre
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/beaconfolio_migrations_pre
           SECRET_KEY: test-secret-key-for-ci
         run: ./docker-entrypoint.sh true
       - name: Verify the pre-Alembic DB is now stamped at head
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations_pre
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/beaconfolio_migrations_pre
           SECRET_KEY: test-secret-key-for-ci
         run: alembic current | grep -q "(head)"
       - name: Re-run entrypoint on the now-managed pre-Alembic DB (idempotent)
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations_pre
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/beaconfolio_migrations_pre
           SECRET_KEY: test-secret-key-for-ci
         run: ./docker-entrypoint.sh true
       - name: Self-adopt a fresh, empty DB via the real entrypoint
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/beaconfolio_migrations
           SECRET_KEY: test-secret-key-for-ci
         run: ./docker-entrypoint.sh true
       - name: Re-run entrypoint on the now-managed fresh DB (idempotent)
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/beaconfolio_migrations
           SECRET_KEY: test-secret-key-for-ci
         run: ./docker-entrypoint.sh true
       - name: Drift guard (models vs. migrations must match exactly)
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/hirefolio_migrations
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/beaconfolio_migrations
           SECRET_KEY: test-secret-key-for-ci
         run: alembic check
   # ============================================
@@ -601,7 +596,7 @@ jobs:
         env:
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: hirefolio
+          POSTGRES_DB: beaconfolio
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: sha-${{ github.sha }}
           # SECURITY / COST: never inject the real Gemini key into the ephemeral E2E
@@ -611,7 +606,7 @@ jobs:
           # (free), so the E2E still exercises the flow at zero cost. The E2E specs also
           # mock these endpoints as defense-in-depth. Real prod gets its key from the host
           # env, NOT from CI.
-          HIREFOLIO_GEMINI_API_KEY: ""
+          BEACONFOLIO_GEMINI_API_KEY: ""
           # Admin E2E hits admin.localhost through the Docker bridge (source IP is the
           # gateway, not loopback, and no X-Forwarded-For is set so real_ip can't recover
           # a real client), so open the allowlist for the test run only. The prod default
@@ -766,13 +761,13 @@ jobs:
         env:
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: hirefolio
+          POSTGRES_DB: beaconfolio
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: sha-${{ github.sha }}
           # Rule 10: identical posture to the E2E job — empty paid key, an
           # ephemeral signing key, nothing from secrets. WireMock replacing
           # Ollama makes a billable call structurally impossible here.
-          HIREFOLIO_GEMINI_API_KEY: ""
+          BEACONFOLIO_GEMINI_API_KEY: ""
           JWT_ALLOW_EPHEMERAL_SECRET: "true"
         run: |
           # Free disk first — the E2E job needed this to survive on the shared
@@ -974,7 +969,7 @@ jobs:
   # and rolls back to the previously recorded sha tag on failure. No-op until
   # the owner adds DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY (docs/DEPLOYMENT.md).
   #
-  # DEPLOY_DIR default is /opt/hirefolio (the PRODUCT, #310 — it was a
+  # DEPLOY_DIR default is /opt/beaconfolio (the PRODUCT, #310 — it was a
   # maintainer-specific path). Continuity, same shape as the #288 POSTGRES_DB
   # rename: this default is only ever reached when the DEPLOY_DIR secret is
   # UNSET, and the rollout has never run on any host (the three secrets are
@@ -1061,7 +1056,7 @@ jobs:
         if: steps.gate.outputs.enabled == 'true'
         id: rollout
         env:
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/hirefolio' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/beaconfolio' }}
           SHA_TAG: sha-${{ github.sha }}
           IMAGE_REPO: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
@@ -1127,8 +1122,8 @@ jobs:
           # One URL knob (#254 review): vars.PUBLIC_URL is the canonical
           # setting (shared with the Live Freshness workflow); the old
           # DEPLOY_PUBLIC_URL secret stays honoured for back-compat.
-          PUBLIC_URL: ${{ vars.PUBLIC_URL || secrets.DEPLOY_PUBLIC_URL || 'https://mavrov.de' }}
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/hirefolio' }}
+          PUBLIC_URL: ${{ vars.PUBLIC_URL || secrets.DEPLOY_PUBLIC_URL || 'https://beaconfolio.com' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/beaconfolio' }}
         run: |
           echo "Waiting for $PUBLIC_URL to become healthy..."
           ok=false
@@ -1153,12 +1148,12 @@ jobs:
           echo "Freshness gate OK."
           # Deploy succeeded: drop the rollback marker so nothing later can
           # roll this healthy release backwards.
-          ssh prod "rm -f '${DEPLOY_DIR:-/opt/hirefolio}/.env.rollback'" || true
+          ssh prod "rm -f '${DEPLOY_DIR:-/opt/beaconfolio}/.env.rollback'" || true
 
       - name: Roll back on failure
         if: failure() && steps.rollout.outputs.mutated == 'true'
         env:
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/hirefolio' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/opt/beaconfolio' }}
         run: |
           echo "Rolling back to previous image coordinates..."
           ssh prod "DEPLOY_DIR='$DEPLOY_DIR' APP_SERVICES='$APP_SERVICES' bash -s" <<'REMOTE'

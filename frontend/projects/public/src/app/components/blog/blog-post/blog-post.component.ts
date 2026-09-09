@@ -1,7 +1,7 @@
 import { Component, OnInit, Inject, PLATFORM_ID, RESPONSE_INIT } from '@angular/core';
 import { CommonModule, isPlatformBrowser, isPlatformServer } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { BlogService, BlogPost } from '@mavrov/shared';
+import { BlogService, BlogPost } from '@beaconfolio/shared';
 import { Observable, switchMap, catchError, of, tap, map, startWith } from 'rxjs';
 import { HeaderComponent } from '../../header/header.component';
 import { SeoService } from '../../../services/seo.service';

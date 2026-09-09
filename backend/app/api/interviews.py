@@ -413,7 +413,7 @@ def _interview_ics(interview: Interview, opp: Opportunity) -> str:
 
     # A UID must be globally unique and stable across re-exports, so a calendar
     # UPDATES the event instead of duplicating it: row id @ the site's domain.
-    host = urlparse(settings.site_url).hostname or "hirefolio"
+    host = urlparse(settings.site_url).hostname or "beaconfolio"
     return build_event_ics(
         uid=f"{interview.id}@{host}",
         summary=f"Interview: {opp.company} — {opp.role_title}",

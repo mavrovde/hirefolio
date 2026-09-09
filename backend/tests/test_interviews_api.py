@@ -421,7 +421,7 @@ async def test_ics_export_marks_a_cancelled_slot_and_survives_a_blank_site_url(
     await client.patch(f"{IVS}/{interview['id']}", json={"outcome": "cancelled"})
 
     document = (await client.get(f"{IVS}/{interview['id']}.ics")).text
-    assert f"UID:{interview['id']}@hirefolio" in document
+    assert f"UID:{interview['id']}@beaconfolio" in document
     assert "STATUS:CANCELLED" in document
 
 

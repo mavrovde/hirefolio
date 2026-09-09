@@ -3,8 +3,8 @@ import { HeaderComponent } from './header.component';
 import { vi, afterEach } from 'vitest';
 import { Router, provideRouter } from '@angular/router';
 
-import { LanguageService } from '@mavrov/shared';
-import { MockLanguageService } from '@mavrov/shared/testing';
+import { LanguageService } from '@beaconfolio/shared';
+import { MockLanguageService } from '@beaconfolio/shared/testing';
 import { YearsService } from '../../services/years.service';
 import { of } from 'rxjs';
 

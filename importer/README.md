@@ -1,6 +1,6 @@
 # LinkedIn importer
 
-A small, **stable, standalone** process that pushes your LinkedIn posts into your Hirefolio backend.
+A small, **stable, standalone** process that pushes your LinkedIn posts into your Beaconfolio backend.
 It is **not** part of the `agents/` A2A team and has no dependency on it.
 
 ```
@@ -19,7 +19,7 @@ exits non-zero if any post hard-failed (so cron can alert).
 ```bash
 pip install -r importer/requirements.txt
 
-export MAVROV_API_URL=https://<your-domain>   # or http://localhost:8000
+export BEACONFOLIO_API_URL=https://<your-domain>   # or http://localhost:8000
 export LINKEDIN_IMPORT_TOKEN=...                  # must match the backend
 export LINKEDIN_COOKIE_LI_AT=...                  # for authenticated image downloads
 # posts come from scraper/posts_data.json (run `npm run scrape:posts` first — spec 05)
@@ -30,14 +30,14 @@ python -m importer --watch 3600  # re-run hourly
 ```
 
 Imported posts are **drafts** by default (review, then publish); pass `--publish` to import
-as published. See `specs/done/linkedin-import-FULL-reference.md` §Component 3 / §1d for the full design
+as published. See `specs/done/linkedin-import-FULL-reference.md` (git history — the specs/ tree was retired in #330) §Component 3 / §1d for the full design
 and the prod-connection modes.
 
 ## Config (env)
 
 | var | default | meaning |
 |-----|---------|---------|
-| `MAVROV_API_URL` | `http://localhost:8000` | backend base URL |
+| `BEACONFOLIO_API_URL` | `http://localhost:8000` | backend base URL |
 | `LINKEDIN_IMPORT_TOKEN` | — | machine token (matches backend) |
 | `LINKEDIN_COOKIE_LI_AT` | — | LinkedIn session cookie for image downloads |
 | `POSTS_JSON` | `scraper/posts_data.json` | scraped posts input |

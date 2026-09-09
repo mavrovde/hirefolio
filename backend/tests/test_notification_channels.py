@@ -384,19 +384,19 @@ def test_build_normalizes_missing_company_to_empty_string():
 # -------------------------------------------------------------- namespacing --
 
 
-def test_hirefolio_namespaced_env_binds_and_generic_does_not(monkeypatch):
+def test_beaconfolio_namespaced_env_binds_and_generic_does_not(monkeypatch):
     """#141's contract, tested per the gemini-env precedent: the credential
-    binds ONLY through its HIREFOLIO_* name; the generic name is ignored."""
+    binds ONLY through its BEACONFOLIO_* name; the generic name is ignored."""
     from app.config import Settings
 
-    monkeypatch.setenv("HIREFOLIO_TELEGRAM_BOT_TOKEN", "ns-token")
-    monkeypatch.setenv("HIREFOLIO_TELEGRAM_CHAT_ID", "ns-chat")
-    monkeypatch.setenv("HIREFOLIO_NOTIFY_WEBHOOK_URL", "https://ns.example/w")
+    monkeypatch.setenv("BEACONFOLIO_TELEGRAM_BOT_TOKEN", "ns-token")
+    monkeypatch.setenv("BEACONFOLIO_TELEGRAM_CHAT_ID", "ns-chat")
+    monkeypatch.setenv("BEACONFOLIO_NOTIFY_WEBHOOK_URL", "https://ns.example/w")
     fresh = Settings(_env_file=None)
     assert fresh.telegram_bot_token == "ns-token"
     assert fresh.telegram_chat_id == "ns-chat"
     assert fresh.notify_webhook_url == "https://ns.example/w"
 
-    monkeypatch.delenv("HIREFOLIO_TELEGRAM_BOT_TOKEN")
+    monkeypatch.delenv("BEACONFOLIO_TELEGRAM_BOT_TOKEN")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "generic-must-not-bind")
     assert Settings(_env_file=None).telegram_bot_token == ""

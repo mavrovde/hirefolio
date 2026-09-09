@@ -2,8 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { ProfileService, Profile } from './profile.service';
-import { LanguageService } from '@mavrov/shared';
-import { MockLanguageService } from '@mavrov/shared/testing';
+import { LanguageService } from '@beaconfolio/shared';
+import { MockLanguageService } from '@beaconfolio/shared/testing';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('ProfileService', () => {

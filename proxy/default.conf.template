@@ -2,7 +2,7 @@
 #
 # server_name values are injected at container start by /entrypoint.sh via envsubst
 # from the ${PUBLIC_SERVER_NAME} and ${ADMIN_SERVER_NAME} environment variables
-# (defaults preserve the canonical mavrov.de hostnames). A forker sets their own
+# (defaults preserve the canonical beaconfolio.com hostnames). A forker sets their own
 # domain in the root .env — no edit to this file is needed. Only those two names are
 # substituted, so nginx runtime variables ($host, $remote_addr, ...) are left intact.
 

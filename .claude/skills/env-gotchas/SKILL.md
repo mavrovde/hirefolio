@@ -70,9 +70,9 @@ Facts about THIS repo's environments that keep costing cycles. Check here before
   run a short `gh … --body-file` command — which is also the shape that avoids the `-f`/`-F` trap.
 
 ## Local test databases (shared state)
-- Backend pytest needs `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio`
-  and `HIREFOLIO_GEMINI_API_KEY=""` — without it the suite hangs on (or would wipe) the live dev DB.
-- **One suite at a time** on `test_hirefolio` (`pgrep -f pytest` first) — two runs clobber each other
+- Backend pytest needs `TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_beaconfolio`
+  and `BEACONFOLIO_GEMINI_API_KEY=""` — without it the suite hangs on (or would wipe) the live dev DB.
+- **One suite at a time** on `test_beaconfolio` (`pgrep -f pytest` first) — two runs clobber each other
   into dozens of spurious failures (lessons-learned §4).
 - `seed_e2e_user.py` **obliterates all users and posts** in whatever DB it points at — only ever run
   it in-container against an E2E stack, never against the dev DB.

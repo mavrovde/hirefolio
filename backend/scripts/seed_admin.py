@@ -29,7 +29,7 @@ async def seed_admin():
         hashed_password = get_password_hash("admin")
         new_admin = User(
             username="admin",
-            email="admin@mavrov.de",
+            email="admin@beaconfolio.com",
             hashed_password=hashed_password,
             is_admin=True,
             is_active=True,
