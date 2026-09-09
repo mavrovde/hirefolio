@@ -307,6 +307,28 @@ run_checks() {
         return 1
       }
     fi
+    # Alembic single-head contract (v1.14.0 retrospective, #323/#325). Measured
+    # AGAINST origin/main, not just the working tree: both of those branches were
+    # single-head alone and every gate they ran was green — the fork existed only
+    # in the merge, and `alembic upgrade head` then refuses to run on a backend
+    # that executes it at every container start.
+    if [ -f "$ROOT/scripts/check_migration_heads.sh" ]; then
+      if git -C "$ROOT" rev-parse --verify --quiet origin/main >/dev/null 2>&1; then
+        ( cd "$ROOT" && bash scripts/check_migration_heads.sh --against origin/main >/dev/null ) || {
+          echo "  ✗ check_migration_heads.sh failed — run 'bash scripts/check_migration_heads.sh --against origin/main' to see the fork"
+          return 1
+        }
+      else
+        ( cd "$ROOT" && bash scripts/check_migration_heads.sh >/dev/null ) || {
+          echo "  ✗ check_migration_heads.sh failed — run 'bash scripts/check_migration_heads.sh' to see the fork"
+          return 1
+        }
+      fi
+      ( cd "$ROOT" && bash scripts/check_migration_heads.test.sh >/dev/null ) || {
+        echo "  ✗ check_migration_heads.test.sh failed — the migration-heads checker itself is broken"
+        return 1
+      }
+    fi
     if [ -f "$ROOT/setup.test.sh" ]; then
       ( cd "$ROOT" && bash setup.test.sh >/dev/null ) || {
         echo "  ✗ setup.test.sh failed — run 'bash setup.test.sh' to see which case"
@@ -321,6 +343,13 @@ run_checks() {
     if [ -f "$ROOT/.claude/hooks/pre-push-tests.test.sh" ]; then
       echo "== pre-push self-gate self-test (#237) =="
       bash "$ROOT/.claude/hooks/pre-push-tests.test.sh" || return 1
+    fi
+    if [ -f "$ROOT/.claude/hooks/guard-stack-resources.test.sh" ]; then
+      # --mutations for the same reason as the merge gate below: this guard's
+      # value is entirely in the denies, and a guard nobody proved can deny is
+      # documentation (lessons §18).
+      echo "== stack-resource guard self-test + mutation contract =="
+      bash "$ROOT/.claude/hooks/guard-stack-resources.test.sh" --mutations || return 1
     fi
     if [ -f "$ROOT/.claude/hooks/pre-merge-gate.test.sh" ]; then
       # --mutations is the point: the FIRST version of that self-test passed

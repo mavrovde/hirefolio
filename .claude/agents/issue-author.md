@@ -60,6 +60,17 @@ Before writing, investigate the real repo with `Read`/`Grep`/`Glob`:
      covers the intent, or write the intent as the criterion and the command as *one* piece of
      evidence for it. Same trap one layer out: an AC satisfied by `./run_integration_tests.sh`
      (dev compose base) is not satisfied for CI (prod base) — #296.
+   - **Generalised at v1.14.0, because this recurred twice more and the instrument was not a
+     command either time: whenever a criterion's truth is decided by a TOOL, say what that tool
+     CANNOT see.** #252's AC2 read "`resume.json` validates against the JSON Resume schema"; the
+     validator was `Draft4Validator.FORMAT_CHECKER`, measured to contain exactly
+     `['email','idn-email','ipv4','ipv6','regex']` — no `date`, no `uri` — and both shipped demo
+     personas violated `format: date`. #313's AC4 read "…self-check green"; the self-check was green
+     at 23 cases and the guard could be defeated by ordinary prose, because every case pinned the
+     permissive direction. A validator, a self-test, a linter and a coverage percentage are all
+     instruments with a blind spot; the criterion has to name it, or a PR can satisfy the letter
+     while the reviewer refuses the intent. Write it as: *"…, verified by X — and X must fail when
+     Y is removed"*.
    - **Name the layer on any criterion that crosses one.** #279 mixed a frontend criterion (button
      latch + spec) and a backend one (idempotent promote) in a single list; only the backend half
      shipped and review had to block on the missing half. Write "**frontend:** …" / "**backend:** …"

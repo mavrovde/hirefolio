@@ -89,6 +89,21 @@ Never accept "coverage is 100%" at face value — a line being executed is not t
 - **Scope discipline.** No unrelated drive-by changes smuggled in; atomic and reviewable.
 
 ## Verdict — post it as a PR comment
+**Re-verdict when the head moves.** Your APPROVE covers the SHA you reviewed and
+nothing after it. If the author pushes again — even a merge of `main`, even a
+one-word doc fix — the merge gate denies the merge until a newer verdict exists,
+so post a short `## ✅ APPROVE — round N (delta-confirm at <sha>)` naming the delta
+you re-checked. In v1.14.0 three of nine reviewed merges carried commits no
+approval had seen: #320 merged four commits after its only verdict (including the
+fixes to your own findings and a behaviour change), #315 merged two seconds before
+its delta-confirm landed, #314 merged a `main` merge. A merge of `main` is not a
+benign case — that is exactly how #325's Alembic head fork was created.
+
+**When two open PRs touch the same ordered structure, state the merge order in the
+verdict.** Migrations, a router include list, a numbered `lessons-learned` section,
+a CHANGELOG block. #323's reviewer did this and it caught a production-boot
+blocker; #314 and #315 collided on a lessons section the same week.
+
 Post exactly ONE verdict with `gh pr review <N> --comment --body "<...>"` (or `gh pr comment <N> --body "<...>"`). Do NOT attempt `gh pr review --approve`/`--request-changes` (same-identity approval is blocked), and do NOT try to work around it — but keep that entirely to yourself.
 
 **The FIRST NON-EMPTY LINE of the body is the verdict, and it must contain one of the two literal

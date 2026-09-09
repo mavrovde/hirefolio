@@ -77,6 +77,24 @@ Facts about THIS repo's environments that keep costing cycles. Check here before
 - `seed_e2e_user.py` **obliterates all users and posts** in whatever DB it points at — only ever run
   it in-container against an E2E stack, never against the dev DB.
 
+## git in a SHARED checkout (and the shallow-fetch trap)
+
+- **`--depth=1` in a CI recipe SHALLOWS your working repository.** Proving a new CI step locally
+  (lessons §27) means running its exact commands — and `git fetch --no-tags --depth=1 origin main`
+  writes a graft into `.git/shallow`. Everything afterwards lies quietly: the fetched commit reports
+  **no parent**, `git merge-base --is-ancestor` says no for commits that plainly are ancestors, and
+  `git status -sb` invents a "behind 698" that sends you hunting for a force-push that never
+  happened. Tell: `test -f .git/shallow`. Fix: `git fetch --unshallow origin`. Prefer running the
+  depth-limited form in a throwaway clone, or unshallow immediately afterwards.
+- **A shared checkout is not yours alone.** In the v1.14.0 cycle two agents on one checkout put
+  #318's commit on #317's branch and switched a branch under a running agent — and it happened once
+  more DURING the v1.14.0 retro: the retro branch was created off `origin/main`, and by the time the
+  work was committed `HEAD` was on `main`, so the commit landed there instead. Recovery is cheap if
+  you notice (`git branch -f <branch> <sha>`, `git checkout <branch>`, `git branch -f main
+  origin/main`) and expensive if you do not — a `git push` from that state pushes straight to `main`.
+  **Check `git status -sb` immediately before every commit and every push**, and give concurrent
+  agents their own worktree (lessons §54).
+
 ## Docker on a shared dev box
 - **A container remembers the port binding it was CREATED with.** If another project held a port
   when a service was first created, the broken binding survives `docker compose restart`, `stop`/

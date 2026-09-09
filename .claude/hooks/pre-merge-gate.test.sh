@@ -7,7 +7,7 @@
 # Only 4 of 10 mutations bit. That is the exact fake-green class the retrospective
 # this hook came from is about, so every case here now asserts the DECISION
 # (parsed out of the JSON) and the mutation list below is part of the contract:
-# `bash pre-merge-gate.test.sh --mutations` re-runs them and must report 18 killed.
+# `bash pre-merge-gate.test.sh --mutations` re-runs them and must report 20 killed.
 set -u
 
 HOOK="${HOOK:-$(cd "$(dirname "$0")" && pwd)/pre-merge-gate.sh}"
@@ -63,6 +63,21 @@ run() { # run <name> <expected> <command>
   got="$(decide "$(payload "$3")")"
   if [ "$got" = "$expect" ]; then PASS=$((PASS+1));
   else FAIL=$((FAIL+1)); printf '  ✗ %s — expected %s, got %s\n' "$name" "$expect" "$got"; fi
+}
+
+# WHICH deny, not merely "a deny". This hook has several deny paths and two of
+# them are reachable from the same input under different machine load — the
+# parse loop's own budget and the post-network `past_deadline`, which share
+# `PR_MERGE_GATE_DEADLINE`. Asserting only the decision let the "deadline denies
+# removed" mutation SURVIVE on a loaded machine (v1.14.0): the mutant still
+# denied, from the other path, and the suite could not tell. Asserting the reason
+# kills it in both load regimes.
+run_reason() { # run_reason <name> <expected-substring> <command>
+  local name="$1" want="$2" out reason
+  out="$(printf '%s' "$(payload "$3")" | bash "$HOOK" 2>/dev/null)"
+  reason="$(printf '%s' "$out" | jq -r '.hookSpecificOutput.permissionDecisionReason // ""' 2>/dev/null)"
+  if printf '%s' "$reason" | grep -qF "$want"; then PASS=$((PASS+1));
+  else FAIL=$((FAIL+1)); printf '  ✗ %s — deny reason did not contain %s (got: %s)\n' "$name" "$want" "${reason:-<allow>}"; fi
 }
 
 # --- verdict fixtures --------------------------------------------------------
@@ -336,6 +351,50 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_CURRENT_
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED — round 3\n\nThe round-2 REQUEST CHANGES findings are all fixed.')" \
   run "approval that mentions REQUEST CHANGES later in its body" allow "gh pr merge 284 --squash"
 
+# 4b. The approval must COVER the head (v1.14.0 retrospective).
+# EVIDENCE, measured by replaying the real threads as they stood at merge time:
+# three of v1.14.0's nine reviewed merges carried commits no approval had seen —
+# #320 (four commits, including five review-finding fixes and a behaviour change,
+# after its only verdict), #315 (the six-finding fix commit; merged two seconds
+# before the delta-confirm was posted) and #314 (a merge of `main`). The gate as
+# it stood allowed all three: it asked whether the newest verdict says APPROVE,
+# never whether it had seen the code. Every case below FAILS against that hook.
+revc() { # revc <verdict-at> <verdict-body> <commit-date> <headline>
+  printf '{"reviews":[{"submittedAt":"%s","body":"%s"}],"comments":[],"body":"Refs #1","commits":[{"committedDate":"%s","oid":"abcdef1234567890","messageHeadline":"%s"}]}' \
+    "$1" "$2" "$3" "$4"
+}
+GH_STUB_PR_JSON="$(revc 2026-09-06T10:00:00Z '## ✅ APPROVED' 2026-09-06T09:00:00Z 'the reviewed commit')" \
+  run "approval NEWER than every commit still merges" allow "gh pr merge 284 --squash"
+GH_STUB_PR_JSON="$(revc 2026-09-06T10:00:00Z '## ✅ APPROVED' 2026-09-06T11:00:00Z 'fix: the five review findings')" \
+  run "a commit landing AFTER the approval blocks the merge (the #320 shape)" deny "gh pr merge 284 --squash"
+GH_STUB_PR_JSON="$(revc 2026-09-06T10:00:00Z '## ✅ APPROVED' 2026-09-06T11:00:00Z 'Merge remote-tracking branch origin/main')" \
+  run_reason "…and the deny names the commit, so the author knows what to re-confirm" \
+    "Merge remote-tracking branch" "gh pr merge 284 --squash"
+# A merge of `main` is NOT a benign exception: #325's Alembic head fork — a
+# backend that would not have booted in production — was created by exactly that,
+# on a branch whose own gates were all green.
+GH_STUB_PR_JSON="$(revc 2026-09-06T10:00:00Z '## ✅ APPROVED' 2026-09-06T11:00:00Z 'Merge branch main (the #314 shape)')" \
+  run "a merge-of-main commit after the approval is not exempt" deny "gh pr merge 284 --squash"
+# Equal timestamps are NOT "after" — an approval posted in the same second as the
+# commit it reviews must not deadlock the author.
+GH_STUB_PR_JSON="$(revc 2026-09-06T10:00:00Z '## ✅ APPROVED' 2026-09-06T10:00:00Z 'same instant')" \
+  run "a commit at exactly the verdict's timestamp is covered" allow "gh pr merge 284 --squash"
+# Check 1 runs first: a stale REQUEST CHANGES must still report rule 13, not
+# staleness, or the author fixes the wrong thing.
+GH_STUB_PR_JSON="$(revc 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES' 2026-09-06T11:00:00Z 'fix attempt')" \
+  run_reason "a REQUEST CHANGES with newer commits still reports rule 13 first" \
+    "latest verdict is REQUEST CHANGES" "gh pr merge 284 --squash"
+# The delta-confirm is the remedy and this repo already posts it (#315 round 2,
+# "APPROVE — round 2 (delta-confirm at 2a7c1a0)"). It must actually unblock.
+GH_STUB_PR_JSON='{"reviews":[{"submittedAt":"2026-09-06T10:00:00Z","body":"## ✅ APPROVED"}],"comments":[{"createdAt":"2026-09-06T12:00:00Z","body":"## ✅ APPROVE — round 2 (delta-confirm at abcdef1)"}],"body":"Refs #1","commits":[{"committedDate":"2026-09-06T11:00:00Z","oid":"abcdef1234567890","messageHeadline":"fix: findings"}]}' \
+  run "a delta-confirm verdict on the new head unblocks the merge" allow "gh pr merge 284 --squash"
+# A PR whose `commits` field is absent (older gh, or a stub) is not evidence of
+# staleness — documented as fail-OPEN here because the field comes from the same
+# call that carried the verdict, so its absence means gh answered nothing, and
+# denying every merge on that would make the gate unusable rather than safer.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" \
+  run "no commits field at all does not block" allow "gh pr merge 284 --squash"
+
 # 5. Quoted prose is DATA (#204/#237) — the false-positive direction.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
   run "phrase quoted in a comment body" allow "gh pr comment 284 --body 'do not gh pr merge 284 yet'"
@@ -370,6 +429,12 @@ GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" PR_MERGE_GATE_DE
 # after the network call, which the zero-deadline case short-circuits before.
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_SLEEP=2 PR_MERGE_GATE_DEADLINE=1 \
   run "gh slower than the deadline" deny "gh pr merge 284 --squash"
+# ...and it must be THAT deny, not the parse loop's. See run_reason's header:
+# under load the loop's budget fires first, both paths deny, and a
+# decision-only assertion let the deadline mutation survive.
+GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ✅ APPROVED')" GH_STUB_SLEEP=2 PR_MERGE_GATE_DEADLINE=1 \
+  run_reason "gh slower than the deadline denies from the POST-NETWORK budget" \
+    "could not finish within" "gh pr merge 284 --squash"
 GH_STUB_PR_FAIL=1 \
   run "PR unreadable" deny "gh pr merge 284 --squash"
 GH_STUB_PR_JSON="$(rev 2026-09-06T10:00:00Z '## ⛔ REQUEST CHANGES')" \
@@ -484,7 +549,7 @@ PY
   # two are behaviourally equivalent for every input the jq filter admits, so a
   # case for it could not fail. Documented in the hook instead - the #240 answer.
   mutate die "newest-verdict selection reversed" \
-    'replace::sort_by(.at) | last=>sort_by(.at) | first'
+    'replace::sort_by(.at) | (last=>sort_by(.at) | (first'
   mutate die "verdict selection falls back to marker-anywhere-in-body" \
     'replace::(heading | test("APPROVE|APPROVED|REQUEST CHANGES"; "i"))=>((.body // "") | test("APPROVE|APPROVED|REQUEST CHANGES"; "i"))'
   # NOT a mutation: reading FIRST_MARKER from $VERDICT instead of $HEADING is
@@ -497,6 +562,10 @@ PY
   # directly above, which is killed.
   mutate die "comments stream dropped" \
     'replace::((.comments // [])[] | {at: .createdAt,   body: (.body // "")}) =>'
+  mutate die "approval-covers-head check removed (the #320 shape merges again)" \
+    'delete_block::if [ -n "$NEWER" ]; then'
+  mutate die "staleness comparison flipped (older commits would block instead)" \
+    'replace::select(((.committedDate // "") > $at))=>select(((.committedDate // "") < $at))'
   mutate die "Closes/AC check removed" \
     'delete_block::if [ "${UNCHECKED:-0}" -gt 0 ]'
   mutate die "unreadable issue fails OPEN" \

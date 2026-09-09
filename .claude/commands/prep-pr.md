@@ -6,9 +6,15 @@ Run the pre-PR hygiene checks on the CURRENT branch and report a pass/fail table
 mechanical mistakes that have cost real red deploys (#103/#104 changelog duplicate; #108→#110 stale
 E2E assertion). Consult the `env-gotchas` skill for platform pitfalls while running these.
 
-1. **Stale main.** `git fetch origin main` then `git merge-base --is-ancestor origin/main HEAD`.
-   If not, FLAG: the branch is behind `origin/main` — rebase (or merge main) before opening the PR;
-   branching off stale main is how duplicate CHANGELOG sections happen.
+1. **Stale main — and re-run the gates ON THE MERGED TREE.** `git fetch origin main` then
+   `git merge-base --is-ancestor origin/main HEAD`. If not, FLAG: rebase or merge `main`, then run
+   the gates again on the RESULT — not because of conflicts, but because a branch that is green
+   alone can be broken by the merge. v1.14.0: #323 and #325 were each single-head in isolation and
+   forked Alembic into two heads once merged, which would have stopped the prod backend booting
+   (`bash scripts/check_migration_heads.sh --against origin/main` is now that check). Branching off
+   stale main is also how duplicate CHANGELOG sections happen. And note what CI will NOT tell you:
+   **GitHub does not re-run a PR's checks when its base moves**, so a green PR run can predate a
+   collision entirely.
 2. **CHANGELOG hygiene.** Exactly ONE `## [Unreleased]` block
    (`grep -c '^## \[Unreleased\]' CHANGELOG.md` → 1), no duplicated `### Added/Changed/Fixed`
    headers within it, and the block actually mentions this branch's change. FLAG any duplicate
@@ -40,6 +46,12 @@ E2E assertion). Consult the `env-gotchas` skill for platform pitfalls while runn
    hits"→2, "2280 samples / 0 errors"→2160 with 20 real failures, and a "grep returns nothing" that
    returned 41 hits). Numbers quoted from an earlier head are the commonest form.
    `pytest --collect-only -q` and `npx playwright test --list` settle most of them.
+   **Quote each number with the CONDITIONS that produced it**, and check those conditions are the
+   ones you claim: v1.14.0 spent five review findings across four PRs on numbers that were right for
+   a state nobody stated — a baseline counted on a DIRTY worktree (38 vs the tracked 37), a mutation
+   count from a PARTIAL run ("2 cases fail" vs 7), and a matrix measured on a PRE-FINAL version of
+   the suite it described (four of six rows off by one). `git status --short` before you count, and
+   re-run the matrix once more after the last commit.
 8. **Layer evidence (rule 12).** For each layer that can see this change's failure mode, state what
    you ran and what it printed: backend `pytest -n auto --cov-fail-under=100`; the three Vitest
    projects; `./verify_all.sh` or `/e2e` for a user-facing surface; `./run_integration_tests.sh` for
