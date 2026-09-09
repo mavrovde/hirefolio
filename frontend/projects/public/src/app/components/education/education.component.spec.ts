@@ -2,8 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { EducationComponent } from './education.component';
 import { Profile } from '../../services/profile.service';
 
-import { TranslatePipe } from '@mavrov/shared';
-import { MockTranslatePipe } from '@mavrov/shared/testing';
+import { TranslatePipe } from '@beaconfolio/shared';
+import { MockTranslatePipe } from '@beaconfolio/shared/testing';
 
 describe('EducationComponent', () => {
   let component: EducationComponent;

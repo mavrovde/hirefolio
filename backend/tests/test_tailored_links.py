@@ -159,7 +159,7 @@ async def test_create_with_custom_slug_note_highlights_and_variant(
         cv_document_id=str(cv.id),
         headline_note="  Hi Acme team — here is why I fit this role.  ",
         highlighted_skills=[" Angular ", "angular", "RxJS"],
-        highlighted_projects=["Hirefolio"],
+        highlighted_projects=["Beaconfolio"],
     )
 
     assert link["slug"] == "acme-staff-eng"
@@ -245,7 +245,7 @@ async def test_patch_updates_every_field(client: AsyncClient, db_session: AsyncS
                 "cv_document_id": str(cv.id),
                 "headline_note": "second",
                 "highlighted_skills": ["Python"],
-                "highlighted_projects": ["Hirefolio", "hirefolio"],
+                "highlighted_projects": ["Beaconfolio", "beaconfolio"],
                 "expires_at": expiry,
             },
         )
@@ -255,7 +255,7 @@ async def test_patch_updates_every_field(client: AsyncClient, db_session: AsyncS
     assert updated["cv_version"] == "acme-v1"
     assert updated["headline_note"] == "second"
     assert updated["highlighted_skills"] == ["Python"]
-    assert updated["highlighted_projects"] == ["Hirefolio"]
+    assert updated["highlighted_projects"] == ["Beaconfolio"]
     assert updated["expires_at"] is not None
 
     # A patch that touches something else must KEEP the pinned variant label —
@@ -321,7 +321,7 @@ async def test_public_view_is_open_and_leaks_no_owner_metrics(
         cv_document_id=str(cv.id),
         headline_note="Hi Acme team",
         highlighted_skills=["Angular"],
-        highlighted_projects=["Hirefolio"],
+        highlighted_projects=["Beaconfolio"],
     )
 
     # No auth header at all — the slug IS the access control.
@@ -334,7 +334,7 @@ async def test_public_view_is_open_and_leaks_no_owner_metrics(
         "role_title": "Staff Engineer",
         "headline_note": "Hi Acme team",
         "highlighted_skills": ["Angular"],
-        "highlighted_projects": ["Hirefolio"],
+        "highlighted_projects": ["Beaconfolio"],
         "cv_version": "acme-v1",
         "cv_download_path": f"{settings.api_prefix}/for/acme-staff-eng/cv",
     }

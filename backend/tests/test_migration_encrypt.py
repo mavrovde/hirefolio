@@ -32,7 +32,7 @@ from app.config import settings
 # concurrently, and a SHARED scratch database means one worker drops the database
 # another is mid-migration on (observed on main: 3 failed + 1 error). The
 # `test_` prefix is preserved so the CLAUDE.md rule-9 carve-out still applies.
-SCRATCH_DB = f"test_hirefolio_encmig_{os.getenv('PYTEST_XDIST_WORKER', 'main')}"
+SCRATCH_DB = f"test_beaconfolio_encmig_{os.getenv('PYTEST_XDIST_WORKER', 'main')}"
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MIGRATIONS_DIR = os.path.join(BACKEND_DIR, "migrations")
@@ -250,7 +250,7 @@ def test_backfill_encrypts_plaintext_and_is_idempotent(monkeypatch, scratch_db):
 
 
 def test_backfill_refuses_without_key(monkeypatch):
-    """The backfill refuses (returns 0) when HIREFOLIO_GEMINI_ENCRYPTION_KEY is unset."""
+    """The backfill refuses (returns 0) when BEACONFOLIO_GEMINI_ENCRYPTION_KEY is unset."""
     from scripts.backfill_encrypt_gemini_key import backfill
 
     monkeypatch.setattr(settings, "gemini_encryption_key", "")

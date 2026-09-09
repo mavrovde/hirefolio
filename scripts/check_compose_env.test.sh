@@ -23,7 +23,7 @@ skeleton() {
 class Settings(BaseSettings):
     site_name: str = "My Portfolio"
     translation_enabled: bool = True
-    gemini_api_key: str = Field(default="", validation_alias="HIREFOLIO_GEMINI_API_KEY")
+    gemini_api_key: str = Field(default="", validation_alias="BEACONFOLIO_GEMINI_API_KEY")
 PY
   for f in docker-compose.yml docker-compose.prod.yml; do
     { echo "services:"
@@ -71,10 +71,10 @@ printf '%s' "$out" | grep -q 'docker-compose.yml — backend' \
   && bad "dev file wrongly reported" "$out" || ok "…and does not blame the dev file"
 rm -rf "$d"
 
-# --- 4. Namespaced alias (#141 HIREFOLIO_*) is understood -------------------
-d="$(mktemp -d)"; skeleton "$d" "# HIREFOLIO_GEMINI_API_KEY=x" ""
+# --- 4. Namespaced alias (#141 BEACONFOLIO_*) is understood -------------------
+d="$(mktemp -d)"; skeleton "$d" "# BEACONFOLIO_GEMINI_API_KEY=x" ""
 out="$(run "$d")"; rc=$?
-[ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q 'HIREFOLIO_GEMINI_API_KEY' \
+[ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q 'BEACONFOLIO_GEMINI_API_KEY' \
   && ok "validation_alias keys are part of the contract" || bad "alias keys" "rc=$rc out=$out"
 rm -rf "$d"
 

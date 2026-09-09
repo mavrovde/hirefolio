@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ContactComponent } from './contact.component';
-import { TranslatePipe } from '@mavrov/shared';
-import { MockTranslatePipe } from '@mavrov/shared/testing';
+import { TranslatePipe } from '@beaconfolio/shared';
+import { MockTranslatePipe } from '@beaconfolio/shared/testing';
 import { Profile } from '../../services/profile.service';
 
 describe('ContactComponent', () => {

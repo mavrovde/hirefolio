@@ -106,4 +106,4 @@ def test_from_address_fallback_chain():
         patch("app.config.settings.smtp_from", ""),
         patch("app.config.settings.smtp_user", ""),
     ):
-        assert svc._from_address() == "hirefolio@localhost"
+        assert svc._from_address() == "beaconfolio@localhost"

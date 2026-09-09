@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Rebranded to Beaconfolio; repository renamed to `mavrovde/beaconfolio` (#330, executing #88)** —
+  the product name, the repository slug and the GitHub description/homepage now say **Beaconfolio**,
+  and `beaconfolio.com` is registered. The prior working name could not ship: `hirefolio.com` has been
+  registered since 2011 and serves a live job-search product in the identical niche. `beaconfolio` was
+  verified free across `.com`, `.dev`, `.io`, the GitHub org namespace, npm and PyPI via registry RDAP
+  and the authenticated GitHub API before registration.
+  - **Image paths moved with the slug.** `IMAGE_NAME` derives from `github.repository`, so builds
+    publish to `ghcr.io/mavrovde/beaconfolio-*` from **v1.14.1** onward; every tag through **`1.14.0`
+    exists only at `ghcr.io/mavrovde/hirefolio-*`**. Deploying a pre-rename tag now requires pinning
+    `IMAGE_REPO` explicitly. The four new GHCR packages are created **private** — visibility does not
+    follow a repository rename — and must be made public once (`docs/DEPLOYMENT.md`, Registry notes).
+  - **Every identifier renamed, as a HARD BREAK with no compat window** — defensible because
+    nothing is deployed anywhere (the prod host has no Docker yet): the env prefix is now
+    `BEACONFOLIO_*` (9 keys, was `HIREFOLIO_*`), the npm scope `@beaconfolio/shared` (was
+    `@mavrov/shared`), the importer's `BEACONFOLIO_API_URL` (was `MAVROV_API_URL`), the default
+    database `beaconfolio` / test database `test_beaconfolio`, the compose project `beaconfolio`,
+    the deploy dir default `/opt/beaconfolio`, and the domain defaults `beaconfolio.com` (proxy
+    `server_name`, CORS, `PUBLIC_URL`, SEO surfaces, live-freshness target). An existing `.env`
+    written for the old names must be renamed key-for-key.
+  - **The de-brand guard now hunts the OLD identity too** (`scripts/check_no_pii.sh`): check B
+    matches `mavrov.de` **and** `hirefolio` (case-insensitive) across the whole tree minus the
+    historical surfaces — the former #313 deferral exclusions (compose files, proxy defaults,
+    workflows, CLAUDE.md, backend/frontend/agents/importer code) are all IN SCOPE now that #330
+    renamed them. Exempt: `de-brand:` markers and the legacy GHCR pins. The self-test grew to
+    **62 cases**, including one that replays the sweep's own miss (mixed-case `Mavrov.de` — the
+    guard caught 3 of those in real code the moment it was tightened).
+  - **Legacy subsystems removed** (owner directive during #330): `specs/` (pre-issue-flow spec
+    documents), the root `agents/` A2A multi-agent team (`intake.py`, `orchestrator.py`, the a2a
+    venv — independent of the `.claude/` toolkit, which is untouched), and `docs/agent-runs/`
+    (the A2A system's four July run logs). All stay reachable in git history. The shared
+    `PLAYBOOK.md` — which the eight `.claude/agents/` charters cite as their working flow —
+    moved to `.claude/PLAYBOOK.md` with content intact; the CI playbook-drift step and the
+    pre-push hook step that exercised `agents/tests/` were removed with the subsystem.
+  - **Immutable records verified byte-identical to `main`**: this changelog's shipped entries,
+    `docs/retrospectives/` and `LICENSE`. (`specs/` and `docs/agent-runs/` are removed, not
+    rewritten — their content is unchanged in git history; an early sweep pass touched two
+    retrospective lines and was reverted verbatim before merge.)
+
 ### Added
 - **v1.14.0 release retrospective, and the gates it produced (#328)** — the cycle's evidence turned
   into committed configuration, archived as `docs/retrospectives/v1.14.0.md` with the trend row in

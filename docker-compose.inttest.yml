@@ -74,8 +74,8 @@ services:
       - SMTP_USER=
       - SMTP_PASSWORD=
       - SMTP_STARTTLS=false
-      - SMTP_FROM=hirefolio-inttest@localhost
+      - SMTP_FROM=beaconfolio-inttest@localhost
       # Same rule-10 posture as the E2E overlay: no signing secret to leak,
       # no paid key that could make a billable call.
       - JWT_ALLOW_EPHEMERAL_SECRET=true
-      - HIREFOLIO_GEMINI_API_KEY=
+      - BEACONFOLIO_GEMINI_API_KEY=

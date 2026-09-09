@@ -87,14 +87,14 @@ DF_AVAIL_KB=$LOW DOCKER_DISK_FLOOR_GB=1 run "the floor is tunable downwards" all
 DF_AVAIL_KB=$LOW run "docker compose down is never blocked"  allow "docker compose down"
 DF_AVAIL_KB=$LOW run "docker compose ps is never blocked"    allow "docker compose ps"
 DF_AVAIL_KB=$LOW run "docker compose logs is never blocked"  allow "docker compose logs -f backend"
-DF_AVAIL_KB=$LOW run "docker exec is never blocked"          allow "docker exec hirefolio-backend-1 env"
+DF_AVAIL_KB=$LOW run "docker exec is never blocked"          allow "docker exec beaconfolio-backend-1 env"
 DF_AVAIL_KB=$LOW run "docker system df is never blocked"     allow "docker system df"
 DF_AVAIL_KB=$LOW run "docker builder prune is never blocked" allow "docker builder prune -f"
 DF_AVAIL_KB=$LOW run "docker image ls is never blocked"      allow "docker image ls"
 # `start` creates nothing — it starts containers that already exist, and it is a
 # plausible step AFTER reclaiming space (#329 review, minor 7).
 DF_AVAIL_KB=$LOW run "docker compose start is never blocked"  allow "docker compose start backend"
-DF_AVAIL_KB=$LOW run "docker start is never blocked"          allow "docker start hirefolio-backend-1"
+DF_AVAIL_KB=$LOW run "docker start is never blocked"          allow "docker start beaconfolio-backend-1"
 # …but `create` still gates: it writes a container's read-write layer.
 DF_AVAIL_KB=$LOW run "docker compose create still gates"      deny  "docker compose create backend"
 DF_AVAIL_KB=$LOW run "a non-docker command is never blocked" allow "npm run build"
@@ -130,22 +130,22 @@ DF_AVAIL_KB=$LOTS DOCKER_DATA_ROOT="$STUB/definitely-not-here" \
   run "a data root that does not exist is simply not probed" allow "docker compose up -d"
 
 # --- Check B: one compose project -------------------------------------------
-BUSY='[{"Name":"hirefolio","Status":"running(8)"}]'
+BUSY='[{"Name":"beaconfolio","Status":"running(8)"}]'
 DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS="$BUSY" \
   run "a SECOND named project while one runs is denied (the parallel-agent incident)" deny \
-  "docker compose -p hirefolio250 up -d"
+  "docker compose -p beaconfolio250 up -d"
 DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS="$BUSY" \
   run_reason "…and the deny quotes the measured size of one stack" "15.35 GB" \
-  "docker compose -p hirefolio250 up -d"
+  "docker compose -p beaconfolio250 up -d"
 DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS="$BUSY" \
   run "REUSING the running project is exactly what we want, so it is allowed" allow \
-  "docker compose -p hirefolio up -d"
+  "docker compose -p beaconfolio up -d"
 DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS="$BUSY" \
   run "--project-name spelling is understood too" deny "docker compose --project-name other up -d"
 DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS="$BUSY" \
   run "a COMPOSE_PROJECT_NAME prefix is understood too" deny "COMPOSE_PROJECT_NAME=other docker compose up -d"
-DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS="$BUSY" DOCKER_STACK_ALLOW_PROJECTS=hirefolio250 \
-  run "a deliberately allowed second project passes" allow "docker compose -p hirefolio250 up -d"
+DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS="$BUSY" DOCKER_STACK_ALLOW_PROJECTS=beaconfolio250 \
+  run "a deliberately allowed second project passes" allow "docker compose -p beaconfolio250 up -d"
 DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS='[]' \
   run "with nothing running, any project may start" allow "docker compose -p anything up -d"
 # No -p at all: the effective name comes from the cwd, which this hook cannot
@@ -174,7 +174,7 @@ DF_AVAIL_KB=$LOW run "…and it survives another assignment ahead of it" allow \
 DF_AVAIL_KB=$LOW run "a NON-zero value is not a bypass" deny "DOCKER_STACK_GUARD=1 docker compose up -d"
 DF_AVAIL_KB=$LOW run "the prefix is PER SEGMENT — it does not release an earlier unguarded one" deny \
   "docker compose up -d && DOCKER_STACK_GUARD=0 docker build ."
-DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS='[{"Name":"hirefolio","Status":"running(8)"}]' \
+DF_AVAIL_KB=$LOTS DOCKER_STUB_PROJECTS='[{"Name":"beaconfolio","Status":"running(8)"}]' \
   run "the prefix also releases the one-project check" allow "DOCKER_STACK_GUARD=0 docker compose -p other up -d"
 # The SESSION-ENV form is a different path (the hook process itself inherits the
 # variable). Keep it, but it is no longer the only coverage — it was the bug.

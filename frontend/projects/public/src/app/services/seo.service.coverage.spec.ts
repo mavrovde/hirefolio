@@ -12,8 +12,8 @@ const MOCK_SITE_CONFIG_PROVIDER = {
   provide: SiteConfigService,
   useValue: {
     config$: of({
-      siteName: 'mavrov.de',
-      siteUrl: 'https://mavrov.de',
+      siteName: 'beaconfolio.com',
+      siteUrl: 'https://beaconfolio.com',
       ownerName: 'Mock Owner',
       ownerHeadline: 'Principal Software Engineer',
       ownerDescription: 'Desc.',
@@ -38,13 +38,13 @@ describe('SeoService canonical URL handling', () => {
     service.updateSeo({ url: '/first' });
     let link = document.querySelector("link[rel='canonical']") as HTMLLinkElement;
     expect(link).toBeTruthy();
-    expect(link.getAttribute('href')).toBe('https://mavrov.de/first');
+    expect(link.getAttribute('href')).toBe('https://beaconfolio.com/first');
 
     // Second call should reuse the existing link element (else-branch not taken)
     service.updateSeo({ url: '/second' });
     const links = document.querySelectorAll("link[rel='canonical']");
     expect(links.length).toBe(1);
-    expect((links[0] as HTMLLinkElement).getAttribute('href')).toBe('https://mavrov.de/second');
+    expect((links[0] as HTMLLinkElement).getAttribute('href')).toBe('https://beaconfolio.com/second');
   });
 
   /**
@@ -91,10 +91,10 @@ describe('SeoService canonical URL handling', () => {
 
     TestBed.inject(SeoService).updateSeo({});
 
-    const card = `https://mavrov.de${OG_IMAGE_PATH}`;
+    const card = `https://beaconfolio.com${OG_IMAGE_PATH}`;
     expect(updateTag).toHaveBeenCalledWith({ property: 'og:image', content: card });
     expect(updateTag).toHaveBeenCalledWith({ name: 'twitter:image', content: card });
-    expect(updateTag).toHaveBeenCalledWith({ property: 'og:url', content: 'https://mavrov.de/' });
+    expect(updateTag).toHaveBeenCalledWith({ property: 'og:url', content: 'https://beaconfolio.com/' });
   });
 
   it('prefers an explicitly supplied image over the default card', () => {
@@ -109,7 +109,7 @@ describe('SeoService canonical URL handling', () => {
 
     expect(updateTag).toHaveBeenCalledWith({
       property: 'og:image',
-      content: 'https://mavrov.de/assets/images/post.png',
+      content: 'https://beaconfolio.com/assets/images/post.png',
     });
   });
 });

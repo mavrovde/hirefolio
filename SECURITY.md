@@ -14,7 +14,7 @@ tracked in [`VERSION`](./VERSION).
 
 Please report vulnerabilities **privately** via GitHub Security Advisories:
 open the repository's **Security** tab → **Report a vulnerability**
-(<https://github.com/mavrovde/hirefolio/security/advisories/new>).
+(<https://github.com/mavrovde/beaconfolio/security/advisories/new>).
 
 Do **not** open a public issue for a security problem, and never include
 credentials, tokens, or step-by-step live-exploit instructions in public

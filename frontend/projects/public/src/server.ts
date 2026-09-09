@@ -26,7 +26,7 @@ const app = express();
 //     against `allowedHosts`. Our Docker/CI topology chains two nginx layers
 //     (outer proxy -> frontend nginx -> node), and the Host that actually
 //     reaches node is the internal service name `frontend`, not the public
-//     `localhost`/`mavrov.de`. An unlisted host makes the engine return a CSR
+//     `localhost`/`beaconfolio.com`. An unlisted host makes the engine return a CSR
 //     shell (or a 400), so `<title>`, `<h1>` and body content go missing.
 //
 //  2. Proxy-header trust: any `x-forwarded-*` header that is NOT in

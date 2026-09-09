@@ -1,7 +1,7 @@
 import { appConfig } from './app.config';
 import { describe, it, expect } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { AUTH_TOKEN_PROVIDER } from '@mavrov/shared';
+import { AUTH_TOKEN_PROVIDER } from '@beaconfolio/shared';
 
 describe('AppConfig', () => {
     it('should have required providers', () => {

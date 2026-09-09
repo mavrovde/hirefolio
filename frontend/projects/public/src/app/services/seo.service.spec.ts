@@ -12,8 +12,8 @@ const MOCK_SITE_CONFIG_PROVIDER = {
     provide: SiteConfigService,
     useValue: {
         config$: of({
-            siteName: 'mavrov.de',
-            siteUrl: 'https://mavrov.de',
+            siteName: 'beaconfolio.com',
+            siteUrl: 'https://beaconfolio.com',
             ownerName: 'Mock Owner',
             ownerHeadline: 'Principal Software Engineer',
             ownerDescription:
@@ -99,7 +99,7 @@ describe('SeoService', () => {
         TestBed.inject(SeoService).updateSeo({ url: '/server-test' });
 
         const link = ssrDocument.querySelector("link[rel='canonical']");
-        expect(link?.getAttribute('href')).toBe('https://mavrov.de/server-test');
+        expect(link?.getAttribute('href')).toBe('https://beaconfolio.com/server-test');
     });
 
     /**
@@ -121,10 +121,10 @@ describe('SeoService', () => {
         seo.updateSeo({ url: '/blog' });
 
         const resume = ssrDocument.querySelector("link[rel='alternate'][type='application/json']");
-        expect(resume?.getAttribute('href')).toBe('https://mavrov.de/api/app/profile/resume.json');
+        expect(resume?.getAttribute('href')).toBe('https://beaconfolio.com/api/app/profile/resume.json');
         expect(resume?.getAttribute('title')).toBe('JSON Resume');
         const llms = ssrDocument.querySelector("link[rel='describedby']");
-        expect(llms?.getAttribute('href')).toBe('https://mavrov.de/llms.txt');
+        expect(llms?.getAttribute('href')).toBe('https://beaconfolio.com/llms.txt');
 
         // Navigating must UPDATE the links, never append a second copy.
         seo.updateSeo({ url: '/cv' });
@@ -159,10 +159,10 @@ describe('SeoService', () => {
 
         expect(
             ssrDocument.querySelector("link[rel='alternate']")?.getAttribute('href'),
-        ).toBe('https://mavrov.de/api/app/profile/resume.json');
+        ).toBe('https://beaconfolio.com/api/app/profile/resume.json');
         expect(
             ssrDocument.querySelector("link[rel='describedby']")?.getAttribute('href'),
-        ).toBe('https://mavrov.de/llms.txt');
+        ).toBe('https://beaconfolio.com/llms.txt');
         expect(TestBed.inject(Meta).getTag('name="robots"')?.content).toBe('noindex');
         expect(TestBed.inject(Title).getTitle()).toContain('not found');
     });
@@ -174,7 +174,7 @@ describe('SeoService config re-apply (#255 review pins)', () => {
     let service: SeoService;
 
     const CFG = {
-        siteName: 'mavrov.de', siteUrl: 'https://real.example',
+        siteName: 'beaconfolio.com', siteUrl: 'https://real.example',
         ownerName: 'Real Owner', ownerHeadline: 'Real Headline',
         ownerDescription: 'Real description.', socialLinks: [], analyticsId: '',
     };

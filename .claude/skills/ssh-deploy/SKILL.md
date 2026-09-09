@@ -2,12 +2,12 @@
 name: ssh-deploy
 description: >-
   The panel-free SSH deployment loop for the SHARED, MULTI-PROJECT prod host (#310) — how to roll
-  hirefolio, verify it, roll it back, read host logs, and diagnose a failed `Roll Out To Prod Host`
+  beaconfolio, verify it, roll it back, read host logs, and diagnose a failed `Roll Out To Prod Host`
   run step by step, plus the certificate-renewal runbook and the multi-tenant do-not-touch list.
   Consult BEFORE any host-side action, before adding or changing the DEPLOY_* secrets, when a
   rollout/health gate/freshness gate goes red, when a certificate is near expiry or a TLS error
   appears, and before any command that could touch a NEIGHBOURING project's containers, volumes or
-  ports. hirefolio is ONE TENANT on this box, not its owner.
+  ports. beaconfolio is ONE TENANT on this box, not its owner.
 ---
 
 # SSH deploy — the operational loop on a shared host (#310)
@@ -23,8 +23,8 @@ coordinates, rollout secrets).
 
 ## The first thing to know
 
-**hirefolio does not own the host.** Other projects share it. Any command that is
-not scoped to hirefolio's compose project can take a neighbour down, and Docker's
+**beaconfolio does not own the host.** Other projects share it. Any command that is
+not scoped to beaconfolio's compose project can take a neighbour down, and Docker's
 destructive commands are **host-wide, not project-scoped**. Two owner constraints
 (2026-09-07) bound everything here: **no server panel of any kind**, and **the
 host is shared**.
@@ -48,7 +48,7 @@ Verify all four, from off the host, before the secrets exist:
 curl -sS -o /dev/null -w '%{http_code}\n' https://<public-host>/api/app/health   # 200, NO -k
 curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' http://<public-host>/  # 301 -> https
 ssh -p <port> deploy@<host> 'docker compose version'                            # key works, docker group
-ssh deploy@<host> 'cd /opt/hirefolio && ls -l .env'                              # mode 600, deploy-owned
+ssh deploy@<host> 'cd /opt/beaconfolio && ls -l .env'                              # mode 600, deploy-owned
 ```
 
 `curl` exits **60** on an untrusted certificate, so a `200` without `-k` *is* the
@@ -61,7 +61,7 @@ The pipeline does this automatically. These are the manual equivalents, for when
 it cannot.
 
 ```bash
-cd /opt/hirefolio
+cd /opt/beaconfolio
 
 # State
 grep -E '^IMAGE_(REPO|TAG)=' .env
@@ -94,7 +94,7 @@ keep their old unbounded configuration forever, including `ollama`, which is the
 hog the ceiling exists for. Run once, on the host:
 
 ```bash
-cd /opt/hirefolio
+cd /opt/beaconfolio
 docker compose -f docker-compose.prod.yml up -d          # NO --no-deps
 # Compose recreates only what changed; volumes untouched (up -d, never down -v).
 # Verify, per service — mem=0 on db/ollama/open-webui means it has not run yet:
@@ -131,13 +131,13 @@ Job at `.github/workflows/deploy.yml:928-1132`.
 | **Set up SSH** (`:952-973`) — `ssh-keyscan` fails or times out | Host unreachable, wrong `DEPLOY_SSH_PORT`, or provider firewall. | `nc -vz <host> <port>` from elsewhere; provider console; is sshd running? |
 | **Set up SSH** — host key mismatch | The host key changed (rebuild/reinstall) — or a MITM. | Re-verify the fingerprint from a trusted machine or the provider console **before** accepting anything. Never blind-accept. |
 | **Preflight — images anonymously pullable** (`:975-1001`) | A GHCR package is **private**. New packages default to private and visibility does not follow a repo rename (lessons §20, #88/#189). | The error names the package: Packages → package → settings → visibility → Public. Then re-run. Nothing on the host was touched. |
-| **Roll out** — `FATAL: .env is missing or unreadable` | Wrong `DEPLOY_DIR`, or `.env` is root-owned and the deploy user cannot read it. | `ls -l /opt/hirefolio/.env` — must be mode 600 and owned by the deploy user. |
+| **Roll out** — `FATAL: .env is missing or unreadable` | Wrong `DEPLOY_DIR`, or `.env` is root-owned and the deploy user cannot read it. | `ls -l /opt/beaconfolio/.env` — must be mode 600 and owned by the deploy user. |
 | **Roll out** — `FATAL: .env rewrite would drop N lines` | The guard refused to truncate a secret-bearing `.env`. **It protected you.** | Inspect `.env` by hand for corruption/CRLF; never disable the guard. |
-| **Roll out** — `bind: address already in use` | Another tenant holds the port. | `sudo ss -ltnp \| grep -w <port>`; reassign hirefolio via `PROXY_HTTP_PUBLISH` / `PROXY_HTTPS_PUBLISH` and update the wiki port registry. **Never take the port from its holder.** |
+| **Roll out** — `bind: address already in use` | Another tenant holds the port. | `sudo ss -ltnp \| grep -w <port>`; reassign beaconfolio via `PROXY_HTTP_PUBLISH` / `PROXY_HTTPS_PUBLISH` and update the wiki port registry. **Never take the port from its holder.** |
 | **Roll out** — `Digest mismatch for <svc>` | The running container is not the image the tag resolves to — a stale container, or a pull that silently failed. | Re-run `pull` + `up -d --no-deps <svc>`; check disk (`df -h`) — a full disk fails pulls quietly. |
 | **Health gate** — TLS error / `curl (60)` | The certificate is expired, self-signed, or does not cover this hostname. **This is the panel-free host's most likely failure.** | `openssl s_client -servername <h> -connect <h>:443` → check issuer, dates, SAN. Is the edge serving 443 at all? § Certificate renewal below. |
 | **Health gate** — connection refused / times out | Nothing on 443, or the edge is down, or the edge points at the wrong tenant port. | `systemctl status caddy`; `sudo ss -ltnp \| grep -w 443`; confirm the edge forwards to the tenant's **443**, not its 80 (see the redirect-loop trap). |
-| **Health gate** — redirect loop / `301` chain | The edge is forwarding to hirefolio's **port 80**, which unconditionally redirects to HTTPS. Measured: `Host: <PUBLIC_SERVER_NAME>` → `:80` = `301 https://<that name>/`; → `:443` = `200`. | Point the edge at `PROXY_HTTPS_PUBLISH` with upstream verification disabled (the tenant's cert is the internal self-signed one). |
+| **Health gate** — redirect loop / `301` chain | The edge is forwarding to beaconfolio's **port 80**, which unconditionally redirects to HTTPS. Measured: `Host: <PUBLIC_SERVER_NAME>` → `:80` = `301 https://<that name>/`; → `:443` = `200`. | Point the edge at `PROXY_HTTPS_PUBLISH` with upstream verification disabled (the tenant's cert is the internal self-signed one). |
 | **Health gate** — 200 but backend unhealthy | Backend up, dependency down. | `docker compose logs backend`; is `db`/`ollama` healthy? Alembic errors at startup? |
 | **Freshness gate** fails after health passes | Live version ≠ released, or the route shape is wrong (`/admin/login` must 404 publicly). | `bash scripts/check_live_freshness.sh <url> <version>` locally against the host; the frontend may be a stale image while the backend rolled. |
 | **Roll back on failure** — `No usable .env.rollback` | The run aborted before recording coordinates, or a previous run consumed it. | Roll back by hand (above) using the previous `sha-` tag from the run history. |
@@ -215,7 +215,7 @@ journalctl -k | grep -i -e oom -e 'killed process'
 docker stats --no-stream                        # who is at their memory ceiling?
 ```
 
-If hirefolio is inside its ceilings, the disk is fine and the edge is healthy, the
+If beaconfolio is inside its ceilings, the disk is fine and the edge is healthy, the
 fault is theirs. If the **edge** is unhealthy it is everyone's — `reload` before
 `restart`, and validate the config first.
 

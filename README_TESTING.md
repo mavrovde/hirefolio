@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document explains how to run tests and view coverage reports for the Hirefolio application.
+This document explains how to run tests and view coverage reports for the Beaconfolio application.
 
 ## Backend Tests (Python/FastAPI)
 
@@ -17,7 +17,7 @@ dedicated `test_*` database first — otherwise it can hang on (or write into)
 the live dev DB:
 
 ```bash
-export TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_hirefolio
+export TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_beaconfolio
 ```
 
 > **Ports:** the integration overlay publishes the stack's Postgres on **5533**, not 5433, so a
@@ -167,7 +167,7 @@ Perf runs are local/nightly tooling — never a PR gate (shared-runner noise).
   `docker-compose.e2e.yml`: what `./verify_all.sh` (and CI) run the Playwright
   suite against. The E2E overlay switches the prod images to local builds and
   opens the admin allowlist for the test run only; CI additionally injects an
-  **empty** `HIREFOLIO_GEMINI_API_KEY` so the E2E falls back to local Ollama and no paid
+  **empty** `BEACONFOLIO_GEMINI_API_KEY` so the E2E falls back to local Ollama and no paid
   API is ever hit (CLAUDE.md rule 10).
 
   ```bash

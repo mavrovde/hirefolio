@@ -20,7 +20,7 @@ class EmailService:
 
     def _from_address(self) -> str:
         """A no-auth relay has no smtp_user to borrow the From from."""
-        return settings.smtp_from or settings.smtp_user or "hirefolio@localhost"
+        return settings.smtp_from or settings.smtp_user or "beaconfolio@localhost"
 
     def _send(self, msg: EmailMessage, success_log: str) -> bool:
         """The ONE SMTP transport — it was quadruplicated across every method,

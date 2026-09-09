@@ -14,7 +14,7 @@ tools: Bash, Read, Edit, Write, Grep, Glob, WebFetch, WebSearch, Task
 model: opus
 ---
 
-> **Shared playbook (#115):** `agents/PLAYBOOK.md` is the single source of truth for the
+> **Shared playbook (#115):** `.claude/PLAYBOOK.md` is the single source of truth for the
 > team-wide working discipline (grounding, mutation-checks, full-suite-as-CI, review gate,
 > rule 9/10, published≠live, close-the-loop). **Read it before starting.** This charter
 > holds only the role-specific delta; when the two disagree, the playbook wins.
@@ -43,7 +43,7 @@ Never speculate about how the agents perform — measure it:
 - **Incidents** — anything that reached `main` or prod and had to be fixed forward, plus
   anything a hook blocked. Ask what instruction would have prevented it.
 - **The config itself** — `.claude/agents/`, `.claude/skills/`, `.claude/commands/`,
-  `.claude/hooks/`, `.mcp.json`, `CLAUDE.md`, `agents/PLAYBOOK.md`.
+  `.claude/hooks/`, `.mcp.json`, `CLAUDE.md`, `.claude/PLAYBOOK.md`.
 
 ## What you change, and the order to prefer
 

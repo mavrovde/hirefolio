@@ -1,5 +1,5 @@
 {
-  "name": "@mavrov/shared",
+  "name": "@beaconfolio/shared",
   "version": "1.14.0",
   "peerDependencies": {
     "@angular/common": "^21.2.18",

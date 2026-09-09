@@ -11,7 +11,7 @@ from .core import Config, run
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Import LinkedIn posts into mavrov.de")
+    ap = argparse.ArgumentParser(description="Import LinkedIn posts into beaconfolio.com")
     ap.add_argument("--dry-run", action="store_true", help="do everything except POST")
     ap.add_argument(
         "--watch",

@@ -3,7 +3,7 @@
 # The deploy pipeline's own "Health + freshness gate" only runs when the
 # secrets-gated rollout actually rolled the host. When the DEPLOY_* secrets are
 # absent the run stays green while prod silently ages — that is exactly how
-# mavrov.de sat on v1.2.27 for five months while every release was announced as
+# beaconfolio.com sat on v1.2.27 for five months while every release was announced as
 # shipped. This workflow is the independent check: it runs on a schedule and on
 # demand, needs no secrets, and FAILS RED whenever live ≠ released.
 #
@@ -36,12 +36,12 @@ jobs:
     # canonical deployment against the fork's VERSION — permanently red and
     # unsolicited traffic. Run only on the canonical repo or when the fork has
     # configured its own URL.
-    if: github.repository == 'mavrovde/hirefolio' || vars.PUBLIC_URL != ''
+    if: github.repository == 'mavrovde/beaconfolio' || vars.PUBLIC_URL != ''
     runs-on: ubuntu-latest
     env:
       # A forker points this at their own site via a repository variable; the
       # canonical repo defaults to the maintainer's deployment.
-      PUBLIC_URL: ${{ vars.PUBLIC_URL || 'https://mavrov.de' }}
+      PUBLIC_URL: ${{ vars.PUBLIC_URL || 'https://beaconfolio.com' }}
     steps:
       - uses: actions/checkout@v7
 

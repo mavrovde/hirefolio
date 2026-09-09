@@ -1,4 +1,4 @@
-import { SharedEnvironment } from '@mavrov/shared';
+import { SharedEnvironment } from '@beaconfolio/shared';
 
 export const environment: SharedEnvironment = {
   production: false,

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DashboardComponent } from './dashboard.component';
 import { SiteSettingsService } from '../../../services/site-settings.service';
-import { StatsService, SystemStats } from '@mavrov/shared';
+import { StatsService, SystemStats } from '@beaconfolio/shared';
 import { of, throwError } from 'rxjs';
 import { RouterTestingModule } from '@angular/router/testing';
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SystemStatsComponent } from './stats.component';
-import { StatsService } from '@mavrov/shared';
+import { StatsService } from '@beaconfolio/shared';
 import { Router, NavigationEnd } from '@angular/router';
 import { Subject, of } from 'rxjs';
 import { SiteConfigService } from '../../services/site-config.service';
@@ -10,7 +10,7 @@ const MOCK_SITE_CONFIG_PROVIDER = {
   provide: SiteConfigService,
   useValue: {
     config$: of({
-      siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+      siteName: 'beaconfolio.com', siteUrl: 'https://beaconfolio.com',
       ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
       ownerDescription: 'Desc.', socialLinks: [],
       analyticsId: '',
@@ -18,8 +18,8 @@ const MOCK_SITE_CONFIG_PROVIDER = {
   },
 };
 import { PLATFORM_ID } from '@angular/core';
-import { TranslatePipe } from '@mavrov/shared';
-import { MockTranslatePipe } from '@mavrov/shared/testing';
+import { TranslatePipe } from '@beaconfolio/shared';
+import { MockTranslatePipe } from '@beaconfolio/shared/testing';
 
 describe('SystemStatsComponent visibility + uptime-fallback branches', () => {
   let component: SystemStatsComponent;

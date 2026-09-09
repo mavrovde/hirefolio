@@ -19,7 +19,7 @@ The three things naive implementations get wrong, and which are handled here:
 
 from datetime import UTC, datetime, timedelta
 
-PRODID = "-//Hirefolio//Interview Calendar//EN"
+PRODID = "-//Beaconfolio//Interview Calendar//EN"
 
 # RFC 5545 §3.1: "Lines of text SHOULD NOT be longer than 75 octets, excluding
 # the line break." A continuation line spends one octet on its leading space.

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { catchError, shareReplay, switchMap } from 'rxjs/operators';
-import { LanguageService } from '@mavrov/shared';
+import { LanguageService } from '@beaconfolio/shared';
 import { environment } from '../../environments/environment';
 
 export interface Profile {

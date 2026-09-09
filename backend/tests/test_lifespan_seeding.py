@@ -111,7 +111,7 @@ async def test_lifespan_rotates_existing_weak_default_admin(
     db_session.add(
         User(
             username="admin",
-            email="admin@mavrov.de",
+            email="admin@beaconfolio.com",
             hashed_password=get_password_hash("admin"),
             is_admin=True,
             is_active=True,
@@ -140,7 +140,7 @@ async def test_lifespan_does_not_clobber_custom_admin_password(
     db_session.add(
         User(
             username="admin",
-            email="admin@mavrov.de",
+            email="admin@beaconfolio.com",
             hashed_password=get_password_hash("operator-set-strong-pw"),
             is_admin=True,
             is_active=True,
@@ -210,10 +210,10 @@ async def test_lifespan_seeds_cv(db_session, init_db):
                 else:
                     # For .env files
                     file_mock.__enter__.return_value.read.return_value = (
-                        "HIREFOLIO_GEMINI_API_KEY=test_key"
+                        "BEACONFOLIO_GEMINI_API_KEY=test_key"
                     )
                     file_mock.__enter__.return_value.__iter__.return_value = [
-                        "HIREFOLIO_GEMINI_API_KEY=test_key"
+                        "BEACONFOLIO_GEMINI_API_KEY=test_key"
                     ]
                 return file_mock
 
@@ -236,16 +236,16 @@ async def test_lifespan_seeds_cv(db_session, init_db):
 
 @pytest.mark.asyncio
 async def test_lifespan_env_local_without_gemini_key(db_session, init_db, monkeypatch):
-    """Covers the `.env.local` present but HIREFOLIO_GEMINI_API_KEY unset/empty branch.
+    """Covers the `.env.local` present but BEACONFOLIO_GEMINI_API_KEY unset/empty branch.
 
     Pre-seed a user and a CV so the lifespan's admin/CV seeding blocks are no-ops and only
     the env-file loading branch is under test.
     """
-    monkeypatch.delenv("HIREFOLIO_GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("BEACONFOLIO_GEMINI_API_KEY", raising=False)
     db_session.add(
         User(
             username="admin",
-            email="admin@mavrov.de",
+            email="admin@beaconfolio.com",
             hashed_password="hashed",
             is_admin=True,
             is_active=True,

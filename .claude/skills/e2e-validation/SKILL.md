@@ -1,7 +1,7 @@
 ---
 name: e2e-validation
 description: >-
-  The known-good full Docker E2E loop for Hirefolio — prod-topology bring-up, REAL readiness
+  The known-good full Docker E2E loop for Beaconfolio — prod-topology bring-up, REAL readiness
   gating (not just container health), E2E seeding, Playwright run, and the recurring traps
   (open-webui volume/schema crash-loop, pre-schema 500 race, shared test-DB clobbering). Consult
   before running or debugging the Docker E2E — it is the only gate that catches SSR/zoneless
@@ -16,10 +16,10 @@ This is the exact sequence; `/e2e` runs it.
 
 ## 0. Preconditions
 - `pgrep -f pytest` → empty. Never run alongside a backend pytest suite: both reset the shared
-  `test_hirefolio` DB and clobber each other (lessons-learned §4).
+  `test_beaconfolio` DB and clobber each other (lessons-learned §4).
 - Docker daemon up; ~4 GB free (images + ollama models; models persist in `ollama_data`, so only
   the first run pays the pull).
-- **ONE stack.** Reuse the running `hirefolio` compose project and layer the overlay onto it —
+- **ONE stack.** Reuse the running `beaconfolio` compose project and layer the overlay onto it —
   never start a second project. One stack of this repo is 15.35 GB of images + 3.09 GB of build
   cache + 6.97 GB of volumes (measured 2026-09-09); three concurrent stacks filled the disk and
   crashed the Docker daemon in v1.14.0, costing ~2 hours (lessons §54).

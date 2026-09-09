@@ -2,7 +2,7 @@
   "name": "Jane Doe",
   "headline": "Senior Software Engineer",
   "location": "Berlin, Germany",
-  "about": "Demo persona for the Hirefolio portfolio template. Jane is a fictional senior software engineer with a decade of experience across backend platforms, cloud infrastructure, and modern web frontends. Replace this profile with your own via the admin panel (Profile Data upload) — no code changes needed.",
+  "about": "Demo persona for the Beaconfolio portfolio template. Jane is a fictional senior software engineer with a decade of experience across backend platforms, cloud infrastructure, and modern web frontends. Replace this profile with your own via the admin panel (Profile Data upload) — no code changes needed.",
   "contact": {
     "email": "jane.doe@example.com",
     "linkedin": "https://www.linkedin.com/in/example-jane-doe"
@@ -80,7 +80,7 @@
       "author": "Alex Example",
       "authorTitle": "Engineering Manager (fictional)",
       "authorLinkedInUrl": "",
-      "text": "This is a demo recommendation shipped with the Hirefolio template. Jane consistently delivered reliable, well-tested systems and elevated the whole team's engineering standards. Replace it with your real recommendations via the admin Profile Data upload."
+      "text": "This is a demo recommendation shipped with the Beaconfolio template. Jane consistently delivered reliable, well-tested systems and elevated the whole team's engineering standards. Replace it with your real recommendations via the admin Profile Data upload."
     },
     {
       "author": "Sam Sample",

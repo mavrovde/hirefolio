@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { SiteSettingsService, AVAILABILITY_STATES } from '../../../services/site-settings.service';
-import { StatsService, SystemStats } from '@mavrov/shared';
+import { StatsService, SystemStats } from '@beaconfolio/shared';
 
 @Component({
   selector: 'app-dashboard',

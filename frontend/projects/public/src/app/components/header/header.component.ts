@@ -1,9 +1,9 @@
 import { ChangeDetectorRef, Component, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { Language, LanguageService } from '@mavrov/shared';
+import { Language, LanguageService } from '@beaconfolio/shared';
 import { YearsService } from '../../services/years.service';
-import { TranslatePipe } from '@mavrov/shared';
+import { TranslatePipe } from '@beaconfolio/shared';
 
 @Component({
   selector: 'app-header',

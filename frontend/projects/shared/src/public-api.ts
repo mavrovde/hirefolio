@@ -1,5 +1,5 @@
 /*
- * Public API surface of @mavrov/shared
+ * Public API surface of @beaconfolio/shared
  */
 export * from './lib/services/blog.service';
 export * from './lib/services/stats.service';

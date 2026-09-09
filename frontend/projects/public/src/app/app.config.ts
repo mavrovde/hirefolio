@@ -9,7 +9,7 @@ import { provideClientHydration, withEventReplay } from '@angular/platform-brows
 
 import { routes } from './app.routes';
 import { SsrHttpBackend } from './interceptors/ssr-http-backend';
-import { provideSharedEnvironment, provideAuthTokenProvider } from '@mavrov/shared';
+import { provideSharedEnvironment, provideAuthTokenProvider } from '@beaconfolio/shared';
 import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {

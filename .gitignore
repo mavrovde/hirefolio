@@ -19,6 +19,7 @@ Thumbs.db
 !.claude/skills/
 !.claude/settings.json
 !.claude/hooks/
+!.claude/PLAYBOOK.md
 
 # Environment variables
 .env
@@ -54,8 +55,6 @@ scraper/session.json.stale-*
 importer/state.json
 
 
-# A2A agents subsystem
-agents/.venv/
 
 # Angular build cache (root-level, if a build ran outside frontend/)
 .angular/

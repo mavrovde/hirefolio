@@ -8,8 +8,8 @@ import { BehaviorSubject, of, throwError } from 'rxjs';
 // them from 'vitest' bypasses the patch and every fakeAsync test fails with
 // "Expected to be running in 'ProxyZone'".
 import { vi } from 'vitest';
-import { LanguageService, provideSharedEnvironment } from '@mavrov/shared';
-import { MockLanguageService } from '@mavrov/shared/testing';
+import { LanguageService, provideSharedEnvironment } from '@beaconfolio/shared';
+import { MockLanguageService } from '@beaconfolio/shared/testing';
 
 import { TailoredComponent } from './tailored.component';
 import { Profile, ProfileService } from '../../services/profile.service';

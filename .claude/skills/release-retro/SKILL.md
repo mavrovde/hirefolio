@@ -26,16 +26,16 @@ Everything here is evidence, not opinion. Collect it first, then reason.
 
 ```bash
 # The release's issues and PRs
-gh pr list --repo mavrovde/hirefolio --state merged --search "merged:>=<prev-tag-date>" \
+gh pr list --repo mavrovde/beaconfolio --state merged --search "merged:>=<prev-tag-date>" \
   --json number,title,labels,mergedAt,reviews
-gh issue list --repo mavrovde/hirefolio --state closed --search "closed:>=<prev-tag-date>" \
+gh issue list --repo mavrovde/beaconfolio --state closed --search "closed:>=<prev-tag-date>" \
   --json number,title,body,comments
 
 # Every review verdict in the window — the richest signal in the repo.
 # BOTH streams: this repo's sanctioned verdict is often a COMMENT, because
 # same-identity `gh pr review --approve` is blocked (env-gotchas). Reading
 # `reviews` alone silently loses those — the same bug the merge gate's jq had.
-gh pr view <n> --repo mavrovde/hirefolio --json reviews,comments \
+gh pr view <n> --repo mavrovde/beaconfolio --json reviews,comments \
   --jq '[(.reviews[]?.body),(.comments[]?.body)][]'
 
 # Effort telemetry (recorded at close-the-loop; not retrievable later)

@@ -9,8 +9,8 @@ import { SiteConfigService, DEFAULT_SITE_CONFIG, SiteConfig } from './site-confi
 import { environment } from '../../environments/environment';
 
 const DTO = {
-    site_name: 'mavrov.de',
-    site_url: 'https://mavrov.de',
+    site_name: 'beaconfolio.com',
+    site_url: 'https://beaconfolio.com',
     owner_name: 'Mock Owner',
     owner_headline: 'Principal Software Engineer',
     owner_description: 'Desc.',
@@ -43,8 +43,8 @@ describe('SiteConfigService', () => {
         httpMock.expectOne(url).flush(DTO);
 
         expect(received).toEqual({
-            siteName: 'mavrov.de',
-            siteUrl: 'https://mavrov.de',
+            siteName: 'beaconfolio.com',
+            siteUrl: 'https://beaconfolio.com',
             ownerName: 'Mock Owner',
             ownerHeadline: 'Principal Software Engineer',
             ownerDescription: 'Desc.',

@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { BlogComponent } from './blog.component';
-import { BlogService } from '@mavrov/shared';
-import { LanguageService } from '@mavrov/shared';
+import { BlogService } from '@beaconfolio/shared';
+import { LanguageService } from '@beaconfolio/shared';
 import { of, throwError, ReplaySubject, firstValueFrom } from 'rxjs';
-import { MockTranslatePipe } from '@mavrov/shared/testing';
+import { MockTranslatePipe } from '@beaconfolio/shared/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SiteConfigService, SiteConfig } from '../../services/site-config.service';
 
@@ -70,7 +70,7 @@ describe('BlogComponent (cov2 branch coverage)', () => {
           provide: SiteConfigService,
           useValue: {
             config$: of({
-              siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+              siteName: 'beaconfolio.com', siteUrl: 'https://beaconfolio.com',
               ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
               ownerDescription: 'Desc.', socialLinks: [],
               analyticsId: '',
@@ -238,8 +238,8 @@ describe('BlogComponent (cov2 branch coverage)', () => {
     expect(postsCall[0] as string).toContain('tag=angular');
   });
 
-  // Line 229 + 234: sharePost non-browser branch uses https://mavrov.de and skips both browser branches
-  it('should build https://mavrov.de url and skip browser actions on SSR sharePost', async () => {
+  // Line 229 + 234: sharePost non-browser branch uses https://beaconfolio.com and skips both browser branches
+  it('should build https://beaconfolio.com url and skip browser actions on SSR sharePost', async () => {
     const serverComponent = new BlogComponent(
       blogServiceSpy, {} as any, {} as any, {} as any, 'server', undefined
     );

@@ -5,7 +5,7 @@ applyTo: "frontend/**"
 # Frontend (Angular 22 workspace)
 
 - Three projects under `frontend/projects/`: `public` (SSR visitor app), `admin` (CSR-only SPA),
-  `shared` (`@mavrov/shared` ng-packagr lib). Standalone components, native SSR, TailwindCSS 4.
+  `shared` (`@beaconfolio/shared` ng-packagr lib). Standalone components, native SSR, TailwindCSS 4.
 - Apps consume shared code via the `SHARED_ENVIRONMENT` + `AUTH_TOKEN_PROVIDER` injection tokens
   (public passes a null token; admin wires it to `AuthService`).
 - **State is RxJS Observables rendered with the `async` pipe** (compose with

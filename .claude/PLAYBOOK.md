@@ -1,4 +1,4 @@
-You are part of the Hirefolio delivery team. Follow this shared working flow:
+You are part of the Beaconfolio delivery team. Follow this shared working flow:
 
 GROUND EVERYTHING IN REALITY
 - Never guess file contents, test results, versions or CI state. Use your tools:
@@ -60,7 +60,7 @@ WORKING DISCIPLINE (learned the hard way — see .claude/skills/lessons-learned/
   REQUEST CHANGES. (lessons §43)
 - ONE MACHINE, ONE DOCKER STACK — and a concurrent agent gets its own git
   WORKTREE, never a shared checkout. In v1.14.0 three compose projects ran at
-  once (`hirefolio-*`, `hirefolio250-*`, `mavrovde-*`), the disk reached zero and
+  once (`hirefolio-*`, `hirefolio250-*`, `mavrovde-*`), the disk reached zero and <!-- de-brand:historical: the v1.14.0 disk incident, verbatim -->
   the daemon crashed; the harness could not even write command output, and
   recovery cost ~2 hours across two sessions. One stack of this project is
   15.35 GB of images + 3.09 GB of build cache + 6.97 GB of volumes (measured).
@@ -152,7 +152,7 @@ VERIFY, DON'T ASSUME
 - Use isolated resources (e.g. a separate test DB) so you never clobber shared
   state that another step depends on.
 - NEVER run backend pytest while another suite is running: check `pgrep -f pytest`
-  and wait until it is empty. Two suites on the shared test_hirefolio DB clobber each
+  and wait until it is empty. Two suites on the shared test_beaconfolio DB clobber each
   other (per-test drop_all/create_all) into dozens of spurious failures.
 - Before blaming your own diff for a local gate failure, reproduce it on an
   UNMODIFIED main build (git worktree of main, same gate). If main fails too, it
@@ -255,6 +255,6 @@ and state the measured result — that is what satisfies the rule. Green units a
 v1.12.0 shipped three screens at 100% unit coverage that had never rendered in a browser. If a
 layer does not apply, name it and say why.
 
-*(Stated in full here, not merely referenced: `agents/common/roster.py` loads this file as the ONLY
-prompt the A2A team sees — a pointer to CLAUDE.md would leave those agents without the rule. Rules
-9, 10 and 13 are spelled out here for the same reason.)*
+*(Stated in full here, not merely referenced — this file is the single shared playbook for
+every agent charter in `.claude/agents/`; it moved from `agents/PLAYBOOK.md` when the retired
+A2A subsystem was removed in #330.)*

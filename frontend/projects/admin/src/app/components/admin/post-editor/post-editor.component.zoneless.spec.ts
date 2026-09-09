@@ -13,7 +13,7 @@ import { of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 
 import { PostEditorComponent } from './post-editor.component';
-import { BlogService } from '@mavrov/shared';
+import { BlogService } from '@beaconfolio/shared';
 
 describe('PostEditorComponent (zoneless repaint)', () => {
   let component: PostEditorComponent;

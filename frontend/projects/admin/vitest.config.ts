@@ -24,8 +24,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@mavrov/shared/testing': resolve(__dirname, '../shared/testing/public-api.ts'),
-      '@mavrov/shared': resolve(__dirname, '../shared/src/public-api.ts'),
+      '@beaconfolio/shared/testing': resolve(__dirname, '../shared/testing/public-api.ts'),
+      '@beaconfolio/shared': resolve(__dirname, '../shared/src/public-api.ts'),
     },
   },
 });

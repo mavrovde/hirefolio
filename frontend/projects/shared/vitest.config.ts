@@ -16,7 +16,7 @@ export default defineConfig({
       reporter: ['text', 'json', 'html', 'lcov'],
       reportsDirectory: '../../coverage/shared',
       include: ['src/**/*.ts'],
-      // NOTE (#309): a `'testing/**'` entry used to sit here for the sibling `@mavrov/shared/testing`
+      // NOTE (#309): a `'testing/**'` entry used to sit here for the sibling `@beaconfolio/shared/testing`
       // entry point. It was redundant — `include` above never reaches outside `src/` — and under
       // Vitest 4, which matched these globs against ABSOLUTE paths with picomatch `contains`, it
       // silently also swallowed `src/lib/testing/**`. Vitest 5 matches relative to `root`, so those
@@ -29,8 +29,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@mavrov/shared/testing': resolve(__dirname, './testing/public-api.ts'),
-      '@mavrov/shared': resolve(__dirname, './src/public-api.ts'),
+      '@beaconfolio/shared/testing': resolve(__dirname, './testing/public-api.ts'),
+      '@beaconfolio/shared': resolve(__dirname, './src/public-api.ts'),
     },
   },
 });

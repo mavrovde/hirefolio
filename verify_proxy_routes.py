@@ -33,30 +33,30 @@ async def verify_proxy_routes():
             # 3. Production Domain -> Redirect to HTTPS
             {
                 "url": f"{base_url}/",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 301,
                 "label": "Production Host -> HTTPS Redirect"
             },
             # 4. HTTPS Production Domain API
             {
                 "url": f"{ssl_base_url}{api_prefix}/health",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 200,
-                "label": "HTTPS API Health (mavrov.de)",
+                "label": "HTTPS API Health (beaconfolio.com)",
                 "expected_text": "healthy"
             },
-            # 4b. HTTPS Public Stats (mavrov.de)
+            # 4b. HTTPS Public Stats (beaconfolio.com)
             {
                 "url": f"{ssl_base_url}{api_prefix}/stats/public",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 200,
-                "label": "HTTPS Public Stats (mavrov.de)",
+                "label": "HTTPS Public Stats (beaconfolio.com)",
                 "expected_text": "visitor_ip"
             },
             # 5. Domain HTTPS (Standard)
             {
                 "url": f"{ssl_base_url}/",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 200,
                 "label": "Domain HTTPS -> Frontend"
             },
@@ -69,7 +69,7 @@ async def verify_proxy_routes():
                 "expected_status": 200,
                 # The admin nginx SPA-fallbacks every path to index.html, so a bare
                 # 200 proves nothing — assert the admin bundle's title is served.
-                "expected_text": "mavrov.de | Admin",
+                "expected_text": "beaconfolio.com | Admin",
                 "label": "Admin Host Login Route"
             },
             # 5b-2. Public host /admin/* is an unmatched SPA route post-split: the
@@ -77,28 +77,28 @@ async def verify_proxy_routes():
             # documents that the admin surface is NOT reachable on the public host.
             {
                 "url": f"{ssl_base_url}/admin/login",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 404,
                 "label": "Public Host /admin Split (404)"
             },
             # 5c. Backend Auth Endpoint (Method Not Allowed for GET)
             {
                 "url": f"{ssl_base_url}{api_prefix}/auth/login",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 405, # POST only
                 "label": "Backend Auth Login (Exists)"
             },
             # 5d. Protected Admin Endpoint (Unauthorized)
             {
                 "url": f"{ssl_base_url}{api_prefix}/stats",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 401, # Should be unauthorized without token
                 "label": "Protected Admin Route (401 Check)"
             },
             # 5e. Image Upload Route (PUT Method Check)
             {
                 "url": f"{ssl_base_url}{api_prefix}/posts/1/image",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "method": "PUT",
                 "expected_status": 401, # Should be unauthorized, but confirms PUT reaches backend
                 "label": "Image Upload Route (PUT Verification only)"
@@ -106,14 +106,14 @@ async def verify_proxy_routes():
             # 6. /open subpath
             {
                 "url": f"{ssl_base_url}/open/",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": [200, 502], # 502 is acceptable if open-webui is still starting
                 "label": "Open WebUI Subpath"
             },
              # 6b. Open WebUI Health (via subpath)
             {
                 "url": f"{ssl_base_url}/open/health",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 200,
                 "label": "Open WebUI Health (via /open/)",
                 "expected_text": "true" # Open WebUI returns {"status": true} usually
@@ -121,7 +121,7 @@ async def verify_proxy_routes():
             # 6c. Root Health -> Should be Backend
             {
                 "url": f"{ssl_base_url}/health",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 200,
                 "label": "Root Health -> Backend",
                 "expected_text": "healthy"
@@ -129,7 +129,7 @@ async def verify_proxy_routes():
             # 6d. Manifest.json -> Open WebUI (via subpath)
             {
                 "url": f"{ssl_base_url}/open/manifest.json",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 200,
                 "label": "Open WebUI Manifest (via /open/)",
                 # Open WebUI manifest usually contains "name": "Open WebUI" or similar
@@ -139,14 +139,14 @@ async def verify_proxy_routes():
             {
                 "url": f"{ssl_base_url}/static/favicon.png", # Example static file? Or just check 404 from O-WUI but handled by it
                 # Actually, requesting /static/ might give 403 or 404 from O-WUI, but NOT index.html from Frontend
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": [200, 404], 
                 "label": "Root Static -> Open WebUI (Not Frontend)"
             },
             # 6. /open trailing slash redirect
             {
                 "url": f"{ssl_base_url}/open",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 301,
                 "label": "Open WebUI Trailing Slash Redirect"
             },
@@ -160,26 +160,26 @@ async def verify_proxy_routes():
             # 8. LinkedIn API Routes (Auth-protected)
             {
                 "url": f"{ssl_base_url}{api_prefix}/linkedin/posts",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 401,
                 "label": "LinkedIn Posts (401 Auth Check)"
             },
             {
                 "url": f"{ssl_base_url}{api_prefix}/linkedin/profile-sync",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "expected_status": 401,
                 "label": "LinkedIn Profile Sync (401 Auth Check)"
             },
             {
                 "url": f"{ssl_base_url}{api_prefix}/linkedin/transfer-post",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "method": "POST",
                 "expected_status": 401,
                 "label": "LinkedIn Transfer Post (401 Auth Check)"
             },
             {
                 "url": f"{ssl_base_url}{api_prefix}/linkedin/transfer-posts",
-                "headers": {"Host": "mavrov.de"},
+                "headers": {"Host": "beaconfolio.com"},
                 "method": "POST",
                 "expected_status": 401,
                 "label": "LinkedIn Bulk Transfer (401 Auth Check)"

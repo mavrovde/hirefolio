@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ProfileComponent } from './profile';
 import { AuthService } from '../../../services/auth.service';
-import { TranslatePipe } from '@mavrov/shared';
+import { TranslatePipe } from '@beaconfolio/shared';
 import { FormsModule } from '@angular/forms';
 import { of, throwError, BehaviorSubject } from 'rxjs';
 import { ChangeDetectorRef } from '@angular/core';
@@ -13,7 +13,7 @@ describe('ProfileComponent', () => {
   let authServiceSpy: any;
   const currentUserSubject = new BehaviorSubject<any>({
     username: 'admin',
-    email: 'admin@mavrov.de',
+    email: 'admin@beaconfolio.com',
     is_admin: true,
     has_gemini_key: true
   });
@@ -87,7 +87,7 @@ describe('ProfileComponent', () => {
     component.geminiApiKey = newKey;
     const mockUser = {
       username: 'admin',
-      email: 'admin@mavrov.de',
+      email: 'admin@beaconfolio.com',
       id: 1,
       is_admin: true,
       has_gemini_key: true

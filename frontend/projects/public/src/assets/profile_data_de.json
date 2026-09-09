@@ -2,7 +2,7 @@
   "name": "Jane Doe",
   "headline": "Senior Software Engineer",
   "location": "Berlin, Deutschland",
-  "about": "Demo-Persona für die Hirefolio-Portfolio-Vorlage. Jane ist eine fiktive Senior Software Engineerin mit einem Jahrzehnt Erfahrung in Backend-Plattformen, Cloud-Infrastruktur und modernen Web-Frontends. Ersetzen Sie dieses Profil über das Admin-Panel (Profile-Data-Upload) durch Ihr eigenes — ganz ohne Code-Änderungen.",
+  "about": "Demo-Persona für die Beaconfolio-Portfolio-Vorlage. Jane ist eine fiktive Senior Software Engineerin mit einem Jahrzehnt Erfahrung in Backend-Plattformen, Cloud-Infrastruktur und modernen Web-Frontends. Ersetzen Sie dieses Profil über das Admin-Panel (Profile-Data-Upload) durch Ihr eigenes — ganz ohne Code-Änderungen.",
   "contact": {
     "email": "jane.doe@example.com",
     "linkedin": "https://www.linkedin.com/in/example-jane-doe"
@@ -80,7 +80,7 @@
       "author": "Alex Example",
       "authorTitle": "Engineering Manager (fiktiv)",
       "authorLinkedInUrl": "",
-      "text": "Dies ist eine Demo-Empfehlung der Hirefolio-Vorlage. Jane lieferte durchgängig zuverlässige, gut getestete Systeme und hob die Engineering-Standards des gesamten Teams. Ersetzen Sie sie über den Profile-Data-Upload im Admin-Panel durch echte Empfehlungen."
+      "text": "Dies ist eine Demo-Empfehlung der Beaconfolio-Vorlage. Jane lieferte durchgängig zuverlässige, gut getestete Systeme und hob die Engineering-Standards des gesamten Teams. Ersetzen Sie sie über den Profile-Data-Upload im Admin-Panel durch echte Empfehlungen."
     },
     {
       "author": "Sam Sample",

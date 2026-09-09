@@ -2,7 +2,7 @@
  * Config-driven `sitemap.xml` / `robots.txt` (#71).
  *
  * Both used to be STATIC files in `projects/public/public/` hardcoded to
- * `https://mavrov.de`, listing a fixed route set and no blog posts — wrong for
+ * `https://beaconfolio.com`, listing a fixed route set and no blog posts — wrong for
  * every forker and stale for this deployment. They are now rendered per request
  * by the SSR Express server (`src/server.ts`) from the runtime site config
  * (`SITE_URL`, #65) plus the live published-post list.

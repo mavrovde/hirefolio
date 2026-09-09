@@ -7,7 +7,7 @@
      Properties: -Jhost -Jport -Jthreads -Jduration -Jbudget_read_ms -->
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
-    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Hirefolio public smoke">
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Beaconfolio public smoke">
       <boolProp name="TestPlan.functional_mode">false</boolProp>
       <elementProp name="TestPlan.user_defined_variables" elementType="Arguments">
         <collectionProp name="Arguments.arguments"/>

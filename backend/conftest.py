@@ -30,23 +30,23 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-only-jwt-signing-secret")
 # a module here when the real one genuinely cannot be imported in tests.
 
 
-# RULE 10 (#297 review): with a real HIREFOLIO_TELEGRAM_* token (or webhook
+# RULE 10 (#297 review): with a real BEACONFOLIO_TELEGRAM_* token (or webhook
 # URL, or SMTP host) in the developer's environment, the suite would make REAL
 # outbound calls — silently, because every channel swallows its failures
 # (measured: 10 live Telegram POSTs from one green test file). Scrub the
 # notification env BEFORE app.config builds Settings; individual tests opt
 # back in by patching settings explicitly.
 for _notify_var in (
-    "HIREFOLIO_TELEGRAM_BOT_TOKEN",
-    "HIREFOLIO_TELEGRAM_CHAT_ID",
-    "HIREFOLIO_NOTIFY_WEBHOOK_URL",
+    "BEACONFOLIO_TELEGRAM_BOT_TOKEN",
+    "BEACONFOLIO_TELEGRAM_CHAT_ID",
+    "BEACONFOLIO_NOTIFY_WEBHOOK_URL",
     "SMTP_HOST",
     "SMTP_USER",
     "SMTP_PASSWORD",
     # Rule 10: a developer's Gemini key in the environment must never make a
     # green suite bill Gemini (#298 round 1: 8 real generativelanguage
     # requests from unrelated contact tests with a key exported).
-    "HIREFOLIO_GEMINI_API_KEY",
+    "BEACONFOLIO_GEMINI_API_KEY",
 ):
     os.environ.pop(_notify_var, None)
 
@@ -190,7 +190,7 @@ def _test_database_url() -> URL:
     # tables on every run — pointed at a non-test database it silently
     # destroys dev data. This happened in practice: with TEST_DATABASE_URL
     # unset, resolution fell through to the app default (then `.../mavrov`,
-    # `.../hirefolio` since #288) and
+    # `.../beaconfolio` since #288) and
     # single-process runs clobbered the dev DB all day before a lock made it
     # visible. Only `test_*` databases may ever be the target (CLAUDE.md
     # rule 9 allows dropping test_* only).
@@ -201,7 +201,7 @@ def _test_database_url() -> URL:
             f"REFUSING to run: resolved test database is '{url.database}', "
             "which is not a test_* database. Export TEST_DATABASE_URL "
             "(e.g. postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/"
-            "test_hirefolio) — the suite drop/creates tables and would destroy "
+            "test_beaconfolio) — the suite drop/creates tables and would destroy "
             "this database's data.",
             returncode=2,
         )

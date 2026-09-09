@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { BlogService } from '@mavrov/shared';
+import { BlogService } from '@beaconfolio/shared';
 
 interface PostData {
   title: string;

@@ -9,8 +9,8 @@ import { HomeComponent } from './home.component';
 import { ProfileService } from '../../services/profile.service';
 import { SeoService } from '../../services/seo.service';
 import { SiteConfigService } from '../../services/site-config.service';
-import { LanguageService, provideSharedEnvironment } from '@mavrov/shared';
-import { MockLanguageService } from '@mavrov/shared/testing';
+import { LanguageService, provideSharedEnvironment } from '@beaconfolio/shared';
+import { MockLanguageService } from '@beaconfolio/shared/testing';
 
 function makeProfile(overrides: any = {}) {
   return {
@@ -56,7 +56,7 @@ async function configure(opts: {
         provide: SiteConfigService,
         useValue: {
           config$: of({
-            siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+            siteName: 'beaconfolio.com', siteUrl: 'https://beaconfolio.com',
             ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
             ownerDescription: 'Desc.',
             socialLinks: ['https://social.example/mock', 'https://github.com/mavrovde'],

@@ -1,4 +1,4 @@
-"""Standalone LinkedIn → mavrov.de importer (spec 06).
+"""Standalone LinkedIn → beaconfolio.com importer (spec 06).
 
 Reads the scraper's posts_data.json, downloads each post's image (using the saved
 LinkedIn session), and pushes it to ``POST /api/app/linkedin/import-post`` with the
@@ -49,7 +49,7 @@ class Config:
     def from_env(cls, **overrides) -> "Config":
         base = Path(os.getenv("SCRAPER_DIR", "scraper"))
         cfg = dict(
-            api_url=os.getenv("MAVROV_API_URL", "http://localhost:8000").rstrip("/"),
+            api_url=os.getenv("BEACONFOLIO_API_URL", "http://localhost:8000").rstrip("/"),
             token=os.getenv("LINKEDIN_IMPORT_TOKEN", ""),
             posts_json=Path(os.getenv("POSTS_JSON", base / "posts_data.json")),
             state_path=Path(os.getenv("IMPORT_STATE", "importer/state.json")),

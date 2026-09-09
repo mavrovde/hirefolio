@@ -3,8 +3,8 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { TranslatePipe } from '@mavrov/shared';
-import { StatsService } from '@mavrov/shared';
+import { TranslatePipe } from '@beaconfolio/shared';
+import { StatsService } from '@beaconfolio/shared';
 import { SiteConfigService, SiteConfig } from '../../services/site-config.service';
 
 import packageJson from '../../../../../../package.json';

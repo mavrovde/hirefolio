@@ -94,8 +94,8 @@ check "rm -r node_modules"        'rm -r node_modules'                          
 # --- must ALLOW (ordinary dev / test — never impede) ---
 check "compose down (no -v)"      'docker compose down'                              allow
 check "compose up"                'docker compose up -d'                             allow
-check "dropdb test_*"             'dropdb test_mavrov'                               allow
-check "DROP DATABASE test_*"      'psql -c "DROP DATABASE IF EXISTS test_mavrov"'    allow
+check "dropdb test_*"             'dropdb test_beaconfolio'                               allow
+check "DROP DATABASE test_*"      'psql -c "DROP DATABASE IF EXISTS test_beaconfolio"'    allow
 check "rm -rf dist"               'rm -rf frontend/dist'                             allow
 check "rm -rf node_modules"       'rm -rf node_modules'                              allow
 check "rm long-opts node_modules" 'rm --recursive --force node_modules'              allow
@@ -545,11 +545,11 @@ check "continuation: twice"           "bash -c \"$DCMP ${BS}-f a.yml ${BS}down -
 # repo's own prescribed test loop. Rule 5 was hardened for exactly this in #188;
 # rule 4 was not. The suite missed it because it only pinned the bare form.
 DBD="drop""db"
-check "test-db: wrapped teardown"     "bash -c \"pytest -q; $DBD test_mavrov_review\""  allow
-check "test-db: full pytest loop"     "bash -c \"cd backend && venv/bin/python -m pytest -q; $DBD test_mavrov_x\"" allow
-check "test-db: sh -c single quotes"  "sh -c '$DBD test_mavrov'"                        allow
-check "test-db: eval"                 "eval \"$DBD test_mavrov_ci\""                    allow
-check "test-db: two scratch drops"    "bash -c \"$DBD test_mavrov_a; $DBD test_mavrov_b\"" allow
+check "test-db: wrapped teardown"     "bash -c \"pytest -q; $DBD test_beaconfolio_review\""  allow
+check "test-db: full pytest loop"     "bash -c \"cd backend && venv/bin/python -m pytest -q; $DBD test_beaconfolio_x\"" allow
+check "test-db: sh -c single quotes"  "sh -c '$DBD test_beaconfolio'"                        allow
+check "test-db: eval"                 "eval \"$DBD test_beaconfolio_ci\""                    allow
+check "test-db: two scratch drops"    "bash -c \"$DBD test_beaconfolio_a; $DBD test_beaconfolio_b\"" allow
 # ...and the exemption must not widen: a non-test database stays denied however
 # it is wrapped.
 check "test-db: non-test wrapped"     "bash -c \"pytest -q; $DBD mavrov\""              deny
@@ -580,7 +580,7 @@ check "exempt: flag after operand"    "$DBD $PRODDB --dbname=test_x"            
 check "exempt: wrapped flag form"     "bash -c \"$DBD --dbname=test_x $PRODDB\""    deny
 check "exempt: maintenance-db flag"   "$DBD --maintenance-db=test_x $PRODDB"        deny
 # ...while a genuine flag alongside a scratch operand still works.
-check "exempt: --if-exists scratch"   "$DBD --if-exists test_mavrov"                allow
+check "exempt: --if-exists scratch"   "$DBD --if-exists test_beaconfolio"                allow
 
 # --- EVERY WRAPPER OUTSIDE THE LIST WAS A BYPASS (#217) ---------------------
 # The unwrap loop recognised sudo/command/nohup/time/exec/env — an allowlist of

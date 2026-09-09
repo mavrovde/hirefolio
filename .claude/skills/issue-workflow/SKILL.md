@@ -1,17 +1,17 @@
 ---
 name: issue-workflow
 description: >-
-  Guides issue-driven development for Hirefolio — creating, triaging, labeling, and
+  Guides issue-driven development for Beaconfolio — creating, triaging, labeling, and
   milestoning GitHub issues and linking PRs. Use when opening/triaging an issue, deciding
   its milestone/labels/priority, wiring `Closes #NN` into a PR, or closing-the-loop after
   work lands. Encodes the issue template, milestone taxonomy, label+priority scheme, the
   "every issue needs milestone+priority+area" invariant, the `gh` commands, and the
-  no-secrets rule for this PUBLIC repo (`github.com/mavrovde/hirefolio`).
+  no-secrets rule for this PUBLIC repo (`github.com/mavrovde/beaconfolio`).
 ---
 
-# Issue workflow — Hirefolio
+# Issue workflow — Beaconfolio
 
-Repo: `mavrovde/hirefolio` (**PUBLIC**). Issues are the project notebook: every idea, plan, bug,
+Repo: `mavrovde/beaconfolio` (**PUBLIC**). Issues are the project notebook: every idea, plan, bug,
 deferred fix, shipped milestone, and research decision lives as an issue — not in chat or personal
 memory. Register work up front; close-the-loop when it lands. This skill is the operational
 companion to `CLAUDE.md` → *Issue tracking, milestones & labels*.
@@ -68,7 +68,7 @@ Inspect and list:
 gh issue view 74
 gh issue list --state open --json number,title,milestone,labels
 gh label list --limit 100        # confirm a label exists before adding
-gh api repos/mavrovde/hirefolio/milestones --jq '.[].title'
+gh api repos/mavrovde/beaconfolio/milestones --jq '.[].title'
 ```
 
 Comment + close (close-the-loop):
@@ -114,7 +114,7 @@ The "no orphan issues" invariant applies to PULL REQUESTS as well: a PR gets a *
 time — not after someone notices. Copy the linked issue's labels when there is one:
 
 ```bash
-gh pr create --repo mavrovde/hirefolio --head <branch> --base main \
+gh pr create --repo mavrovde/beaconfolio --head <branch> --base main \
   --title "…" --body-file <file> \
   --label enhancement --label backend --label P2-medium
 ```

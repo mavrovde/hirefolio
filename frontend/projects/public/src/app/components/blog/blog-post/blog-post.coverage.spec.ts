@@ -1,12 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BlogPostComponent } from './blog-post.component';
-import { BlogService } from '@mavrov/shared';
+import { BlogService } from '@beaconfolio/shared';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { SeoService } from '../../../services/seo.service';
 import { SiteConfigService } from '../../../services/site-config.service';
 import { of, BehaviorSubject } from 'rxjs';
-import { MockTranslatePipe } from '@mavrov/shared/testing';
+import { MockTranslatePipe } from '@beaconfolio/shared/testing';
 
 describe('BlogPostComponent SEO branches', () => {
   let component: BlogPostComponent;
@@ -29,7 +29,7 @@ describe('BlogPostComponent SEO branches', () => {
           provide: SiteConfigService,
           useValue: {
             config$: of({
-              siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+              siteName: 'beaconfolio.com', siteUrl: 'https://beaconfolio.com',
               ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
               ownerDescription: 'Desc.', socialLinks: [],
               analyticsId: '',

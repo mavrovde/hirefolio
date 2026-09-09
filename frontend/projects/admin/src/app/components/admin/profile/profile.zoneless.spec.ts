@@ -12,7 +12,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { ProfileComponent } from './profile';
 import { AuthService } from '../../../services/auth.service';
-import { TranslatePipe } from '@mavrov/shared';
+import { TranslatePipe } from '@beaconfolio/shared';
 
 describe('ProfileComponent (zoneless repaint)', () => {
   let fixture: ComponentFixture<ProfileComponent>;

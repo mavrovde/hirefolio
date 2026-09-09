@@ -382,7 +382,7 @@ def test_projects_and_references_are_mapped():
         {
             "projects": [
                 {
-                    "name": "Hirefolio",
+                    "name": "Beaconfolio",
                     "description": "Portfolio template.",
                     "url": "https://example.test/p",
                     "technologies": ["Angular", "FastAPI"],
@@ -397,7 +397,7 @@ def test_projects_and_references_are_mapped():
     )
     assert document["projects"] == [
         {
-            "name": "Hirefolio",
+            "name": "Beaconfolio",
             "description": "Portfolio template.",
             "url": "https://example.test/p",
             "keywords": ["Angular", "FastAPI"],

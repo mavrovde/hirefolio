@@ -2,7 +2,7 @@ import { Component, ElementRef, ViewChild, AfterViewChecked, OnInit, ChangeDetec
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { LlmService, ChatMessage } from '@mavrov/shared';
+import { LlmService, ChatMessage } from '@beaconfolio/shared';
 import { VERSION } from '../../version';
 
 import { HeaderComponent } from '../header/header.component';
@@ -319,7 +319,7 @@ export class LlmComponent implements OnInit, AfterViewChecked {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `debate-log-${timestamp}.txt`;
 
-    let logContent = `MAVROV.DE MULTI-AGENT DEBATE LOG\n`;
+    let logContent = `BEACONFOLIO MULTI-AGENT DEBATE LOG\n`;
     logContent += `===============================\n`;
     logContent += `Date: ${new Date().toLocaleString()}\n`;
     logContent += `Topic: ${this.conversationTopic}\n\n`;

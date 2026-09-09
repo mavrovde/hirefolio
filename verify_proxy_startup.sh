@@ -12,7 +12,7 @@ export IMAGE_TAG="${IMAGE_TAG:-latest}"
 unset COMPOSE_FILE
 unset COMPOSE_PATH_SEPARATOR
 # Same coordinates the compose files use; override IMAGE_REPO to check other images.
-IMAGE_REPO="${IMAGE_REPO:-ghcr.io/mavrovde/hirefolio}"
+IMAGE_REPO="${IMAGE_REPO:-ghcr.io/mavrovde/beaconfolio}"
 PROXY_IMAGE="${IMAGE_REPO}-proxy:$IMAGE_TAG"
 BACKEND_IMAGE="${IMAGE_REPO}-backend:$IMAGE_TAG"
 FRONTEND_IMAGE="${IMAGE_REPO}-frontend:$IMAGE_TAG"
@@ -30,8 +30,8 @@ echo "[1/4] Building Images ($IMAGE_TAG)..."
 # Important: Copy certs into the proxy build context because Dockerfile expects 'COPY certs'
 echo "  - Preparing Proxy build context..."
 mkdir -p ./proxy/certs
-cp certs/mavrov.de.bundle.cer ./proxy/certs/ 2>/dev/null || true
-cp certs/mavrov.de.key ./proxy/certs/ 2>/dev/null || true
+cp certs/beaconfolio.com.bundle.cer ./proxy/certs/ 2>/dev/null || true
+cp certs/beaconfolio.com.key ./proxy/certs/ 2>/dev/null || true
 
 echo "  - Building Proxy $PROXY_IMAGE..."
 docker build -t "$PROXY_IMAGE" ./proxy >/dev/null

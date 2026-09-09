@@ -2,7 +2,7 @@
 description: True deploy state — pipeline, published images, live prod version, and a live/not-live verdict
 ---
 
-Report the TRUE deploy state of your Hirefolio deployment. The core doctrine (#112/#120): **a green `deploy.yml`
+Report the TRUE deploy state of your Beaconfolio deployment. The core doctrine (#112/#120): **a green `deploy.yml`
 run means images were PUBLISHED to ghcr; the prod host is updated only if the secrets-gated
 `Roll Out To Prod Host` job actually ran** (it skips silently — still green — when
 `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY` are unset). Never report "deployed" from pipeline

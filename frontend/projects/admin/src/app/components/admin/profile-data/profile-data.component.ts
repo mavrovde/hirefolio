@@ -7,7 +7,7 @@ import {
   Validators,
   FormsModule,
 } from '@angular/forms';
-import { TranslatePipe } from '@mavrov/shared';
+import { TranslatePipe } from '@beaconfolio/shared';
 import { Subscription } from 'rxjs';
 import {
   AdminProfileService,

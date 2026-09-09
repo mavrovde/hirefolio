@@ -6,9 +6,9 @@ Angular 22 workspace (Angular CLI `^22.1.4`) with **three projects**:
 | --- | --- | --- |
 | `public` | `projects/public` | Visitor-facing app with **native SSR** (`server.ts` → `dist/public/server/server.mjs`), zoneless change detection |
 | `admin` | `projects/admin` | Admin console — client-side-rendered SPA |
-| `shared` | `projects/shared` | `@mavrov/shared` library consumed by both apps (build it **first**) |
+| `shared` | `projects/shared` | `@beaconfolio/shared` library consumed by both apps (build it **first**) |
 
-The apps consume `@mavrov/shared` via the `SHARED_ENVIRONMENT` and
+The apps consume `@beaconfolio/shared` via the `SHARED_ENVIRONMENT` and
 `AUTH_TOKEN_PROVIDER` injection tokens (public passes a null token provider;
 admin wires it to its `AuthService`).
 

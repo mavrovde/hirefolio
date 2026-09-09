@@ -16,7 +16,7 @@ This is a **mandatory step of the release process** (owner directive 2026-09-06,
 ```bash
 PREV=$(git tag --sort=-v:refname | sed -n '2p')     # the tag before this one
 git log --oneline "$PREV..$TAG" | cat                # what shipped
-gh pr list --repo mavrovde/hirefolio --state merged --limit 50 \
+gh pr list --repo mavrovde/beaconfolio --state merged --limit 50 \
   --json number,title,labels,mergedAt,url
 ```
 
@@ -27,7 +27,7 @@ Keep only PRs merged inside the window. Note which issues they closed.
 For every PR in the window:
 
 ```bash
-gh pr view <n> --repo mavrovde/hirefolio --json title,body,reviews,labels \
+gh pr view <n> --repo mavrovde/beaconfolio --json title,body,reviews,labels \
   --jq '{title, body, labels:[.labels[].name], reviews:[.reviews[].body]}'
 ```
 

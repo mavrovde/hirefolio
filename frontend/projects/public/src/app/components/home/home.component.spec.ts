@@ -7,10 +7,10 @@ import { Profile, ProfileService } from '../../services/profile.service';
 import { SeoService } from '../../services/seo.service';
 import { SiteConfig, SiteConfigService } from '../../services/site-config.service';
 import { buildPersonSchema } from '../../seo/person-schema';
-import { LanguageService, provideSharedEnvironment } from '@mavrov/shared';
+import { LanguageService, provideSharedEnvironment } from '@beaconfolio/shared';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { of } from 'rxjs';
-import { MockLanguageService } from '@mavrov/shared/testing';
+import { MockLanguageService } from '@beaconfolio/shared/testing';
 
 /** Hoisted so the JSON-LD test can assert the EXACT node built from them (#71). */
 const MOCK_PROFILE: Profile = {
@@ -28,7 +28,7 @@ const MOCK_PROFILE: Profile = {
 };
 
 const MOCK_SITE: SiteConfig = {
-  siteName: 'mavrov.de', siteUrl: 'https://mavrov.de',
+  siteName: 'beaconfolio.com', siteUrl: 'https://beaconfolio.com',
   ownerName: 'Mock Owner', ownerHeadline: 'Principal Software Engineer',
   ownerDescription: 'Desc.', socialLinks: [],
   analyticsId: '',

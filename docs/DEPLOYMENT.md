@@ -16,10 +16,10 @@
 Two paths: a **first deploy** onto a clean host (manual, one-time) and the
 **automated rollout** that keeps the host current on every green `main` pipeline
 once the owner adds three secrets. CI publishes multi-tagged amd64 images to
-`ghcr.io/mavrovde/hirefolio-{backend,frontend,admin-frontend,proxy}` —
+`ghcr.io/mavrovde/beaconfolio-{backend,frontend,admin-frontend,proxy}` —
 `sha-<gitsha>`, the release version (e.g. `1.12.0`), and `latest`. The host pulls
 with **no registry login**, so those four packages **must be public** — the four
-post-rename `hirefolio-*` packages were created *private* by GitHub and need a
+post-rename `beaconfolio-*` packages were created *private* by GitHub and need a
 one-time visibility change (see "One-time action after the rename" below).
 
 The same workflow also runs on **pull requests**, but in verification-only mode
@@ -40,7 +40,7 @@ true and you must know which:
 
 - **Shared-edge host (the documented topology):** a host-level **Caddy** edge owns
   80/443 for every project on the box, terminates TLS with certificates it obtains
-  and renews itself, and forwards to hirefolio on a loopback high port. This
+  and renews itself, and forwards to beaconfolio on a loopback high port. This
   container's self-signed `/CN=localhost` fallback (`proxy/entrypoint.sh`) is then
   **correct** — that hop is internal. Set `PROXY_HTTP_PUBLISH` /
   `PROXY_HTTPS_PUBLISH` in the host `.env` (see `.env.example`).
@@ -60,8 +60,8 @@ than the one you would prefer (`.env.example`, "Multi-project host").
 ```bash
 # 1. Get the compose project onto the host (default rollout dir; override with
 #    the DEPLOY_DIR secret if you choose another path)
-git clone https://github.com/mavrovde/hirefolio.git /opt/hirefolio
-cd /opt/hirefolio
+git clone https://github.com/mavrovde/beaconfolio.git /opt/beaconfolio
+cd /opt/beaconfolio
 
 # 2. Configure — copy the template and fill EVERY required value
 cp .env.example .env
@@ -70,14 +70,14 @@ cp .env.example .env
 #    POSTGRES_PASSWORD, LINKEDIN_IMPORT_TOKEN (for the posts importer),
 #    PUBLIC_SERVER_NAME / ADMIN_SERVER_NAME, ADMIN_ALLOWED_CIDRS (keep empty =
 #    loopback-only admin until you add your operator IPs).
-#    Optional: HIREFOLIO_GEMINI_API_KEY (+ HIREFOLIO_GEMINI_ENCRYPTION_KEY) — without it the AI
+#    Optional: BEACONFOLIO_GEMINI_API_KEY (+ BEACONFOLIO_GEMINI_ENCRYPTION_KEY) — without it the AI
 #    features fall back to the in-stack Ollama.
 #    Identity (#65/#66 — the committed DEFAULTS are the Jane Doe demo persona):
 #    set SITE_URL, SITE_NAME, OWNER_NAME, OWNER_HEADLINE, OWNER_DESCRIPTION,
-#    SOCIAL_LINKS (and HIREFOLIO_ANALYTICS_ID to keep analytics) or the site
+#    SOCIAL_LINKS (and BEACONFOLIO_ANALYTICS_ID to keep analytics) or the site
 #    renders the demo identity and SSR advertises example.com og:url/canonical.
 #    Then upload the real Profile Data JSON + CV via the admin panel.
-#    Image coordinates: IMAGE_REPO defaults to ghcr.io/mavrovde/hirefolio;
+#    Image coordinates: IMAGE_REPO defaults to ghcr.io/mavrovde/beaconfolio;
 #    set IMAGE_TAG to the release you are deploying (e.g. 1.12.0).
 
 # 3. Pull the validated images and start (never use `down -v` — volumes hold
@@ -91,7 +91,7 @@ curl -s https://<public-host>/api/app/stats/public    # backend_version == IMAGE
 curl -s -o /dev/null -w '%{http_code}' https://<public-host>/admin/login  # -> 404 (freshness probe)
 ```
 
-Optional notification channels (#263): `HIREFOLIO_TELEGRAM_BOT_TOKEN` + `HIREFOLIO_TELEGRAM_CHAT_ID` (Telegram) and `HIREFOLIO_NOTIFY_WEBHOOK_URL` (Slack/Mattermost/ntfy) — empty = channel off.
+Optional notification channels (#263): `BEACONFOLIO_TELEGRAM_BOT_TOKEN` + `BEACONFOLIO_TELEGRAM_CHAT_ID` (Telegram) and `BEACONFOLIO_NOTIFY_WEBHOOK_URL` (Slack/Mattermost/ntfy) — empty = channel off.
 
 The backend runs `alembic upgrade head` on start (schema is created on first
 boot) and seeds the admin user from `ADMIN_PASSWORD`. Ollama pulls its models on
@@ -104,7 +104,7 @@ From your workstation (scraper session + data live there, see
 
 ```bash
 cd scraper && PLAYWRIGHT_CHANNEL=chrome node scrape-posts.js   # refresh posts_data.json
-cd .. && MAVROV_API_URL=https://<public-host> \
+cd .. && BEACONFOLIO_API_URL=https://<public-host> \
   LINKEDIN_IMPORT_TOKEN=<same value as the host .env> \
   IMPORT_PUBLISH=true python -m importer                        # publish on first import
 ```
@@ -167,7 +167,7 @@ add these in Settings → Secrets and variables → Actions:
 | `DEPLOY_HOST` | yes | Host to SSH to |
 | `DEPLOY_USER` | yes | Dedicated non-root deploy user |
 | `DEPLOY_SSH_KEY` | yes | Private key for that user (generate a dedicated pair; never reuse a personal key) |
-| `DEPLOY_DIR` | no | Compose project dir (default **`/opt/hirefolio`** since #310 — it was `/opt/mavrov.de`, a maintainer-specific path <!-- de-brand:historical: the pre-#310 default -->). This default is only reached when the secret is unset, and the rollout has never run on any host, so nothing existing is repointed. **A deployment that lives elsewhere sets this secret to its own path.** |
+| `DEPLOY_DIR` | no | Compose project dir (default **`/opt/beaconfolio`** since #310 — it was `/opt/mavrov.de`, a maintainer-specific path <!-- de-brand:historical: the pre-#310 default -->). This default is only reached when the secret is unset, and the rollout has never run on any host, so nothing existing is repointed. **A deployment that lives elsewhere sets this secret to its own path.** |
 | `DEPLOY_SSH_PORT` | no | SSH port (default 22) |
 | `DEPLOY_PUBLIC_URL` | no | Legacy secret for the health-gate URL — superseded by the `PUBLIC_URL` **variable** below, still honoured |
 
@@ -211,8 +211,8 @@ rename them in the host `.env`:
 ```diff
 -GEMINI_API_KEY=...
 -GEMINI_ENCRYPTION_KEY=...
-+HIREFOLIO_GEMINI_API_KEY=...
-+HIREFOLIO_GEMINI_ENCRYPTION_KEY=...
++BEACONFOLIO_GEMINI_API_KEY=...
++BEACONFOLIO_GEMINI_ENCRYPTION_KEY=...
 ```
 
 Leaving the old names is **not** fatal — the app ignores them, AI features fall back to the in-stack
@@ -223,7 +223,7 @@ is a cost control.
 
 If a host had `GEMINI_ENCRYPTION_KEY` set and rows already encrypted (`enc:v1:` prefix), renaming
 without carrying the value over makes those values read as unset — recoverable by setting
-`HIREFOLIO_GEMINI_ENCRYPTION_KEY` to the same key.
+`BEACONFOLIO_GEMINI_ENCRYPTION_KEY` to the same key.
 
 Apply it with `docker compose -f docker-compose.prod.yml up -d backend`, **not** `restart`: compose
 resolves the environment when it *creates* a container, so `restart` reuses the old values and the
@@ -231,44 +231,47 @@ edit appears to have done nothing. Then verify the container actually sees the n
 
 ```bash
 docker compose -f docker-compose.prod.yml exec backend env | grep GEMINI
-# expect HIREFOLIO_GEMINI_*; a bare GEMINI_API_KEY here means the rename did not take
+# expect BEACONFOLIO_GEMINI_*; a bare GEMINI_API_KEY here means the rename did not take
 docker compose -f docker-compose.prod.yml logs backend | grep 'CONFIG WARNING'
 # any line names a variable still set under its old name on the host
 ```
 
 ## Database-name default (#288)
 
-The default database name is **`hirefolio`** (the product) since #288; before that it was
-`mavrov`. Postgres reads `POSTGRES_DB` only at **volume initialization**, so this changes
+The default database name is **`beaconfolio`** since the #330 rebrand — it was `hirefolio` <!-- de-brand:historical: the two prior defaults, needed for volume pins -->
+from #288, and `mavrov` before that. Postgres reads `POSTGRES_DB` only at **volume initialization**, so this changes
 nothing for existing data — but the backend's connection string is interpolated from the
 same variable on every boot:
 
 - **Fresh server (the intended moment for this rename):** nothing to do — the volume
-  initializes as `hirefolio` and everything matches.
+  initializes as `beaconfolio` and everything matches.
 - **Host created before the rename** (including the current canonical host and any dev
   machine with an existing volume): pin the old name in that host's `.env` **before**
-  pulling a post-rename compose file: `POSTGRES_DB=mavrov`. Without the pin the backend
-  looks for a `hirefolio` database that does not exist in the old volume and fails at
+  pulling a post-rename compose file — pin the name your volume actually holds:
+  `POSTGRES_DB=hirefolio` (initialised between #288 and #330) or `POSTGRES_DB=mavrov` <!-- de-brand:historical: the two prior defaults, needed for volume pins -->
+  (initialised before #288). Without the pin the backend
+  looks for a `beaconfolio` database that does not exist in the old volume and fails at
   startup — the data itself is untouched either way.
 - Renaming an existing volume's database instead of pinning is a deliberate manual
-  migration (`ALTER DATABASE mavrov RENAME TO hirefolio` with the stack stopped except
+  migration (`ALTER DATABASE mavrov RENAME TO beaconfolio` with the stack stopped except
   `db`, then drop the pin); do it only if you want the old host to match the product name.
 
 ## Registry notes
 
-- **One-time action after the rename to `hirefolio` (#88/#189):** CI publishes to
+- **One-time action after the rename to `beaconfolio` (#330):** CI publishes to
   `ghcr.io/<owner>/<repo>-*`, so the first build after the rename creates four
-  **brand-new** GHCR packages — `hirefolio-backend`, `hirefolio-frontend`,
-  `hirefolio-admin-frontend`, `hirefolio-proxy`. New packages default to
+  **brand-new** GHCR packages — `beaconfolio-backend`, `beaconfolio-frontend`,
+  `beaconfolio-admin-frontend`, `beaconfolio-proxy`. New packages default to
   **private**, and package visibility does **not** follow a repository rename.
   The prod host pulls with **no `docker login`**, so make all four public once:
   GitHub → your profile → **Packages** → each package → *Package settings* →
   *Change visibility* → **Public**. The rollout job preflights this and fails
   with an explicit message naming the package if it is still private, before it
   touches the host.
-- Images published **before** the rename remain at `ghcr.io/mavrovde/mavrov.de-*`
-  (still public). To deploy a pre-rename tag such as `1.8.4`, pin
-  `IMAGE_REPO=ghcr.io/mavrovde/mavrov.de` explicitly.
+- Images published **before** the `beaconfolio` rename remain at their era's path (still
+  public). To deploy a pre-rename tag, pin `IMAGE_REPO` to the path that era published:
+  `IMAGE_REPO=ghcr.io/mavrovde/hirefolio` for tags between #88 and #330 (e.g. `1.14.0`),
+  or `IMAGE_REPO=ghcr.io/mavrovde/mavrov.de` for pre-#88 tags (e.g. `1.8.4`).
 - Once made public, keep them public — otherwise every host needs a read-only
   PAT `docker login` and the rollout job's anonymous-pull preflight fails.
 - `build_amd64_and_push.sh` remains as a manual fallback for pushing images

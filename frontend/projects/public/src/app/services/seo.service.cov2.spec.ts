@@ -9,8 +9,8 @@ const MOCK_SITE_CONFIG_PROVIDER = {
   provide: SiteConfigService,
   useValue: {
     config$: of({
-      siteName: 'mavrov.de',
-      siteUrl: 'https://mavrov.de',
+      siteName: 'beaconfolio.com',
+      siteUrl: 'https://beaconfolio.com',
       ownerName: 'Mock Owner',
       ownerHeadline: 'Principal Software Engineer',
       ownerDescription: 'Desc.',

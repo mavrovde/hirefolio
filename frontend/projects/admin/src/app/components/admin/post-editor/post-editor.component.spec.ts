@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PostEditorComponent } from './post-editor.component';
-import { BlogService } from '@mavrov/shared';
+import { BlogService } from '@beaconfolio/shared';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { of, Subject } from 'rxjs';

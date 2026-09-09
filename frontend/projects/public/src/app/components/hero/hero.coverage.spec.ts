@@ -2,8 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PLATFORM_ID } from '@angular/core';
 import { HeroComponent } from './hero.component';
-import { TranslatePipe } from '@mavrov/shared';
-import { MockTranslatePipe } from '@mavrov/shared/testing';
+import { TranslatePipe } from '@beaconfolio/shared';
+import { MockTranslatePipe } from '@beaconfolio/shared/testing';
 
 describe('HeroComponent (server platform)', () => {
   let component: HeroComponent;

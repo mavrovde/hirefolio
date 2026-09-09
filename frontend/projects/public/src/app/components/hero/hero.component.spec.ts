@@ -6,8 +6,8 @@ import { Profile } from '../../services/profile.service';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 
-import { TranslatePipe } from '@mavrov/shared';
-import { MockTranslatePipe } from '@mavrov/shared/testing';
+import { TranslatePipe } from '@beaconfolio/shared';
+import { MockTranslatePipe } from '@beaconfolio/shared/testing';
 
 describe('HeroComponent', () => {
   let component: HeroComponent;
