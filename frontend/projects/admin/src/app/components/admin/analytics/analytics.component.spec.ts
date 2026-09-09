@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
@@ -95,6 +96,27 @@ describe('AnalyticsComponent', () => {
     );
     // A feed row whose source record is gone still counts; it just has no name.
     expect(rows[1].querySelector('.feed-who')?.textContent?.trim()).toBe('—');
+  });
+
+  // Pins a defect only a real browser exposed: every assertion in this file
+  // passed while the feed printed a raw ISO timestamp with microseconds. A fix
+  // nothing asserts is a fix the next refactor deletes for free.
+  //
+  // Its sibling defect — the action buttons rendering as bare text — is pinned
+  // in `e2e/admin/analytics.spec.ts` INSTEAD OF HERE, deliberately: jsdom does
+  // not apply the component's stylesheet (it reports `border-top-style: none`
+  // and a placeholder `border-top-width: 16px` whether or not the rule exists),
+  // so a computed-style assertion here would pass with the CSS deleted. Only an
+  // engine that lays out can answer "does this look like a button".
+  it('formats feed timestamps instead of printing the raw ISO string', () => {
+    fixture.detectChanges();
+
+    const raw = '2026-09-05T10:00:00+00:00';
+    const when = el().querySelector('.feed-item .feed-when')?.textContent?.trim();
+    expect(when).not.toBe(raw);
+    // Computed with the pipe rather than hard-coded, so the expectation does
+    // not depend on the runner's timezone.
+    expect(when).toBe(new DatePipe('en-US').transform(raw, 'medium'));
   });
 
   it('shows the loading state until the summary arrives', () => {

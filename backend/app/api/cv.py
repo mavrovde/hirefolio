@@ -101,8 +101,11 @@ async def request_cv(
 
         # Engagement analytics (#249): count the request. Best-effort by
         # contract — record_event writes through its own session and swallows
-        # its own failures, so analytics can never cost the owner a CV request.
-        await record_event(
+        # its own failures, so analytics can never cost the owner a CV request
+        # — and scheduled rather than awaited, so it costs the requester no
+        # response time either.
+        background_tasks.add_task(
+            record_event,
             "cv_request",
             subject_id=cv_request_id,
             payload={"cv_version": cv_version},
@@ -132,7 +135,11 @@ async def request_cv(
 
 
 @router.get("/download")
-async def download_cv(req_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def download_cv(
+    background_tasks: BackgroundTasks,
+    req_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     try:
         # 1. Update tracking if req_id provided
         if req_id:
@@ -152,7 +159,11 @@ async def download_cv(req_id: str | None = None, db: AsyncSession = Depends(get_
                     # Engagement analytics (#249): ONE ROW PER DOWNLOAD. The
                     # counter above cannot answer "when" for anything but the
                     # last open, so the per-week trend needs its own event.
-                    await record_event("cv_download", subject_id=downloaded_id)
+                    # Scheduled, not awaited: the visitor waits for their PDF,
+                    # not for our bookkeeping (see record_event's docstring).
+                    background_tasks.add_task(
+                        record_event, "cv_download", subject_id=downloaded_id
+                    )
             except Exception as e:
                 logger.warning(f"Failed to track download for req_id {req_id}: {e}")
 

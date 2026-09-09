@@ -59,6 +59,38 @@ test.describe('Admin engagement dashboard', () => {
         await expect(page.getByTestId('analytics-feed')).toContainText('Rita Recruiter (Agency GmbH)');
     });
 
+    test('draws a real box around the action and window buttons', async ({ page }) => {
+        // Pinned HERE and not in the unit suite on purpose: the admin theme
+        // colours `button` but gives it no border-width or padding, so before
+        // the CSS below existed these rendered as bare text — with the whole
+        // jsdom suite green, because jsdom does not apply the component
+        // stylesheet at all. Only a laying-out engine can catch it.
+        await page.route(`**${API_PREFIX}/admin/analytics/engagement*`, (route) =>
+            route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SUMMARY) })
+        );
+
+        await page.goto('/analytics');
+        await expect(page.getByTestId('analytics-purge')).toBeVisible();
+
+        for (const target of [
+            page.getByTestId('analytics-purge'),
+            page.getByTestId('analytics-digest'),
+            page.locator('.window-btn').first(),
+        ]) {
+            const box = await target.evaluate((el) => {
+                const s = getComputedStyle(el);
+                return {
+                    borderWidth: parseFloat(s.borderTopWidth),
+                    borderStyle: s.borderTopStyle,
+                    paddingX: parseFloat(s.paddingLeft),
+                };
+            });
+            expect(box.borderStyle).not.toBe('none');
+            expect(box.borderWidth).toBeGreaterThan(0);
+            expect(box.paddingX).toBeGreaterThan(0);
+        }
+    });
+
     test('repaints the trend when the window changes (zoneless)', async ({ page }) => {
         await page.route(`**${API_PREFIX}/admin/analytics/engagement*`, (route) => {
             const weeks = Number(new URL(route.request().url()).searchParams.get('weeks'));

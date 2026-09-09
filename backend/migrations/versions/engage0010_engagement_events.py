@@ -1,7 +1,13 @@
 """Engagement events table (#249).
 
-Chained onto `trans0009` — two revisions sharing one `down_revision` give
-Alembic two heads and `upgrade head` refuses to run.
+Chained onto `tailored0010` (#250), NOT onto `trans0009` — this revision and
+that one were authored in parallel off the same parent, and two revisions
+sharing one `down_revision` give Alembic two heads: `upgrade head` then fails
+with "Multiple head revisions are present". `docker-entrypoint.sh` runs exactly
+that on every container start, so the fork is a boot failure, not a
+housekeeping detail. Whichever of two parallel migrations merges second
+re-chains behind the first; the revision id itself never changes, because a
+deployed database may already have it stamped.
 """
 
 from collections.abc import Sequence
@@ -12,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "engage0010"
-down_revision: str | None = "trans0009"
+down_revision: str | None = "tailored0010"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

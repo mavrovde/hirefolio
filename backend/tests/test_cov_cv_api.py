@@ -11,7 +11,7 @@ existing suite leaves uncovered:
 import uuid
 
 import pytest
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 
 from app.api.cv import download_cv
 from app.models.cv_document import CvDocument
@@ -37,7 +37,7 @@ async def test_download_req_id_no_matching_request(db_session):
     await _add_active_cv(db_session, data=b"no match content")
 
     missing_id = str(uuid.uuid4())
-    resp = await download_cv(req_id=missing_id, db=db_session)
+    resp = await download_cv(BackgroundTasks(), req_id=missing_id, db=db_session)
 
     assert resp.status_code == 200
     assert resp.body == b"no match content"
@@ -61,7 +61,8 @@ async def test_download_updates_tracking_for_existing_request(db_session):
     db_session.add(req)
     await db_session.commit()
 
-    resp = await download_cv(req_id=str(req_id), db=db_session)
+    tasks = BackgroundTasks()
+    resp = await download_cv(tasks, req_id=str(req_id), db=db_session)
     assert resp.status_code == 200
     assert resp.body == b"tracked content"
 
@@ -71,6 +72,9 @@ async def test_download_updates_tracking_for_existing_request(db_session):
     updated = result.scalar_one()
     assert updated.download_count == 1
     assert updated.downloaded_at is not None
+    # The analytics emit is SCHEDULED, never awaited inside the handler (#249):
+    # calling the endpoint directly queues it without running it.
+    assert [t.func.__name__ for t in tasks.tasks] == ["record_event"]
 
 
 @pytest.mark.asyncio
@@ -79,7 +83,9 @@ async def test_download_tracking_failure_is_swallowed(db_session):
     await _add_active_cv(db_session, data=b"resilient content")
 
     # Not a valid UUID -> the CvRequest query raises a DB error inside the inner try.
-    resp = await download_cv(req_id="not-a-valid-uuid", db=db_session)
+    resp = await download_cv(
+        BackgroundTasks(), req_id="not-a-valid-uuid", db=db_session
+    )
 
     # Tracking failure must not break the download; the PDF is still served.
     assert resp.status_code == 200
@@ -90,7 +96,7 @@ async def test_download_tracking_failure_is_swallowed(db_session):
 async def test_download_no_active_cv_raises_404(db_session):
     """No active CV -> 404 CV_ERROR_UNAVAILABLE (lines 95-97), re-raised via 107-108."""
     with pytest.raises(HTTPException) as exc_info:
-        await download_cv(req_id=None, db=db_session)
+        await download_cv(BackgroundTasks(), req_id=None, db=db_session)
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "CV_ERROR_UNAVAILABLE"
@@ -101,7 +107,7 @@ async def test_download_success_without_req_id(db_session):
     """Happy path with no req_id serves the active CV bytes and disposition header."""
     await _add_active_cv(db_session, data=b"plain content")
 
-    resp = await download_cv(req_id=None, db=db_session)
+    resp = await download_cv(BackgroundTasks(), req_id=None, db=db_session)
     assert resp.status_code == 200
     assert resp.body == b"plain content"
     assert 'attachment; filename="cov.pdf"' in resp.headers["content-disposition"]

@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { PipelineComponent } from './pipeline.component';
 import { OpportunitiesService, Opportunity } from '../../../services/opportunities.service';
 import { AdminCvService, CvVersion } from '../../../services/admin-cv.service';
+import { TailoredLinksService } from '../../../services/tailored-links.service';
 
 function makeCv(overrides: Partial<CvVersion> = {}): CvVersion {
     return {
@@ -43,6 +44,7 @@ describe('PipelineComponent', () => {
     let component: PipelineComponent;
     let serviceSpy: Record<'list' | 'get' | 'create' | 'moveStage' | 'addNote' | 'recordCvSent', ReturnType<typeof vi.fn>>;
     let cvSpy: Record<'getVersions', ReturnType<typeof vi.fn>>;
+    let tailoredSpy: Record<'listFor' | 'create' | 'update' | 'remove', ReturnType<typeof vi.fn>>;
 
     beforeEach(async () => {
         serviceSpy = {
@@ -56,11 +58,16 @@ describe('PipelineComponent', () => {
         cvSpy = {
             getVersions: vi.fn().mockReturnValue(of({ items: [makeCv()], total: 1, page: 1, pages: 1 })),
         };
+        // Tailored links (#250) load alongside the CV variants when a panel
+        // opens; these suites do not exercise them (see
+        // pipeline.tailored-links.spec.ts) but the dependency must resolve.
+        tailoredSpy = { listFor: vi.fn().mockReturnValue(of([])), create: vi.fn(), update: vi.fn(), remove: vi.fn() };
         await TestBed.configureTestingModule({
             imports: [PipelineComponent],
             providers: [
                 { provide: OpportunitiesService, useValue: serviceSpy },
                 { provide: AdminCvService, useValue: cvSpy },
+                { provide: TailoredLinksService, useValue: tailoredSpy },
             ],
         }).compileComponents();
 
@@ -181,6 +188,7 @@ describe('PipelineComponent — CV variants (#247 criterion 4)', () => {
     let component: PipelineComponent;
     let serviceSpy: Record<'list' | 'get' | 'create' | 'moveStage' | 'addNote' | 'recordCvSent', ReturnType<typeof vi.fn>>;
     let cvSpy: Record<'getVersions', ReturnType<typeof vi.fn>>;
+    let tailoredSpy: Record<'listFor' | 'create' | 'update' | 'remove', ReturnType<typeof vi.fn>>;
 
     beforeEach(async () => {
         serviceSpy = {
@@ -194,11 +202,16 @@ describe('PipelineComponent — CV variants (#247 criterion 4)', () => {
         cvSpy = {
             getVersions: vi.fn().mockReturnValue(of({ items: [makeCv()], total: 1, page: 1, pages: 1 })),
         };
+        // Tailored links (#250) load alongside the CV variants when a panel
+        // opens; these suites do not exercise them (see
+        // pipeline.tailored-links.spec.ts) but the dependency must resolve.
+        tailoredSpy = { listFor: vi.fn().mockReturnValue(of([])), create: vi.fn(), update: vi.fn(), remove: vi.fn() };
         await TestBed.configureTestingModule({
             imports: [PipelineComponent],
             providers: [
                 { provide: OpportunitiesService, useValue: serviceSpy },
                 { provide: AdminCvService, useValue: cvSpy },
+                { provide: TailoredLinksService, useValue: tailoredSpy },
             ],
         }).compileComponents();
         fixture = TestBed.createComponent(PipelineComponent);

@@ -166,10 +166,12 @@ async def submit_contact(
     db.add(interaction)
     await db.commit()
     await db.refresh(interaction)
-    # Engagement analytics (#249): counted here, after the intake commit, and
-    # best-effort by contract — the event references this row instead of
-    # copying the recruiter's identity into a second table.
-    await record_event("contact_submitted", subject_id=interaction.id)
+    # Engagement analytics (#249): counted after the intake commit, scheduled
+    # rather than awaited, and best-effort by contract — the event references
+    # this row instead of copying the recruiter's identity into a second table.
+    background_tasks.add_task(
+        record_event, "contact_submitted", subject_id=interaction.id
+    )
     background_tasks.add_task(
         _notify, body.name, body.email, body.company, body.message
     )

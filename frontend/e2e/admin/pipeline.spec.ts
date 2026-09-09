@@ -218,4 +218,82 @@ test.describe('Admin Pipeline board', () => {
         expect(recorded).toEqual({ cv_document_id: 'cv-1' });
     });
 
+    /**
+     * Tailored links in the detail panel (#250), in a real browser — the two
+     * things jsdom cannot tell us (#323 review, findings 1 and 3): whether a
+     * native `confirm()` really guards the irreversible delete, and what day
+     * the expiry renders as when the browser is NOT in UTC.
+     */
+    test.describe('tailored links', () => {
+        // Tokyo is UTC+9: an expiry stored as the last instant of 2026-12-01
+        // UTC is 08:59 on 2026-12-02 *here*. The panel must still say Dec 1 —
+        // the day the owner picked in the date field.
+        test.use({ timezoneId: 'Asia/Tokyo' });
+
+        const LINK = {
+            id: 'tl-1',
+            opportunity_id: 'op-1',
+            slug: 'agency-staff-eng',
+            path: '/for/agency-staff-eng',
+            url: 'http://localhost/for/agency-staff-eng',
+            cv_document_id: null,
+            cv_version: null,
+            cv_filename: null,
+            headline_note: null,
+            highlighted_skills: [] as string[],
+            highlighted_projects: [] as string[],
+            enabled: true,
+            expires_at: '2026-12-01T23:59:59.999999Z',
+            visit_count: 0,
+            cv_download_count: 0,
+            last_visited_at: null,
+            created_at: '2026-09-06T09:00:00Z',
+            updated_at: '2026-09-06T09:00:00Z',
+        };
+
+        test('shows the picked expiry day and refuses to delete without a confirmation', async ({
+            page,
+        }) => {
+            let deletes = 0;
+            await page.route(`**${API_PREFIX}/admin/tailored-links/tl-1`, (route) => {
+                deletes += 1;
+                return route.fulfill({ status: 204, body: '' });
+            });
+            await page.route(`**${API_PREFIX}/admin/tailored-links*`, (route) =>
+                route.fulfill({
+                    status: 200, contentType: 'application/json', body: JSON.stringify([LINK]),
+                })
+            );
+            await page.route(`**${API_PREFIX}/admin/opportunities/op-1`, (route) =>
+                route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(OPP) })
+            );
+            await page.route(`**${API_PREFIX}/admin/opportunities*`, (route) =>
+                route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(page1([OPP])) })
+            );
+
+            await page.goto('/pipeline');
+            await page.getByTestId('card-op-1').click();
+            const row = page.getByTestId('link-tl-1');
+            await expect(row).toBeVisible();
+            // The expiry as the owner typed it, not the local calendar day of
+            // the stored instant.
+            await expect(row).toContainText('expires Dec 1, 2026');
+
+            // Playwright dismisses dialogs by default, i.e. the operator hit
+            // Cancel: the already-shared URL must survive untouched.
+            await page.getByTestId('delete-tl-1').click();
+            await expect(row).toBeVisible();
+            expect(deletes).toBe(0);
+
+            // Accepting the confirmation is what actually deletes it.
+            page.once('dialog', (dialog) => {
+                expect(dialog.type()).toBe('confirm');
+                expect(dialog.message()).toContain('/for/agency-staff-eng');
+                return dialog.accept();
+            });
+            await page.getByTestId('delete-tl-1').click();
+            await expect(page.getByTestId('link-tl-1')).toHaveCount(0);
+            expect(deletes).toBe(1);
+        });
+    });
 });

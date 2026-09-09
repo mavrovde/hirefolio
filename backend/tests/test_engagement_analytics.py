@@ -11,6 +11,7 @@ from itertools import pairwise
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import BackgroundTasks
 from httpx import AsyncClient
 from sqlalchemy import select
 
@@ -413,6 +414,51 @@ async def test_cv_request_and_every_download_are_recorded(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_every_emission_is_scheduled_not_awaited(client, db_session):
+    """Recording must not sit on the visitor's critical path.
+
+    Its own session means a second pool connection, so awaiting the INSERT
+    inline cost a measured +4.8 ms per `/cv/download`. This asserts the SHAPE
+    that keeps it off the response path — the emit is handed to
+    `BackgroundTasks` — rather than a duration, which would be a flaky way to
+    assert a design decision. Reverting any call site to `await record_event(...)`
+    still records the event, so only this test would notice.
+    """
+    await _seed_cv(db_session)
+    scheduled: list[str] = []
+    original_add_task = BackgroundTasks.add_task
+
+    def spy(self, func, *args, **kwargs):
+        scheduled.append(getattr(func, "__name__", repr(func)))
+        return original_add_task(self, func, *args, **kwargs)
+
+    with (
+        patch("app.api.cv.process_email_notifications", new_callable=AsyncMock),
+        patch.object(BackgroundTasks, "add_task", spy),
+    ):
+        resp = await client.post(
+            f"{settings.api_prefix}/cv/request",
+            json={
+                "name": "Rita Recruiter",
+                "email": "rita@agency.example",
+                "message": "Interested in your profile.",
+            },
+        )
+        assert resp.status_code == 200
+        assert (await client.get(resp.json()["download_url"])).status_code == 200
+        assert (await _post_contact(client)).status_code == 201
+
+    # One scheduled emit per flow: request, download, contact.
+    assert scheduled.count("record_event") == 3
+    # ...and scheduling still means recorded: the tasks ran.
+    kinds = {
+        e.kind
+        for e in (await db_session.execute(select(EngagementEvent))).scalars().all()
+    }
+    assert kinds == {"cv_request", "cv_download", "contact_submitted"}
+
+
+@pytest.mark.asyncio
 async def test_download_without_req_id_records_nothing(client, db_session):
     await _seed_cv(db_session)
     assert (await client.get(f"{settings.api_prefix}/cv/download")).status_code == 200
@@ -472,6 +518,25 @@ async def test_engagement_requires_admin(clean_client: AsyncClient):
     assert (await clean_client.get(f"{ANALYTICS_URL}/engagement")).status_code == 401
     assert (await clean_client.post(f"{ANALYTICS_URL}/purge")).status_code == 401
     assert (await clean_client.post(f"{ANALYTICS_URL}/digest")).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_flag_off_still_answers_anonymous_callers_with_401(
+    clean_client: AsyncClient,
+):
+    """Order of the two router dependencies is itself a disclosure decision.
+
+    Auth runs BEFORE the flag check, so a stranger gets 401 either way and
+    cannot use the 404-vs-401 difference to learn whether this server collects
+    engagement analytics. Only an authenticated owner sees the 404 that means
+    "switched off". Reversing the dependency order would leak that bit.
+    """
+    with patch("app.config.settings.engagement_analytics_enabled", False):
+        assert (
+            await clean_client.get(f"{ANALYTICS_URL}/engagement")
+        ).status_code == 401
+        assert (await clean_client.post(f"{ANALYTICS_URL}/purge")).status_code == 401
+        assert (await clean_client.post(f"{ANALYTICS_URL}/digest")).status_code == 401
 
 
 @pytest.mark.asyncio
