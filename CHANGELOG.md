@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Placeholder for next release.
+
+## [1.14.0] - 2026-09-09
+
+### Added
 - **Tailored application links — `/for/:slug` (#250)** — the owner mints an unlisted URL per
   application instead of attaching a generic PDF, and the application stops being write-only:
   - **`TailoredLink`** (migration `tailored0010`) belongs to an opportunity (#247), pins a **CV
@@ -265,7 +270,18 @@ All notable changes to this project will be documented in this file.
     wrong value re-points the stack at new, empty volumes.
   - **Postgres is no longer internet-facing**: `POSTGRES_BIND_HOST` defaults to `127.0.0.1`. Note
     `ufw` does **not** filter Docker-published ports (DNAT in `PREROUTING`, never reaches `INPUT`), so
-    a firewall rule was never the fix.
+    a firewall rule was never the fix. **Changed default — what an existing deployment does on
+    upgrade:** `.env.example` ships the key commented out, so an existing host has no pin and takes
+    the new value. The application is unaffected — `docker-compose.prod.yml` wires the backend to
+    `db:${POSTGRES_PORT}` over the compose network, and the `pg_isready` health check runs inside the
+    `db` container, so neither traverses the published port. What changes is the host publish: any
+    client reaching the box at an address other than loopback loses access — an **off-host** client on
+    `<host>:5433`, and equally a **host-local process dialling the machine's LAN or bridge address**.
+    Only clients dialling `127.0.0.1`, directly or through an SSH tunnel, keep it. That wider
+    reachability was an unintended exposure, not a supported interface (`docs/DEPLOYMENT.md` documents
+    no off-host database access, and the backup runbook goes through
+    `docker compose exec -T db pg_dump`); if you relied on it, set `POSTGRES_BIND_HOST=0.0.0.0` — eyes
+    open — or tunnel over SSH.
   - **`ssh-deploy` skill** (`.claude/skills/ssh-deploy/`) — failure→diagnosis for every step of
     `Roll Out To Prod Host`, the certificate-renewal runbook and the multi-tenant do-not-touch list;
     referenced from the `devops-pipeline` and `release-manager` charters and the CLAUDE.md AI-config
@@ -311,31 +327,6 @@ All notable changes to this project will be documented in this file.
     tag — and the chain meant `admin` never ran either time. A real failure is never retried;
     14 self-test cases. (It is **not** a 4.x-only problem: the Vitest 5 bump later in this release
     reproduced it on 5.0.0, so the harness stays — see the Changed entry below.)
-
-### Fixed
-- **Merge gate could accept an author's fix report as a review verdict (rule 13).**
-  `pre-merge-gate.sh` selected the newest body containing `APPROVE`/`REQUEST CHANGES` anywhere.
-  On #291 two such bodies are the author's own fix reports whose first marker is `APPROVED`; since
-  reviewer and author post under one GitHub identity, either would have counted as the newest
-  verdict and allowed a merge while the standing verdict was REQUEST CHANGES. A verdict must now
-  state its marker in the **first non-empty line**. It also closes a SECOND false-allow, found by
-  this change's reviewer rather than its author: #293's `## ⛔ REJECTED` body carries no marker in
-  its heading and exactly one anywhere — the prose "expect to approve immediately" — which the old
-  case-insensitive body-wide match read as the verdict. Self-test **77 → 85 cases**, of which
-  **4 fail against the previous hook**, plus a new mutation in the contract (now 18 killed).
-  Known residual, documented rather than pinned (lessons §43): a fix report whose *first line*
-  itself carries a marker still allows — no lexical rule separates it from a real heading, so the
-  charter convention is the guard.
-- **`pr-reviewer` charter told reviewers to write `⛔ REJECTED`**, a heading containing neither
-  marker. Three costs, all measured: the merge gate could not have read it; the retrospective's
-  verdict count silently lost #293's two real REQUEST-CHANGES rounds; and #293 therefore read as the
-  release's only round-1 approval when it took three rounds (the true figure is 0 of 16). Canonical
-  headings are now `## ✅ APPROVE — round N` / `## ⛔ REQUEST CHANGES — round N`.
-- **`backend-dev` / `frontend-dev` charters prescribed a chained push**
-  (`… && git commit … && git push … && gh pr create`). The pre-push hook is a PreToolUse hook: it
-  judges the whole command before any of it runs, so the chain fails on the un-fixed tree and on
-  deny nothing in it runs — three denied pushes in one evening, one cascading into destroyed work.
-  Both recipes are now unchained.
 
 ### Changed
 - **De-branded the docs: product voice, not the maintainer's instance (#313)** — owner directive
@@ -428,6 +419,10 @@ All notable changes to this project will be documented in this file.
     already passed `--legacy-peer-deps`; this makes it the project default. Trade-off recorded in
     the file and in lessons §45: it silences genuine peer conflicts too, so the one-pass
     lockfile regeneration + programmatic lock review remain the real guard.
+- **Backend dependency bump (#321)** — `alembic` `1.19.1 → 1.19.2` in `backend/requirements.txt`
+  (Dependabot `backend-minor` group, upstream semver-patch). Within the current major, per the
+  dependency policy; `requirements-dev.txt` does not pin `alembic`, so there is no second carrier
+  to update.
 - `agents/PLAYBOOK.md` gains five discipline rules measured from this release (verify by observable
   not by construction; your verification's scope is a claim too; a new setting is three edits;
   `git push` rides alone; a verdict states itself in line 1); `release-manager` must trace a changed
@@ -437,6 +432,31 @@ All notable changes to this project will be documented in this file.
   budget, and the background-task session redirect. Lessons §40–§43 and two `env-gotchas` entries
   (stale Docker host-port bindings, the Vitest teardown signature) added; the retrospective counting
   convention is now heading-anchored with its bias documented.
+
+### Fixed
+- **Merge gate could accept an author's fix report as a review verdict (rule 13).**
+  `pre-merge-gate.sh` selected the newest body containing `APPROVE`/`REQUEST CHANGES` anywhere.
+  On #291 two such bodies are the author's own fix reports whose first marker is `APPROVED`; since
+  reviewer and author post under one GitHub identity, either would have counted as the newest
+  verdict and allowed a merge while the standing verdict was REQUEST CHANGES. A verdict must now
+  state its marker in the **first non-empty line**. It also closes a SECOND false-allow, found by
+  this change's reviewer rather than its author: #293's `## ⛔ REJECTED` body carries no marker in
+  its heading and exactly one anywhere — the prose "expect to approve immediately" — which the old
+  case-insensitive body-wide match read as the verdict. Self-test **77 → 85 cases**, of which
+  **4 fail against the previous hook**, plus a new mutation in the contract (now 18 killed).
+  Known residual, documented rather than pinned (lessons §43): a fix report whose *first line*
+  itself carries a marker still allows — no lexical rule separates it from a real heading, so the
+  charter convention is the guard.
+- **`pr-reviewer` charter told reviewers to write `⛔ REJECTED`**, a heading containing neither
+  marker. Three costs, all measured: the merge gate could not have read it; the retrospective's
+  verdict count silently lost #293's two real REQUEST-CHANGES rounds; and #293 therefore read as the
+  release's only round-1 approval when it took three rounds (the true figure is 0 of 16). Canonical
+  headings are now `## ✅ APPROVE — round N` / `## ⛔ REQUEST CHANGES — round N`.
+- **`backend-dev` / `frontend-dev` charters prescribed a chained push**
+  (`… && git commit … && git push … && gh pr create`). The pre-push hook is a PreToolUse hook: it
+  judges the whole command before any of it runs, so the chain fails on the un-fixed tree and on
+  deny nothing in it runs — three denied pushes in one evening, one cascading into destroyed work.
+  Both recipes are now unchained.
 
 ## [1.13.0] - 2026-09-07
 
