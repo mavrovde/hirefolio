@@ -4,7 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+- **Merge gate now filters verdicts by trusted author association (#316)** — on this PUBLIC repo any
+  passer-by could post an approval-shaped comment; `pre-merge-gate.sh` now admits a verdict only from
+  an `OWNER`/`MEMBER`/`COLLABORATOR` entry (missing/unknown association = untrusted, fail-closed).
+  "Newest wins" still holds within the trusted set. Six new self-test cases + a mutation
+  ("trusted-author filter removed") prove it load-bearing.
+
+### Added
+- **Self-test for the live-freshness verdict script, wired into pre-push + CI (#280)** —
+  `scripts/check_live_freshness.test.sh` drives all five states (fresh, version-stale,
+  admin-route-stale, down, mixed-down+stale) with stubbed curl/jq, asserting exit code AND verdict
+  line; the mixed state pins the staleness-beats-outage precedence (#254) and fails against a
+  regressed `*)` branch. Runs in the pre-push docs leg and the CI Version Consistency job.
+
 ### Changed
+- **CI frontend jobs use the same worker-teardown retry as the pre-push gate (#319)** — each of the
+  three Vitest project steps in `deploy.yml` now runs through `scripts/run_frontend_suites.sh`
+  (signature-narrow single retry for the upstream Vitest teardown race, #309) instead of a bare
+  `npm run test:coverage:*`, closing the gap where the pipeline was less robust than the local gate.
 - **Rebranded to Beaconfolio; repository renamed to `mavrovde/beaconfolio` (#330, executing #88)** —
   the product name, the repository slug and the GitHub description/homepage now say **Beaconfolio**,
   and `beaconfolio.com` is registered. The prior working name could not ship: `hirefolio.com` has been
