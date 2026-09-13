@@ -114,6 +114,15 @@ services:
       - OWNER_LANGUAGE=${OWNER_LANGUAGE:-en}
       - ENGAGEMENT_ANALYTICS_ENABLED=${ENGAGEMENT_ANALYTICS_ENABLED:-true}
       - ENGAGEMENT_RETENTION_DAYS=${ENGAGEMENT_RETENTION_DAYS:-365}
+      # Analytics write budget + connection pool (#326): the emits have their
+      # OWN pool of exactly ENGAGEMENT_MAX_CONCURRENT_WRITES connections, so a
+      # side write can never take one a request is waiting for; DB_ECHO=false
+      # keeps SQL logging off (it was hard-coded on).
+      - ENGAGEMENT_MAX_CONCURRENT_WRITES=${ENGAGEMENT_MAX_CONCURRENT_WRITES:-4}
+      - ENGAGEMENT_MAX_PENDING_EVENTS=${ENGAGEMENT_MAX_PENDING_EVENTS:-1000}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-20}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-40}
+      - DB_ECHO=${DB_ECHO:-false}
       # Email (#262): pass-through from .env. Empty SMTP_HOST = sending
       # disabled (the graceful-skip contract). Without these lines the whole
       # DEPLOYMENT.md email section was inert on prod — the settings never
