@@ -26,6 +26,26 @@ All notable changes to this project will be documented in this file.
     rotating spoofed first hop all passed a 5/60 limiter; with it off the 6th got `429`. The app's
     `TRUSTED_PROXY_CIDRS` check is now the single decision point (`backend/Dockerfile`, pinned by
     a test). Nothing in the backend reads `scope["scheme"]`; nginx still logs the real client IP.
+- **Bandit CI workflow rebuilt on the repo's own Bandit contract, with stable SARIF
+  (#355 follow-up)** — the stock template had three defects, all measured: it scanned every
+  path at every severity and flooded the Security tab with **100 findings** (98× B101
+  `assert`-in-tests noise, a rule-10-compliant dummy fixture token, and one deliberate
+  local-probe `verify=False`); it drove the scan through `shundor/python-bandit-scan`, an
+  unmaintained third-party action pinned to a 2022 commit — the source of the
+  *"Node 20 is being deprecated"* pipeline warning; and its SARIF carried **no category**, so
+  another tool's upload could displace its results.
+  - The job now runs `bandit` **directly** under the CLAUDE.md contract
+    (`-ll --skip B101`) across `backend/app`, `importer`, `scraper`, `scripts` and the root
+    probe script — wider than the backend-local command — emitting SARIF via `bandit[sarif]`.
+  - SARIF is **validated before upload** (missing/malformed → warn and skip, never a failed
+    upload masquerading as a broken pipeline) and published under an explicit
+    `category: bandit` so Bandit, Snyk and CodeQL results coexist.
+  - Actions moved to the Node 24 generation (`actions/checkout@v7`, `actions/setup-python@v7`,
+    `github/codeql-action/upload-sarif@v4`), matching the rest of the repo's workflows.
+  - The intentional `verify=False` in `verify_proxy_routes.py` carries a **bare** `# nosec B501`
+    with the rationale on the lines above: Bandit parses anything trailing the marker as further
+    test IDs, which emitted 15 spurious warnings per run. Measured after the fix:
+    **0 warnings, valid SARIF 2.1.0, 0 findings.**
 
 ### Changed
 - **Rebranded to Beaconfolio; repository renamed to `mavrovde/beaconfolio` (#330, executing #88)** —
