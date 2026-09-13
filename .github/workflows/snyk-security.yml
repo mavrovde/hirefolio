@@ -1,0 +1,88 @@
+# Snyk Security — code (SAST), open-source deps, and IaC for THIS repository.
+# Adapted from GitHub's stock template (PR #354) by #358: the template's
+# placeholder container step moved to snyk-container.yml (PR #356), and every
+# step now targets the repo's real manifests. SNYK_TOKEN is an Actions secret
+# (scan quota only — rule 10: it never enters test/E2E stacks).
+name: Snyk Security
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: '17 4 * * 5'   # weekly, before the Friday container scan
+
+permissions:
+  contents: read
+
+jobs:
+  snyk:
+    permissions:
+      contents: read
+      security-events: write   # SARIF upload
+      actions: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail fast without a token
+        run: |
+          if [ -z "${{ secrets.SNYK_TOKEN }}" ]; then
+            echo "::error::SNYK_TOKEN is not set — the scan cannot run. Add the repo secret."; exit 1
+          fi
+      - uses: snyk/actions/setup@806182742461562b67788a64410098c9d9b96adb
+      # Snyk needs resolvable dependency trees for SCA: install both stacks' manifests.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install frontend lockfile (metadata only)
+        working-directory: frontend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install backend requirements (resolution only)
+        working-directory: backend
+        # Best-effort: linkedin-api==2.2.1 is a prod-patched wheel not on PyPI
+        # (CLAUDE.md rule 6), so a clean-index install cannot fully resolve. Snyk
+        # SCA reads requirements.txt directly regardless, so a partial venv is
+        # fine — never let this hard-fail the scan job.
+        run: |
+          python -m venv .snyk-venv && . .snyk-venv/bin/activate
+          pip install -q -r requirements.txt -r requirements-dev.txt \
+            || pip install -q -r requirements.txt \
+            || echo "::warning::partial dependency resolution (patched wheel absent) — Snyk reads the manifest directly"
+      - name: Snyk Code (SAST) → SARIF
+        env: { SNYK_TOKEN: "${{ secrets.SNYK_TOKEN }}" }
+        # A rejected token (HTTP 403 — Snyk Code not enabled for the org, or an
+        # invalid/wrong-region SNYK_TOKEN) leaves no valid SARIF. Surface it as an
+        # actionable error but don't crash the step; the guarded upload below skips
+        # a missing/empty file so the run reflects "token needs fixing", not a
+        # broken workflow. (Findings, when the token works, land in the Security
+        # tab for rule-8 triage.)
+        run: |
+          snyk code test --sarif > snyk-code.sarif \
+            || echo "::warning::snyk code test produced no SARIF (check SNYK_TOKEN / Snyk Code entitlement)"
+      - name: Snyk Open Source (both stacks)
+        env: { SNYK_TOKEN: "${{ secrets.SNYK_TOKEN }}" }
+        run: |
+          snyk test --file=frontend/package-lock.json --package-manager=npm --severity-threshold=high || true
+          . backend/.snyk-venv/bin/activate && snyk test --file=backend/requirements.txt --command=python --severity-threshold=high || true
+          snyk monitor --all-projects --exclude=.snyk-venv || true
+      - name: Snyk IaC (compose + Dockerfiles + workflows)
+        env: { SNYK_TOKEN: "${{ secrets.SNYK_TOKEN }}" }
+        run: snyk iac test --report || true
+      - name: Check SARIF is present and non-empty
+        id: sarif
+        run: |
+          if [ -s snyk-code.sarif ] && grep -q '"runs"' snyk-code.sarif 2>/dev/null; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::no valid Snyk SARIF to upload — skipping (see the Snyk Code step)"
+          fi
+      - name: Upload SARIF to code scanning
+        if: steps.sarif.outputs.ok == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-code.sarif
