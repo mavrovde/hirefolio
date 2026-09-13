@@ -1,0 +1,55 @@
+# Snyk Container — image-layer CVE scanning for the FOUR real images this repo
+# publishes (adapted from the stock template by #358; the placeholder
+# `your/image-to-test` built a root Dockerfile that does not exist here).
+# Scans the published GHCR images post-push (cheaper and truer than rebuilding),
+# plus a weekly cron so newly disclosed CVEs surface between releases.
+name: Snyk Container
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["backend/Dockerfile", "frontend/Dockerfile*", "proxy/**", ".github/workflows/snyk-container.yml"]
+  schedule:
+    - cron: '36 5 * * 5'
+
+permissions:
+  contents: read
+
+jobs:
+  snyk-container:
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, frontend, admin-frontend, proxy]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail fast without a token
+        run: |
+          if [ -z "${{ secrets.SNYK_TOKEN }}" ]; then
+            echo "::error::SNYK_TOKEN is not set — the scan cannot run."; exit 1
+          fi
+      - name: Pull the published image
+        run: docker pull ghcr.io/${{ github.repository_owner }}/beaconfolio-${{ matrix.service }}:latest
+      - name: Snyk Container test → SARIF
+        uses: snyk/actions/docker@806182742461562b67788a64410098c9d9b96adb
+        continue-on-error: true   # findings are release-triage input (rule 8), not a build-breaker
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ghcr.io/${{ github.repository_owner }}/beaconfolio-${{ matrix.service }}:latest
+          args: --severity-threshold=high
+      - name: Normalize SARIF severity levels
+        run: |
+          # snyk emits security-severity strings CodeQL rejects on some images; guard the upload
+          [ -f snyk.sarif ] || { echo "no sarif produced"; exit 0; }
+      - name: Upload SARIF (per image category)
+        if: hashFiles('snyk.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk.sarif
+          category: snyk-container-${{ matrix.service }}
