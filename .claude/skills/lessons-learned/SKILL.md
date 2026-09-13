@@ -1424,6 +1424,32 @@ failing on the artifact that teaches §49, caught by review rather than by the s
 discriminates leaves the variable UNSET in the harness; under a mutation that breaks the regex, only
 the command-text cases go red (measured: 3 of them, while the session-env case stays green).
 
+## 56. `request.client.host` is only unforgeable if NOTHING upstream rewrites it — uvicorn does (#273)
+
+The #273 fix keys the rate limiters on the client address our proxy reports, treating
+`request.client.host` (the TCP peer) as the one fact a caller cannot set. Verified over real HTTP
+against the running app and it held… by accident. The access log gave it away:
+`INFO: 10.0.0.6:0 - "GET /api/app/profile"` — the peer was `127.0.0.1`, and `10.0.0.6` was the value
+**curl had typed into `X-Forwarded-For`**.
+
+**uvicorn ships its own `ProxyHeadersMiddleware`, enabled by DEFAULT**, which rewrites
+`scope["client"]` from `X-Forwarded-For` whenever the peer is in `--forwarded-allow-ips` /
+`FORWARDED_ALLOW_IPS` (default `127.0.0.1`; with the popular `*` it takes **hop 0**, the attacker's
+own value — `uvicorn/middleware/proxy_headers.py`, `always_trust` branch). So an app-level
+trusted-proxy check can be fed a forged peer before its first line runs. Measured on the fixed
+code, 5/60 limiter, a fresh spoofed first hop per request: **7 of 7 served with the middleware on;
+429 from the 6th with `--no-proxy-headers`**. Same binary, same app code.
+
+**How to apply.**
+- Decide the client address in **one** place. If the app resolves it (TRUSTED_PROXY_CIDRS here),
+  disable the server's version — `CMD [… "--no-proxy-headers"]` in `backend/Dockerfile`, pinned by
+  a test — rather than leaving two trust lists that must agree.
+- Grep for the *second implementation* whenever you harden a "who is the caller" decision: the ASGI
+  server, the reverse proxy (`real_ip_recursive`), and the app each have one.
+- **Read the access log of the thing you are measuring**, not just the response body. The response
+  agreed with the expected value for the wrong reason; the log line named the real client and blew
+  the assumption open. A green measurement whose mechanism you have not traced is §42 again.
+
 ## Where the rules live (AI-config map)
 
 - **`CLAUDE.md`** — the authoritative numbered rules (engineering rules 1–13, issue-tracking flow,

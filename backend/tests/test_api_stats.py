@@ -182,11 +182,36 @@ async def test_get_public_stats(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_public_stats_with_forwarded_for(client: AsyncClient):
-    """Test public stats with X-Forwarded-For header."""
+async def test_get_public_stats_ignores_forwarded_for_from_untrusted_peer(
+    client: AsyncClient,
+):
+    """#273: the endpoint used to echo hop 0 of X-Forwarded-For back verbatim —
+    any caller could make it report an address of their choosing. The test
+    client is not a trusted proxy, so its claim is ignored."""
     response = await client.get(
         f"{settings.api_prefix}/stats/public",
         headers={"X-Forwarded-For": "1.2.3.4, 5.6.7.8"},
     )
     assert response.status_code == 200
-    assert response.json()["visitor_ip"] == "1.2.3.4"
+    assert response.json()["visitor_ip"] == "127.0.0.1"
+
+
+@pytest.mark.asyncio
+async def test_get_public_stats_reports_real_ip_behind_the_proxy(client: AsyncClient):
+    """Behind our nginx the visitor sees the address nginx observed — the SAME
+    address the rate limiter keys on (#273), not the client's own claim."""
+    from httpx import ASGITransport
+
+    from app.main import app
+
+    transport = ASGITransport(app=app, client=("172.20.0.9", 44444))
+    async with AsyncClient(transport=transport, base_url="http://test") as proxied:
+        response = await proxied.get(
+            f"{settings.api_prefix}/stats/public",
+            headers={
+                "X-Forwarded-For": "1.2.3.4, 203.0.113.9",
+                "X-Real-IP": "203.0.113.9",
+            },
+        )
+    assert response.status_code == 200
+    assert response.json()["visitor_ip"] == "203.0.113.9"

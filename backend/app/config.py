@@ -216,6 +216,16 @@ class Settings(BaseSettings):
     # Profile data (years API)
     profile_data_http_base: str = "http://frontend:80/assets"
 
+    # Reverse proxies whose forwarding headers may be believed (#273). SAME
+    # MEANING and same default as the proxy container's knob of this name: a
+    # forwarded header is evidence only when the PEER that delivered it is one
+    # of ours — anyone can type `X-Forwarded-For`/`X-Real-IP` into a request.
+    # 172.16.0.0/12 is the Docker bridge range, i.e. the nginx container in
+    # the shipped topology. Space/comma separated; invalid entries are ignored;
+    # EMPTY means "trust nothing" and every client is keyed by its peer address
+    # (the correct behaviour for a backend exposed directly, e.g. bare dev).
+    trusted_proxy_cidrs: str = "172.16.0.0/12"
+
     # Rate limiting (in-memory, per-process, per-client-IP). Generous defaults so
     # normal browsing/SSR is never affected — this is defense-in-depth against
     # scraping/abuse of unauthenticated public GETs, not a hard traffic quota.

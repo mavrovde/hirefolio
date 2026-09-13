@@ -498,7 +498,7 @@ identifies you. Every knob has a safe default that preserves the canonical behav
 | `PUBLIC_SERVER_NAME` | `.env` (proxy) | the canonical instance's hostnames | Public site hostname(s) the reverse proxy answers on. **Set this** to `<your-domain> www.<your-domain>` — unlike the other rows, the built-in fallback is not neutral (#313) |
 | `ADMIN_SERVER_NAME` | `.env` (proxy) | the canonical instance's admin hostname + `admin.localhost` | Admin console hostname(s). **Set this** to `admin.<your-domain> admin.localhost` — same caveat |
 | `ADMIN_ALLOWED_CIDRS` | `.env` (proxy) | *empty → CLOSED (loopback only)* | Trusted operator IPs/CIDRs allowed to reach the admin console. **Never `0.0.0.0/0` in prod.** |
-| `TRUSTED_PROXY_CIDRS` | `.env` (proxy) | `172.16.0.0/12` (Docker bridge) | Upstream CIDR(s) nginx trusts for the forwarded-for header (real client IP recovery) |
+| `TRUSTED_PROXY_CIDRS` | `.env` (proxy **+ backend**) | `172.16.0.0/12` (Docker bridge) | Upstream CIDR(s) nginx trusts for the forwarded-for header (real client IP recovery) — and, since #273, the peers whose `X-Real-IP`/`X-Forwarded-For` the **backend** believes when keying its per-client-IP rate limiters. Empty = trust nothing (every caller keyed by its own peer address) |
 | `REAL_IP_HEADER` | `.env` (proxy) | `X-Forwarded-For` | Header carrying the real client IP (set `X-Real-IP` if your front proxy uses it) |
 | `POSTGRES_PORT` | `.env` (compose) | `5433` | Postgres listen port + host mapping + backend `DATABASE_URL` |
 

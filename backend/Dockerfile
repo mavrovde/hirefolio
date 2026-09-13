@@ -90,4 +90,15 @@ EXPOSE 8000
 # runs `alembic upgrade head` before every container start (idempotent), then
 # execs the app. See "Database Migrations" in the root README.md.
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --no-proxy-headers (SECURITY, #273): uvicorn ships a SECOND, independent
+# implementation of "who is the client" — ProxyHeadersMiddleware REWRITES
+# scope["client"] from X-Forwarded-For whenever the peer is in
+# `--forwarded-allow-ips` / FORWARDED_ALLOW_IPS, and with the very common
+# `*` setting it takes hop 0, the value the caller typed. That would silently
+# feed a forged address to `app.services.rate_limit.client_ip` (which trusts
+# request.client.host as the one unforgeable fact) and re-open the bypass this
+# flag's own fix closed. Turning it off makes the app's TRUSTED_PROXY_CIDRS
+# check the single decision point. Nothing here reads scope["scheme"], and the
+# real client IP is in nginx's access log (proxy/real_ip.conf), so the only
+# change is that uvicorn's access log now names the true TCP peer.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]

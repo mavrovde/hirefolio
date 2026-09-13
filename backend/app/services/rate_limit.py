@@ -10,11 +10,15 @@ GET endpoints (defense-in-depth against scraping/abuse, not a hard quota).
 
 from __future__ import annotations
 
+import ipaddress
 import time
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
+from functools import lru_cache
 
 from fastapi import HTTPException, Request, status
+
+from app.config import settings
 
 # Every limiter created registers itself here so tests can reset all
 # module-level rate-limit state in one call, regardless of which API module
@@ -58,15 +62,89 @@ def reset_all_rate_limiters() -> None:
         limiter.reset()
 
 
-def _client_ip(request: Request) -> str:
-    """Best-effort client IP, honoring a single X-Forwarded-For hop.
+Networks = tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]
 
-    Mirrors the extraction already used for ``GET /stats/public``.
+
+@lru_cache(maxsize=8)
+def _trusted_networks(raw: str) -> Networks:
+    """Parse ``TRUSTED_PROXY_CIDRS`` (space/comma separated) into networks.
+
+    Cached on the raw string: this runs on every rate-limited request, and the
+    setting changes only when the process restarts (or a test overrides it).
+    Invalid entries are skipped rather than fatal — the same forgiving parse
+    ``proxy/generate-admin-config.sh`` applies to the identically-named knob,
+    so one typo cannot take the backend down.
     """
-    x_forwarded_for = request.headers.get("x-forwarded-for")
-    if x_forwarded_for:
-        return x_forwarded_for.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
+    for entry in raw.replace(",", " ").split():
+        try:
+            networks.append(ipaddress.ip_network(entry, strict=False))
+        except ValueError:
+            continue
+    return tuple(networks)
+
+
+def _is_trusted_proxy(host: str) -> bool:
+    """Whether ``host`` is one of our reverse proxies (so its headers count)."""
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        # Not an IP at all (a hostname, "testclient", junk) — never trusted.
+        return False
+    return any(
+        address in network
+        for network in _trusted_networks(settings.trusted_proxy_cidrs)
+    )
+
+
+def _valid_ip(value: str) -> str | None:
+    """Return ``value`` when it is a bare IP address, else ``None``."""
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return None
+    return value
+
+
+def client_ip(request: Request) -> str:
+    """The client address a per-IP control may safely key on.
+
+    SECURITY (#273): the previous implementation returned the FIRST
+    ``X-Forwarded-For`` hop, which is whatever the caller typed — nginx
+    APPENDS with ``$proxy_add_x_forwarded_for``, it never replaces — so an
+    attacker rotated that header and got a fresh rate-limit bucket per request.
+
+    Forwarding headers are believed only when the PEER is a trusted proxy
+    (``TRUSTED_PROXY_CIDRS``, same meaning as the proxy container's knob), and
+    then in this order:
+
+    1. ``X-Real-IP`` — our nginx sets it to ``$remote_addr`` on every proxied
+       location (``proxy/default.conf.template``), overwriting anything the
+       client sent, and with ``real_ip_recursive`` that address is already the
+       real client behind the shared-host Caddy edge.
+    2. the LAST ``X-Forwarded-For`` hop that is not itself a trusted proxy —
+       the hop adjacent to our own infrastructure, i.e. the one our proxy
+       observed rather than one the client appended.
+    3. the peer address itself (server-to-server calls carry no forwarded
+       headers at all).
+
+    An untrusted peer — bare-metal dev, a direct hit on the container port —
+    is keyed by its own address, so spoofed headers buy nothing there either.
+    """
+    peer = request.client.host if request.client else None
+    if peer is None:
+        return "unknown"
+    if not _is_trusted_proxy(peer):
+        return peer
+    real_ip = _valid_ip(request.headers.get("x-real-ip", "").strip())
+    if real_ip:
+        return real_ip
+    forwarded = request.headers.get("x-forwarded-for", "")
+    for hop in reversed(forwarded.split(",")):
+        candidate = _valid_ip(hop.strip())
+        if candidate and not _is_trusted_proxy(candidate):
+            return candidate
+    return peer
 
 
 def rate_limit_dependency(
@@ -75,7 +153,7 @@ def rate_limit_dependency(
     """Build a FastAPI dependency that enforces ``limiter`` per client IP."""
 
     async def _dependency(request: Request) -> None:
-        if not limiter.allow(_client_ip(request)):
+        if not limiter.allow(client_ip(request)):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many requests. Please slow down and try again shortly.",
