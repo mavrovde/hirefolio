@@ -114,6 +114,11 @@ services:
       - OWNER_LANGUAGE=${OWNER_LANGUAGE:-en}
       - ENGAGEMENT_ANALYTICS_ENABLED=${ENGAGEMENT_ANALYTICS_ENABLED:-true}
       - ENGAGEMENT_RETENTION_DAYS=${ENGAGEMENT_RETENTION_DAYS:-365}
+      # Same value the proxy service gets below (#273): the backend believes
+      # X-Real-IP / X-Forwarded-For only from these peers when keying its
+      # per-client-IP rate limiters, so a spoofed header cannot mint a fresh
+      # bucket. Default = the Docker bridge range, i.e. our nginx container.
+      - TRUSTED_PROXY_CIDRS=${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
       # Email (#262): pass-through from .env. Empty SMTP_HOST = sending
       # disabled (the graceful-skip contract). Without these lines the whole
       # DEPLOYMENT.md email section was inert on prod — the settings never

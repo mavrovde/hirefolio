@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
 from app.config import settings
@@ -14,7 +14,7 @@ CONTACT_URL = f"{settings.api_prefix}/interactions/contact"
 ADMIN_URL = f"{settings.api_prefix}/admin/interactions"
 
 
-async def _post_contact(client: AsyncClient, **overrides):
+async def _post_contact(client: AsyncClient, headers: dict | None = None, **overrides):
     body = {
         "name": "Rita Recruiter",
         "email": "rita@agency.example",
@@ -22,7 +22,7 @@ async def _post_contact(client: AsyncClient, **overrides):
         "message": "We have a role you would be perfect for.",
     }
     body.update(overrides)
-    return await client.post(CONTACT_URL, json=body)
+    return await client.post(CONTACT_URL, json=body, headers=headers)
 
 
 # --- public contact form -----------------------------------------------------
@@ -157,6 +157,49 @@ async def test_contact_rate_limited_after_limit(client: AsyncClient, monkeypatch
         resp = await _post_contact(client)
         assert resp.status_code == 429
     assert send.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_contact_limit_holds_against_a_spoofed_forwarded_for(
+    client: AsyncClient, monkeypatch
+):
+    """SECURITY (#273), end to end through the router: an attacker rotating the
+    FIRST X-Forwarded-For hop used to get a fresh bucket on every POST — the
+    write limit simply did not exist for anyone who bothered. Arriving from a
+    TRUSTED proxy the key comes from X-Real-IP (what our nginx observed), so the
+    budget holds; a different real client behind the same proxy is unaffected.
+
+    `client` is requested for its dependency overrides (DB/auth); the requests
+    go through a second transport whose peer address is our nginx container."""
+    from app.api import interactions as interactions_module
+    from app.main import app
+
+    monkeypatch.setattr(interactions_module.contact_rate_limiter, "max_requests", 3)
+
+    async def post_as(visitor_ip: str, spoofed_first_hop: str):
+        transport = ASGITransport(app=app, client=("172.20.0.9", 44444))
+        async with AsyncClient(transport=transport, base_url="http://test") as proxied:
+            return await _post_contact(
+                proxied,
+                headers={
+                    # What nginx forwards: the client's own claim first, our
+                    # observation appended (`$proxy_add_x_forwarded_for`).
+                    "X-Forwarded-For": f"{spoofed_first_hop}, {visitor_ip}",
+                    "X-Real-IP": visitor_ip,
+                },
+            )
+
+    with patch("app.api.interactions.notify_owner") as send:
+        attacker = [
+            (await post_as("203.0.113.9", f"10.0.0.{n}")).status_code
+            for n in range(1, 6)
+        ]
+        innocent = await post_as("198.51.100.4", "10.0.0.99")
+
+    assert attacker == [201, 201, 201, 429, 429]
+    assert innocent.status_code == 201
+    # Only the four accepted writes notified the owner (the 429s create nothing).
+    assert send.call_count == 4
 
 
 @pytest.mark.asyncio

@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.post import Post
 from app.models.user import User
 from app.services.auth import get_current_admin_user
+from app.services.rate_limit import client_ip
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -130,12 +131,12 @@ async def get_public_stats(
     """
     Get public statistics (e.g. visitor IP, uptime, version).
     """
-    # Visitor IP
-    x_forwarded_for = request.headers.get("x-forwarded-for")
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(",")[0].strip()
-    else:
-        ip = request.client.host if request.client else "Unknown"
+    # Visitor IP — the SAME derivation the rate limiter keys on (#273), so the
+    # address shown here is the address that would be throttled, and a caller
+    # cannot make this endpoint echo an arbitrary `X-Forwarded-For` value back
+    # (it used to return hop 0 verbatim). Unchanged for honest traffic behind
+    # our proxy: nginx's X-Real-IP is the same address hop 0 carried.
+    ip = client_ip(request)
 
     # Uptime
     uptime_str = "Unknown"

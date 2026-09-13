@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Rate limiting no longer trusts the attacker-controlled `X-Forwarded-For` hop (#273, security)** —
+  the per-client-IP key came from `x-forwarded-for.split(",")[0]`, which is whatever the caller
+  typed: nginx **appends** with `$proxy_add_x_forwarded_for`, it never replaces, so rotating that
+  header minted a fresh bucket per request and the profile, contact-form and tailored-link budgets
+  were bypassable at will. Measured against the running v1.14.0 stack through the real proxy:
+  `GET /api/app/stats/public` with `X-Forwarded-For: 1.2.3.4` reported `visitor_ip = 1.2.3.4`.
+  - `app.services.rate_limit.client_ip` now believes forwarding headers **only from a trusted
+    peer** (`TRUSTED_PROXY_CIDRS` — the same knob, same default `172.16.0.0/12`, the proxy
+    container already uses; the running nginx sits at `172.18.0.8`), and then reads `X-Real-IP`
+    (set by our nginx to `$remote_addr` on every proxied location), else the **last**
+    `X-Forwarded-For` hop that is not itself one of our proxies, else the peer address. A direct
+    caller — bare dev, an exposed container port — is keyed by its own address, so a spoofed
+    header buys nothing there either. Values that are not IP addresses are never used as keys.
+  - All three public limiters inherit it (profile GET, contact POST, tailored-link visit/CV), and
+    `GET /stats/public` now reports the same derived address instead of echoing hop 0 back.
+  - **`uvicorn --no-proxy-headers` is part of the fix.** uvicorn's `ProxyHeadersMiddleware` is on
+    by default and rewrites `scope["client"]` from `X-Forwarded-For` when the peer is in
+    `FORWARDED_ALLOW_IPS` (hop 0 when that is `*`) — measured: with it on, 7 requests with a
+    rotating spoofed first hop all passed a 5/60 limiter; with it off the 6th got `429`. The app's
+    `TRUSTED_PROXY_CIDRS` check is now the single decision point (`backend/Dockerfile`, pinned by
+    a test). Nothing in the backend reads `scope["scheme"]`; nginx still logs the real client IP.
+
 ### Changed
 - **Rebranded to Beaconfolio; repository renamed to `mavrovde/beaconfolio` (#330, executing #88)** —
   the product name, the repository slug and the GitHub description/homepage now say **Beaconfolio**,

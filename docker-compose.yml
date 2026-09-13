@@ -100,6 +100,11 @@ services:
       - OWNER_LANGUAGE=${OWNER_LANGUAGE:-en}
       - ENGAGEMENT_ANALYTICS_ENABLED=${ENGAGEMENT_ANALYTICS_ENABLED:-true}
       - ENGAGEMENT_RETENTION_DAYS=${ENGAGEMENT_RETENTION_DAYS:-365}
+      # Same value the proxy service gets below (#273): the backend believes
+      # X-Real-IP / X-Forwarded-For only from these peers when keying its
+      # per-client-IP rate limiters, so a spoofed header cannot mint a fresh
+      # bucket. Default = the Docker bridge range, i.e. our nginx container.
+      - TRUSTED_PROXY_CIDRS=${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
       # Email (#262): the dev stack defaults to the bundled Mailpit catch-all —
       # every notification is visible at http://localhost:8025 with ZERO
       # config, and nothing ever leaves the machine (rule 10). Point SMTP_* at
