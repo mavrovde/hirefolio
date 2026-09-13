@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **SonarQube adoption, local-first (#359, adapting stock PR #357)** — `scripts/sonar_local.sh`
+  runs a dockerized SonarQube Community + scanner against the committed
+  `sonar-project.properties` (both stacks, coverage reused from pytest/Vitest output) and
+  exits by the quality-gate verdict; the stock `sonarqube.yml` workflow is now
+  **secrets-gated** (absent `SONAR_TOKEN`/`SONAR_HOST_URL` → clean skip, never red — the
+  rollout-job pattern). Recorded decision: SonarCloud is the recommended CI target for this
+  public repo (free, PR decoration without Developer Edition).
+
 ### Changed
 - **Rebranded to Beaconfolio; repository renamed to `mavrovde/beaconfolio` (#330, executing #88)** —
   the product name, the repository slug and the GitHub description/homepage now say **Beaconfolio**,
